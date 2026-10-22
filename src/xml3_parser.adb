@@ -5,26 +5,37 @@ package body XML3_Parser with SPARK_Mode is
 
    function Layout (Nodes : Node_Array; Count : Node_Id; Size : Offset)
                     return Boolean is
-     (for all K in 1 .. Count =>
+     (Nodes'First = 1
+      and then Count <= Nodes'Last
+      and then (for all K in 1 .. Count =>
        Nodes (K).Parent < K
-       and Nodes (K).Name_Last <= Size
-       and Nodes (K).Value_Last <= Size
-       and Nodes (K).Name_First <= Nodes (K).Name_Last + 1
-       and Nodes (K).Value_First <= Nodes (K).Value_Last + 1)
+       and then Nodes (K).Name_Last <= Size
+       and then Nodes (K).Value_Last <= Size
+       and then Nodes (K).Name_First <= Nodes (K).Name_Last + 1
+       and then Nodes (K).Value_First <= Nodes (K).Value_Last + 1))
      with Ghost;
 
    procedure Parse
      (Input  : String;
+      Scratch : in out String;
       Nodes  : out Node_Array;
       Count  : out Node_Id;
       Root   : out Node_Id;
-      Status : out Parse_Status)
+      Status : out Parse_Status;
+      Huge   : Boolean)
    is
       P : Position := 1;
       Depth : Natural range 0 .. Max_Depth := 0;
       Stack : array (Positive range 1 .. Max_Depth) of Node_Id := (others => 0);
       NF, VF : Position;
       NL, VL : Offset;
+      Value_Length : XML3_Text.Byte_Count;
+      Value_Valid : Boolean;
+      Component_First : Position;
+      Name_Limit : constant Natural :=
+        (if Huge then Huge_Max_Name_Length else Normal_Max_Name_Length);
+      Value_Limit : constant Natural :=
+        (if Huge then Huge_Max_Value_Length else Normal_Max_Value_Length);
       Saved : Position;
       Parent : Node_Id;
       Element : Node_Id;
@@ -64,21 +75,33 @@ package body XML3_Parser with SPARK_Mode is
             and First = P'Old and Last = P - 1
       is
          Width : Natural;
+         Component_Size : Natural;
       begin
          First := P;
+         Component_First := P;
          while P <= Input'Last loop
             pragma Loop_Invariant (P in First .. Input'Length + 1);
+            pragma Loop_Invariant (Component_First in First .. P);
             pragma Loop_Variant (Increases => P);
             Width := XML3_Text.Name_Width (Input, P, P = First);
             if Width /= 0 then
                P := P + Width;
             elsif Qualified and then P > First and then Input (P) = ':' then
+               Component_Size := P - Component_First;
+               if Component_Size > Name_Limit then
+                  Status := Limit_Exceeded;
+               end if;
+               Component_First := P + 1;
                P := P + 1;
             else
                exit;
             end if;
          end loop;
          Last := P - 1;
+         Component_Size := P - Component_First;
+         if Component_Size > Name_Limit then
+            Status := Limit_Exceeded;
+         end if;
       end Read_Name;
 
       procedure Read_Quoted (First : out Position; Last : out Offset)
@@ -115,19 +138,21 @@ package body XML3_Parser with SPARK_Mode is
          end if;
       end Read_Quoted;
 
-      function Value_OK (First : Position; Last : Offset; Attr : Boolean)
-                         return Boolean
+      procedure Validate_Value
+        (First : Position; Last : Offset; Attr, References : Boolean;
+         Valid : out Boolean)
         with Pre => Input'First = 1 and Input'Length <= XML3_Text.Max_Bytes
           and First <= Last + 1 and Last <= Input'Length
+          and Scratch'First = 1 and Scratch'Length = Input'Length
       is
-         Value : constant String (1 .. Last - First + 1) := Input (First .. Last);
-         Unused_Result : String (1 .. Value'Length);
-         Unused_Length : XML3_Text.Byte_Count;
-         Valid : Boolean;
       begin
-         XML3_Text.Decode (Value, Attr, True, Unused_Result, Unused_Length, Valid);
-         return Valid;
-      end Value_OK;
+         XML3_Text.Decode
+           (Input (First .. Last), Attr, References,
+            Scratch (1 .. Last - First + 1), Value_Length, Valid);
+         if Valid and then Value_Length > Value_Limit then
+            Status := Limit_Exceeded;
+         end if;
+      end Validate_Value;
 
       procedure Add
         (Kind : Node_Kind; Owner : Node_Id;
@@ -135,19 +160,36 @@ package body XML3_Parser with SPARK_Mode is
          Value_First : Position; Value_Last : Offset)
         with Pre => Input'First = 1 and then Input'Length <= XML3_Text.Max_Bytes
           and then Layout (Nodes, Count, Input'Length)
+          and then Scratch'First = 1
+          and then Scratch'Length = Input'Length
           and then Owner <= Count
           and then Name_First <= Name_Last + 1 and then Name_Last <= Input'Length
           and then Value_First <= Value_Last + 1 and then Value_Last <= Input'Length,
           Post => Layout (Nodes, Count, Input'Length)
-            and Count >= Count'Old
-            and (if Status = Success then Count = Count'Old + 1)
-            and (for all K in 1 .. Count'Old => Nodes (K) = Nodes'Old (K))
+            and then Count >= Count'Old
+            and then (if Status = Success then Count = Count'Old + 1)
+            and then Count'Old <= Nodes'Last
+            and then (for all K in 1 .. Count'Old => Nodes (K) = Nodes'Old (K))
       is
       begin
+         Validate_Value
+           (Value_First, Value_Last,
+            Kind = Attribute_Node, Kind = Attribute_Node or Kind = Text_Node,
+            Value_Valid);
+         if Status /= Success then
+            return;
+         elsif not Value_Valid then
+            Status := Malformed;
+            return;
+         end if;
          if Count = Max_Nodes then
             Status := Limit_Exceeded;
             return;
+         elsif Count >= Nodes'Last then
+            Status := Arena_Exhausted;
+            return;
          end if;
+         pragma Assert (Count < Nodes'Last);
          Count := Count + 1;
          Nodes (Count) := (Kind, Owner, Name_First, Name_Last, Value_First, Value_Last);
       end Add;
@@ -163,7 +205,14 @@ package body XML3_Parser with SPARK_Mode is
             and Value_First <= Value_Last + 1 and Value_Last <= Input'Length
       is
       begin
+         Name_First := P;
+         Name_Last := P - 1;
+         Value_First := P;
+         Value_Last := P - 1;
          Read_Name (Name_First, Name_Last);
+         if Status /= Success then
+            return;
+         end if;
          Value_First := P;
          Value_Last := P - 1;
          Skip_Space;
@@ -180,6 +229,7 @@ package body XML3_Parser with SPARK_Mode is
       Count := 0;
       Root := 0;
       Status := Success;
+      Scratch := (others => Character'Val (0));
       if not XML3_Text.Valid_UTF8 (Input) then
          Status := Malformed;
          return;
@@ -239,10 +289,12 @@ package body XML3_Parser with SPARK_Mode is
       end if;
 
       while P <= Input'Last loop
-         pragma Loop_Invariant (P <= Input'Length + 1);
-         pragma Loop_Invariant (Layout (Nodes, Count, Input'Length));
-         pragma Loop_Invariant (Root <= Count);
-         pragma Loop_Invariant (for all D in 1 .. Depth => Stack (D) in 1 .. Count);
+            pragma Loop_Invariant (P <= Input'Length + 1);
+            pragma Loop_Invariant (Layout (Nodes, Count, Input'Length));
+            pragma Loop_Invariant (Root <= Count);
+            pragma Loop_Invariant (for all D in 1 .. Depth => Stack (D) in 1 .. Count);
+            pragma Loop_Invariant
+              (if Depth > 0 then Stack (Depth) in 1 .. Count);
          pragma Loop_Variant (Increases => P);
          Parent := (if Depth = 0 then 0 else Stack (Depth));
          if Peek /= '<' then
@@ -258,10 +310,6 @@ package body XML3_Parser with SPARK_Mode is
                P := P + 1;
             end loop;
             VL := P - 1;
-            if not Value_OK (VF, VL, False) then
-               Status := Malformed;
-               return;
-            end if;
             if Depth /= 0 then
                Add (Text_Node, Parent, 1, 0, VF, VL);
             end if;
@@ -302,6 +350,9 @@ package body XML3_Parser with SPARK_Mode is
          elsif At_Text ("<?") then
             P := P + 2;
             Read_Name (NF, NL);
+            if Status /= Success then
+               return;
+            end if;
             if NL < NF then
                Status := Malformed;
                return;
@@ -339,6 +390,9 @@ package body XML3_Parser with SPARK_Mode is
             end if;
             P := P + 2;
             Read_Name (NF, NL, Qualified => True);
+            if Status /= Success then
+               return;
+            end if;
             if NF > NL or else
               Input (NF .. NL) /= Input (Nodes (Parent).Name_First .. Nodes (Parent).Name_Last)
             then
@@ -358,11 +412,14 @@ package body XML3_Parser with SPARK_Mode is
          else
             P := P + 1;
             Read_Name (NF, NL, Qualified => True);
+            if Status /= Success then
+               return;
+            end if;
             if NF > NL or else (Depth = 0 and Root /= 0) then
                Status := Malformed;
                return;
             end if;
-            if Depth = Max_Depth then
+            if Depth = (if Huge then Huge_Max_Depth else Normal_Max_Depth) then
                Status := Limit_Exceeded;
                return;
             end if;
@@ -397,6 +454,9 @@ package body XML3_Parser with SPARK_Mode is
                   return;
                end if;
                Read_Name (NF, NL, Qualified => True);
+               if Status /= Success then
+                  return;
+               end if;
                if NF > NL then
                   Status := Malformed;
                   return;
@@ -425,16 +485,16 @@ package body XML3_Parser with SPARK_Mode is
                if Status /= Success then
                   return;
                end if;
-               if not Value_OK (VF, VL, True) then
-                  Status := Malformed;
-                  return;
-               end if;
                Add (Attribute_Node, Element, NF, NL, VF, VL);
                if Status /= Success then
                   return;
                end if;
             end loop;
             if not Closed then
+               if Depth >= Max_Depth then
+                  Status := Limit_Exceeded;
+                  return;
+               end if;
                Depth := Depth + 1;
                Stack (Depth) := Element;
             end if;

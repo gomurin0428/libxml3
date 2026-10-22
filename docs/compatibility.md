@@ -55,19 +55,46 @@ DOM fields は読み取り専用です。アプリケーションが設定でき
 対して `-1` を返します。NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。
 `xml3ReadMemory` は `XML3_STATUS_*` を通じて理由を返します。
-NUL 終端の `xmlReadDoc`/`xmlParseDoc` は最大 65,536 バイトを走査し、
-その範囲に終端 NUL が必要です。
+NUL 終端の `xmlReadDoc`/`xmlParseDoc` は呼び出し側が提供する有効な C 文字列を
+必要とし、表現可能な入力サイズを超える文字列は拒否します。`xmlReadMemory` の
+長さは C `int` で表現可能で、コアの表現境界内でなければなりません。
 
-## 対応範囲と固定上限
+## 対応範囲と資源プロファイル
 
-メモリ入力は 1〜65,536 バイト、コアのノード数は 2,048、要素の深さは 64
-です。入力は UTF-8 のみです。オプションは `XML_PARSE_NONET`、
-`XML_PARSE_NOERROR`、`XML_PARSE_NOWARNING` のみ受理し、いずれも no-op です。
-URL はメタデータとして無視され、ファイル、ネットワーク、外部エンティティ
-resolver、callback、設定可能な XML allocator callback は使用しません。libxml3
-は libxml2 と同名の `xml*` symbols を公開するため、同一プログラムで libxml2
-と一緒に link しないでください。DOM と getter 文字列は C の `malloc`/`free`
-allocator family を使用します。
+入力は UTF-8 のみで、文書全体に対する 64 KiB の上限はありません。通常プロファイル
+では各 QName の prefix/local-name component および PI target はそれぞれ最大
+50,000 bytes、各 decoded/normalized text・attribute・comment・CDATA・PI value は
+最大 10,000,000 bytes、要素深さは 256 です。`XML_PARSE_HUGE` は各 name component
+上限を 10,000,000 bytes、各 value 上限を 1,000,000,000 bytes、深さを 2,048 に
+切り替えます。QName の prefix と local name は別々に数えます。value の上限は
+参照の decode/正規化後の各 value に適用され、入力全体や文書内の全 value の合計
+には適用されません。
+
+これらは parser resource profile であり、コア表現上限とは別です。入力 byte index
+の表現境界は `Integer'Last - 16`、node ID の表現境界はその半分です。2,048
+node という総数上限はありません。C `int` の入力長が表現境界を超える場合は拒否
+します。C adapter は呼び出しごとの heap workspace と DOM block を確保し、node
+arena の不足時は上限まで幾何学的に拡張して同じ parser を再実行します。
+SPARK core は allocator/FFI を使用しませんが、C adapter の割り当てや所有権境界は
+proof 範囲外です。1 GB value profile の厳密な境界はその大きさで実 allocation
+test をしていません。
+
+2.15.4 との境界互換性には既知の差があります。固定版は通常の名前と PI target
+50,000 bytes、通常の plain text 10,000,000 bytes を受理し、それぞれ 1 byte 超過を
+拒否します。depth 256/257 および `XML_PARSE_HUGE` の depth 2,048/2,049 も
+比較対象です。一方、固定版の attribute/CDATA/PI value には nominal limit より少し
+小さい長さでも内部 buffer/lookahead による拒否が起きる場合があります。これを
+libxml3 の profile と同じ ceiling に見せるために値を変更せず、未解消の互換性差
+として扱います。
+
+受理する option は `XML_PARSE_NONET`、`XML_PARSE_NOERROR`、
+`XML_PARSE_NOWARNING`、`XML_PARSE_HUGE` のみです。前 3 つは no-op です。
+`XML_PARSE_HUGE` は上記資源プロファイルだけを変更し、DTD、recovery、その他の
+未対応機能を有効にしません。URL はメタデータとして無視され、ファイル、
+ネットワーク、外部エンティティ resolver、callback、設定可能な XML allocator
+callback は使用しません。libxml3 は libxml2 と同名の `xml*` symbols を公開する
+ため、同一プログラムで libxml2 と一緒に link しないでください。DOM と getter
+文字列は C の `malloc`/`free` allocator family を使用します。
 
 DTD、未知の entity、複雑な libxml2 parser options、ファイル入力、
 SAX、XInclude、検証、変更 API、XPath、スキーマ、エンコーディング変換は

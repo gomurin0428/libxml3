@@ -12,19 +12,30 @@ package XML3_Namespaces with SPARK_Mode is
       Declaration : Boolean := False;
       Binding     : Binding_Id := 0;
    end record;
-   type Name_Array is array (Positive range 1 .. Max_Nodes) of Name_Info;
+   type Name_Array is array (Positive range <>) of Name_Info;
 
    procedure Resolve
      (Input : String; Nodes : Node_Array; Count : Node_Id;
-      Names : out Name_Array; Status : out Parse_Status)
+      Names : out Name_Array; Scratch_A, Scratch_B : in out String;
+      Status : out Parse_Status)
      with Global => null, Always_Terminates,
-       Pre => Input'First = 1 and Input'Length <= Offset'Last
-         and (for all K in 1 .. Count =>
+       Pre => Input'First = 1
+         and then Input'Length <= Offset'Last
+         and then Nodes'First = 1
+         and then Nodes'Last in 1 .. Max_Nodes
+         and then Count <= Nodes'Last
+         and then Names'First = 1
+         and then Names'Last = Nodes'Last
+         and then Scratch_A'First = 1
+         and then Scratch_A'Length = Input'Length
+         and then Scratch_B'First = 1
+         and then Scratch_B'Length = Input'Length
+         and then (for all K in 1 .. Count =>
            Nodes (K).Parent < K
-           and Nodes (K).Name_Last <= Input'Length
-           and Nodes (K).Value_Last <= Input'Length
-           and Nodes (K).Name_First <= Nodes (K).Name_Last + 1
-           and Nodes (K).Value_First <= Nodes (K).Value_Last + 1),
+           and then Nodes (K).Name_Last <= Input'Length
+           and then Nodes (K).Value_Last <= Input'Length
+           and then Nodes (K).Name_First <= Nodes (K).Name_Last + 1
+           and then Nodes (K).Value_First <= Nodes (K).Value_Last + 1),
        Post => (if Status = Success then
          (for all K in 1 .. Count =>
            Names (K).Local_First in Nodes (K).Name_First .. Nodes (K).Name_Last + 1

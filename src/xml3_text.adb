@@ -70,11 +70,11 @@ package body XML3_Text with SPARK_Mode is
    end Name_Width;
 
    function Valid_UTF8 (Input : String) return Boolean is
-      I : Positive := 1;
+      I : Positive := Input'First;
       C, B, Extra, Minimum : Natural;
    begin
       while I <= Input'Last loop
-         pragma Loop_Invariant (I in 1 .. Input'Length + 1);
+         pragma Loop_Invariant (I in Input'First .. Input'Last + 1);
          pragma Loop_Variant (Increases => I);
          B := Character'Pos (Input (I));
          if B < 128 then
@@ -126,7 +126,7 @@ package body XML3_Text with SPARK_Mode is
       Length     : out Byte_Count;
       Valid      : out Boolean)
    is
-      I : Positive := 1;
+      I : Positive := Input'First;
       J : Positive;
       Code : Natural;
       Base : Positive;
@@ -142,15 +142,15 @@ package body XML3_Text with SPARK_Mode is
          return;
       end if;
       while I <= Input'Last loop
-         pragma Loop_Invariant (I in 1 .. Input'Length + 1);
-         pragma Loop_Invariant (Length < I);
+         pragma Loop_Invariant (I in Input'First .. Input'Last + 1);
+         pragma Loop_Invariant (Length <= I - Input'First);
          pragma Loop_Invariant (Length <= Output'Length);
          pragma Loop_Variant (Increases => I);
          C := Input (I);
          if C = '&' and References then
             J := I + 1;
             while J <= Input'Last and then Input (J) /= ';' loop
-               pragma Loop_Invariant (J in I + 1 .. Input'Length + 1);
+               pragma Loop_Invariant (J in I + 1 .. Input'Last + 1);
                pragma Loop_Variant (Increases => J);
                J := J + 1;
             end loop;

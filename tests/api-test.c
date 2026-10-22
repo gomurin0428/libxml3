@@ -106,7 +106,6 @@ static void test_rejection_and_boundaries(void) {
     expect_null(NULL, 1, 0);
     expect_null(good, 0, 0);
     expect_null(good, -1, 0);
-    expect_null(good, 65537, 0);
     expect_null(good, 4, 1);
     expect_null(good, 4, 128);
     expect_null(good, 4, 4096);
@@ -135,7 +134,7 @@ static void test_rejection_and_boundaries(void) {
         expect_status(oversize, 65536, XML3_STATUS_MALFORMED);
         int status = -1;
         assert(xml3ReadMemory(oversize, 65537, &status) == NULL);
-        assert(status == XML3_STATUS_INVALID_ARGUMENT);
+        assert(status == XML3_STATUS_MALFORMED);
         free(oversize);
     }
 }
@@ -173,10 +172,10 @@ static void test_exact_resource_limits(void) {
     free(large);
 
     size_t length = 0;
-    char *xml = make_nested(64, &length);
+    char *xml = make_nested(256, &length);
     expect_status(xml, (int)length, XML3_STATUS_OK);
     free(xml);
-    xml = make_nested(65, &length);
+    xml = make_nested(257, &length);
     expect_status(xml, (int)length, XML3_STATUS_LIMIT_EXCEEDED);
     free(xml);
 
@@ -210,7 +209,7 @@ static void test_exact_resource_limits(void) {
     cursor += 8;
     memcpy(xml + cursor, ending, strlen(ending));
     cursor += strlen(ending);
-    expect_status(xml, (int)cursor, XML3_STATUS_LIMIT_EXCEEDED);
+    expect_status(xml, (int)cursor, XML3_STATUS_OK);
     free(xml);
 }
 
@@ -237,16 +236,14 @@ static void test_input_validation(void) {
     xmlFreeDoc(doc);
     assert(xmlParseDoc(NULL) == NULL);
 
-    char *bounded = (char *)malloc(65536);
+    char *bounded = (char *)malloc(65538);
     assert(bounded != NULL);
     memcpy(bounded, "<r/>", 4);
-    memset(bounded + 4, ' ', 65531);
-    bounded[65535] = '\0';
+    memset(bounded + 4, ' ', 65533);
+    bounded[65537] = '\0';
     doc = xmlReadDoc((const xmlChar *)bounded, NULL, NULL, 0);
     assert(doc != NULL);
     xmlFreeDoc(doc);
-    memset(bounded, 'x', 65536);
-    assert(xmlReadDoc((const xmlChar *)bounded, NULL, NULL, 0) == NULL);
     free(bounded);
 }
 
