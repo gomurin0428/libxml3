@@ -5,11 +5,15 @@ CC ?= cc
 CXX ?= c++
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Iinclude
 PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
+REFERENCE := $(CURDIR)/build/reference
+REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api compare check prove install clean test-sanitize
+.PHONY: build test-api compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
+
+tests/api-test tests/differential-libxml3: | build
 
 tests/api-test: tests/api-test.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
@@ -26,7 +30,32 @@ tests/header-smoke.o: tests/header-smoke.cpp $(PUBLIC_HEADERS)
 test-api: build tests/api-test tests/header-smoke.o
 	LD_LIBRARY_PATH=lib ./tests/api-test
 
-compare: build tests/differential-libxml3 tests/differential-system
+reference:
+	/usr/bin/python3 eng/build_reference.py
+
+inventory:
+	/usr/bin/python3 eng/api_inventory.py
+
+check-inventory:
+	/usr/bin/python3 -m unittest discover -s tests -p 'test_api_inventory.py'
+	/usr/bin/python3 eng/api_inventory.py --check
+
+tests/differential-reference: tests/differential.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_VERSION=$(REFERENCE_VERSION) \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< \
+		-L$(REFERENCE)/lib -Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so:
+	@echo 'Pinned reference is missing. Run make reference first.' >&2
+	@exit 1
+
+compare: build tests/differential-libxml3 tests/differential-reference
+	LD_LIBRARY_PATH=lib ./tests/differential-libxml3 > tests/differential-libxml3.out
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/differential-reference > tests/differential-reference.out
+	diff -u tests/differential-reference.out tests/differential-libxml3.out
+
+compare-system: build tests/differential-libxml3 tests/differential-system
 	LD_LIBRARY_PATH=lib ./tests/differential-libxml3 > tests/differential-libxml3.out
 	./tests/differential-system > tests/differential-system.out
 	diff -u tests/differential-system.out tests/differential-libxml3.out
@@ -57,4 +86,4 @@ test-sanitize: build
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
-		tests/differential-system tests/api-test-sanitize tests/*.out
+		tests/differential-system tests/differential-reference tests/api-test-sanitize tests/*.out

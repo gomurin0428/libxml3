@@ -9,4 +9,6 @@ tests/api-test
 tests/api-test-sanitize
 tests/differential-libxml3
 tests/differential-system
+tests/differential-reference
+__pycache__/
 tests/*.out

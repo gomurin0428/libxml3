@@ -12,9 +12,12 @@ jobs:
         run: ./eng/bootstrap.sh
       - name: Build and test
         run: |
+          make reference
+          make check-inventory
           make build
           make test-api
           make compare
+          make compare-system
           make check
       - name: Prove core
         id: prove

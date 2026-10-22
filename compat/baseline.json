@@ -1,0 +1,19 @@
+{
+  "version": "2.15.4",
+  "version_number": 21504,
+  "tag": "v2.15.4",
+  "commit": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
+  "repository": "https://github.com/GNOME/libxml2.git",
+  "platform": "Linux x86_64, Clang 14, C11; default CMake features plus legacy/HTTP stubs/Schematron/thread allocator",
+  "cmake_options": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "BUILD_SHARED_LIBS": "ON",
+    "LIBXML2_WITH_PROGRAMS": "OFF",
+    "LIBXML2_WITH_TESTS": "OFF",
+    "LIBXML2_WITH_PYTHON": "OFF",
+    "LIBXML2_WITH_LEGACY": "ON",
+    "LIBXML2_WITH_HTTP": "ON",
+    "LIBXML2_WITH_SCHEMATRON": "ON",
+    "LIBXML2_WITH_THREAD_ALLOC": "ON"
+  }
+}
