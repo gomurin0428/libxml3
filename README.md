@@ -7,9 +7,11 @@ libxml2 風 C ソース/API サブセットを実験するプロジェクトで�
 ## セットアップとビルド
 
 Ubuntu では `libxml2-dev`、`pkg-config`、Ada の GNAT/GPRbuild が必要です。
-固定版ツールチェーンの再現手順は `eng/bootstrap.sh` にあります。
+新しい環境では次のスクリプトが必要な Ubuntu 依存関係と固定版ツールチェーンを
+セットアップします（`sudo -n` を使用するため、非対話 sudo が必要です）。
 
 ```sh
+./eng/bootstrap.sh
 export PATH="$HOME/.local/share/ada/candidate-14/bin:$PATH"
 make build
 make test-api

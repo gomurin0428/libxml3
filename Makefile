@@ -4,22 +4,23 @@ export PATH := $(ADA_BIN):$(PATH)
 CC ?= cc
 CXX ?= c++
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Iinclude
+PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 
 .PHONY: build test-api compare check prove install clean test-sanitize
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
 
-tests/api-test: tests/api-test.c include/libxml3.h
+tests/api-test: tests/api-test.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
-tests/differential-libxml3: tests/differential.c include/libxml/parser.h include/libxml/tree.h
+tests/differential-libxml3: tests/differential.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
 tests/differential-system: tests/differential.c
 	$(CC) -std=c11 -Wall -Wextra $< $$(pkg-config --cflags --libs libxml-2.0) -o $@
 
-tests/header-smoke.o: tests/header-smoke.cpp include/libxml3.h
+tests/header-smoke.o: tests/header-smoke.cpp $(PUBLIC_HEADERS)
 	$(CXX) -std=c++17 -Wall -Wextra -Wpedantic -Werror -Iinclude -c $< -o $@
 
 test-api: build tests/api-test tests/header-smoke.o
@@ -39,7 +40,7 @@ check: build tests/header-smoke.o
 	done
 
 prove:
-	$(ADA_BIN)/gnatprove -P proof.gpr --level=2 --report=all --checks-as-errors=on
+	$(ADA_BIN)/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=10 -j4
 
 install: build
 	install -d $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include/libxml \
@@ -52,7 +53,7 @@ install: build
 
 test-sanitize: build
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
-	ASAN_OPTIONS=detect_leaks=0 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \

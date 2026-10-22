@@ -23,17 +23,24 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## DOM と所有権
 
-公開する共通フィールドは `_private`、`type`、`name`、`children`、`last`、
-`parent`、`next`、`prev`、`doc`、`ns`、`content`、`properties`、`nsDef` です。
-属性には値を持つテキスト子ノードがあります。名前と値は UTF-8 の NUL 終端
-文字列です。要素の `content` は NULL、テキスト名は `"text"`、コメント名は
+ヘッダーは、この実装が公開する構造体 prefix のみを定義し、libxml2 の完全な
+構造体やその ABI を定義しません。`xmlNode` は `_private`、`type`、`name`、
+`children`、`last`、`parent`、`next`、`prev`、`doc`、`ns`、`content`、
+`properties`、`nsDef` を公開します。`xmlAttr` は `_private` から `ns` までの
+属性 prefix、`xmlDoc` は `_private` から `doc` までの文書 prefix のみです。
+DOM fields は読み取り専用です。アプリケーションが設定できる例外は `_private`
+で、libxml3 はその値を参照・解放しません。個別 node/attribute の解放 API は
+なく、DOM 全体を `xmlFreeDoc` で解放します。属性には値を持つテキスト子ノード
+があります。名前と値は UTF-8 の NUL 終端文字列です。要素の `content` は NULL、
+テキスト名は `"text"`、コメント名は
 `"comment"`、CDATA 名は NULL、PI 名は target です。名前空間ポインターと
 `nsDef` は常に NULL です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。文書と DOM は `xmlFreeDoc`
 まで所有されます。`xmlNodeGetContent` と `xmlGetProp` の返却値は
-`xmlFree` で解放してください。NULL 入力、サイズ不正、非対応オプション、
+`xmlFree` で解放してください。`xmlStrlen` は C `int` に収まらない長さに
+対して `-1` を返します。NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。
 `xml3ReadMemory` は `XML3_STATUS_*` を通じて理由を返します。
 NUL 終端の `xmlReadDoc`/`xmlParseDoc` は最大 65,536 バイトを走査し、
@@ -45,8 +52,10 @@ NUL 終端の `xmlReadDoc`/`xmlParseDoc` は最大 65,536 バイトを走査し�
 です。入力は UTF-8 のみです。オプションは `XML_PARSE_NONET`、
 `XML_PARSE_NOERROR`、`XML_PARSE_NOWARNING` のみ受理し、いずれも no-op です。
 URL はメタデータとして無視され、ファイル、ネットワーク、外部エンティティ
-resolver、callback、設定可能な XML allocator callback は使用しません。DOM と
-getter 文字列は C の `malloc`/`free` allocator family を使用します。
+resolver、callback、設定可能な XML allocator callback は使用しません。libxml3
+は libxml2 と同名の `xml*` symbols を公開するため、同一プログラムで libxml2
+と一緒に link しないでください。DOM と getter 文字列は C の `malloc`/`free`
+allocator family を使用します。
 
 DTD、名前空間、未知の entity、複雑な libxml2 parser options、ファイル入力、
 SAX、XInclude、検証、変更 API、XPath、スキーマ、エンコーディング変換は

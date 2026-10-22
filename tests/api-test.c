@@ -270,6 +270,29 @@ static void test_strings_and_cycles(void) {
     }
 }
 
+static void test_long_c_strings(void) {
+    const size_t former_limit = 4u * 65536u + 16u;
+    const size_t length = former_limit + 8u;
+    char *left = (char *)malloc(length + 1);
+    char *right = (char *)malloc(length + 1);
+    assert(left != NULL && right != NULL);
+    memset(left, 'm', length);
+    left[length] = '\0';
+    memcpy(right, left, length + 1);
+
+    assert(xmlStrEqual((const xmlChar *)left, (const xmlChar *)right) == 1);
+    assert(xmlStrcmp((const xmlChar *)left, (const xmlChar *)right) == 0);
+    assert(xmlStrlen((const xmlChar *)left) == (int)length);
+
+    right[former_limit + 1] = 'n';
+    assert(xmlStrEqual((const xmlChar *)left, (const xmlChar *)right) == 0);
+    assert(xmlStrcmp((const xmlChar *)left, (const xmlChar *)right) < 0);
+    assert(xmlStrlen((const xmlChar *)right) == (int)length);
+
+    free(left);
+    free(right);
+}
+
 int main(void) {
     xmlInitParser();
     test_dom_and_ownership();
@@ -278,6 +301,7 @@ int main(void) {
     test_invalid_utf8();
     test_input_validation();
     test_strings_and_cycles();
+    test_long_c_strings();
     xmlCleanupParser();
     puts("api tests passed");
     return 0;

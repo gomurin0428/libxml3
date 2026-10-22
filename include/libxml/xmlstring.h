@@ -11,6 +11,8 @@ extern "C" {
 typedef unsigned char xmlChar;
 typedef xmlChar *xmlCharPtr;
 
+#define BAD_CAST (xmlChar *)
+
 int xmlStrcmp(const xmlChar *str1, const xmlChar *str2);
 int xmlStrEqual(const xmlChar *str1, const xmlChar *str2);
 int xmlStrlen(const xmlChar *str);

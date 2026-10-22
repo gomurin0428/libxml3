@@ -68,6 +68,13 @@ package body XML3_C is
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
 
+   function C_Strcmp
+     (Left, Right : System.Address) return int
+     with Import, Convention => C, External_Name => "strcmp";
+
+   function C_Strlen (Item : System.Address) return size_t
+     with Import, Convention => C, External_Name => "strlen";
+
    function Byte_At (Base : System.Address; Offset : Natural) return Character;
    function Scan_Length (Item : System.Address; Limit : Natural) return Integer;
    function To_String (Item : System.Address; Length : Natural) return String;
@@ -698,6 +705,7 @@ package body XML3_C is
    end Free_Doc;
 
    function Node_Get_Content (Node : System.Address) return System.Address is
+      Owned_Result : System.Address := System.Null_Address;
    begin
       if Node = System.Null_Address then
          return System.Null_Address;
@@ -710,14 +718,18 @@ package body XML3_C is
          then
             declare
                Length : constant Natural := Content_Length (Node);
-               Result : constant System.Address :=
-                 C_Malloc (size_t (Length) + 1);
             begin
-               if Result = System.Null_Address then
+               Owned_Result := C_Malloc (size_t (Length) + 1);
+               if Owned_Result = System.Null_Address then
                   return System.Null_Address;
                end if;
-               Content_Copy (Node, Result);
-               return Result;
+               Content_Copy (Node, Owned_Result);
+               declare
+                  Result : constant System.Address := Owned_Result;
+               begin
+                  Owned_Result := System.Null_Address;
+                  return Result;
+               end;
             end;
          elsif Item.Node_Type = Attr_Type then
             if Item.Children = System.Null_Address then
@@ -747,6 +759,9 @@ package body XML3_C is
       end;
    exception
       when others =>
+         if Owned_Result /= System.Null_Address then
+            C_Free (Owned_Result);
+         end if;
          return System.Null_Address;
    end Node_Get_Content;
 
@@ -868,8 +883,6 @@ package body XML3_C is
      (Left  : System.Address;
       Right : System.Address) return Interfaces.C.int
    is
-      Offset : Natural := 0;
-      L, R : Character;
    begin
       if Left = Right then
          return 0;
@@ -878,19 +891,7 @@ package body XML3_C is
       elsif Right = System.Null_Address then
          return 1;
       end if;
-      loop
-         L := Byte_At (Left, Offset);
-         R := Byte_At (Right, Offset);
-         if L /= R then
-            return int (Character'Pos (L)) - int (Character'Pos (R));
-         end if;
-         exit when L = Character'Val (0);
-         Offset := Offset + 1;
-         if Offset > String_Limit then
-            return 0;
-         end if;
-      end loop;
-      return 0;
+      return C_Strcmp (Left, Right);
    exception
       when others =>
          return 0;
@@ -905,7 +906,7 @@ package body XML3_C is
          return 1;
       elsif Left = System.Null_Address or else Right = System.Null_Address then
          return 0;
-      elsif Equal_Names (Left, Right) then
+      elsif C_Strcmp (Left, Right) = 0 then
          return 1;
       else
          return 0;
@@ -916,10 +917,14 @@ package body XML3_C is
    end Str_Equal;
 
    function Str_Length (Item : System.Address) return Interfaces.C.int is
-      Length : constant Integer := Scan_Length (Item, String_Limit);
+      Length : size_t;
    begin
-      if Length < 0 then
+      if Item = System.Null_Address then
          return 0;
+      end if;
+      Length := C_Strlen (Item);
+      if Length > size_t (int'Last) then
+         return -1;
       end if;
       return int (Length);
    exception
