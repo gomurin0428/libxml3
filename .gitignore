@@ -7,6 +7,8 @@
 *.o
 tests/api-test
 tests/api-test-sanitize
+tests/namespace-test
+tests/namespace-test-sanitize
 tests/differential-libxml3
 tests/differential-system
 tests/*.out

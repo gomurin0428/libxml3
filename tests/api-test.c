@@ -80,7 +80,7 @@ static void test_rejection_and_boundaries(void) {
     expect_status("<r>", 3, XML3_STATUS_MALFORMED);
     expect_status("<r/><s/>", 8, XML3_STATUS_MALFORMED);
     expect_status("<r a='1' a='2'/>", 16, XML3_STATUS_MALFORMED);
-    expect_status("<r xmlns:x='u'/>", 16, XML3_STATUS_UNSUPPORTED);
+    expect_status("<r xmlns:x='u'/>", 16, XML3_STATUS_OK);
     expect_status("<r>&bogus;</r>", 14, XML3_STATUS_MALFORMED);
     expect_status("<r>&#x110000;</r>", 17, XML3_STATUS_MALFORMED);
     expect_status("<r>&#0;</r>", (int)strlen("<r>&#0;</r>"),

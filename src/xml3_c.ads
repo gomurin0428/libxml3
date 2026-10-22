@@ -68,6 +68,26 @@ package XML3_C is
       Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlHasProp";
 
+   function Search_Ns
+     (Doc, Node, Prefix : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlSearchNs";
+
+   function Search_Ns_By_Href
+     (Doc, Node, Href : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlSearchNsByHref";
+
+   function Has_Ns_Prop
+     (Node, Name, Href : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlHasNsProp";
+
+   function Get_Ns_Prop
+     (Node, Name, Href : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetNsProp";
+
+   function Get_No_Ns_Prop
+     (Node, Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetNoNsProp";
+
    function First_Element_Child (Parent : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlFirstElementChild";
 

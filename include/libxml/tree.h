@@ -14,6 +14,8 @@ typedef struct _xmlAttr xmlAttr;
 typedef struct _xmlAttr *xmlAttrPtr;
 typedef struct _xmlDoc xmlDoc;
 typedef struct _xmlDoc *xmlDocPtr;
+typedef struct _xmlNs xmlNs;
+typedef struct _xmlNs *xmlNsPtr;
 
 typedef enum {
     XML_ELEMENT_NODE = 1,
@@ -22,8 +24,22 @@ typedef enum {
     XML_CDATA_SECTION_NODE = 4,
     XML_PI_NODE = 7,
     XML_COMMENT_NODE = 8,
-    XML_DOCUMENT_NODE = 9
+    XML_DOCUMENT_NODE = 9,
+    XML_NAMESPACE_DECL = 18
 } xmlElementType;
+
+typedef xmlElementType xmlNsType;
+
+#define XML_XML_NAMESPACE ((const xmlChar *)"http://www.w3.org/XML/1998/namespace")
+
+struct _xmlNs {
+    xmlNsPtr next;
+    xmlNsType type;
+    const xmlChar *href;
+    const xmlChar *prefix;
+    void *_private;
+    xmlDocPtr context;
+};
 
 struct _xmlNode {
     void *_private;
@@ -35,10 +51,10 @@ struct _xmlNode {
     xmlNodePtr next;
     xmlNodePtr prev;
     xmlDocPtr doc;
-    void *ns;
+    xmlNsPtr ns;
     xmlChar *content;
     xmlAttrPtr properties;
-    void *nsDef;
+    xmlNsPtr nsDef;
 };
 
 struct _xmlAttr {
@@ -51,7 +67,7 @@ struct _xmlAttr {
     xmlAttrPtr next;
     xmlAttrPtr prev;
     xmlDocPtr doc;
-    void *ns;
+    xmlNsPtr ns;
 };
 
 struct _xmlDoc {
@@ -71,6 +87,15 @@ void xmlFreeDoc(xmlDocPtr cur);
 xmlChar *xmlNodeGetContent(const xmlNode *cur);
 xmlChar *xmlGetProp(const xmlNode *node, const xmlChar *name);
 xmlAttrPtr xmlHasProp(const xmlNode *node, const xmlChar *name);
+xmlNsPtr xmlSearchNs(xmlDocPtr doc, xmlNodePtr node,
+                     const xmlChar *nameSpace);
+xmlNsPtr xmlSearchNsByHref(xmlDocPtr doc, xmlNodePtr node,
+                           const xmlChar *href);
+xmlAttrPtr xmlHasNsProp(const xmlNode *node, const xmlChar *name,
+                        const xmlChar *href);
+xmlChar *xmlGetNsProp(const xmlNode *node, const xmlChar *name,
+                      const xmlChar *href);
+xmlChar *xmlGetNoNsProp(const xmlNode *node, const xmlChar *name);
 xmlNodePtr xmlFirstElementChild(const xmlNode *parent);
 xmlNodePtr xmlNextElementSibling(const xmlNode *node);
 unsigned long xmlChildElementCount(const xmlNode *parent);
