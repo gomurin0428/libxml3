@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **551 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **576 discharged checks**, **0 unproved**,
 **0 justified**, and no warning/error diagnostics for the source hashes below.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a report for the three SPARK units, not a proof of the C-facing library as
@@ -10,15 +10,15 @@ a whole and not a proof of full XML conformance. See [assurance.md](assurance.md
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 4 |
-| Initialization | 52 |
-| Run-time checks | 323 |
-| Assertions / loop invariants | 64 |
-| Functional contracts | 76 |
-| Termination | 32 |
-| Total | 551 |
+| Data dependencies | 5 |
+| Initialization | 57 |
+| Run-time checks | 338 |
+| Assertions / loop invariants | 66 |
+| Functional contracts | 79 |
+| Termination | 31 |
+| Total | 576 |
 
-74 checks were discharged by flow analysis and 477 by proof. `Parse`, `Decode`,
+79 checks were discharged by flow analysis and 497 by proof. `Parse`, `Decode`,
 and namespace `Resolve` have explicit `Always_Terminates` aspects.
 Termination does not mean constant time
 or a proved wall-clock bound. The numerical totals are the analyzer's categories;
@@ -52,12 +52,12 @@ and rebases Ada strings before calling them.
 ## Source identity (SHA-256)
 
 ```text
-f46613d6d41e08d6005451b93c5cb62acc629bdd297449713907d116f28183a4  src/xml3_text.ads
-9fa5dccb353fcaad2a6dbc9de4e4f31335691c59a7f07bbcf8283f2f9307213e  src/xml3_text.adb
+86342485eee616af6060297cc8bf02951559d32a9d5274652ea1ed76ab0fcd17  src/xml3_text.ads
+9344dd8dec55845dba243c95dd359ad09b6447b121725ba4c4bfe90c4bcd9999  src/xml3_text.adb
 97c9d2d32fe4d2f2f1c3dfe2a17189be4ede0eefeddc12c2e77052feb19e6735  src/xml3_parser.ads
-288c6bb88cec0fe1dc01265a68bc81b81d0da683e1a53690398c311f0f491aaa  src/xml3_parser.adb
+db4d0b7c48042589e66e446f6574e7f0e68a379d3e9ca99977cb38726ac533aa  src/xml3_parser.adb
 3c6d280155993cf20da3a35b4605bdbf91e906d8e271d7323354574fb0552cba  src/xml3_namespaces.ads
-de45df71155d60e0c0264b6e3035c225a31ee2a9940c7de0109815ccece83531  src/xml3_namespaces.adb
+368df47373a9f20b4f8af40e333eea7270a5c0f14e1e33d9cd25e74e0e9c9b3a  src/xml3_namespaces.adb
 67e6636bfadd7ea6ee9ba2a0475cf1072b48c7a66e193944b33ce4d843b51fee  proof.gpr
 ```
 
