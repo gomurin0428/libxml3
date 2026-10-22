@@ -47,8 +47,8 @@ The final summary is generated at `obj/proof/gnatprove/gnatprove.out`.
 The proof project explicitly selects all three complete core specs and bodies. It
 does **not** include the Ada C adapter. No model replaces a core body and no
 imported executable function appears in the core. All public core preconditions
-must be established by their callers; the unproved C adapter checks input sizes
-and rebases Ada strings before calling them.
+must be established by their callers; the C adapter is outside the proof scope
+and checks input sizes and array bounds while supplying heap workspaces to the core.
 
 ## Source identity (SHA-256)
 

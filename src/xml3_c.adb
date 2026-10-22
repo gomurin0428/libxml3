@@ -84,6 +84,8 @@ package body XML3_C is
      Block_Header'Max_Size_In_Storage_Elements;
    Node_Bytes : constant Storage_Offset :=
      Xml_Node'Max_Size_In_Storage_Elements;
+   Parser_Node_Bytes : constant Storage_Offset :=
+     XML3_Parser.Node'Max_Size_In_Storage_Elements;
    Ns_Bytes : constant Storage_Offset :=
      Xml_Ns'Max_Size_In_Storage_Elements;
    Name_Bytes : constant Storage_Offset :=
@@ -951,7 +953,7 @@ package body XML3_C is
       Result := System.Null_Address;
       loop
          Nodes_Buffer := C_Malloc
-           (Multiply_Size (size_t (Capacity), size_t (Node_Bytes)));
+           (Multiply_Size (size_t (Capacity), size_t (Parser_Node_Bytes)));
          Names_Buffer := C_Malloc
            (Multiply_Size (size_t (Capacity), size_t (Name_Bytes)));
          Index_Buffer := C_Malloc
