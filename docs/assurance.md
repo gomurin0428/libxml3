@@ -12,21 +12,23 @@ The parser is iterative: its explicit nesting stack is bounded to 64 elements,
 input to 65,536 bytes, and the flat node arena to 2,048 entries (attributes count
 as entries). It has no filesystem, network, callback, or dynamic allocator access.
 
-The historical result of [405 checks discharged, none unproved](proof-report.md)
-applies only to `XML3_Text` and `XML3_Parser`, not to `XML3_Namespaces` or the C
-adapter. The namespace resolver is included in the current proof project; its
-verification result must be reported separately.
+The recorded result is [551 checks discharged, none unproved](proof-report.md)
+across the three core units, including `XML3_Namespaces`, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 The decoder's output never exceeds its input length. Numeric reference arithmetic
 is checked before multiplication. Termination of the core `Parse` and `Decode`
-procedures is proved with `Always_Terminates` and loop variants; this does **not**
+procedures and namespace `Resolve` is proved with `Always_Terminates` and loop
+variants; this does **not**
 claim an end-to-end CPU-time or memory-use theorem.
 
 An accepted document contains one root element with balanced, matching tags.
 That XML-language property is tested and reviewed, **not formally proved by the
 present contracts**. UTF-8 and XML character correctness are likewise tested
 functional properties; run-time safety is not a proof of XML conformance.
+The namespace resolver's contracts bound local-name/prefix spans and binding IDs.
+They do not formally establish that a binding is the correct in-scope namespace
+or that all namespace well-formedness rules are satisfied.
 
 Proof status and the exact invocation/toolchain must be recorded in the proof
 report. Merely compiling SPARK code, passing tests, or having a proof target does

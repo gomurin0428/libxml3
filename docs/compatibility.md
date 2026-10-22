@@ -80,10 +80,10 @@ libxml2 が namespace error を報告しながら tree を返す入力でも、l
 namespace-aware getter/query API を使用してください。
 名前空間 URI の entity 参照には libxml2 版による差があります。固定ターゲットの
 libxml2 2.15.4 と libxml3 は `urn:&amp;one` を `urn:&one` として扱いますが、
-OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。この main 基点
-branch の `make compare` は OS 版を使うため、この fixture の差分は既知です。
-固定版との比較を `make compare` に統合する変更は独立した PR #2 に含まれるため、
-namespace PR より先に PR #2 を merge する必要があります。
+OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。OS 版との補助比較は
+この fixture で差分を報告します。合否判定には固定版 2.15.4 を使用してください。
+固定版との比較を `make compare` に統合する変更は独立した
+[PR #2](https://github.com/gomurin0428/libxml3/pull/2) に含まれます。
 任意の C API sanitizer 実行では C 側の検査を有効にできますが、Ada allocator
 とコンパイラ生成コードは完全には sanitizer 計測されません。
 
