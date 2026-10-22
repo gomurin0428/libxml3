@@ -62,7 +62,8 @@ package body XML3_Parser with SPARK_Mode is
          end loop;
       end Skip_Space;
 
-      procedure Read_Name (First : out Position; Last : out Offset)
+      procedure Read_Name (First : out Position; Last : out Offset;
+                           Qualified : Boolean := False)
         with Pre => Input'First = 1 and then Input'Length <= XML3_Text.Max_Bytes
           and then P <= Input'Length + 1,
           Post => P in P'Old .. Input'Length + 1
@@ -72,7 +73,9 @@ package body XML3_Parser with SPARK_Mode is
          First := P;
          if Name_Start (Peek) then
             P := P + 1;
-            while P <= Input'Last and then Name_Char (Input (P)) loop
+            while P <= Input'Last and then
+              (Name_Char (Input (P)) or else (Qualified and then Input (P) = ':'))
+            loop
                pragma Loop_Invariant (P in First + 1 .. Input'Length + 1);
                pragma Loop_Variant (Increases => P);
                P := P + 1;
@@ -338,7 +341,7 @@ package body XML3_Parser with SPARK_Mode is
                return;
             end if;
             P := P + 2;
-            Read_Name (NF, NL);
+            Read_Name (NF, NL, Qualified => True);
             if NF > NL or else
               Input (NF .. NL) /= Input (Nodes (Parent).Name_First .. Nodes (Parent).Name_Last)
             then
@@ -357,7 +360,7 @@ package body XML3_Parser with SPARK_Mode is
             return;
          else
             P := P + 1;
-            Read_Name (NF, NL);
+            Read_Name (NF, NL, Qualified => True);
             if NF > NL or else (Depth = 0 and Root /= 0) then
                Status := Malformed;
                return;
@@ -396,13 +399,9 @@ package body XML3_Parser with SPARK_Mode is
                   Status := Malformed;
                   return;
                end if;
-               Read_Name (NF, NL);
+               Read_Name (NF, NL, Qualified => True);
                if NF > NL then
                   Status := Malformed;
-                  return;
-               end if;
-               if Input (NF .. NL) = "xmlns" then
-                  Status := Unsupported;
                   return;
                end if;
                for K in Element + 1 .. Count loop

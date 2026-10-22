@@ -1,6 +1,7 @@
 with Ada.Unchecked_Conversion;
 with Interfaces.C; use Interfaces.C;
 with System.Storage_Elements; use System.Storage_Elements;
+with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Text;
 
@@ -8,6 +9,7 @@ package body XML3_C is
 
    use type System.Address;
    use type XML3_Parser.Node_Kind;
+   use type XML3_Parser.Parse_Status;
 
    Element_Type  : constant int := 1;
    Attr_Type     : constant int := 2;
@@ -16,6 +18,7 @@ package body XML3_C is
    PI_Type       : constant int := 7;
    Comment_Type  : constant int := 8;
    Document_Type : constant int := 9;
+   Namespace_Decl_Type : constant int := 18;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
    Step_Limit : constant := 4 * XML3_Parser.Max_Nodes + 16;
@@ -42,12 +45,27 @@ package body XML3_C is
    function To_Node is
      new Ada.Unchecked_Conversion (System.Address, Node_Access);
 
+   type Xml_Ns is record
+      Next         : System.Address := System.Null_Address;
+      Ns_Type      : int := 0;
+      Href         : System.Address := System.Null_Address;
+      Prefix       : System.Address := System.Null_Address;
+      Private_Data : System.Address := System.Null_Address;
+      Context      : System.Address := System.Null_Address;
+   end record with Convention => C;
+
+   type Ns_Access is access all Xml_Ns;
+
+   function To_Ns is
+     new Ada.Unchecked_Conversion (System.Address, Ns_Access);
+
    --  Every document is a single heap block laid out as
-   --  [Block_Header][document node][node array][string bytes]. Freeing a
-   --  document therefore never follows the pointer fields exposed to C.
+   --  [Block_Header][document node][node array][namespace array][string bytes].
+   --  Freeing a document never follows pointer fields exposed to C.
    type Block_Header is record
-      Magic : unsigned_long := 0;
-      Size  : size_t := 0;
+      Magic       : unsigned_long := 0;
+      Size        : size_t := 0;
+      Implicit_Ns : System.Address := System.Null_Address;
    end record with Convention => C;
 
    type Header_Access is access all Block_Header;
@@ -61,6 +79,8 @@ package body XML3_C is
      Block_Header'Max_Size_In_Storage_Elements;
    Node_Bytes : constant Storage_Offset :=
      Xml_Node'Max_Size_In_Storage_Elements;
+   Ns_Bytes : constant Storage_Offset :=
+     Xml_Ns'Max_Size_In_Storage_Elements;
 
    function C_Malloc (Size : size_t) return System.Address
      with Import, Convention => C, External_Name => "malloc";
@@ -82,8 +102,15 @@ package body XML3_C is
    function Equal_Names (Left, Right : System.Address) return Boolean;
    function Same_Text (Item : System.Address; Value : String) return Boolean;
    function Node_At (Base : System.Address; Index : Natural) return Node_Access;
+   function Namespace_At (Base : System.Address; Index : Natural) return Ns_Access;
    procedure Append_Child (Parent, Child : System.Address);
    procedure Append_Property (Element, Attribute : System.Address);
+   procedure Append_Ns_Def (Element, Namespace : System.Address);
+   function Implicit_Ns_For_Node (Node : System.Address) return System.Address;
+   function Search_Ns_Internal
+     (Node, Prefix : System.Address) return System.Address;
+   function Search_Ns_By_Href_Internal
+     (Node, Href : System.Address) return System.Address;
    function Content_Length (Start : System.Address) return Natural;
    procedure Content_Copy (Start, Target : System.Address);
    procedure Build
@@ -180,6 +207,13 @@ package body XML3_C is
       return To_Node (Base + Storage_Offset (Index) * Node_Bytes);
    end Node_At;
 
+   function Namespace_At
+     (Base : System.Address; Index : Natural) return Ns_Access
+   is
+   begin
+      return To_Ns (Base + Storage_Offset (Index) * Ns_Bytes);
+   end Namespace_At;
+
    procedure Append_Child (Parent, Child : System.Address) is
       Owner : constant Node_Access := To_Node (Parent);
       Item  : constant Node_Access := To_Node (Child);
@@ -210,6 +244,134 @@ package body XML3_C is
       To_Node (Scan).Next := Attribute;
       Item.Prev := Scan;
    end Append_Property;
+
+   procedure Append_Ns_Def (Element, Namespace : System.Address) is
+      Owner : constant Node_Access := To_Node (Element);
+      Item  : constant Ns_Access := To_Ns (Namespace);
+      Scan  : System.Address := Owner.Ns_Def;
+   begin
+      if Scan = System.Null_Address then
+         Owner.Ns_Def := Namespace;
+         return;
+      end if;
+      while To_Ns (Scan).Next /= System.Null_Address loop
+         Scan := To_Ns (Scan).Next;
+      end loop;
+      To_Ns (Scan).Next := Namespace;
+      Item.Next := System.Null_Address;
+   end Append_Ns_Def;
+
+   function Implicit_Ns_For_Node
+     (Node : System.Address) return System.Address
+   is
+      Block : System.Address;
+   begin
+      if Node = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Doc : constant System.Address := To_Node (Node).Doc;
+      begin
+         if Doc = System.Null_Address then
+            return System.Null_Address;
+         end if;
+         Block := Doc - Header_Bytes;
+         if To_Header (Block).Magic /= Block_Magic then
+            return System.Null_Address;
+         end if;
+         return To_Header (Block).Implicit_Ns;
+      end;
+   exception
+      when others =>
+         return System.Null_Address;
+   end Implicit_Ns_For_Node;
+
+   function Search_Ns_Internal
+     (Node, Prefix : System.Address) return System.Address
+   is
+      Current : System.Address := Node;
+      Steps : Natural := 0;
+      Ns_Steps : Natural := 0;
+   begin
+      if Node = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if Same_Text (Prefix, "xml") then
+         return Implicit_Ns_For_Node (Node);
+      end if;
+      if To_Node (Current).Node_Type = Attr_Type then
+         Current := To_Node (Current).Parent;
+      end if;
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         exit when Steps > Step_Limit;
+         declare
+            Item : constant Node_Access := To_Node (Current);
+            Ns_Current : System.Address;
+         begin
+            if Item.Node_Type = Element_Type then
+               Ns_Current := Item.Ns_Def;
+               while Ns_Current /= System.Null_Address loop
+                  Ns_Steps := Ns_Steps + 1;
+                  exit when Ns_Steps > Step_Limit;
+                  if Equal_Names (To_Ns (Ns_Current).Prefix, Prefix) then
+                     return Ns_Current;
+                  end if;
+                  Ns_Current := To_Ns (Ns_Current).Next;
+               end loop;
+            end if;
+            Current := Item.Parent;
+         end;
+      end loop;
+      return System.Null_Address;
+   end Search_Ns_Internal;
+
+   function Search_Ns_By_Href_Internal
+     (Node, Href : System.Address) return System.Address
+   is
+      Current : System.Address := Node;
+      Steps : Natural := 0;
+      Ns_Steps : Natural := 0;
+      Attribute_Input : Boolean;
+   begin
+      if Node = System.Null_Address or else Href = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if Same_Text (Href, XML3_Namespaces.XML_URI) then
+         return Implicit_Ns_For_Node (Node);
+      end if;
+      Attribute_Input := To_Node (Node).Node_Type = Attr_Type;
+      if Attribute_Input then
+         Current := To_Node (Current).Parent;
+      end if;
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         exit when Steps > Step_Limit;
+         declare
+            Item : constant Node_Access := To_Node (Current);
+            Ns_Current : System.Address;
+         begin
+            if Item.Node_Type = Element_Type then
+               Ns_Current := Item.Ns_Def;
+               while Ns_Current /= System.Null_Address loop
+                  Ns_Steps := Ns_Steps + 1;
+                  exit when Ns_Steps > Step_Limit;
+                  if (not Attribute_Input
+                      or else To_Ns (Ns_Current).Prefix /= System.Null_Address)
+                    and then Equal_Names (To_Ns (Ns_Current).Href, Href)
+                    and then Search_Ns_Internal
+                      (Node, To_Ns (Ns_Current).Prefix) = Ns_Current
+                  then
+                     return Ns_Current;
+                  end if;
+                  Ns_Current := To_Ns (Ns_Current).Next;
+               end loop;
+            end if;
+            Current := Item.Parent;
+         end;
+      end loop;
+      return System.Null_Address;
+   end Search_Ns_By_Href_Internal;
 
    function Content_Length (Start : System.Address) return Natural is
       Current : System.Address := To_Node (Start).Children;
@@ -321,20 +483,27 @@ package body XML3_C is
       Status : out int)
    is
       Nodes : XML3_Parser.Node_Array;
+      Names : XML3_Namespaces.Name_Array;
       Count : XML3_Parser.Node_Id;
       Root : XML3_Parser.Node_Id;
       Parse_Status : XML3_Parser.Parse_Status;
-      Attributes : Natural := 0;
+      Attribute_Values : Natural := 0;
+      Namespace_Total : Natural := 1;
       Node_Total : Natural;
       String_Bytes : Natural;
+      Block_Size : size_t;
       Block : System.Address := System.Null_Address;
       Nodes_Base : System.Address;
+      Namespaces_Base : System.Address;
       Cursor : System.Address;
       Cursor_Limit : System.Address;
       Next_Index : Natural := 1;
+      Next_Namespace : Natural := 1;
       Dom_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
         [others => 0];
       Value_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
+        [others => 0];
+      Namespace_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
         [others => 0];
 
       procedure Put (Value : String; Target : out System.Address);
@@ -387,6 +556,9 @@ package body XML3_C is
    begin
       Result := System.Null_Address;
       XML3_Parser.Parse (Input, Nodes, Count, Root, Parse_Status);
+      if Parse_Status = XML3_Parser.Success then
+         XML3_Namespaces.Resolve (Input, Nodes, Count, Names, Parse_Status);
+      end if;
       case Parse_Status is
          when XML3_Parser.Success => Status := Status_OK;
          when XML3_Parser.Malformed => Status := Status_Malformed;
@@ -398,47 +570,73 @@ package body XML3_C is
       end if;
 
       for K in 1 .. Count loop
-         if Nodes (K).Kind = XML3_Parser.Attribute_Node then
-            Attributes := Attributes + 1;
+         if Nodes (K).Kind = XML3_Parser.Attribute_Node
+           and then not Names (K).Declaration
+         then
+            Attribute_Values := Attribute_Values + 1;
+         end if;
+         if Names (K).Declaration
+           and then Names (K).Binding /= XML3_Namespaces.Implicit_XML
+         then
+            Namespace_Total := Namespace_Total + 1;
          end if;
       end loop;
-      Node_Total := 1 + Natural (Count) + Attributes;
+      Node_Total := 1 + Natural (Count) + Attribute_Values;
       String_Bytes := 2 * Input'Length + 16 * (Natural (Count) + 2) + 64;
+      Block_Size :=
+        size_t (Header_Bytes)
+        + size_t (Node_Bytes) * size_t (Node_Total)
+        + size_t (Ns_Bytes) * size_t (Namespace_Total)
+        + size_t (String_Bytes);
 
-      Block := C_Malloc
-        (size_t (Header_Bytes)
-         + size_t (Node_Bytes) * size_t (Node_Total)
-         + size_t (String_Bytes));
+      Block := C_Malloc (Block_Size);
       if Block = System.Null_Address then
          Status := Status_No_Memory;
          return;
       end if;
 
       Nodes_Base := Block + Header_Bytes;
-      Cursor := Nodes_Base + Storage_Offset (Node_Total) * Node_Bytes;
+      Namespaces_Base :=
+        Nodes_Base + Storage_Offset (Node_Total) * Node_Bytes;
+      Cursor :=
+        Namespaces_Base + Storage_Offset (Namespace_Total) * Ns_Bytes;
       Cursor_Limit := Cursor + Storage_Offset (String_Bytes);
       for Index in 0 .. Node_Total - 1 loop
          Node_At (Nodes_Base, Index).all := (others => <>);
       end loop;
+      for Index in 0 .. Namespace_Total - 1 loop
+         Namespace_At (Namespaces_Base, Index).all := (others => <>);
+      end loop;
       To_Header (Block).all :=
         (Magic => Block_Magic,
-         Size  => size_t (Header_Bytes)
-                  + size_t (Node_Bytes) * size_t (Node_Total)
-                  + size_t (String_Bytes));
+         Size => Block_Size,
+         Implicit_Ns => Namespace_At (Namespaces_Base, 0).all'Address);
 
       declare
          Document : constant Node_Access := Node_At (Nodes_Base, 0);
+         Implicit : constant Ns_Access := Namespace_At (Namespaces_Base, 0);
       begin
          Document.Node_Type := Document_Type;
          Document.Doc := Nodes_Base;
+         Implicit.Ns_Type := Namespace_Decl_Type;
+         Put (XML3_Namespaces.XML_URI, Implicit.Href);
+         Put ("xml", Implicit.Prefix);
       end;
 
       for K in 1 .. Count loop
          Dom_Index (K) := Next_Index;
          Next_Index := Next_Index + 1;
-         if Nodes (K).Kind = XML3_Parser.Attribute_Node then
+         if Nodes (K).Kind = XML3_Parser.Attribute_Node
+           and then not Names (K).Declaration
+         then
             Value_Index (K) := Next_Index;
             Next_Index := Next_Index + 1;
+         end if;
+         if Names (K).Declaration
+           and then Names (K).Binding /= XML3_Namespaces.Implicit_XML
+         then
+            Namespace_Index (K) := Next_Namespace;
+            Next_Namespace := Next_Namespace + 1;
          end if;
       end loop;
 
@@ -451,28 +649,31 @@ package body XML3_C is
             case Source.Kind is
                when XML3_Parser.Element_Node =>
                   Item.Node_Type := Element_Type;
-                  Put (Input (Source.Name_First .. Source.Name_Last),
+                  Put (Input (Names (K).Local_First .. Source.Name_Last),
                        Item.Name);
                when XML3_Parser.Attribute_Node =>
-                  Item.Node_Type := Attr_Type;
-                  Put (Input (Source.Name_First .. Source.Name_Last),
-                       Item.Name);
-                  declare
-                     Value : constant Node_Access :=
-                       Node_At (Nodes_Base, Value_Index (K));
-                  begin
-                     Value.Node_Type := Text_Type;
-                     Value.Doc := Nodes_Base;
-                     Put ("text", Value.Name);
-                     Put_Decoded
-                       (Source.Value_First, Source.Value_Last,
-                        True, True, Value.Content);
-                     Value.Parent := Nodes_Base
-                       + Storage_Offset (Dom_Index (K)) * Node_Bytes;
-                     Item.Children := Nodes_Base
-                       + Storage_Offset (Value_Index (K)) * Node_Bytes;
-                     Item.Last := Item.Children;
-                  end;
+                  if not Names (K).Declaration then
+                     Item.Node_Type := Attr_Type;
+                     Put
+                       (Input (Names (K).Local_First .. Source.Name_Last),
+                        Item.Name);
+                     declare
+                        Value : constant Node_Access :=
+                          Node_At (Nodes_Base, Value_Index (K));
+                     begin
+                        Value.Node_Type := Text_Type;
+                        Value.Doc := Nodes_Base;
+                        Put ("text", Value.Name);
+                        Put_Decoded
+                          (Source.Value_First, Source.Value_Last,
+                           True, True, Value.Content);
+                        Value.Parent := Nodes_Base
+                          + Storage_Offset (Dom_Index (K)) * Node_Bytes;
+                        Item.Children := Nodes_Base
+                          + Storage_Offset (Value_Index (K)) * Node_Bytes;
+                        Item.Last := Item.Children;
+                     end;
+                  end if;
                when XML3_Parser.Text_Node =>
                   Item.Node_Type := Text_Type;
                   Put ("text", Item.Name);
@@ -512,11 +713,61 @@ package body XML3_C is
                       * Node_Bytes);
          begin
             if Nodes (K).Kind = XML3_Parser.Attribute_Node then
-               Append_Property (Owner, Child);
+               if not Names (K).Declaration then
+                  Append_Property (Owner, Child);
+               end if;
             else
                Append_Child (Owner, Child);
             end if;
          end;
+      end loop;
+
+      for K in 1 .. Count loop
+         if Names (K).Declaration
+           and then Names (K).Binding /= XML3_Namespaces.Implicit_XML
+         then
+            declare
+               Source : constant XML3_Parser.Node := Nodes (K);
+               Namespace : constant Ns_Access :=
+                 Namespace_At (Namespaces_Base, Namespace_Index (K));
+               Owner : constant System.Address :=
+                 Nodes_Base
+                 + Storage_Offset (Dom_Index (Source.Parent)) * Node_Bytes;
+            begin
+               Namespace.Ns_Type := Namespace_Decl_Type;
+               if Names (K).Prefix_Last >= Source.Name_First then
+                  Put
+                    (Input (Names (K).Local_First .. Source.Name_Last),
+                     Namespace.Prefix);
+               end if;
+               Put_Decoded
+                 (Source.Value_First, Source.Value_Last,
+                  True, True, Namespace.Href);
+               Append_Ns_Def (Owner, Namespace.all'Address);
+            end;
+         end if;
+      end loop;
+
+      for K in 1 .. Count loop
+         if Nodes (K).Kind = XML3_Parser.Element_Node
+           or else (Nodes (K).Kind = XML3_Parser.Attribute_Node
+                    and then not Names (K).Declaration)
+         then
+            declare
+               Binding : constant XML3_Namespaces.Binding_Id :=
+                 Names (K).Binding;
+               Item : constant Node_Access :=
+                 Node_At (Nodes_Base, Dom_Index (K));
+            begin
+               if Binding = XML3_Namespaces.Implicit_XML then
+                  Item.Ns := To_Header (Block).Implicit_Ns;
+               elsif Binding /= 0 then
+                  Item.Ns :=
+                    Namespace_At
+                      (Namespaces_Base, Namespace_Index (Binding)).all'Address;
+               end if;
+            end;
+         end if;
       end loop;
 
       Result := Nodes_Base;
@@ -807,6 +1058,91 @@ package body XML3_C is
       when others =>
          return System.Null_Address;
    end Get_Prop;
+
+   function Search_Ns
+     (Doc, Node, Prefix : System.Address) return System.Address
+   is
+      pragma Unreferenced (Doc);
+   begin
+      return Search_Ns_Internal (Node, Prefix);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Search_Ns;
+
+   function Search_Ns_By_Href
+     (Doc, Node, Href : System.Address) return System.Address
+   is
+      pragma Unreferenced (Doc);
+   begin
+      return Search_Ns_By_Href_Internal (Node, Href);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Search_Ns_By_Href;
+
+   function Has_Ns_Prop
+     (Node, Name, Href : System.Address) return System.Address
+   is
+      Current : System.Address;
+      Steps : Natural := 0;
+   begin
+      if Node = System.Null_Address
+        or else Name = System.Null_Address
+        or else To_Node (Node).Node_Type /= Element_Type
+      then
+         return System.Null_Address;
+      end if;
+      Current := To_Node (Node).Properties;
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         exit when Steps > Step_Limit;
+         declare
+            Attribute : constant Node_Access := To_Node (Current);
+         begin
+            if Equal_Names (Attribute.Name, Name) then
+               if Href = System.Null_Address then
+                  if Attribute.Ns = System.Null_Address then
+                     return Current;
+                  end if;
+               elsif Attribute.Ns /= System.Null_Address
+                 and then Equal_Names (To_Ns (Attribute.Ns).Href, Href)
+               then
+                  return Current;
+               end if;
+            end if;
+            Current := Attribute.Next;
+         end;
+      end loop;
+      return System.Null_Address;
+   exception
+      when others =>
+         return System.Null_Address;
+   end Has_Ns_Prop;
+
+   function Get_Ns_Prop
+     (Node, Name, Href : System.Address) return System.Address
+   is
+      Attribute : constant System.Address := Has_Ns_Prop (Node, Name, Href);
+   begin
+      if Attribute = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return Node_Get_Content (Attribute);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Get_Ns_Prop;
+
+   function Get_No_Ns_Prop
+     (Node, Name : System.Address) return System.Address
+   is
+   begin
+      return Get_Ns_Prop (Node, Name, System.Null_Address);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Get_No_Ns_Prop;
 
    function First_Element_Child (Parent : System.Address) return System.Address
    is

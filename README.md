@@ -26,11 +26,12 @@ make check
 現在の評価範囲は [API台帳](docs/api-coverage.md) を参照してください。
 `make compare-system` はOS付属版での補助比較です。
 
-`make prove` はコア（`src/xml3_text.*` と `src/xml3_parser.*`）だけの
-既存 `proof.gpr` を GNATprove で検査します。C 境界やヒープ所有権は
-SPARK の保証範囲外です。保証範囲の詳細は [docs/assurance.md](docs/assurance.md)
-と、コアの実行結果を記録した [docs/proof-report.md](docs/proof-report.md)
-を参照してください。
+`make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
+`src/xml3_namespaces.*`）を GNATprove で検査します。名前空間は読み取りと
+参照 API のみをサポートし、完全な XML/namespace conformance は主張しません。
+C 境界やヒープ所有権は SPARK の保証範囲外です。保証範囲の詳細は
+[docs/assurance.md](docs/assurance.md) と、コアの実行結果を記録した
+[docs/proof-report.md](docs/proof-report.md) を参照してください。
 
 ## C の例
 
@@ -50,7 +51,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 ```
 
 主な初期サブセットは、メモリ入力の読み取り、要素・属性・テキスト・CDATA・
-コメント・PI の DOM 閲覧、文字列関数、所有権付き getter です。固定上限や
+コメント・PI の DOM 閲覧、読み取り専用の namespace lookup、文字列関数、
+所有権付き getter です。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
 ではありません。

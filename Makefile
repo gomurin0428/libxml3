@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
@@ -17,6 +17,12 @@ tests/api-test tests/differential-libxml3: | build
 
 tests/api-test: tests/api-test.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/namespace-test: tests/namespace-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/namespace-test-sanitize: tests/namespace-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
 tests/differential-libxml3: tests/differential.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
@@ -27,8 +33,12 @@ tests/differential-system: tests/differential.c
 tests/header-smoke.o: tests/header-smoke.cpp $(PUBLIC_HEADERS)
 	$(CXX) -std=c++17 -Wall -Wextra -Wpedantic -Werror -Iinclude -c $< -o $@
 
-test-api: build tests/api-test tests/header-smoke.o
+test-api: build tests/api-test tests/header-smoke.o tests/namespace-test
 	LD_LIBRARY_PATH=lib ./tests/api-test
+	LD_LIBRARY_PATH=lib ./tests/namespace-test
+
+test-namespace: tests/namespace-test
+	LD_LIBRARY_PATH=lib ./tests/namespace-test
 
 reference:
 	/usr/bin/python3 eng/build_reference.py
@@ -63,7 +73,8 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlGetProp xmlHasProp xmlFirstElementChild xmlNextElementSibling \
+		xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
+		xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
 		xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory; do \
 		nm -D --defined-only lib/libxml3.so | awk '{sub(/@@.*/, "", $$3); print $$3}' | grep -qx "$$symbol" || exit 1; \
 	done
@@ -80,10 +91,12 @@ install: build
 	sed 's|@prefix@|$(PREFIX)|g' libxml3.pc.in > \
 		$(DESTDIR)$(PREFIX)/lib/pkgconfig/libxml3.pc
 
-test-sanitize: build
+test-sanitize: build tests/namespace-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
-		tests/differential-system tests/differential-reference tests/api-test-sanitize tests/*.out
+		tests/differential-system tests/differential-reference tests/api-test-sanitize \
+		tests/namespace-test tests/namespace-test-sanitize tests/*.out
