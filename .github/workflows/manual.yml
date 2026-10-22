@@ -1,0 +1,30 @@
+name: Manual verification
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap pinned toolchain
+        run: ./eng/bootstrap.sh
+      - name: Build and test
+        run: |
+          make build
+          make test-api
+          make compare
+          make check
+      - name: Prove core
+        id: prove
+        run: make prove
+      - name: Upload proof reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-reports
+          path: |
+            obj/proof/gnatprove/
+            docs/proof-report.md
+            docs/proof-summary.txt

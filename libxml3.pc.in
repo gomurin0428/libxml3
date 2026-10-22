@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libxml3
+Description: Experimental Ada/SPARK XML source/API compatibility subset
+Version: 3.0.0
+Libs: -L${libdir} -lxml3
+Cflags: -I${includedir}
