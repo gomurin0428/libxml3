@@ -8,6 +8,7 @@ package body XML3_Errors is
    use type System.Address;
 
    XML3_OOM : constant Interfaces.C.int := 2;
+   XML3_MEMORY : constant Interfaces.C.int := 6;
    XML3_FATAL : constant Interfaces.C.int := 3;
 
    function TLS_Get return System.Address
@@ -306,12 +307,14 @@ package body XML3_Errors is
          Item := Emergency_Error;
          Emergency_Active := True;
       end if;
+      Item.all.Domain := XML3_MEMORY;
       Item.all.Code := XML3_OOM;
       Item.all.Level := XML3_FATAL;
       Item.all.Message := Emergency_Message'Address;
    exception
       when others =>
          Emergency_Error.all := (others => <>);
+         Emergency_Error.Domain := XML3_MEMORY;
          Emergency_Error.Code := XML3_OOM;
          Emergency_Error.Level := XML3_FATAL;
          Emergency_Error.Message := Emergency_Message'Address;

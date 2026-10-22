@@ -126,14 +126,17 @@ OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。OS 
 `xmlGetLastError`, `xmlResetLastError`, `xmlCopyError`, and `xmlResetError` expose
 the supported error-record lifecycle. Error state is per OS thread; a successful
 read retains the prior error until explicit reset. Error code, domain, level,
-line, and column are compared for the cases covered by
-`tests/error-oracle.json`. `str1`, `str2`, and `str3` are currently NULL;
+line, column, and `int1` are compared for the cases covered by
+`tests/error-oracle.json`. For invalid literal XML characters, ASCII values are
+reported in `int1`; literal non-ASCII invalid characters currently use `int1=0`
+rather than a decoded code point. `str1`, `str2`, and `str3` are currently NULL;
 payload parity and exact message wording are not yet supported. Secondary or
 cascading diagnostics may differ where libxml3 preserves the precise first
 failure. Invalid arguments that the pinned reference leaves silent also preserve
 the prior error. Ada `XML3_Errors` owns error records and copied strings,
 including the URL/file value. A pthread TLS destructor releases per-thread
-records; this behavior, including foreign pthread callers, is tested on POSIX.
+records; this behavior, including foreign pthread callers, is tested on Linux
+with glibc. Other POSIX platforms have not yet been validated.
 Parser-context APIs and structured error-handler APIs are not implemented.
 
 Compatibility follows a safety-first policy: mimic harmless documented or
