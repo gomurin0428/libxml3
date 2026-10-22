@@ -36,8 +36,8 @@ tests/header-smoke.o: tests/header-smoke.cpp $(PUBLIC_HEADERS)
 tests/unicode-test: tests/unicode-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
-tests/unicode-test-reference: tests/unicode-test.c build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
-	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 -DXML3_REFERENCE_VERSION=$(REFERENCE_VERSION) $< -L$(REFERENCE)/lib -Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+tests/unicode-test-reference: tests/unicode-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 -DXML3_REFERENCE_VERSION=$(REFERENCE_VERSION) -DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib -Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
 
 test-unicode: tests/unicode-test tests/unicode-test-reference
 	LD_LIBRARY_PATH=lib ./tests/unicode-test

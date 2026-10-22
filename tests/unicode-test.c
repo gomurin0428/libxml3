@@ -88,6 +88,12 @@ static void test_ranges(void) {
 }
 
 int main(void) {
+#ifdef XML3_REFERENCE_VERSION
+    if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
+        fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);
+        return 1;
+    }
+#endif
     test_names();
     test_ranges();
     puts("Unicode name tests passed");
