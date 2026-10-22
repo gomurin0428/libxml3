@@ -112,7 +112,10 @@ int main(void) {
         "<r xmlns:p='urn:&amp;one' p:a='ok'/>",
         "<r xmlns:p='urn:one' xmlns:q='urn:one' p:a='1' q:b='2'/>",
         "<r xmlns:p='urn:one'><x xmlns:q='urn:one'><q:a/></x></r>",
-        "<r xmlns='urn:one' xmlns:p='urn:two'><x xmlns=''><p:y a='v'/></x></r>"
+        "<r xmlns='urn:one' xmlns:p='urn:two'><x xmlns=''><p:y a='v'/></x></r>",
+        "<?処理 開始?><名:根 xmlns:名='urn:one' 名:属性='値'><名:子/></名:根>",
+        "<é><e\xcc\x81 a\xc2\xb7='v'/><\xf0\x9f\x98\x80/></é>",
+        "<名:根 xmlns:名='urn:one'><名:子 xmlns:名='urn:two'/><名:子/></名:根>"
     };
     xmlInitParser();
     for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {

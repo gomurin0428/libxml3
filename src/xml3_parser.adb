@@ -3,12 +3,6 @@ package body XML3_Parser with SPARK_Mode is
      (C = ' ' or C = Character'Val (9) or C = Character'Val (10)
       or C = Character'Val (13));
 
-   function Name_Start (C : Character) return Boolean is
-     (C in 'a' .. 'z' or C in 'A' .. 'Z' or C = '_');
-
-   function Name_Char (C : Character) return Boolean is
-     (Name_Start (C) or C in '0' .. '9' or C = '-' or C = '.');
-
    function Layout (Nodes : Node_Array; Count : Node_Id; Size : Offset)
                     return Boolean is
      (for all K in 1 .. Count =>
@@ -69,18 +63,21 @@ package body XML3_Parser with SPARK_Mode is
           Post => P in P'Old .. Input'Length + 1
             and First = P'Old and Last = P - 1
       is
+         Width : Natural;
       begin
          First := P;
-         if Name_Start (Peek) then
-            P := P + 1;
-            while P <= Input'Last and then
-              (Name_Char (Input (P)) or else (Qualified and then Input (P) = ':'))
-            loop
-               pragma Loop_Invariant (P in First + 1 .. Input'Length + 1);
-               pragma Loop_Variant (Increases => P);
+         while P <= Input'Last loop
+            pragma Loop_Invariant (P in First .. Input'Length + 1);
+            pragma Loop_Variant (Increases => P);
+            Width := XML3_Text.Name_Width (Input, P, P = First);
+            if Width /= 0 then
+               P := P + Width;
+            elsif Qualified and then P > First and then Input (P) = ':' then
                P := P + 1;
-            end loop;
-         end if;
+            else
+               exit;
+            end if;
+         end loop;
          Last := P - 1;
       end Read_Name;
 

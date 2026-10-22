@@ -9,6 +9,9 @@ tests/api-test
 tests/api-test-sanitize
 tests/namespace-test
 tests/namespace-test-sanitize
+tests/unicode-test
+tests/unicode-test-reference
+tests/unicode-test-sanitize
 tests/differential-libxml3
 tests/differential-system
 tests/differential-reference

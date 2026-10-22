@@ -5,6 +5,70 @@ package body XML3_Text with SPARK_Mode is
       or (C in 16#E000# .. 16#FFFD#)
       or (C in 16#10000# .. 16#10FFFF#));
 
+   function NCName_Start (C : Natural) return Boolean is
+     (C in 16#41# .. 16#5A# or C = 16#5F# or C in 16#61# .. 16#7A#
+      or C in 16#C0# .. 16#D6# or C in 16#D8# .. 16#F6#
+      or C in 16#F8# .. 16#2FF# or C in 16#370# .. 16#37D#
+      or C in 16#37F# .. 16#1FFF# or C in 16#200C# .. 16#200D#
+      or C in 16#2070# .. 16#218F# or C in 16#2C00# .. 16#2FEF#
+      or C in 16#3001# .. 16#D7FF# or C in 16#F900# .. 16#FDCF#
+      or C in 16#FDF0# .. 16#FFFD# or C in 16#10000# .. 16#EFFFF#);
+
+   function Name_Width
+     (Input : String; First : Positive; Initial : Boolean) return Natural
+   is
+      C, B, Extra, Minimum : Natural;
+   begin
+      if First > Input'Last then
+         return 0;
+      end if;
+      B := Character'Pos (Input (First));
+      if B < 128 then
+         C := B;
+         Extra := 0;
+         Minimum := 0;
+      elsif B in 16#C2# .. 16#DF# then
+         C := B - 16#C0#;
+         Extra := 1;
+         Minimum := 16#80#;
+      elsif B in 16#E0# .. 16#EF# then
+         C := B - 16#E0#;
+         Extra := 2;
+         Minimum := 16#800#;
+      elsif B in 16#F0# .. 16#F4# then
+         C := B - 16#F0#;
+         Extra := 3;
+         Minimum := 16#10000#;
+      else
+         return 0;
+      end if;
+      if Extra > Input'Last - First then
+         return 0;
+      end if;
+      for J in 1 .. Extra loop
+         pragma Loop_Invariant (C <= 16#10FFFF#);
+         B := Character'Pos (Input (First + J));
+         if B not in 16#80# .. 16#BF#
+           or else C > (16#10FFFF# - (B - 16#80#)) / 64
+         then
+            return 0;
+         end if;
+         C := C * 64 + B - 16#80#;
+      end loop;
+      if C < Minimum then
+         return 0;
+      end if;
+      if NCName_Start (C) or else
+        (not Initial and then
+          (C = 16#2D# or C = 16#2E# or C in 16#30# .. 16#39#
+           or C = 16#B7# or C in 16#300# .. 16#36F#
+           or C in 16#203F# .. 16#2040#))
+      then
+         return Extra + 1;
+      end if;
+      return 0;
+   end Name_Width;
+
    function Valid_UTF8 (Input : String) return Boolean is
       I : Positive := 1;
       C, B, Extra, Minimum : Natural;
