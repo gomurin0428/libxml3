@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef XML3_REFERENCE_VERSION
+#if LIBXML_VERSION != XML3_REFERENCE_VERSION
+#error Wrong reference headers
+#endif
+#endif
 
 static void string_value(const xmlChar *value) {
     if (!value) {
@@ -76,6 +81,12 @@ static void dump(xmlNodePtr node) {
 }
 
 int main(void) {
+#ifdef XML3_REFERENCE_VERSION
+    if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
+        fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);
+        return EXIT_FAILURE;
+    }
+#endif
     static const char *const inputs[] = {
         "<root/>",
         "<root></root>",

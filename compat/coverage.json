@@ -1,0 +1,154 @@
+{
+  "function:parser.h:xmlInitParser": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCleanupParser": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadMemory": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlParseMemory": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadDoc": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlParseDoc": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocGetRootElement": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeDoc": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeGetContent": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlGetProp": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlHasProp": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFirstElementChild": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNextElementSibling": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlChildElementCount": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrcmp": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrEqual": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrlen": {
+    "implementation": "partial",
+    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "macro:xmlmemory.h:xmlFree": {
+    "implementation": "partial",
+    "scope": "通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "variable:xmlmemory.h:xmlFree": {
+    "implementation": "partial",
+    "scope": "通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。",
+    "tests": [
+      "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  }
+}

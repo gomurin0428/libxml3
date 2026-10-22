@@ -4,6 +4,9 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 再コンパイル向けサブセットであり、libxml2 の ABI、構造体サイズ、SONAME、
 未記載のフィールドを提供しません。
 
+全API互換への主基準はlibxml2 2.15.4です。
+[固定基準・台帳・工程](compatibility-baseline.md)を参照してください。
+
 ## ヘッダーと API
 
 インストール対象ヘッダーは `libxml3.h` と次の五つです。

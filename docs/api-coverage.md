@@ -1,0 +1,100 @@
+# API台帳（生成物）
+
+基準: libxml2 2.15.4 / `96498992efa48d52b0e8b83058bd88dbdaf153c1`。
+
+これは宣言の台帳です。関数の存在・型の一致・テスト成功・形式証明は別の指標です。
+未記載のcoverageは未評価・未比較・未証明を意味します。完全互換率は算出しません。
+対象構成外の条件付き宣言は含まず、マクロにはヘッダーガード等も含みます。
+抽出範囲・再生成手順は [compatibility-baseline.md](compatibility-baseline.md) を参照。
+
+## 宣言種別
+
+| 種別 | 件数 |
+| --- | ---: |
+| callback | 86 |
+| constant | 1288 |
+| enum | 48 |
+| field | 666 |
+| function | 1405 |
+| macro | 324 |
+| struct | 98 |
+| typedef | 250 |
+| union | 2 |
+| variable | 22 |
+
+## ヘッダー
+
+| ヘッダー | 宣言数 |
+| --- | ---: |
+| HTMLparser.h | 104 |
+| HTMLtree.h | 24 |
+| SAX.h | 1 |
+| SAX2.h | 37 |
+| c14n.h | 11 |
+| catalog.h | 54 |
+| chvalid.h | 48 |
+| debugXML.h | 12 |
+| dict.h | 16 |
+| encoding.h | 95 |
+| entities.h | 48 |
+| globals.h | 1 |
+| hash.h | 38 |
+| list.h | 36 |
+| nanoftp.h | 1 |
+| nanohttp.h | 18 |
+| parser.h | 506 |
+| parserInternals.h | 111 |
+| pattern.h | 29 |
+| relaxng.h | 86 |
+| schemasInternals.h | 373 |
+| schematron.h | 31 |
+| threads.h | 20 |
+| tree.h | 471 |
+| uri.h | 33 |
+| valid.h | 106 |
+| xinclude.h | 27 |
+| xlink.h | 36 |
+| xmlIO.h | 87 |
+| xmlautomata.h | 26 |
+| xmlerror.h | 832 |
+| xmlexports.h | 11 |
+| xmlmemory.h | 41 |
+| xmlmodule.h | 12 |
+| xmlreader.h | 135 |
+| xmlregexp.h | 19 |
+| xmlsave.h | 32 |
+| xmlschemas.h | 74 |
+| xmlschemastypes.h | 41 |
+| xmlstring.h | 33 |
+| xmlunicode.h | 1 |
+| xmlversion.h | 35 |
+| xmlwriter.h | 87 |
+| xpath.h | 198 |
+| xpathInternals.h | 149 |
+| xpointer.h | 3 |
+
+## 現在の実装・比較範囲
+
+比較テストの実行結果はPRに記録します。下表はテストへの対応付けで、全入力の等価性を主張しません。
+
+| 宣言 | 実装 | 範囲 | テスト | C APIの証明 |
+| --- | --- | --- | --- | --- |
+| `function:parser.h:xmlCleanupParser` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlInitParser` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlParseDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlParseMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlReadDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlReadMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlChildElementCount` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlDocGetRootElement` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlFirstElementChild` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlFreeDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlGetProp` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlHasProp` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlNextElementSibling` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:tree.h:xmlNodeGetContent` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:xmlstring.h:xmlStrEqual` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:xmlstring.h:xmlStrcmp` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:xmlstring.h:xmlStrlen` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `macro:xmlmemory.h:xmlFree` | partial | 通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `variable:xmlmemory.h:xmlFree` | partial | 通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。 | [tests/api-test.c](../tests/api-test.c) | not-proved |

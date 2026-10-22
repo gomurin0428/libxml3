@@ -15,9 +15,16 @@ Ubuntu では `libxml2-dev`、`pkg-config`、Ada の GNAT/GPRbuild が必要で�
 export PATH="$HOME/.local/share/ada/candidate-14/bin:$PATH"
 make build
 make test-api
+make reference
+make check-inventory
 make compare
 make check
 ```
+
+互換性の主基準は **libxml2 2.15.4** です。固定ソースから作る比較先と
+公開宣言台帳・段階別の完了条件は [互換性基準](docs/compatibility-baseline.md)、
+現在の評価範囲は [API台帳](docs/api-coverage.md) を参照してください。
+`make compare-system` はOS付属版での補助比較です。
 
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
 `src/xml3_namespaces.*`）を GNATprove で検査します。名前空間は読み取りと
