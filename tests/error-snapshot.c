@@ -3,6 +3,8 @@
 #include <libxml/xmlerror.h>
 
 #include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,29 +29,10 @@ static unsigned char hex_value(char byte) {
     abort();
 }
 
-int main(int argc, char **argv) {
-    size_t hex_length;
-    size_t input_length;
-    unsigned char *input;
-    xmlDocPtr doc;
-    const xmlError *error;
-
-    check_reference_version();
-    assert(argc == 2);
-    hex_length = strlen(argv[1]);
-    assert(hex_length % 2 == 0);
-    input_length = hex_length / 2;
-    input = malloc(input_length == 0 ? 1 : input_length);
-    assert(input != NULL);
-    for (size_t i = 0; i < input_length; ++i)
-        input[i] = (unsigned char)((hex_value(argv[1][2 * i]) << 4) |
-                                   hex_value(argv[1][2 * i + 1]));
-
-    xmlResetLastError();
-    doc = xmlReadMemory((const char *)input, (int)input_length,
-                        "fixture.xml", NULL,
-                        XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
-    error = xmlGetLastError();
+static void snapshot(const char *input, int input_length) {
+    xmlDocPtr doc = xmlReadMemory(input, input_length, "fixture.xml", NULL,
+                                 XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    const xmlError *error = xmlGetLastError();
     printf("{\"tree\":%s,\"domain\":", doc != NULL ? "true" : "false");
     if (error == NULL) {
         puts("null,\"code\":null,\"level\":null,\"line\":null,"
@@ -62,6 +45,52 @@ int main(int argc, char **argv) {
     }
     if (doc != NULL)
         xmlFreeDoc(doc);
+}
+
+int main(int argc, char **argv) {
+    size_t input_length;
+    unsigned char *input;
+
+    check_reference_version();
+    assert(argc >= 2);
+    xmlResetLastError();
+    if (strcmp(argv[1], "--sequence") == 0) {
+        assert(argc == 2);
+        snapshot("<r></s>", 7);
+        snapshot("<r/>", 4);
+        snapshot(NULL, 0);
+        snapshot("<r/>", -1);
+        xmlResetLastError();
+        snapshot("<r/>", 4);
+        return 0;
+    }
+    if (strcmp(argv[1], "--stdin") == 0) {
+        char *end;
+        long length;
+        assert(argc == 3);
+        errno = 0;
+        length = strtol(argv[2], &end, 10);
+        assert(errno == 0 && end != argv[2] && *end == '\0');
+        assert(length >= 0 && length <= INT_MAX);
+        input_length = (size_t)length;
+        input = malloc(input_length == 0 ? 1 : input_length);
+        assert(input != NULL);
+        assert(fread(input, 1, input_length, stdin) == input_length);
+        assert(getchar() == EOF && !ferror(stdin));
+    } else {
+        size_t hex_length;
+        assert(argc == 2);
+        hex_length = strlen(argv[1]);
+        assert(hex_length % 2 == 0);
+        input_length = hex_length / 2;
+        assert(input_length <= INT_MAX);
+        input = malloc(input_length == 0 ? 1 : input_length);
+        assert(input != NULL);
+        for (size_t i = 0; i < input_length; ++i)
+            input[i] = (unsigned char)((hex_value(argv[1][2 * i]) << 4) |
+                                       hex_value(argv[1][2 * i + 1]));
+    }
+    snapshot((const char *)input, (int)input_length);
     free(input);
     return 0;
 }

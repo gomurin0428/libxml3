@@ -127,7 +127,10 @@ OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。OS 
 the supported error-record lifecycle. Error state is per OS thread; a successful
 read retains the prior error until explicit reset. Error code, domain, level,
 line, column, and `int1` are compared for the cases covered by
-`tests/error-oracle.json`. For invalid literal XML characters, ASCII values are
+`tests/error-oracle.json`. `make test-errors` also compares its five-step
+`state_sequence` against both libraries in one process per library: malformed
+input, successful input, NULL input, negative size, then reset and successful
+input. For invalid literal XML characters, ASCII values are
 reported in `int1`; literal non-ASCII invalid characters currently use `int1=0`
 rather than a decoded code point. `str1`, `str2`, and `str3` are currently NULL;
 payload parity and exact message wording are not yet supported. Secondary or
@@ -145,7 +148,9 @@ but do not emulate memory corruption, invalid memory access, unbounded or unsafe
 resource use, or exploitable bugs for differential equality. Deviations are
 tested and documented explicitly, not normalized away. The frozen
 `tests/limit-error-oracle.json` records attribute, CDATA, and PI near-limit
-lookahead behavior in libxml2 2.15.4; libxml3 intentionally retains its own
+lookahead behavior in libxml2 2.15.4. `make test-resources` reads those inputs
+and numeric expectations directly and compares both libraries, with explicit
+libxml3 expectations for the documented boundary differences. libxml3 retains its own
 10,000,000-byte value ceiling rather than duplicating those internal buffer
 quirks as unexplained limits. Namespace errors fail closed with no tree, even
 where libxml2 returns a recovery tree; this is an incomplete recovery behavior,
