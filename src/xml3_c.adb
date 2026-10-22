@@ -5,6 +5,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Text;
+with XML3_Errors;
 
 package body XML3_C is
 
@@ -134,11 +135,13 @@ package body XML3_C is
      (Input  : String;
       Huge   : Boolean;
       Result : out System.Address;
-      Status : out int);
+      Status : out int;
+      Diagnostic : out XML3_Parser.Diagnostic_Info);
    procedure Set_Status (Target : System.Address; Value : int);
    function Parse_Buffer
      (Buffer   : System.Address;
       Size     : Interfaces.C.int;
+      URL      : System.Address;
       Encoding : System.Address;
       Options  : Interfaces.C.int;
       Status   : out int) return System.Address;
@@ -574,7 +577,8 @@ package body XML3_C is
       Scratch_A_Buffer : System.Address;
       Scratch_B_Buffer : System.Address;
       Result          : out System.Address;
-      Status          : out int)
+      Status          : out int;
+      Diagnostic      : out XML3_Parser.Diagnostic_Info)
    is
       Nodes : XML3_Parser.Node_Array (1 .. Capacity)
         with Import, Address => Nodes_Buffer;
@@ -587,6 +591,8 @@ package body XML3_C is
       Count : XML3_Parser.Node_Id;
       Root : XML3_Parser.Node_Id;
       Parse_Status : XML3_Parser.Parse_Status;
+      Parse_Diagnostic : XML3_Parser.Diagnostic_Info;
+      Namespace_Diagnostic : XML3_Parser.Diagnostic_Info;
       Attribute_Values : Natural := 0;
       Namespace_Total : Natural := 1;
       Node_Total : Natural;
@@ -665,14 +671,18 @@ package body XML3_C is
       Result := System.Null_Address;
       pragma Unreferenced (Root);
       XML3_Parser.Parse
-        (Input, Scratch_A, Nodes, Count, Root, Parse_Status, Huge);
+        (Input, Scratch_A, Nodes, Count, Root, Parse_Status, Huge,
+         Parse_Diagnostic);
+      Diagnostic := Parse_Diagnostic;
       if Parse_Status = XML3_Parser.Arena_Exhausted then
          Status := Arena_Status;
          return;
       end if;
       if Parse_Status = XML3_Parser.Success then
          XML3_Namespaces.Resolve
-           (Input, Nodes, Count, Names, Scratch_A, Scratch_B, Parse_Status);
+           (Input, Nodes, Count, Names, Scratch_A, Scratch_B, Parse_Status,
+            Namespace_Diagnostic);
+         Diagnostic := Namespace_Diagnostic;
       end if;
       case Parse_Status is
          when XML3_Parser.Success => Status := Status_OK;
@@ -917,9 +927,11 @@ package body XML3_C is
      (Input  : String;
       Huge   : Boolean;
       Result : out System.Address;
-      Status : out int)
+      Status : out int;
+      Diagnostic : out XML3_Parser.Diagnostic_Info)
    is
-      Capacity : Natural := Natural'Min (Initial_Arena, Input'Length);
+      Capacity : Natural := Natural'Max
+        (1, Natural'Min (Initial_Arena, Input'Length));
       Nodes_Buffer : System.Address := System.Null_Address;
       Names_Buffer : System.Address := System.Null_Address;
       Index_Buffer : System.Address := System.Null_Address;
@@ -951,6 +963,9 @@ package body XML3_C is
       end Free_Workspaces;
    begin
       Result := System.Null_Address;
+      Diagnostic :=
+        (Domain => 1, Code => 0, Level => 0, Byte_Position => 1,
+         Int1 => 0, Int2 => 0);
       loop
          Nodes_Buffer := C_Malloc
            (Multiply_Size (size_t (Capacity), size_t (Parser_Node_Bytes)));
@@ -959,8 +974,8 @@ package body XML3_C is
          Index_Buffer := C_Malloc
            (Multiply_Size
               (Multiply_Size (size_t (Capacity), size_t (Natural_Bytes)), 3));
-         Scratch_A_Buffer := C_Malloc (size_t (Input'Length));
-         Scratch_B_Buffer := C_Malloc (size_t (Input'Length));
+         Scratch_A_Buffer := C_Malloc (size_t (Natural'Max (1, Input'Length)));
+         Scratch_B_Buffer := C_Malloc (size_t (Natural'Max (1, Input'Length)));
          if Nodes_Buffer = System.Null_Address
            or else Names_Buffer = System.Null_Address
            or else Index_Buffer = System.Null_Address
@@ -973,7 +988,8 @@ package body XML3_C is
          end if;
          Build_Arena
            (Input, Huge, Positive (Capacity), Nodes_Buffer, Names_Buffer,
-            Index_Buffer, Scratch_A_Buffer, Scratch_B_Buffer, Result, Status);
+            Index_Buffer, Scratch_A_Buffer, Scratch_B_Buffer, Result, Status,
+            Diagnostic);
          Free_Workspaces;
          exit when Status /= Arena_Status;
          if Capacity = XML3_Parser.Max_Nodes then
@@ -1011,15 +1027,17 @@ package body XML3_C is
    function Parse_Buffer
      (Buffer   : System.Address;
       Size     : Interfaces.C.int;
+      URL      : System.Address;
       Encoding : System.Address;
       Options  : Interfaces.C.int;
       Status   : out int) return System.Address
    is
       Result : System.Address;
       Huge : Boolean;
+      Diagnostic : XML3_Parser.Diagnostic_Info;
    begin
       if Buffer = System.Null_Address
-        or else Size <= 0
+        or else Size < 0
         or else Size > int (Max_Input)
       then
          Status := Status_Invalid_Argument;
@@ -1030,10 +1048,18 @@ package body XML3_C is
         and then not Same_Text (Encoding, "utf-8")
       then
          Status := Status_Unsupported;
+         XML3_Errors.Report_Simple (1, 32, 3, URL);
+         if XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
          return System.Null_Address;
       end if;
       if Options < 0 then
          Status := Status_Unsupported;
+         XML3_Errors.Report_Simple (1, 115, 3, URL);
+         if XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
          return System.Null_Address;
       end if;
       declare
@@ -1042,6 +1068,10 @@ package body XML3_C is
       begin
          if (Bits and not Allowed_Options) /= 0 then
             Status := Status_Unsupported;
+            XML3_Errors.Report_Simple (1, 115, 3, URL);
+            if XML3_Errors.Last_Error_Is_OOM then
+               Status := Status_No_Memory;
+            end if;
             return System.Null_Address;
          end if;
          Huge := (Bits and 16#0008_0000#) /= 0;
@@ -1049,7 +1079,25 @@ package body XML3_C is
       declare
          Source : String (1 .. Natural (Size)) with Import, Address => Buffer;
       begin
-         Build (Source, Huge, Result, Status);
+         Build (Source, Huge, Result, Status, Diagnostic);
+         if Status = Status_No_Memory then
+            XML3_Errors.Report_Simple (6, 2, 3, URL);
+         elsif Status = Status_Internal_Error then
+            XML3_Errors.Report_Simple (1, 1, 3, URL);
+         elsif Status = Status_Unsupported and then Diagnostic.Code = 0 then
+            XML3_Errors.Report_Simple (1, 115, 3, URL);
+         elsif Status /= Status_OK and then Status /= Arena_Status then
+            if Diagnostic.Code = 0 then
+               XML3_Errors.Report_Simple (1, 1, 3, URL);
+            else
+               XML3_Errors.Report
+                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
+                  Diagnostic.Byte_Position, Diagnostic.Int1, Source, URL);
+            end if;
+         end if;
+         if Status /= Status_OK and then XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
       end;
       return Result;
    end Parse_Buffer;
@@ -1073,12 +1121,20 @@ package body XML3_C is
       Result : System.Address;
    begin
       Result := Parse_Buffer
-        (Buffer, Size, System.Null_Address, 0, Code);
+        (Buffer, Size, System.Null_Address, System.Null_Address, 0, Code);
       Set_Status (Status, Code);
       return Result;
    exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Set_Status (Status, Status_No_Memory);
+         return System.Null_Address;
       when others =>
-         Set_Status (Status, Status_Internal_Error);
+         XML3_Errors.Report_Simple (1, 1, 3, System.Null_Address);
+         Set_Status
+           (Status,
+            (if XML3_Errors.Last_Error_Is_OOM
+             then Status_No_Memory else Status_Internal_Error));
          return System.Null_Address;
    end Read_Memory_Status;
 
@@ -1089,12 +1145,15 @@ package body XML3_C is
       Encoding : System.Address;
       Options  : Interfaces.C.int) return System.Address
    is
-      pragma Unreferenced (URL);
       Code : int := Status_Internal_Error;
    begin
-      return Parse_Buffer (Buffer, Size, Encoding, Options, Code);
+      return Parse_Buffer (Buffer, Size, URL, Encoding, Options, Code);
    exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, URL);
+         return System.Null_Address;
       when others =>
+         XML3_Errors.Report_Simple (1, 1, 3, URL);
          return System.Null_Address;
    end Read_Memory;
 
@@ -1104,9 +1163,14 @@ package body XML3_C is
    is
       Code : int := Status_Internal_Error;
    begin
-      return Parse_Buffer (Buffer, Size, System.Null_Address, 0, Code);
+      return Parse_Buffer
+        (Buffer, Size, System.Null_Address, System.Null_Address, 0, Code);
    exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
       when others =>
+         XML3_Errors.Report_Simple (1, 1, 3, System.Null_Address);
          return System.Null_Address;
    end Parse_Memory;
 
@@ -1116,7 +1180,6 @@ package body XML3_C is
       Encoding : System.Address;
       Options  : Interfaces.C.int) return System.Address
    is
-      pragma Unreferenced (URL);
       Code : int := Status_Internal_Error;
    begin
       if Cur = System.Null_Address then
@@ -1125,16 +1188,20 @@ package body XML3_C is
       declare
          Length : constant size_t := C_Strlen (Cur);
       begin
-         if Length = 0 or else Length > size_t (Max_Input)
+         if Length > size_t (Max_Input)
            or else Length > size_t (int'Last)
          then
             return System.Null_Address;
          end if;
          return Parse_Buffer
-           (Cur, int (Length), Encoding, Options, Code);
+           (Cur, int (Length), URL, Encoding, Options, Code);
       end;
    exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, URL);
+         return System.Null_Address;
       when others =>
+         XML3_Errors.Report_Simple (1, 1, 3, URL);
          return System.Null_Address;
    end Read_Doc;
 

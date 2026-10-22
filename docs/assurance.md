@@ -18,7 +18,7 @@ heap scratch buffers, grows the arena geometrically when the parser reports
 `Arena_Exhausted`, and reparses; adapter allocation, pointer arithmetic, and
 ownership remain outside the proof scope.
 
-The recorded result is [648 checks discharged, none unproved](proof-report.md)
+The recorded result is [877 checks discharged, none unproved](proof-report.md)
 across the three core units, including `XML3_Namespaces`, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -46,6 +46,10 @@ proof gate pass.
 
 * The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
   reference ownership, and foreign pointer conversions are outside SPARK.
+* `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
+  strings; the C shim provides only pthread TLS key access and thread-exit
+  destructor dispatch. Allocator-failure tests exercise this boundary but do
+  not prove it free of memory errors or exceptions.
 * The C caller must supply readable input buffers of the declared length, valid
   NUL-terminated strings where required, and live handles created by this library.
   Use-after-free, forged pointers, double frees, and caller mutation of exposed
@@ -91,3 +95,11 @@ and reviewed, not fully established by the proof contracts.
 Full libxml2 API and XML conformance remain development goals. Follow-on work must
 extend the compatibility inventory and assurance boundary together, rather than
 label unverified new features as already proved.
+
+Compatibility tests do not authorize copying unsafe upstream defects. The
+implementation follows harmless documented/observed quirks such as preserving
+the last error after success, while refusing to emulate memory corruption,
+invalid accesses, unsafe/unbounded resource use, or exploitable bugs for
+differential equality. Any accepted difference is explicit; the pinned
+reference's attribute/CDATA/PI near-limit lookahead behavior is measured, not
+turned into an unexplained libxml3 safety limit.

@@ -4,7 +4,8 @@ package body XML3_Namespaces with SPARK_Mode is
    procedure Resolve
      (Input : String; Nodes : Node_Array; Count : Node_Id;
       Names : out Name_Array; Scratch_A, Scratch_B : in out String;
-      Status : out Parse_Status)
+      Status : out Parse_Status;
+      Diagnostic : out Diagnostic_Info)
    is
       function Input_Valid return Boolean is
         (Input'First = 1 and then Input'Length <= Offset'Last
@@ -129,6 +130,8 @@ package body XML3_Namespaces with SPARK_Mode is
    begin
       Names := (others => (others => <>));
       Status := Success;
+      Diagnostic := (Domain => 3, Code => 0, Level => 2,
+                     Byte_Position => 1, Int1 => 0, Int2 => 0);
       for K in 1 .. Count loop
          Names (K).Local_First := Nodes (K).Name_First;
          Names (K).Prefix_Last := Nodes (K).Name_First - 1;
@@ -142,6 +145,10 @@ package body XML3_Namespaces with SPARK_Mode is
               XML3_Text.Name_Width (Input, Nodes (K).Name_First, True) = 0
             then
                Status := Malformed;
+               Diagnostic :=
+                 (Domain => 3, Code => 202, Level => 2,
+                  Byte_Position => Nodes (K).Name_Last + 1,
+                  Int1 => 0, Int2 => 0);
                return;
             end if;
             for P in Nodes (K).Name_First .. Nodes (K).Name_Last loop
@@ -152,6 +159,10 @@ package body XML3_Namespaces with SPARK_Mode is
                     or else XML3_Text.Name_Width (Input, P + 1, True) = 0
                   then
                      Status := Malformed;
+                     Diagnostic :=
+                       (Domain => 3, Code => 202, Level => 2,
+                        Byte_Position => Nodes (K).Name_Last + 1,
+                        Int1 => 0, Int2 => 0);
                      return;
                   end if;
                   Names (K).Prefix_Last := P - 1;
@@ -197,6 +208,14 @@ package body XML3_Namespaces with SPARK_Mode is
                     and then Length = 0)
                then
                   Status := Malformed;
+                  Diagnostic :=
+                    (Domain => 3,
+                     Code => 200,
+                     Level => 2,
+                     Byte_Position =>
+                       (if Nodes (K).Value_Last < Input'Length
+                        then Nodes (K).Value_Last + 2 else Input'Length + 1),
+                     Int1 => 0, Int2 => 0);
                   return;
                end if;
                if Names (K).Prefix_Last >= Nodes (K).Name_First
@@ -229,6 +248,14 @@ package body XML3_Namespaces with SPARK_Mode is
                end if;
                if Prefix_Length /= 0 and then Binding = 0 then
                   Status := Malformed;
+                  Diagnostic :=
+                    (Domain => 3, Code => 201, Level => 2,
+                     Byte_Position =>
+                       (if Nodes (K).Kind = Element_Node
+                        then Nodes (K).Name_Last + 1
+                        elsif Nodes (K).Value_Last < Input'Length
+                        then Nodes (K).Value_Last + 2 else Input'Length + 1),
+                     Int1 => 0, Int2 => 0);
                   return;
                end if;
                if Binding in 1 .. Count then
@@ -256,8 +283,15 @@ package body XML3_Namespaces with SPARK_Mode is
                      Same_Namespace
                        (Names (J).Binding, Names (K).Binding, Same,
                         Scratch_A, Scratch_B);
-                     if Same then
-                        Status := Malformed;
+                    if Same then
+                       Status := Malformed;
+                        Diagnostic :=
+                          (Domain => 3, Code => 203, Level => 2,
+                           Byte_Position =>
+                             (if Nodes (K).Value_Last < Input'Length
+                              then Nodes (K).Value_Last + 2
+                              else Input'Length + 1),
+                           Int1 => 0, Int2 => 0);
                         return;
                      end if;
                   end;

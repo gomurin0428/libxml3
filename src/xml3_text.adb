@@ -69,10 +69,16 @@ package body XML3_Text with SPARK_Mode is
       return 0;
    end Name_Width;
 
-   function Valid_UTF8 (Input : String) return Boolean is
+   procedure Validate_UTF8
+     (Input : String;
+      Kind : out Text_Error_Kind;
+      Error_Position : out Natural)
+   is
       I : Positive := Input'First;
       C, B, Extra, Minimum : Natural;
    begin
+      Kind := No_Text_Error;
+      Error_Position := 0;
       while I <= Input'Last loop
          pragma Loop_Invariant (I in Input'First .. Input'Last + 1);
          pragma Loop_Variant (Increases => I);
@@ -94,28 +100,53 @@ package body XML3_Text with SPARK_Mode is
             Extra := 3;
             Minimum := 16#10000#;
          else
-            return False;
+            Kind := Invalid_UTF8;
+            Error_Position := I;
+            return;
          end if;
          if Extra > Input'Last - I then
-            return False;
+            Kind := Invalid_UTF8;
+            Error_Position := I;
+            return;
          end if;
          for J in 1 .. Extra loop
             pragma Loop_Invariant (C <= 16#10FFFF#);
             B := Character'Pos (Input (I + J));
             if B not in 16#80# .. 16#BF# then
-               return False;
+               Kind := Invalid_UTF8;
+               Error_Position := I;
+               return;
             end if;
             if C > (16#10FFFF# - (B - 16#80#)) / 64 then
-               return False;
+               Kind := Invalid_UTF8;
+               Error_Position := I;
+               return;
             end if;
             C := C * 64 + B - 16#80#;
          end loop;
-         if C < Minimum or else not XML_Char (C) then
-            return False;
+         if C < Minimum then
+            Kind := Invalid_UTF8;
+            Error_Position := I;
+            return;
+         elsif C in 16#D800# .. 16#DFFF# then
+            Kind := Invalid_UTF8;
+            Error_Position := I;
+            return;
+         elsif not XML_Char (C) then
+            Kind := Invalid_XML_Character;
+            Error_Position := I;
+            return;
          end if;
          I := I + Extra + 1;
       end loop;
-      return True;
+   end Validate_UTF8;
+
+   function Valid_UTF8 (Input : String) return Boolean is
+      Kind : Text_Error_Kind;
+      Error_Position : Natural;
+   begin
+      Validate_UTF8 (Input, Kind, Error_Position);
+      return Kind = No_Text_Error;
    end Valid_UTF8;
 
    procedure Decode

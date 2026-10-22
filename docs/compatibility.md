@@ -19,6 +19,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`
 * `libxml/xmlmemory.h`: `xmlFree`
+* `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
 * `libxml3.h`: 上記の包括ヘッダーと `xml3ReadMemory`
 
@@ -119,6 +120,48 @@ OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。OS 
 [PR #2](https://github.com/gomurin0428/libxml3/pull/2) に含まれます。
 任意の C API sanitizer 実行では C 側の検査を有効にできますが、Ada allocator
 とコンパイラ生成コードは完全には sanitizer 計測されません。
+
+## Error reporting and compatibility policy
+
+`xmlGetLastError`, `xmlResetLastError`, `xmlCopyError`, and `xmlResetError` expose
+the supported error-record lifecycle. Error state is per OS thread; a successful
+read retains the prior error until explicit reset. Error code, domain, level,
+line, column, and `int1` are compared for the cases covered by
+`tests/error-oracle.json`. `make test-errors` also compares its five-step
+`state_sequence` against both libraries in one process per library: malformed
+input, successful input, NULL input, negative size, then reset and successful
+input. For invalid literal XML characters, ASCII values are
+reported in `int1`; literal non-ASCII invalid characters currently use `int1=0`
+rather than a decoded code point. `str1`, `str2`, and `str3` are currently NULL;
+payload parity and exact message wording are not yet supported. Secondary or
+cascading diagnostics may differ where libxml3 preserves the precise first
+failure. Invalid arguments that the pinned reference leaves silent also preserve
+the prior error. Ada `XML3_Errors` owns error records and copied strings,
+including the URL/file value. A pthread TLS destructor releases per-thread
+records; this behavior, including foreign pthread callers, is tested on Linux
+with glibc. Other POSIX platforms have not yet been validated.
+Parser-context APIs and structured error-handler APIs are not implemented.
+
+Compatibility follows a safety-first policy: mimic harmless documented or
+observed API quirks, such as retaining the last error after a successful parse,
+but do not emulate memory corruption, invalid memory access, unbounded or unsafe
+resource use, or exploitable bugs for differential equality. Deviations are
+tested and documented explicitly, not normalized away. The frozen
+`tests/limit-error-oracle.json` records attribute, CDATA, and PI near-limit
+lookahead behavior in libxml2 2.15.4. `make test-resources` reads those inputs
+and numeric expectations directly and compares both libraries, with explicit
+libxml3 expectations for the documented boundary differences. libxml3 retains its own
+10,000,000-byte value ceiling rather than duplicating those internal buffer
+quirks as unexplained limits. Namespace errors fail closed with no tree, even
+where libxml2 returns a recovery tree; this is an incomplete recovery behavior,
+not a claim that the upstream behavior is exploitable. The frozen DTD case is
+also an explicit difference: libxml2 returns a tree while libxml3 rejects the
+unsupported DTD feature with parser error code 115 and no tree.
+
+Error reporting and allocator behavior are outside the formal SPARK proof.
+The allocation-failure harness uses a C `malloc` interposer that delegates to
+glibc `__libc_malloc`; it is not run under ASan leak checking because those
+allocations bypass the sanitizer's allocator interception.
 
 ## 保証について
 

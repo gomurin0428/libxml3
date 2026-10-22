@@ -63,3 +63,9 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 上限や 2,048-node policy cap はなく、C adapter は heap arena を必要に応じて
 拡張します。これらは表現・割り当て可能性の保証や完全な DoS 防止を意味せず、
 詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。
+
+エラー API は `xmlGetLastError`、明示 reset/copy と OS thread ごとの所有状態を
+提供し、成功後も直前のエラーを保持します。互換方針は、last-error 保持など害のない
+既知の挙動は可能な範囲で合わせる一方、memory corruption、不正 access、無制限な
+resource use、悪用可能な upstream bug は再現しないことです。固定版との既知の差は
+比較で明示し、namespace の fail-closed 動作と value near-limit 差も保持します。

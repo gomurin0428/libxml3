@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-resources compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-resources test-errors test-oom test-fuzz compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
@@ -51,13 +51,71 @@ tests/resource-test-reference: tests/resource-test.c compat/baseline.json build/
 tests/resource-test-sanitize: tests/resource-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
+tests/error-test: tests/error-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -pthread $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/error-test-reference: tests/error-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Werror -pthread -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/error-snapshot: tests/error-snapshot.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/error-snapshot-reference: tests/error-snapshot.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/error-test-sanitize: tests/error-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -pthread -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/oom-test: tests/oom-test.c tests/oom-shim.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< tests/oom-shim.c -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/fuzz-test: tests/fuzz-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/fuzz-test-sanitize: tests/fuzz-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
 test-unicode: tests/unicode-test tests/unicode-test-reference
 	LD_LIBRARY_PATH=lib ./tests/unicode-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/unicode-test-reference
 
-test-resources: tests/resource-test tests/resource-test-reference
+test-resources: tests/resource-test tests/resource-test-reference \
+		tests/error-snapshot tests/error-snapshot-reference
 	LD_LIBRARY_PATH=lib ./tests/resource-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/resource-test-reference
+	/usr/bin/python3 tests/compare-errors.py --limits
+
+test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
+		tests/error-snapshot-reference
+	LD_LIBRARY_PATH=lib ./tests/error-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/error-test-reference
+	/usr/bin/python3 tests/compare-errors.py
+
+test-oom: tests/oom-test
+	@set -e; for operation in success malformed copy replacement tls; do \
+		index=0; \
+		seen=0; \
+		while [ $$index -lt 128 ]; do \
+			if LD_LIBRARY_PATH=lib ./tests/oom-test $$operation $$index; then result=0; else result=$$?; fi; \
+			if [ $$result -eq 2 ]; then \
+				[ $$seen -eq 1 ] || { echo "$$operation never observed injected failure" >&2; exit 1; }; \
+				echo "$$operation: walked $$index allocation sites"; break; \
+			fi; \
+			[ $$result -eq 0 ] || exit $$result; \
+			seen=1; \
+			index=$$((index + 1)); \
+		done; \
+		[ $$index -lt 128 ] || { echo "$$operation exceeded allocation cap" >&2; exit 1; }; \
+	done
+
+test-fuzz: tests/fuzz-test
+	LD_LIBRARY_PATH=lib ./tests/fuzz-test
 
 test-api: build tests/api-test tests/header-smoke.o tests/namespace-test tests/unicode-test
 	LD_LIBRARY_PATH=lib ./tests/api-test
@@ -100,9 +158,10 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
-		xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
-		xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory; do \
+	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
+	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
+	xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory \
+	xmlGetLastError xmlResetLastError xmlResetError xmlCopyError; do \
 		nm -D --defined-only lib/libxml3.so | awk '{sub(/@@.*/, "", $$3); print $$3}' | grep -qx "$$symbol" || exit 1; \
 	done
 
@@ -118,17 +177,23 @@ install: build
 	sed 's|@prefix@|$(PREFIX)|g' libxml3.pc.in > \
 		$(DESTDIR)$(PREFIX)/lib/pkgconfig/libxml3.pc
 
-test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize
+test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
+		tests/error-test-sanitize tests/fuzz-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/unicode-test.c -Llib -lxml3 -o tests/unicode-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/unicode-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/resource-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/error-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/fuzz-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
 		tests/differential-system tests/differential-reference tests/api-test-sanitize \
 		tests/namespace-test tests/namespace-test-sanitize tests/unicode-test \
 		tests/unicode-test-reference tests/unicode-test-sanitize tests/resource-test \
-		tests/resource-test-reference tests/resource-test-sanitize tests/*.out
+		tests/resource-test-reference tests/resource-test-sanitize tests/error-test \
+		tests/error-test-reference tests/error-test-sanitize tests/error-snapshot \
+		tests/error-snapshot-reference tests/oom-test \
+		tests/fuzz-test tests/fuzz-test-sanitize tests/*.out

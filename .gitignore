@@ -15,6 +15,15 @@ tests/unicode-test-sanitize
 tests/resource-test
 tests/resource-test-reference
 tests/resource-test-sanitize
+tests/error-test
+tests/error-test-reference
+tests/error-test-sanitize
+tests/error-snapshot
+tests/error-snapshot-reference
+tests/oom-test
+tests/fuzz-test
+tests/fuzz-test-sanitize
+tests/limit-error-test
 tests/differential-libxml3
 tests/differential-system
 tests/differential-reference

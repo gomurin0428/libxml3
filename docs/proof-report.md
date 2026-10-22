@@ -2,24 +2,24 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **648 discharged checks**, **0 unproved**,
-and **0 justified**. The run emitted non-failing warnings about unused assignments,
-parser outputs, and the initialized scratch value; no proof checks remained unproved.
+GNATprove completed with exit code **0**, **877 discharged checks**, **0 unproved**,
+and **0 justified**. The run emitted non-failing warnings about unused outputs and
+assignments; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a report for the three SPARK units, not a proof of the C-facing library as
 a whole and not a proof of full XML conformance. See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 5 |
-| Initialization | 60 |
-| Run-time checks | 399 |
-| Assertions / loop invariants | 75 |
-| Functional contracts | 80 |
-| Termination | 29 |
-| Total | 648 |
+| Data dependencies | 7 |
+| Initialization | 77 |
+| Run-time checks | 517 |
+| Assertions / loop invariants | 94 |
+| Functional contracts | 148 |
+| Termination | 34 |
+| Total | 877 |
 
-79 checks were discharged by flow analysis and 569 by proof. `Parse`, `Decode`,
+99 checks were discharged by flow analysis and 778 by proof. `Parse`, `Decode`,
 and namespace `Resolve` have explicit `Always_Terminates` aspects.
 Termination does not mean constant time
 or a proved wall-clock bound. The numerical totals are the analyzer's categories;
@@ -53,12 +53,12 @@ and checks input sizes and array bounds while supplying heap workspaces to the c
 ## Source identity (SHA-256)
 
 ```text
-cb20d441b6fdce104d65f7ee67ca140ca7c9815e55315960986334074cdfa7fb  src/xml3_text.ads
-1235d69f037ea80169feb37c84db4803ba07f07b2acbf024ea3f2202075f47b3  src/xml3_text.adb
-195829f9223c3caddaf52407b9b49cb54879993e012d39239c9df17f94d74eb9  src/xml3_parser.ads
-42c65322e4f5d0cd486213f31709ce5d6554e51383ba12ce787b9d0af6656086  src/xml3_parser.adb
-821360f81f9f05491c49c31286e8e2bff689463d2dd708d7ad7688561c6b76eb  src/xml3_namespaces.ads
-a6ee30ec54d99c8942c62efad12c04826b747588940966afa57c5414f4f5c514  src/xml3_namespaces.adb
+7e1c81bf4f77e1e6d433710179b63f28bf00057aeef6f5cf07708a113dd4d809  src/xml3_text.ads
+47f78aaebd907be02955b0d9b991eb47d7b2c344c3cae7b924a7ca575ba10c5b  src/xml3_text.adb
+2fb2fb439577f38abbeb484fe9a52985569448158bf302ab220c1b59556e1eca  src/xml3_parser.ads
+227b0abc2d94d2f525e524b4068651707557e298839aafb06001fc461961eb39  src/xml3_parser.adb
+055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
+09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 67e6636bfadd7ea6ee9ba2a0475cf1072b48c7a66e193944b33ce4d843b51fee  proof.gpr
 ```
 
