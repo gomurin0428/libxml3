@@ -1,9 +1,6 @@
 with XML3_Text;
 
 package body XML3_Namespaces with SPARK_Mode is
-   function Name_Start (C : Character) return Boolean is
-     (C in 'a' .. 'z' or C in 'A' .. 'Z' or C = '_');
-
    procedure Resolve
      (Input : String; Nodes : Node_Array; Count : Node_Id;
       Names : out Name_Array; Status : out Parse_Status)
@@ -110,7 +107,7 @@ package body XML3_Namespaces with SPARK_Mode is
          pragma Loop_Invariant (Names_Valid (Count));
          if Nodes (K).Kind = Element_Node or Nodes (K).Kind = Attribute_Node then
             if Nodes (K).Name_First > Nodes (K).Name_Last or else
-              not Name_Start (Input (Nodes (K).Name_First))
+              XML3_Text.Name_Width (Input, Nodes (K).Name_First, True) = 0
             then
                Status := Malformed;
                return;
@@ -120,7 +117,7 @@ package body XML3_Namespaces with SPARK_Mode is
                if Input (P) = ':' then
                   if Names (K).Prefix_Last >= Nodes (K).Name_First
                     or else P = Nodes (K).Name_First or else P = Nodes (K).Name_Last
-                    or else not Name_Start (Input (P + 1))
+                    or else XML3_Text.Name_Width (Input, P + 1, True) = 0
                   then
                      Status := Malformed;
                      return;

@@ -73,12 +73,15 @@ DTD、未知の entity、複雑な libxml2 parser options、ファイル入力�
 SAX、XInclude、検証、変更 API、XPath、スキーマ、エンコーディング変換は
 未対応です。属性値と通常テキストでは predefined/numeric reference を処理し、
 CDATA・コメント・PI は reference 展開しません。
-名前空間の対応は読み取りと参照 API に限ります。QName は ASCII NCName の
+名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
 単一 prefix/local-name 組だけを受理し、prefix は宣言済みでなければなりません。
 無効な QName、予約 namespace binding、未束縛 prefix、または同じ expanded
 attribute name は `XML3_STATUS_MALFORMED` として fail-closed で拒否します。
 libxml2 が namespace error を報告しながら tree を返す入力でも、libxml3 は tree
-を返しません。Unicode XML names、namespace mutation、namespace writer API は
+を返しません。要素名・属性名・namespace prefix・PI target は UTF-8 で読み取り、
+Unicode 正規化や大文字小文字変換をせず、元のバイト列を保持・比較します。
+名前の先頭では結合文字を拒否し、補助平面は仕様どおり U+EFFFF まで受理します。
+namespace mutation、namespace writer API は
 未対応です。`xmlGetProp`/`xmlHasProp` は local name で検索し、URI を考慮する場合は
 namespace-aware getter/query API を使用してください。
 名前空間 URI の entity 参照には libxml2 版による差があります。固定ターゲットの

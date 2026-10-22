@@ -12,7 +12,7 @@ The parser is iterative: its explicit nesting stack is bounded to 64 elements,
 input to 65,536 bytes, and the flat node arena to 2,048 entries (attributes count
 as entries). It has no filesystem, network, callback, or dynamic allocator access.
 
-The recorded result is [551 checks discharged, none unproved](proof-report.md)
+The recorded result is [576 checks discharged, none unproved](proof-report.md)
 across the three core units, including `XML3_Namespaces`, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -63,16 +63,16 @@ own name, `libxml3`, and must not be loaded alongside libxml2 into the same symb
 namespace. Only APIs and structure fields explicitly listed in the compatibility
 document are supported. Unsupported parser options fail, not silently degrade.
 
-The first profile supports XML 1.0 UTF-8 content, ASCII NCNames and qualified
+The current profile supports XML 1.0 UTF-8 content, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,
 attributes, text, the five predefined entities, numeric references, comments,
 CDATA and processing instructions. XML declarations accept version 1.0,
 encoding `UTF-8`/`utf-8`, and standalone yes/no, in XML order. CR/CRLF line endings
 are normalized, and literal attribute whitespace is normalized to spaces while
-character references retain their referenced characters. Namespace names are
-ASCII-only; invalid or unbound namespace declarations fail closed, including
-cases where libxml2 may return a tree alongside namespace errors. Non-ASCII names,
-DTD, XInclude, XPath, schemas, HTML parsing, other encodings, and recovery mode
+character references retain their referenced characters. Names follow the XML 1.0
+fifth-edition ranges, without Unicode normalization. Invalid or unbound namespace
+declarations fail closed, including cases where libxml2 may return a tree alongside
+namespace errors. DTD, XInclude, XPath, schemas, HTML parsing, other encodings, and recovery mode
 are not implemented. Rejection is an intentional compatibility gap, not a claim
 those features are universally unsafe. Namespace acceptance semantics are tested
 and reviewed, not fully established by the proof contracts.
