@@ -1,0 +1,41 @@
+name: Manual verification
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev pkg-config build-essential curl unzip
+      - name: Install pinned Alire toolchain
+        run: |
+          mkdir -p "$HOME/.local/share/alire-2.1.1"
+          mkdir -p "$HOME/.local/share/ada/candidate-14"
+          curl -fsSL https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip -o /tmp/alr.zip
+          unzip -q /tmp/alr.zip -d "$HOME/.local/share/alire-2.1.1"
+          echo "$HOME/.local/share/ada/candidate-14/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/share/alire-2.1.1/bin/alr" install --prefix="$HOME/.local/share/ada/candidate-14" \
+            gnat_native=14.2.1 gprbuild=26.0.1 gnatprove=14.1.1
+      - name: Build and test
+        run: |
+          make build
+          make test-api
+          make compare
+          make check
+      - name: Prove core
+        id: prove
+        run: make prove
+      - name: Upload proof reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-reports
+          path: |
+            obj/gnatprove/
+            docs/proof-report.md
+            docs/proof-summary.txt

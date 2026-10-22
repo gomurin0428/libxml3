@@ -1,0 +1,9 @@
+#ifndef LIBXML3_XMLVERSION_H
+#define LIBXML3_XMLVERSION_H
+
+#define LIBXML_VERSION 30000
+#define LIBXML_VERSION_STRING "3.0.0-experimental"
+#define LIBXML_DOTTED_VERSION "3.0.0-experimental"
+#define LIBXML3_EXPERIMENTAL 1
+
+#endif
