@@ -10,7 +10,8 @@ OS付属の2.9.13は補助的な回帰比較先であり、主基準として取
 
 `compat/baseline.json` がタグ・コミット・ビルドオプションの唯一の設定元です。
 Linux x86_64 / Clang 14 / C11で、CMake既定の機能に加えてlegacy、HTTP互換stub、
-Schematron、thread allocatorを有効化します。HTTP有効化はネットワーク機能の
+Schematron、thread allocatorを有効化します。
+抽出器と参照ライブラリのコンパイラをともにClang 14に固定します。HTTP有効化はネットワーク機能の
 復活ではありません。ICU・TLSは無効で、iconvは有効です。
 Windows、Cygwin、別コンパイラ、機能無効構成との条件付き宣言差分は未監査です。
 したがって、この台帳だけで全プラットフォームの全APIを網羅したとは主張しません。

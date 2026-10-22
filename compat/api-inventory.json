@@ -7,6 +7,7 @@
     "repository": "https://github.com/GNOME/libxml2.git",
     "platform": "Linux x86_64, Clang 14, C11; default CMake features plus legacy/HTTP stubs/Schematron/thread allocator",
     "cmake_options": {
+      "CMAKE_C_COMPILER": "/usr/bin/clang-14",
       "CMAKE_BUILD_TYPE": "Release",
       "BUILD_SHARED_LIBS": "ON",
       "LIBXML2_WITH_PROGRAMS": "OFF",
