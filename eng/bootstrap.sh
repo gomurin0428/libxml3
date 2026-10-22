@@ -4,7 +4,7 @@ set -eu
 # Ubuntu 22.04 dependencies used by the reproducible development setup.
 sudo -n apt-get update
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  libxml2-dev pkg-config build-essential unzip curl
+  libxml2-dev pkg-config build-essential unzip curl cmake clang-14 python3-clang-14 zlib1g-dev
 
 # Official Alire release and pinned crates. The prefix is intentionally
 # separate from any existing default Alire toolchain.
