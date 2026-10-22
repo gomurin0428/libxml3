@@ -8,6 +8,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/tree.h>
 #include <libxml/parser.h>
+#include <libxml/xmlerror.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -81,10 +81,10 @@
 | --- | --- | --- | --- | --- |
 | `function:parser.h:xmlCleanupParser` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:parser.h:xmlInitParser` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
-| `function:parser.h:xmlParseDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
-| `function:parser.h:xmlParseMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
-| `function:parser.h:xmlReadDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
-| `function:parser.h:xmlReadMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:parser.h:xmlParseDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c), [tests/error-test.c](../tests/error-test.c) | not-proved |
+| `function:parser.h:xmlParseMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c), [tests/error-test.c](../tests/error-test.c) | not-proved |
+| `function:parser.h:xmlReadDoc` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c), [tests/error-test.c](../tests/error-test.c) | not-proved |
+| `function:parser.h:xmlReadMemory` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c), [tests/error-test.c](../tests/error-test.c), [tests/fuzz-test.c](../tests/fuzz-test.c), [tests/resource-test.c](../tests/resource-test.c) | not-proved |
 | `function:tree.h:xmlChildElementCount` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:tree.h:xmlDocGetRootElement` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:tree.h:xmlFirstElementChild` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
@@ -93,6 +93,10 @@
 | `function:tree.h:xmlHasProp` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:tree.h:xmlNextElementSibling` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:tree.h:xmlNodeGetContent` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
+| `function:xmlerror.h:xmlCopyError` | partial | Deep-copies owned strings transactionally for valid zero-initialized or previously reset destinations. | [tests/error-test.c](../tests/error-test.c), [tests/oom-test.c](../tests/oom-test.c), [tests/fuzz-test.c](../tests/fuzz-test.c) | not-proved |
+| `function:xmlerror.h:xmlGetLastError` | partial | per-OS-thread last-error retrieval; supported numeric diagnostics and exact message text remain a documented subset. | [tests/error-test.c](../tests/error-test.c), [tests/error-snapshot.c](../tests/error-snapshot.c) | not-proved |
+| `function:xmlerror.h:xmlResetError` | partial | Resets caller-owned xmlError records; foreign pointers remain caller responsibility. | [tests/error-test.c](../tests/error-test.c), [tests/fuzz-test.c](../tests/fuzz-test.c) | not-proved |
+| `function:xmlerror.h:xmlResetLastError` | partial | Explicitly clears the calling thread's last error and owned strings. | [tests/error-test.c](../tests/error-test.c) | not-proved |
 | `function:xmlstring.h:xmlStrEqual` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:xmlstring.h:xmlStrcmp` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:xmlstring.h:xmlStrlen` | partial | 現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |

@@ -1,0 +1,18 @@
+{
+  "version": "2.15.4",
+  "source": "build/limit-error-oracle.json",
+  "cases": [
+    {"context":"attribute","prefix":"<r a=\"","suffix":"\"/>","length":9999980,"expected":{"tree":true}},
+    {"context":"attribute","prefix":"<r a=\"","suffix":"\"/>","length":9999999,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"attribute","prefix":"<r a=\"","suffix":"\"/>","length":10000000,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"attribute","prefix":"<r a=\"","suffix":"\"/>","length":10000001,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"cdata","prefix":"<r><![CDATA[","suffix":"]]></r>","length":9999980,"expected":{"tree":true}},
+    {"context":"cdata","prefix":"<r><![CDATA[","suffix":"]]></r>","length":9999999,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"cdata","prefix":"<r><![CDATA[","suffix":"]]></r>","length":10000000,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"cdata","prefix":"<r><![CDATA[","suffix":"]]></r>","length":10000001,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"pi","prefix":"<r><?p ","suffix":"?></r>","length":9999980,"expected":{"tree":true}},
+    {"context":"pi","prefix":"<r><?p ","suffix":"?></r>","length":9999999,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"pi","prefix":"<r><?p ","suffix":"?></r>","length":10000000,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}},
+    {"context":"pi","prefix":"<r><?p ","suffix":"?></r>","length":10000001,"expected":{"tree":false,"domain":1,"code":114,"level":3,"line":1,"int1":0,"int2":10000002,"message":"Resource limit exceeded: Buffer size limit exceeded, try XML_PARSE_HUGE\n\n","file":"fixture.xml","str1":"Buffer size limit exceeded, try XML_PARSE_HUGE\n","str2":null,"str3":null}}
+  ]
+}

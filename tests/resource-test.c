@@ -241,6 +241,64 @@ static void test_huge_does_not_enable_features(void) {
 #endif
 }
 
+static void test_near_limit_reference_boundaries(void) {
+    static const char *const contexts[][2] = {
+        {"<r a=\"", "\"/>"},
+        {"<r><![CDATA[", "]]></r>"},
+        {"<r><?p ", "?></r>"}
+    };
+    static const size_t lengths[] = {
+        9999980, 9999999, 10000000, 10000001
+    };
+
+    for (size_t context = 0; context < 3; ++context) {
+        for (size_t index = 0; index < 4; ++index) {
+            const char *prefix = contexts[context][0];
+            const char *suffix = contexts[context][1];
+            size_t prefix_length = strlen(prefix);
+            size_t suffix_length = strlen(suffix);
+            size_t value_length = lengths[index];
+            size_t input_length = prefix_length + value_length + suffix_length;
+            char *xml = (char *)malloc(input_length + 1);
+            assert(xml);
+            memcpy(xml, prefix, prefix_length);
+            memset(xml + prefix_length, 'x', value_length);
+            memcpy(xml + prefix_length + value_length, suffix, suffix_length);
+            xml[input_length] = '\0';
+            xmlResetLastError();
+            xmlDocPtr doc = parse(xml, input_length, quiet_options());
+#ifdef XML3_REFERENCE_VERSION
+            int accepted = index == 0;
+#else
+            int accepted = value_length <= VALUE_LIMIT;
+#endif
+            if ((doc != NULL) != accepted) {
+                fprintf(stderr,
+                        "near-limit mismatch: context=%zu value=%zu tree=%d expected=%d\n",
+                        context, value_length, doc != NULL, accepted);
+            }
+            assert((doc != NULL) == accepted);
+            if (doc != NULL) {
+                xmlFreeDoc(doc);
+            } else {
+                const xmlError *error = xmlGetLastError();
+                assert(error != NULL);
+                assert(error->domain == XML_FROM_PARSER);
+                assert(error->code == XML_ERR_RESOURCE_LIMIT);
+                assert(error->level == XML_ERR_FATAL);
+                assert(error->line == 1);
+                assert(error->int1 == 0);
+#ifdef XML3_REFERENCE_VERSION
+                assert(error->int2 == 10000002);
+#else
+                assert(error->int2 == (int)prefix_length + 1);
+#endif
+            }
+            free(xml);
+        }
+    }
+}
+
 int main(void) {
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
@@ -267,6 +325,7 @@ int main(void) {
     check_depth(2049, 0, quiet_options() | XML_PARSE_HUGE, 0);
     test_large_document_and_arena();
     test_huge_does_not_enable_features();
+    test_near_limit_reference_boundaries();
     puts("resource tests passed");
     return 0;
 }

@@ -1,0 +1,724 @@
+{
+  "version": "2.15.4",
+  "reference_commit": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
+  "known_libxml3_difference": "Namespace errors remain fail-closed and return no tree; frozen libxml2 observations are unchanged.",
+  "libxml3_known_differences": [
+    {"case_index": 25, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {"case_index": 26, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {"case_index": 27, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {"case_index": 28, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {"case_index": 29, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {"case_index": 30, "fields": {"tree": false}, "reason": "namespace errors fail closed"},
+    {
+      "case_index": 35,
+      "fields": {
+        "tree": false,
+        "domain": 1,
+        "code": 115,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1
+      },
+      "reason": "DTD parsing is deliberately unsupported"
+    }
+  ],
+  "cases": [
+    {
+      "input": "",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Document is empty\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": " ",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 2,
+        "message": "Start tag expected, '<' not found\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "hello",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 68,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 2,
+        "message": "StartTag: invalid element name\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 77,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "Premature end of data in tag r line 1\n",
+        "file": "fixture.xml",
+        "str1": "r",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 73,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 3,
+        "message": "Couldn't find end of Start Tag r line 1\n",
+        "file": "fixture.xml",
+        "str1": "r",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r></s>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 8,
+        "message": "Opening and ending tag mismatch: r line 1 and s\n",
+        "file": "fixture.xml",
+        "str1": "r",
+        "str2": "s",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>\n<a></b>\n</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 2,
+        "int1": 2,
+        "int2": 8,
+        "message": "Opening and ending tag mismatch: a line 2 and b\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": "b",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r></r><s/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 5,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 8,
+        "message": "Extra content at the end of the document\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r a=\"1\" a=\"2\"/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 42,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 15,
+        "message": "Attribute a redefined\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r a=abc/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 73,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 6,
+        "message": "Couldn't find end of Start Tag r line 1\n",
+        "file": "fixture.xml",
+        "str1": "r",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r a=\"x/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 73,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 10,
+        "message": "Couldn't find end of Start Tag r line 1\n",
+        "file": "fixture.xml",
+        "str1": "r",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r a/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 41,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 5,
+        "message": "Specification mandates value for attribute a\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r a=\"<\"/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 38,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 7,
+        "message": "Unescaped '<' not allowed in attributes values\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>&bad;</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 26,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 9,
+        "message": "Entity 'bad' not defined\n",
+        "file": "fixture.xml",
+        "str1": "bad",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>&amp</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 23,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 8,
+        "message": "EntityRef: expecting ';'\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>&</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 68,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 5,
+        "message": "xmlParseEntityRef: no name\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>&#0;</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 8,
+        "message": "xmlParseCharRef: invalid xmlChar value 0\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>&#xZZ;</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 7,
+        "message": "xmlParseCharRef: invalid xmlChar value 0\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>]]></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 62,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 4,
+        "message": "Sequence ']]>' not allowed in content\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r><!--x</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 45,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 13,
+        "message": "Comment not terminated\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r><!--x--y--></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 80,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 9,
+        "message": "Double hyphen within comment: <!--x\n",
+        "file": "fixture.xml",
+        "str1": "x",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r><![CDATA[x</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 63,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 18,
+        "message": "CData section not finished\nx</\n",
+        "file": "fixture.xml",
+        "str1": "x</",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r><?p x</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 47,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 13,
+        "message": "ParsePI: PI p never end ...\n",
+        "file": "fixture.xml",
+        "str1": "p",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r><?xml?></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 64,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 9,
+        "message": "XML declaration allowed only at the start of the document\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<p:r/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 201,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 5,
+        "message": "Namespace prefix p on r is not defined\n",
+        "file": "fixture.xml",
+        "str1": "p",
+        "str2": "r",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r p:a=\"x\"/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 201,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 11,
+        "message": "Namespace prefix p for a on r is not defined\n",
+        "file": "fixture.xml",
+        "str1": "p",
+        "str2": "a",
+        "str3": "r"
+      }
+    },
+    {
+      "input": "<r xmlns:p=\"\"/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 200,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 14,
+        "message": "xmlns:p: Empty XML namespace is not allowed\n",
+        "file": "fixture.xml",
+        "str1": "p",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r xmlns:xml=\"wrong\"/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 200,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 21,
+        "message": "xml namespace prefix mapped to wrong URI\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r xmlns:p=\"urn:x\" xmlns:q=\"urn:x\" p:a=\"1\" q:a=\"2\"/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 203,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 51,
+        "message": "Namespaced Attribute a in 'urn:x' redefined\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": "urn:x",
+        "str3": null
+      }
+    },
+    {
+      "input": "<a:b:c/>",
+      "expected": {
+        "tree": true,
+        "domain": 3,
+        "code": 202,
+        "level": 2,
+        "line": 1,
+        "int1": 0,
+        "int2": 7,
+        "message": "Failed to parse QName 'a:b:c'\n",
+        "file": "fixture.xml",
+        "str1": "a:b:c",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>\r\n<a></b></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 2,
+        "int1": 2,
+        "int2": 8,
+        "message": "Opening and ending tag mismatch: a line 2 and b\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": "b",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>\r<a></b></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 12,
+        "message": "Opening and ending tag mismatch: a line 1 and b\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": "b",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>é<a></b></r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 12,
+        "message": "Opening and ending tag mismatch: a line 1 and b\n",
+        "file": "fixture.xml",
+        "str1": "a",
+        "str2": "b",
+        "str3": null
+      }
+    },
+    {
+      "input": "<r>\u0001</r>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "PCDATA invalid Char value 1\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input": "<!DOCTYPE r><r/>",
+      "expected": {
+        "tree": true
+      }
+    },
+    {
+      "input": "<?xml version=\"1.0\" encoding=\"other\"?><r/>",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 32,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Unsupported encoding: other\n",
+        "file": "fixture.xml",
+        "str1": "other",
+        "str2": null,
+        "str3": null
+      }
+    },
+    {
+      "input_hex": "3c723eff3c2f723e",
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 4,
+        "message": "Invalid bytes in character encoding\n",
+        "file": "fixture.xml",
+        "str1": null,
+        "str2": null,
+        "str3": null
+      }
+    }
+  ],
+  "state_sequence": [
+    {
+      "tree": false,
+      "domain": 1,
+      "code": 76,
+      "level": 3,
+      "line": 1,
+      "int1": 1,
+      "int2": 8,
+      "message": "Opening and ending tag mismatch: r line 1 and s\n",
+      "file": "fixture.xml",
+      "str1": "r",
+      "str2": "s",
+      "str3": null
+    },
+    {
+      "tree": true,
+      "domain": 1,
+      "code": 76,
+      "level": 3,
+      "line": 1,
+      "int1": 1,
+      "int2": 8,
+      "message": "Opening and ending tag mismatch: r line 1 and s\n",
+      "file": "fixture.xml",
+      "str1": "r",
+      "str2": "s",
+      "str3": null
+    },
+    {
+      "tree": false,
+      "domain": 1,
+      "code": 76,
+      "level": 3,
+      "line": 1,
+      "int1": 1,
+      "int2": 8,
+      "message": "Opening and ending tag mismatch: r line 1 and s\n",
+      "file": "fixture.xml",
+      "str1": "r",
+      "str2": "s",
+      "str3": null
+    },
+    {
+      "tree": false,
+      "domain": 1,
+      "code": 76,
+      "level": 3,
+      "line": 1,
+      "int1": 1,
+      "int2": 8,
+      "message": "Opening and ending tag mismatch: r line 1 and s\n",
+      "file": "fixture.xml",
+      "str1": "r",
+      "str2": "s",
+      "str3": null
+    },
+    {
+      "tree": true
+    }
+  ]
+}

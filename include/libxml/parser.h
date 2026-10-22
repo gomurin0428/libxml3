@@ -2,6 +2,7 @@
 #define LIBXML3_PARSER_H
 
 #include <libxml/tree.h>
+#include <libxml/xmlerror.h>
 
 #ifdef __cplusplus
 extern "C" {

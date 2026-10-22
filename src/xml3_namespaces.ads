@@ -17,7 +17,8 @@ package XML3_Namespaces with SPARK_Mode is
    procedure Resolve
      (Input : String; Nodes : Node_Array; Count : Node_Id;
       Names : out Name_Array; Scratch_A, Scratch_B : in out String;
-      Status : out Parse_Status)
+      Status : out Parse_Status;
+      Diagnostic : out Diagnostic_Info)
      with Global => null, Always_Terminates,
        Pre => Input'First = 1
          and then Input'Length <= Offset'Last
@@ -36,7 +37,8 @@ package XML3_Namespaces with SPARK_Mode is
            and then Nodes (K).Value_Last <= Input'Length
            and then Nodes (K).Name_First <= Nodes (K).Name_Last + 1
            and then Nodes (K).Value_First <= Nodes (K).Value_Last + 1),
-       Post => (if Status = Success then
+       Post => Diagnostic.Byte_Position in 1 .. Input'Length + 1
+         and then (if Status = Success then
          (for all K in 1 .. Count =>
            Names (K).Local_First in Nodes (K).Name_First .. Nodes (K).Name_Last + 1
            and Names (K).Prefix_Last in Nodes (K).Name_First - 1 .. Nodes (K).Name_Last

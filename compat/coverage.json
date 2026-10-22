@@ -19,7 +19,10 @@
     "implementation": "partial",
     "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/error-test.c",
+      "tests/fuzz-test.c",
+      "tests/resource-test.c"
     ],
     "proof": "not-proved"
   },
@@ -27,7 +30,8 @@
     "implementation": "partial",
     "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/error-test.c"
     ],
     "proof": "not-proved"
   },
@@ -35,7 +39,8 @@
     "implementation": "partial",
     "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/error-test.c"
     ],
     "proof": "not-proved"
   },
@@ -43,7 +48,8 @@
     "implementation": "partial",
     "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/error-test.c"
     ],
     "proof": "not-proved"
   },
@@ -148,6 +154,42 @@
     "scope": "通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。",
     "tests": [
       "tests/api-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlGetLastError": {
+    "implementation": "partial",
+    "scope": "per-OS-thread last-error retrieval; supported numeric diagnostics and exact message text remain a documented subset.",
+    "tests": [
+      "tests/error-test.c",
+      "tests/error-snapshot.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlResetLastError": {
+    "implementation": "partial",
+    "scope": "Explicitly clears the calling thread's last error and owned strings.",
+    "tests": [
+      "tests/error-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlResetError": {
+    "implementation": "partial",
+    "scope": "Resets caller-owned xmlError records; foreign pointers remain caller responsibility.",
+    "tests": [
+      "tests/error-test.c",
+      "tests/fuzz-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlCopyError": {
+    "implementation": "partial",
+    "scope": "Deep-copies owned strings transactionally for valid zero-initialized or previously reset destinations.",
+    "tests": [
+      "tests/error-test.c",
+      "tests/oom-test.c",
+      "tests/fuzz-test.c"
     ],
     "proof": "not-proved"
   }

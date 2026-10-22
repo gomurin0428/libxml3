@@ -25,6 +25,14 @@ package XML3_Parser with SPARK_Mode is
    type Node_Array is array (Positive range <>) of Node;
    type Parse_Status is
      (Success, Malformed, Unsupported, Limit_Exceeded, Arena_Exhausted);
+   type Diagnostic_Info is record
+      Domain   : Natural := 1;
+      Code     : Natural := 0;
+      Level    : Natural := 3;
+      Byte_Position : Position := 1;
+      Int1     : Integer := 0;
+      Int2     : Integer := 0;
+   end record;
 
    procedure Parse
      (Input  : String;
@@ -33,7 +41,8 @@ package XML3_Parser with SPARK_Mode is
       Count  : out Node_Id;
       Root   : out Node_Id;
       Status : out Parse_Status;
-      Huge   : Boolean)
+      Huge   : Boolean;
+      Diagnostic : out Diagnostic_Info)
      with Global => null, Always_Terminates,
        Pre => Input'First = 1
          and then Input'Length <= XML3_Text.Max_Bytes
@@ -47,6 +56,7 @@ package XML3_Parser with SPARK_Mode is
          and then Nodes'First = 1
          and then Nodes'Last in 1 .. Max_Nodes
          and then Count <= Nodes'Last
+         and then Diagnostic.Byte_Position in 1 .. Input'Length + 1
          and then (if Status = Success then Root in 1 .. Count)
          and then (for all K in 1 .. Count =>
            Nodes (K).Parent < K
