@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-resources compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
@@ -39,9 +39,25 @@ tests/unicode-test: tests/unicode-test.c $(PUBLIC_HEADERS) | build
 tests/unicode-test-reference: tests/unicode-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
 	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 -DXML3_REFERENCE_VERSION=$(REFERENCE_VERSION) -DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib -Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
 
+tests/resource-test: tests/resource-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/resource-test-reference: tests/resource-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_VERSION=$(REFERENCE_VERSION) \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< \
+		-L$(REFERENCE)/lib -Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/resource-test-sanitize: tests/resource-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
 test-unicode: tests/unicode-test tests/unicode-test-reference
 	LD_LIBRARY_PATH=lib ./tests/unicode-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/unicode-test-reference
+
+test-resources: tests/resource-test tests/resource-test-reference
+	LD_LIBRARY_PATH=lib ./tests/resource-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/resource-test-reference
 
 test-api: build tests/api-test tests/header-smoke.o tests/namespace-test tests/unicode-test
 	LD_LIBRARY_PATH=lib ./tests/api-test
@@ -102,15 +118,17 @@ install: build
 	sed 's|@prefix@|$(PREFIX)|g' libxml3.pc.in > \
 		$(DESTDIR)$(PREFIX)/lib/pkgconfig/libxml3.pc
 
-test-sanitize: build tests/namespace-test-sanitize
+test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/unicode-test.c -Llib -lxml3 -o tests/unicode-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/unicode-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/resource-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
 		tests/differential-system tests/differential-reference tests/api-test-sanitize \
 		tests/namespace-test tests/namespace-test-sanitize tests/unicode-test \
-		tests/unicode-test-reference tests/unicode-test-sanitize tests/*.out
+		tests/unicode-test-reference tests/unicode-test-sanitize tests/resource-test \
+		tests/resource-test-reference tests/resource-test-sanitize tests/*.out

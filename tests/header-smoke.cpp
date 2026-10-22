@@ -1,5 +1,7 @@
 #include <libxml3.h>
 
+static_assert(XML_PARSE_HUGE == (1 << 19));
+
 int main() {
     const int equal = xmlStrEqual(BAD_CAST "r", BAD_CAST "r");
     using SearchNsFunction =

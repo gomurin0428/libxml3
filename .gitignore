@@ -12,6 +12,9 @@ tests/namespace-test-sanitize
 tests/unicode-test
 tests/unicode-test-reference
 tests/unicode-test-sanitize
+tests/resource-test
+tests/resource-test-reference
+tests/resource-test-sanitize
 tests/differential-libxml3
 tests/differential-system
 tests/differential-reference

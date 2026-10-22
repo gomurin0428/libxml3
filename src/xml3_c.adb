@@ -1,5 +1,6 @@
 with Ada.Unchecked_Conversion;
 with Interfaces.C; use Interfaces.C;
+with Interfaces;
 with System.Storage_Elements; use System.Storage_Elements;
 with XML3_Namespaces;
 with XML3_Parser;
@@ -8,6 +9,7 @@ with XML3_Text;
 package body XML3_C is
 
    use type System.Address;
+   use type Interfaces.Unsigned_32;
    use type XML3_Parser.Node_Kind;
    use type XML3_Parser.Parse_Status;
 
@@ -21,8 +23,11 @@ package body XML3_C is
    Namespace_Decl_Type : constant int := 18;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
-   Step_Limit : constant := 4 * XML3_Parser.Max_Nodes + 16;
-   String_Limit : constant := 4 * Max_Input + 16;
+   Step_Limit : constant := Integer'Last - 1;
+   String_Limit : constant := Integer'Last;
+   Initial_Arena : constant := 2_048;
+   Allowed_Options : constant Interfaces.Unsigned_32 := 16#0008_0860#;
+   Arena_Status : constant int := -1;
 
    type Xml_Node is record
       Private_Data : System.Address := System.Null_Address;
@@ -79,8 +84,18 @@ package body XML3_C is
      Block_Header'Max_Size_In_Storage_Elements;
    Node_Bytes : constant Storage_Offset :=
      Xml_Node'Max_Size_In_Storage_Elements;
+   Parser_Node_Bytes : constant Storage_Offset :=
+     XML3_Parser.Node'Max_Size_In_Storage_Elements;
    Ns_Bytes : constant Storage_Offset :=
      Xml_Ns'Max_Size_In_Storage_Elements;
+   Name_Bytes : constant Storage_Offset :=
+     XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements;
+   Natural_Bytes : constant Storage_Offset :=
+     Natural'Max_Size_In_Storage_Elements;
+
+   function Add_Size (Left, Right : size_t) return size_t;
+   function Multiply_Size (Left, Right : size_t) return size_t;
+   function To_Storage_Offset_Checked (Value : size_t) return Storage_Offset;
 
    function C_Malloc (Size : size_t) return System.Address
      with Import, Convention => C, External_Name => "malloc";
@@ -99,6 +114,8 @@ package body XML3_C is
    function Scan_Length (Item : System.Address; Limit : Natural) return Integer;
    function To_String (Item : System.Address; Length : Natural) return String;
    function Alloc_String (Value : String) return System.Address;
+   function Copy_C_String
+     (Item : System.Address; Length : Natural) return System.Address;
    function Equal_Names (Left, Right : System.Address) return Boolean;
    function Same_Text (Item : System.Address; Value : String) return Boolean;
    function Node_At (Base : System.Address; Index : Natural) return Node_Access;
@@ -115,6 +132,7 @@ package body XML3_C is
    procedure Content_Copy (Start, Target : System.Address);
    procedure Build
      (Input  : String;
+      Huge   : Boolean;
       Result : out System.Address;
       Status : out int);
    procedure Set_Status (Target : System.Address; Value : int);
@@ -128,10 +146,36 @@ package body XML3_C is
    function Byte_At (Base : System.Address; Offset : Natural) return Character
    is
       Item : Character
-        with Import, Address => Base + Storage_Offset (Offset);
+        with Import,
+          Address => Base
+            + To_Storage_Offset_Checked (size_t (Offset));
    begin
       return Item;
    end Byte_At;
+
+   function Add_Size (Left, Right : size_t) return size_t is
+   begin
+      if Left > size_t'Last - Right then
+         raise Storage_Error;
+      end if;
+      return Left + Right;
+   end Add_Size;
+
+   function Multiply_Size (Left, Right : size_t) return size_t is
+   begin
+      if Right /= 0 and then Left > size_t'Last / Right then
+         raise Storage_Error;
+      end if;
+      return Left * Right;
+   end Multiply_Size;
+
+   function To_Storage_Offset_Checked (Value : size_t) return Storage_Offset is
+   begin
+      if Value > size_t (Storage_Offset'Last) then
+         raise Storage_Error;
+      end if;
+      return Storage_Offset (Value);
+   end To_Storage_Offset_Checked;
 
    function Scan_Length (Item : System.Address; Limit : Natural) return Integer
    is
@@ -157,7 +201,8 @@ package body XML3_C is
    end To_String;
 
    function Alloc_String (Value : String) return System.Address is
-      Result : constant System.Address := C_Malloc (Value'Length + 1);
+      Result : constant System.Address :=
+        C_Malloc (Add_Size (size_t (Value'Length), 1));
    begin
       if Result = System.Null_Address then
          return System.Null_Address;
@@ -171,6 +216,36 @@ package body XML3_C is
       end;
       return Result;
    end Alloc_String;
+
+   function Copy_C_String
+     (Item : System.Address; Length : Natural) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+   begin
+      if Item = System.Null_Address or else Length = Natural'Last then
+         return System.Null_Address;
+      end if;
+      Result := C_Malloc (Add_Size (size_t (Length), 1));
+      if Result = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Source : String (1 .. Length)
+           with Import, Address => Item;
+         Target : String (1 .. Length + 1)
+           with Import, Address => Result;
+      begin
+         Target (1 .. Length) := Source;
+         Target (Length + 1) := Character'Val (0);
+      end;
+      return Result;
+   exception
+      when others =>
+         if Result /= System.Null_Address then
+            C_Free (Result);
+         end if;
+         return System.Null_Address;
+   end Copy_C_String;
 
    function Equal_Names (Left, Right : System.Address) return Boolean is
       Offset : Natural := 0;
@@ -186,10 +261,10 @@ package body XML3_C is
             return False;
          end if;
          exit when L = Character'Val (0);
-         Offset := Offset + 1;
-         if Offset > String_Limit then
+         if Offset = String_Limit then
             return False;
          end if;
+         Offset := Offset + 1;
       end loop;
       return True;
    end Equal_Names;
@@ -204,14 +279,18 @@ package body XML3_C is
    function Node_At (Base : System.Address; Index : Natural) return Node_Access
    is
    begin
-      return To_Node (Base + Storage_Offset (Index) * Node_Bytes);
+      return To_Node
+        (Base + To_Storage_Offset_Checked
+           (Multiply_Size (size_t (Index), size_t (Node_Bytes))));
    end Node_At;
 
    function Namespace_At
      (Base : System.Address; Index : Natural) return Ns_Access
    is
    begin
-      return To_Ns (Base + Storage_Offset (Index) * Ns_Bytes);
+      return To_Ns
+        (Base + To_Storage_Offset_Checked
+           (Multiply_Size (size_t (Index), size_t (Ns_Bytes))));
    end Namespace_At;
 
    procedure Append_Child (Parent, Child : System.Address) is
@@ -389,6 +468,9 @@ package body XML3_C is
             then
                Piece := Scan_Length (Item.Content, String_Limit);
                if Piece > 0 then
+                  if Piece > Integer'Last - Total then
+                     return Integer'Last;
+                  end if;
                   Total := Total + Piece;
                end if;
             end if;
@@ -434,12 +516,16 @@ package body XML3_C is
             then
                Piece := Scan_Length (Item.Content, String_Limit);
                if Piece > 0 then
+                  if Piece > Integer'Last - Integer (Cursor) then
+                     exit;
+                  end if;
                   declare
                      Chunk : String (1 .. Piece)
                        with Import, Address => Item.Content;
                      Slot : String (1 .. Piece)
                        with Import,
-                            Address => Target + Storage_Offset (Cursor);
+                            Address => Target
+                              + To_Storage_Offset_Checked (size_t (Cursor));
                   begin
                      Slot := Chunk;
                   end;
@@ -471,26 +557,40 @@ package body XML3_C is
       end loop;
       declare
          Terminator : Character
-           with Import, Address => Target + Storage_Offset (Cursor);
+           with Import,
+             Address => Target + To_Storage_Offset_Checked (size_t (Cursor));
       begin
          Terminator := Character'Val (0);
       end;
    end Content_Copy;
 
-   procedure Build
-     (Input  : String;
-      Result : out System.Address;
-      Status : out int)
+   procedure Build_Arena
+     (Input           : String;
+      Huge            : Boolean;
+      Capacity        : Positive;
+      Nodes_Buffer    : System.Address;
+      Names_Buffer    : System.Address;
+      Index_Buffer    : System.Address;
+      Scratch_A_Buffer : System.Address;
+      Scratch_B_Buffer : System.Address;
+      Result          : out System.Address;
+      Status          : out int)
    is
-      Nodes : XML3_Parser.Node_Array;
-      Names : XML3_Namespaces.Name_Array;
+      Nodes : XML3_Parser.Node_Array (1 .. Capacity)
+        with Import, Address => Nodes_Buffer;
+      Names : XML3_Namespaces.Name_Array (1 .. Capacity)
+        with Import, Address => Names_Buffer;
+      Scratch_A : String (1 .. Input'Length)
+        with Import, Address => Scratch_A_Buffer;
+      Scratch_B : String (1 .. Input'Length)
+        with Import, Address => Scratch_B_Buffer;
       Count : XML3_Parser.Node_Id;
       Root : XML3_Parser.Node_Id;
       Parse_Status : XML3_Parser.Parse_Status;
       Attribute_Values : Natural := 0;
       Namespace_Total : Natural := 1;
       Node_Total : Natural;
-      String_Bytes : Natural;
+      String_Bytes : size_t;
       Block_Size : size_t;
       Block : System.Address := System.Null_Address;
       Nodes_Base : System.Address;
@@ -499,12 +599,20 @@ package body XML3_C is
       Cursor_Limit : System.Address;
       Next_Index : Natural := 1;
       Next_Namespace : Natural := 1;
-      Dom_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
-        [others => 0];
-      Value_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
-        [others => 0];
-      Namespace_Index : array (1 .. XML3_Parser.Max_Nodes) of Natural :=
-        [others => 0];
+      Dom_Index : array (1 .. Capacity) of Natural
+        with Import, Address => Index_Buffer;
+      Value_Index : array (1 .. Capacity) of Natural
+        with Import,
+          Address => Index_Buffer
+            + To_Storage_Offset_Checked
+              (Multiply_Size (size_t (Capacity), size_t (Natural_Bytes)));
+      Namespace_Index : array (1 .. Capacity) of Natural
+        with Import,
+          Address => Index_Buffer
+            + To_Storage_Offset_Checked
+              (Multiply_Size
+                 (Multiply_Size
+                    (size_t (Capacity), size_t (Natural_Bytes)), 2));
 
       procedure Put (Value : String; Target : out System.Address);
       procedure Put_Decoded
@@ -513,8 +621,13 @@ package body XML3_C is
          Target : out System.Address);
 
       procedure Put (Value : String; Target : out System.Address) is
+         Bytes : constant Storage_Offset :=
+           To_Storage_Offset_Checked
+             (Add_Size (size_t (Value'Length), 1));
       begin
-         if Cursor + Storage_Offset (Value'Length + 1) > Cursor_Limit then
+         if Cursor > Cursor_Limit
+           or else Bytes > Cursor_Limit - Cursor
+         then
             raise Program_Error;
          end if;
          declare
@@ -525,7 +638,7 @@ package body XML3_C is
             Slot (Value'Length + 1) := Character'Val (0);
          end;
          Target := Cursor;
-         Cursor := Cursor + Storage_Offset (Value'Length + 1);
+         Cursor := Cursor + Bytes;
       end Put;
 
       procedure Put_Decoded
@@ -540,30 +653,33 @@ package body XML3_C is
             Put ("", Target);
             return;
          end if;
-         declare
-            Raw : constant String (1 .. Last - First + 1) :=
-              Input (First .. Last);
-            Decoded : String (1 .. Raw'Length);
-         begin
          XML3_Text.Decode
-           (Raw, Attribute, References, Decoded, Length, Valid);
+           (Input (First .. Last), Attribute, References,
+            Scratch_A (1 .. Last - First + 1), Length, Valid);
          if not Valid then
             raise Program_Error;
          end if;
-         Put (Decoded (1 .. Length), Target);
-         end;
+         Put (Scratch_A (1 .. Length), Target);
       end Put_Decoded;
    begin
       Result := System.Null_Address;
-      XML3_Parser.Parse (Input, Nodes, Count, Root, Parse_Status);
+      pragma Unreferenced (Root);
+      XML3_Parser.Parse
+        (Input, Scratch_A, Nodes, Count, Root, Parse_Status, Huge);
+      if Parse_Status = XML3_Parser.Arena_Exhausted then
+         Status := Arena_Status;
+         return;
+      end if;
       if Parse_Status = XML3_Parser.Success then
-         XML3_Namespaces.Resolve (Input, Nodes, Count, Names, Parse_Status);
+         XML3_Namespaces.Resolve
+           (Input, Nodes, Count, Names, Scratch_A, Scratch_B, Parse_Status);
       end if;
       case Parse_Status is
          when XML3_Parser.Success => Status := Status_OK;
          when XML3_Parser.Malformed => Status := Status_Malformed;
          when XML3_Parser.Unsupported => Status := Status_Unsupported;
          when XML3_Parser.Limit_Exceeded => Status := Status_Limit_Exceeded;
+         when XML3_Parser.Arena_Exhausted => Status := Arena_Status;
       end case;
       if Status /= Status_OK then
          return;
@@ -581,13 +697,24 @@ package body XML3_C is
             Namespace_Total := Namespace_Total + 1;
          end if;
       end loop;
+      if Natural (Count) > Natural'Last - Attribute_Values - 1 then
+         raise Storage_Error;
+      end if;
       Node_Total := 1 + Natural (Count) + Attribute_Values;
-      String_Bytes := 2 * Input'Length + 16 * (Natural (Count) + 2) + 64;
-      Block_Size :=
-        size_t (Header_Bytes)
-        + size_t (Node_Bytes) * size_t (Node_Total)
-        + size_t (Ns_Bytes) * size_t (Namespace_Total)
-        + size_t (String_Bytes);
+      String_Bytes := Add_Size
+        (Add_Size
+           (Multiply_Size (size_t (Input'Length), 2),
+            Multiply_Size (size_t (Natural (Count)) + 2, 16)),
+         64);
+      Block_Size := Add_Size
+        (Add_Size
+           (Add_Size (size_t (Header_Bytes),
+              Multiply_Size (size_t (Node_Bytes), size_t (Node_Total))),
+            Multiply_Size (size_t (Ns_Bytes), size_t (Namespace_Total))),
+         String_Bytes);
+      if Block_Size > size_t (Storage_Offset'Last) then
+         raise Storage_Error;
+      end if;
 
       Block := C_Malloc (Block_Size);
       if Block = System.Null_Address then
@@ -597,10 +724,12 @@ package body XML3_C is
 
       Nodes_Base := Block + Header_Bytes;
       Namespaces_Base :=
-        Nodes_Base + Storage_Offset (Node_Total) * Node_Bytes;
+        Nodes_Base + To_Storage_Offset_Checked
+          (Multiply_Size (size_t (Node_Total), size_t (Node_Bytes)));
       Cursor :=
-        Namespaces_Base + Storage_Offset (Namespace_Total) * Ns_Bytes;
-      Cursor_Limit := Cursor + Storage_Offset (String_Bytes);
+        Namespaces_Base + To_Storage_Offset_Checked
+          (Multiply_Size (size_t (Namespace_Total), size_t (Ns_Bytes)));
+      Cursor_Limit := Cursor + To_Storage_Offset_Checked (String_Bytes);
       for Index in 0 .. Node_Total - 1 loop
          Node_At (Nodes_Base, Index).all := (others => <>);
       end loop;
@@ -667,10 +796,10 @@ package body XML3_C is
                         Put_Decoded
                           (Source.Value_First, Source.Value_Last,
                            True, True, Value.Content);
-                        Value.Parent := Nodes_Base
-                          + Storage_Offset (Dom_Index (K)) * Node_Bytes;
-                        Item.Children := Nodes_Base
-                          + Storage_Offset (Value_Index (K)) * Node_Bytes;
+                        Value.Parent :=
+                          Node_At (Nodes_Base, Dom_Index (K)).all'Address;
+                        Item.Children :=
+                          Node_At (Nodes_Base, Value_Index (K)).all'Address;
                         Item.Last := Item.Children;
                      end;
                   end if;
@@ -705,12 +834,11 @@ package body XML3_C is
       for K in 1 .. Count loop
          declare
             Child : constant System.Address :=
-              Nodes_Base + Storage_Offset (Dom_Index (K)) * Node_Bytes;
+              Node_At (Nodes_Base, Dom_Index (K)).all'Address;
             Owner : constant System.Address :=
               (if Nodes (K).Parent = 0 then Nodes_Base
-               else Nodes_Base
-                    + Storage_Offset (Dom_Index (Nodes (K).Parent))
-                      * Node_Bytes);
+               else Node_At
+                 (Nodes_Base, Dom_Index (Nodes (K).Parent)).all'Address);
          begin
             if Nodes (K).Kind = XML3_Parser.Attribute_Node then
                if not Names (K).Declaration then
@@ -731,8 +859,7 @@ package body XML3_C is
                Namespace : constant Ns_Access :=
                  Namespace_At (Namespaces_Base, Namespace_Index (K));
                Owner : constant System.Address :=
-                 Nodes_Base
-                 + Storage_Offset (Dom_Index (Source.Parent)) * Node_Bytes;
+                 Node_At (Nodes_Base, Dom_Index (Source.Parent)).all'Address;
             begin
                Namespace.Ns_Type := Namespace_Decl_Type;
                if Names (K).Prefix_Last >= Source.Name_First then
@@ -772,10 +899,99 @@ package body XML3_C is
 
       Result := Nodes_Base;
    exception
+      when Storage_Error =>
+         if Block /= System.Null_Address then
+            C_Free (Block);
+         end if;
+         Result := System.Null_Address;
+         Status := Status_No_Memory;
       when others =>
          if Block /= System.Null_Address then
             C_Free (Block);
          end if;
+         Result := System.Null_Address;
+         Status := Status_Internal_Error;
+   end Build_Arena;
+
+   procedure Build
+     (Input  : String;
+      Huge   : Boolean;
+      Result : out System.Address;
+      Status : out int)
+   is
+      Capacity : Natural := Natural'Min (Initial_Arena, Input'Length);
+      Nodes_Buffer : System.Address := System.Null_Address;
+      Names_Buffer : System.Address := System.Null_Address;
+      Index_Buffer : System.Address := System.Null_Address;
+      Scratch_A_Buffer : System.Address := System.Null_Address;
+      Scratch_B_Buffer : System.Address := System.Null_Address;
+
+      procedure Free_Workspaces is
+      begin
+         if Nodes_Buffer /= System.Null_Address then
+            C_Free (Nodes_Buffer);
+            Nodes_Buffer := System.Null_Address;
+         end if;
+         if Names_Buffer /= System.Null_Address then
+            C_Free (Names_Buffer);
+            Names_Buffer := System.Null_Address;
+         end if;
+         if Index_Buffer /= System.Null_Address then
+            C_Free (Index_Buffer);
+            Index_Buffer := System.Null_Address;
+         end if;
+         if Scratch_A_Buffer /= System.Null_Address then
+            C_Free (Scratch_A_Buffer);
+            Scratch_A_Buffer := System.Null_Address;
+         end if;
+         if Scratch_B_Buffer /= System.Null_Address then
+            C_Free (Scratch_B_Buffer);
+            Scratch_B_Buffer := System.Null_Address;
+         end if;
+      end Free_Workspaces;
+   begin
+      Result := System.Null_Address;
+      loop
+         Nodes_Buffer := C_Malloc
+           (Multiply_Size (size_t (Capacity), size_t (Parser_Node_Bytes)));
+         Names_Buffer := C_Malloc
+           (Multiply_Size (size_t (Capacity), size_t (Name_Bytes)));
+         Index_Buffer := C_Malloc
+           (Multiply_Size
+              (Multiply_Size (size_t (Capacity), size_t (Natural_Bytes)), 3));
+         Scratch_A_Buffer := C_Malloc (size_t (Input'Length));
+         Scratch_B_Buffer := C_Malloc (size_t (Input'Length));
+         if Nodes_Buffer = System.Null_Address
+           or else Names_Buffer = System.Null_Address
+           or else Index_Buffer = System.Null_Address
+           or else Scratch_A_Buffer = System.Null_Address
+           or else Scratch_B_Buffer = System.Null_Address
+         then
+            Free_Workspaces;
+            Status := Status_No_Memory;
+            return;
+         end if;
+         Build_Arena
+           (Input, Huge, Positive (Capacity), Nodes_Buffer, Names_Buffer,
+            Index_Buffer, Scratch_A_Buffer, Scratch_B_Buffer, Result, Status);
+         Free_Workspaces;
+         exit when Status /= Arena_Status;
+         if Capacity = XML3_Parser.Max_Nodes then
+            Status := Status_Limit_Exceeded;
+            return;
+         elsif Capacity > XML3_Parser.Max_Nodes / 2 then
+            Capacity := XML3_Parser.Max_Nodes;
+         else
+            Capacity := Capacity * 2;
+         end if;
+      end loop;
+   exception
+      when Storage_Error =>
+         Free_Workspaces;
+         Result := System.Null_Address;
+         Status := Status_No_Memory;
+      when others =>
+         Free_Workspaces;
          Result := System.Null_Address;
          Status := Status_Internal_Error;
    end Build;
@@ -800,6 +1016,7 @@ package body XML3_C is
       Status   : out int) return System.Address
    is
       Result : System.Address;
+      Huge : Boolean;
    begin
       if Buffer = System.Null_Address
         or else Size <= 0
@@ -815,18 +1032,24 @@ package body XML3_C is
          Status := Status_Unsupported;
          return System.Null_Address;
       end if;
-      if Options < 0
-        or else Options mod 32 /= 0
-        or else Options mod 2048 >= 128
-        or else Options / 2048 > 1
-      then
+      if Options < 0 then
          Status := Status_Unsupported;
          return System.Null_Address;
       end if;
       declare
+         Bits : constant Interfaces.Unsigned_32 :=
+           Interfaces.Unsigned_32 (Options);
+      begin
+         if (Bits and not Allowed_Options) /= 0 then
+            Status := Status_Unsupported;
+            return System.Null_Address;
+         end if;
+         Huge := (Bits and 16#0008_0000#) /= 0;
+      end;
+      declare
          Source : String (1 .. Natural (Size)) with Import, Address => Buffer;
       begin
-         Build (Source, Result, Status);
+         Build (Source, Huge, Result, Status);
       end;
       return Result;
    end Parse_Buffer;
@@ -894,13 +1117,22 @@ package body XML3_C is
       Options  : Interfaces.C.int) return System.Address
    is
       pragma Unreferenced (URL);
-      Length : constant Integer := Scan_Length (Cur, Max_Input);
       Code : int := Status_Internal_Error;
    begin
-      if Length <= 0 then
+      if Cur = System.Null_Address then
          return System.Null_Address;
       end if;
-      return Parse_Buffer (Cur, int (Length), Encoding, Options, Code);
+      declare
+         Length : constant size_t := C_Strlen (Cur);
+      begin
+         if Length = 0 or else Length > size_t (Max_Input)
+           or else Length > size_t (int'Last)
+         then
+            return System.Null_Address;
+         end if;
+         return Parse_Buffer
+           (Cur, int (Length), Encoding, Options, Code);
+      end;
    exception
       when others =>
          return System.Null_Address;
@@ -970,7 +1202,7 @@ package body XML3_C is
             declare
                Length : constant Natural := Content_Length (Node);
             begin
-               Owned_Result := C_Malloc (size_t (Length) + 1);
+               Owned_Result := C_Malloc (Add_Size (size_t (Length), 1));
                if Owned_Result = System.Null_Address then
                   return System.Null_Address;
                end if;
@@ -994,7 +1226,7 @@ package body XML3_C is
                if Length < 0 then
                   return System.Null_Address;
                end if;
-               return Alloc_String (To_String (Value, Length));
+               return Copy_C_String (Value, Natural (Length));
             end;
          else
             declare
@@ -1004,7 +1236,7 @@ package body XML3_C is
                if Length < 0 then
                   return System.Null_Address;
                end if;
-               return Alloc_String (To_String (Item.Content, Length));
+               return Copy_C_String (Item.Content, Natural (Length));
             end;
          end if;
       end;

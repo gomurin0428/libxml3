@@ -10,7 +10,8 @@ extern "C" {
 typedef enum {
     XML_PARSE_NOERROR = 1 << 5,
     XML_PARSE_NOWARNING = 1 << 6,
-    XML_PARSE_NONET = 1 << 11
+    XML_PARSE_NONET = 1 << 11,
+    XML_PARSE_HUGE = 1 << 19
 } xmlParserOption;
 
 void xmlInitParser(void);

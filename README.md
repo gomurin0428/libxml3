@@ -56,3 +56,10 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
 ではありません。
+
+通常 parser profile は name component/PI target を 50,000 bytes、decoded value
+を 10,000,000 bytes、深さを 256 に制限します。`XML_PARSE_HUGE` はそれぞれ
+10,000,000 bytes、1,000,000,000 bytes、2,048 に拡張します。文書全体の 64 KiB
+上限や 2,048-node policy cap はなく、C adapter は heap arena を必要に応じて
+拡張します。これらは表現・割り当て可能性の保証や完全な DoS 防止を意味せず、
+詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。

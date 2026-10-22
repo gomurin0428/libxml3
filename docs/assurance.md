@@ -8,11 +8,17 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 `proof.gpr` includes exactly `XML3_Text`, `XML3_Parser`, and `XML3_Namespaces`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
-The parser is iterative: its explicit nesting stack is bounded to 64 elements,
-input to 65,536 bytes, and the flat node arena to 2,048 entries (attributes count
-as entries). It has no filesystem, network, callback, or dynamic allocator access.
+The parser is iterative. Its statically bounded nesting stack holds at most
+2,048 elements; the normal profile permits depth 256 and `XML_PARSE_HUGE` permits
+2,048. There is no fixed whole-document byte cap or 2,048-node policy cap. Input
+indices are bounded by `XML3_Text.Max_Bytes = Integer'Last - 16`, and node IDs by
+half that representation bound. The SPARK core has no allocator, filesystem,
+network, or callback access. The C adapter supplies bounded node/name arrays and
+heap scratch buffers, grows the arena geometrically when the parser reports
+`Arena_Exhausted`, and reparses; adapter allocation, pointer arithmetic, and
+ownership remain outside the proof scope.
 
-The recorded result is [576 checks discharged, none unproved](proof-report.md)
+The recorded result is [648 checks discharged, none unproved](proof-report.md)
 across the three core units, including `XML3_Namespaces`, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -66,7 +72,12 @@ document are supported. Unsupported parser options fail, not silently degrade.
 The current profile supports XML 1.0 UTF-8 content, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,
 attributes, text, the five predefined entities, numeric references, comments,
-CDATA and processing instructions. XML declarations accept version 1.0,
+CDATA and processing instructions. Normal resource ceilings are 50,000 bytes
+per QName component/PI target, 10,000,000 decoded bytes per value, and depth
+256. `XML_PARSE_HUGE` raises these to 10,000,000 bytes, 1,000,000,000 bytes, and
+depth 2,048 respectively; it does not enable DTD, recovery, or other unsupported
+features. These per-component/per-value thresholds are distinct from whole-input
+and representation bounds. XML declarations accept version 1.0,
 encoding `UTF-8`/`utf-8`, and standalone yes/no, in XML order. CR/CRLF line endings
 are normalized, and literal attribute whitespace is normalized to spaces while
 character references retain their referenced characters. Names follow the XML 1.0

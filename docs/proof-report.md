@@ -2,8 +2,9 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **576 discharged checks**, **0 unproved**,
-**0 justified**, and no warning/error diagnostics for the source hashes below.
+GNATprove completed with exit code **0**, **648 discharged checks**, **0 unproved**,
+and **0 justified**. The run emitted non-failing warnings about unused assignments,
+parser outputs, and the initialized scratch value; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a report for the three SPARK units, not a proof of the C-facing library as
 a whole and not a proof of full XML conformance. See [assurance.md](assurance.md).
@@ -11,14 +12,14 @@ a whole and not a proof of full XML conformance. See [assurance.md](assurance.md
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 5 |
-| Initialization | 57 |
-| Run-time checks | 338 |
-| Assertions / loop invariants | 66 |
-| Functional contracts | 79 |
-| Termination | 31 |
-| Total | 576 |
+| Initialization | 60 |
+| Run-time checks | 399 |
+| Assertions / loop invariants | 75 |
+| Functional contracts | 80 |
+| Termination | 29 |
+| Total | 648 |
 
-79 checks were discharged by flow analysis and 497 by proof. `Parse`, `Decode`,
+79 checks were discharged by flow analysis and 569 by proof. `Parse`, `Decode`,
 and namespace `Resolve` have explicit `Always_Terminates` aspects.
 Termination does not mean constant time
 or a proved wall-clock bound. The numerical totals are the analyzer's categories;
@@ -46,18 +47,18 @@ The final summary is generated at `obj/proof/gnatprove/gnatprove.out`.
 The proof project explicitly selects all three complete core specs and bodies. It
 does **not** include the Ada C adapter. No model replaces a core body and no
 imported executable function appears in the core. All public core preconditions
-must be established by their callers; the unproved C adapter checks input sizes
-and rebases Ada strings before calling them.
+must be established by their callers; the C adapter is outside the proof scope
+and checks input sizes and array bounds while supplying heap workspaces to the core.
 
 ## Source identity (SHA-256)
 
 ```text
-86342485eee616af6060297cc8bf02951559d32a9d5274652ea1ed76ab0fcd17  src/xml3_text.ads
-9344dd8dec55845dba243c95dd359ad09b6447b121725ba4c4bfe90c4bcd9999  src/xml3_text.adb
-97c9d2d32fe4d2f2f1c3dfe2a17189be4ede0eefeddc12c2e77052feb19e6735  src/xml3_parser.ads
-db4d0b7c48042589e66e446f6574e7f0e68a379d3e9ca99977cb38726ac533aa  src/xml3_parser.adb
-3c6d280155993cf20da3a35b4605bdbf91e906d8e271d7323354574fb0552cba  src/xml3_namespaces.ads
-368df47373a9f20b4f8af40e333eea7270a5c0f14e1e33d9cd25e74e0e9c9b3a  src/xml3_namespaces.adb
+cb20d441b6fdce104d65f7ee67ca140ca7c9815e55315960986334074cdfa7fb  src/xml3_text.ads
+1235d69f037ea80169feb37c84db4803ba07f07b2acbf024ea3f2202075f47b3  src/xml3_text.adb
+195829f9223c3caddaf52407b9b49cb54879993e012d39239c9df17f94d74eb9  src/xml3_parser.ads
+42c65322e4f5d0cd486213f31709ce5d6554e51383ba12ce787b9d0af6656086  src/xml3_parser.adb
+821360f81f9f05491c49c31286e8e2bff689463d2dd708d7ad7688561c6b76eb  src/xml3_namespaces.ads
+a6ee30ec54d99c8942c62efad12c04826b747588940966afa57c5414f4f5c514  src/xml3_namespaces.adb
 67e6636bfadd7ea6ee9ba2a0475cf1072b48c7a66e193944b33ce4d843b51fee  proof.gpr
 ```
 
