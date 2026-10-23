@@ -100,8 +100,9 @@ value は raw string として扱い、entity syntax を展開しません。
 
 `xmlSetNsProp` は href と local name が一致する property を更新し、同じ URI の別
 prefix/namespace pointer を渡した場合も attribute pointer、`_private`、sibling links
-を保ったまま `ns` pointer を渡されたものへ変更します。NULL href は no-namespace
-として照合します。`xmlUnsetNsProp` も href/local-name で削除します。
+を保ったまま `ns` pointer を渡されたものへ変更します。NULL namespace は no-namespace
+として照合しますが、non-NULL namespace の href が NULL なら更新を拒否します。
+`xmlUnsetNsProp` も href/local-name で削除し、NULL href は no-namespace として照合します。
 `xmlNewProp` は namespace-free attribute を作り、NULL parent、重複名、NULL/empty
 value を受け付けます。NULL value は text child なし、empty value は empty text child
 です。`xmlSetProp` は unqualified name なら no-namespace property を扱い、QName なら
