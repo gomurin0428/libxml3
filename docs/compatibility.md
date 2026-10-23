@@ -73,12 +73,28 @@ XML name/UTF-8 の妥当性検証は行いません。`xmlNewText(NULL)` は con
 扱います。element 親ではこの子型を受け入れますが、document 親への text/CDATA
 直下追加と、すでに root がある document への別 element 追加は拒否します。
 隣接 text は入力内容を先に確保してから既存末尾に結合し、既存末尾のポインターを
-返します。属性追加、属性 unlink、未対応 node type の編集は拒否します。
+返します。`xmlAddChild` による属性追加、`xmlUnlinkNode` による attribute unlink、
+未対応 node type の編集は拒否します。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。
 document、attribute、namespace pointer は code 115 で拒否します。これは呼び出し側に
 unlink を要求する upstream 動作より安全な差です。
+
+`xmlNewProp`、`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` は
+namespace-free attribute に限ります。name は `:` を含まない C string をコピーし、
+colon を含む場合は tree error 115 で拒否します。XML name/UTF-8 の妥当性は検証しません。
+value も raw string として扱い、entity syntax を展開しません。`xmlNewProp(NULL, ...)` は detached attribute を作成し、
+重複名は既存順の末尾に追加します。NULL value は text child なし、empty value は
+empty text child です。`xmlSetProp` は同名の no-namespace attribute があれば
+attribute pointer、`_private`、sibling links を保って値を置換し、なければ末尾に追加
+します。置換時に旧 value children は解放されます。新しい値の割り当てを置換前に
+完了するため、OOM では元の property list と値を保持します。`xmlUnsetProp` と
+`xmlRemoveProp` は attached attribute を削除し、欠落・非対応の場合は `-1` を返します。
+`xmlFreeProp` は detached attribute も解放でき、attached attribute は先に安全に
+unlink します。これは attached attribute の unlink を呼び出し側に要求する upstream
+動作より安全な差です。namespace-qualified attributes はこれらの API では編集できず、
+`xmlFreeProp` も code 115 で拒否します。
 
 添付可能なのは documentless subtree または同一文書に属する subtree のみです。
 他文書との移動や、別文書に関連付いた node の documentless parent への移動は
@@ -92,13 +108,15 @@ source document が解放されても node 自体が解放されるまで有効�
 
 caller は有効な library pointer lifetime、直接の tree field 書き換えをしないこと、
 同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
-ownership/refcount/pointer layer は SPARK proof の対象外です。属性・namespace の
-作成、copy、cross-document move、serialization は未対応です。
+ownership/refcount/pointer layer は SPARK proof の対象外です。namespace 作成、
+attribute/namespace copy、namespace-qualified attribute editing、cross-document move、
+serialization は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
 いる文書 subtree と document の参照を解放します。detached node が残る場合は
-その arena backing も保持され、node の解放には `xmlFreeNode` を使います。
+その arena backing も保持され、node の解放には `xmlFreeNode`、detached attribute
+の解放には `xmlFreeProp` を使います。
 `xmlFreeDoc` 後の document handle は使用できません。`xmlNodeGetContent` と
 `xmlGetProp` の返却値は
 `xmlFree` で解放してください。`xmlStrlen` は C `int` に収まらない長さに
@@ -165,8 +183,8 @@ callback は使用しません。libxml3 は libxml2 と同名の `xml*` symbols
 文字列は C の `malloc`/`free` allocator family を使用します。
 
 DTD、未知の entity、複雑な libxml2 parser options、ファイル入力、
-SAX、XInclude、検証、変更 API、XPath、スキーマ、UTF-8/UTF-16 以外の encoding は
-未対応です。属性値と通常テキストでは predefined/numeric reference を処理し、
+SAX、XInclude、検証、上記に列挙していない変更 API、XPath、スキーマ、
+UTF-8/UTF-16 以外の encoding は未対応です。XML 読み込み時の属性値と通常テキストでは predefined/numeric reference を処理し、
 CDATA・コメント・PI は reference 展開しません。
 名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
 単一 prefix/local-name 組だけを受理し、prefix は宣言済みでなければなりません。

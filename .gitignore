@@ -35,6 +35,9 @@ tests/fuzz-test-sanitize
 tests/dom-test
 tests/dom-test-reference
 tests/dom-test-sanitize
+tests/attribute-test
+tests/attribute-test-reference
+tests/attribute-test-sanitize
 tests/limit-error-test
 tests/differential-libxml3
 tests/differential-system

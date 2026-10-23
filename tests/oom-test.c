@@ -332,6 +332,176 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)merge_left->content, "leftright") == 0);
             merge_right = NULL;
         }
+    } else if (strcmp(operation, "attr-new") == 0) {
+        xmlNodePtr root;
+        xmlAttrPtr before, after, created;
+        xmlNodePtr before_child, after_child;
+
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        before = xmlNewProp(root, BAD_CAST "before", BAD_CAST "left");
+        after = xmlNewProp(root, BAD_CAST "after", BAD_CAST "right");
+        assert(before != NULL && after != NULL);
+        before_child = before->children;
+        after_child = after->children;
+        xml3_oom_enable(fail_index);
+        created = xmlNewProp(root, BAD_CAST "middle", BAD_CAST "value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == NULL && before->children == before_child);
+            assert(after->children == after_child);
+            assert(strcmp((const char *)before_child->content, "left") == 0);
+            assert(strcmp((const char *)after_child->content, "right") == 0);
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->properties == before);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == created && created->prev == after);
+            assert(created->next == NULL);
+            assert(strcmp((const char *)created->children->content, "value") == 0);
+            xmlFreeProp(created);
+        }
+    } else if (strcmp(operation, "attr-detached") == 0) {
+        xmlAttrPtr created;
+
+        xml3_oom_enable(fail_index);
+        created = xmlNewProp(NULL, BAD_CAST "standalone", BAD_CAST "value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            require_oom_error();
+        } else {
+            assert(created != NULL && created->parent == NULL &&
+                   created->doc == NULL);
+            assert(created->children != NULL);
+            assert(strcmp((const char *)created->children->content, "value") == 0);
+            xmlFreeProp(created);
+        }
+    } else if (strcmp(operation, "attr-set-new") == 0) {
+        xmlNodePtr root;
+        xmlAttrPtr before, after, created;
+        xmlNodePtr before_child, after_child;
+
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        before = xmlNewProp(root, BAD_CAST "before", BAD_CAST "left");
+        after = xmlNewProp(root, BAD_CAST "after", BAD_CAST "right");
+        assert(before != NULL && after != NULL);
+        before_child = before->children;
+        after_child = after->children;
+        xml3_oom_enable(fail_index);
+        created = xmlSetProp(root, BAD_CAST "added", BAD_CAST "value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == NULL && before->children == before_child);
+            assert(after->children == after_child);
+            assert(strcmp((const char *)before_child->content, "left") == 0);
+            assert(strcmp((const char *)after_child->content, "right") == 0);
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->properties == before);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == created && created->prev == after);
+            assert(created->next == NULL);
+            assert(strcmp((const char *)created->children->content, "value") == 0);
+            xmlFreeProp(created);
+        }
+    } else if (strcmp(operation, "attr-set") == 0) {
+        static const char input[] =
+            "<root before='left' target='old' after='right'/>";
+        xmlNodePtr root;
+        xmlAttrPtr before, target, after, result_attr;
+        xmlNodePtr old_children;
+        xmlChar *old_content;
+        int private_marker;
+
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        before = root->properties;
+        assert(before != NULL);
+        target = before->next;
+        assert(target != NULL);
+        after = target->next;
+        assert(after != NULL);
+        old_children = target->children;
+        old_content = old_children->content;
+        target->_private = &private_marker;
+        xml3_oom_enable(fail_index);
+        result_attr = xmlSetProp(root, BAD_CAST "target", BAD_CAST "replacement");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result_attr == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == target && target->prev == before);
+            assert(target->next == after && after->prev == target);
+            assert(after->next == NULL && target->_private == &private_marker);
+            assert(target->children == old_children);
+            assert(old_children->content == old_content);
+            assert(strcmp((const char *)old_content, "old") == 0);
+            require_oom_error();
+        } else {
+            assert(result_attr == target);
+            assert(root->properties == before && before->next == target);
+            assert(target->prev == before && target->next == after);
+            assert(after->prev == target && after->next == NULL);
+            assert(target->_private == &private_marker);
+            assert(target->children != old_children);
+            assert(strcmp((const char *)target->children->content,
+                          "replacement") == 0);
+        }
+    } else if (strcmp(operation, "attr-delete") == 0) {
+        xmlNodePtr root;
+        xmlAttrPtr first, second, third;
+
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        first = xmlNewProp(root, BAD_CAST "first", BAD_CAST "one");
+        second = xmlNewProp(root, BAD_CAST "second", BAD_CAST "two");
+        third = xmlNewProp(root, BAD_CAST "third", BAD_CAST "three");
+        assert(first != NULL && second != NULL && third != NULL);
+        xml3_oom_enable(0);
+        result = xmlRemoveProp(first);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(result == 0 && !injected && allocation_count == 0);
+        assert(root->properties == second && second->prev == NULL);
+        assert(second->next == third && third->prev == second);
+        xml3_oom_enable(0);
+        xmlFreeProp(second);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        assert(root->properties == third && third->prev == NULL);
+        xml3_oom_enable(0);
+        result = xmlUnsetProp(root, BAD_CAST "third");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(result == 0 && !injected && allocation_count == 0);
+        assert(root->properties == NULL);
     } else {
         assert(0);
         return 1;
@@ -345,6 +515,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "attr-delete") == 0) {
+        puts("attribute deletion used no allocations");
+        return 0;
+    }
     if (!injected)
         return 2;
     printf("allocation failure hit: operation=%s index=%ld count=%ld\n",

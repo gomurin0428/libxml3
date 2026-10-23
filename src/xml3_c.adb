@@ -1928,6 +1928,194 @@ package body XML3_C is
       end loop;
    end Set_Subtree_Document;
 
+   function Plain_Property_Name (Name : System.Address) return Boolean is
+   begin
+      if Name = System.Null_Address then
+         return False;
+      end if;
+      for C of C_String_Value (Name) loop
+         if C = ':' then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Plain_Property_Name;
+
+   function Bind_Property_Subtree
+     (Root, Doc : System.Address) return Boolean
+   is
+      Pin_Count : Natural;
+      Block : constant System.Address :=
+        (if Doc = System.Null_Address
+         then System.Null_Address else Owner_Block (Doc));
+   begin
+      if not Valid_Subtree_Document (Root, Doc, Pin_Count) then
+         Report_Dom_Error (115);
+         return False;
+      end if;
+      if Block /= System.Null_Address
+        and then To_Header (Block).References > Natural'Last - Pin_Count
+      then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return False;
+      end if;
+      Set_Subtree_Document (Root, Doc, Block);
+      return True;
+   end Bind_Property_Subtree;
+
+   function New_Prop
+     (Node, Name, Value : System.Address) return System.Address
+   is
+      Attribute : System.Address := System.Null_Address;
+      Text : System.Address;
+   begin
+      if (Node /= System.Null_Address
+          and then To_Node (Node).Node_Type /= Element_Type)
+        or else not Plain_Property_Name (Name)
+      then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      Attribute := Allocate_Node
+        (Attr_Type, C_String_Value (Name), "", False, System.Null_Address);
+      if Attribute = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if Value /= System.Null_Address then
+         Text := New_Text (Value);
+         if Text = System.Null_Address then
+            Free_Tree (Attribute);
+            return System.Null_Address;
+         end if;
+         Append_Child (Attribute, Text);
+      end if;
+      if Node /= System.Null_Address then
+         if not Bind_Property_Subtree (Attribute, To_Node (Node).Doc) then
+            Free_Tree (Attribute);
+            return System.Null_Address;
+         end if;
+         Append_Property (Node, Attribute);
+      end if;
+      return Attribute;
+   exception
+      when others =>
+         if Attribute /= System.Null_Address then
+            Unlink_Internal (Attribute);
+            Free_Tree (Attribute);
+         end if;
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end New_Prop;
+
+   function Set_Prop
+     (Node, Name, Value : System.Address) return System.Address
+   is
+      Attribute : System.Address;
+      Replacement : System.Address := System.Null_Address;
+      Old : System.Address;
+   begin
+      if Node = System.Null_Address
+        or else To_Node (Node).Node_Type /= Element_Type
+        or else not Plain_Property_Name (Name)
+      then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      Attribute := Has_Ns_Prop (Node, Name, System.Null_Address);
+      if Attribute = System.Null_Address then
+         return New_Prop (Node, Name, Value);
+      end if;
+      if Value /= System.Null_Address then
+         Replacement := New_Text (Value);
+         if Replacement = System.Null_Address then
+            return System.Null_Address;
+         end if;
+         if not Bind_Property_Subtree (Replacement, To_Node (Node).Doc) then
+            Free_Tree (Replacement);
+            return System.Null_Address;
+         end if;
+      end if;
+      while To_Node (Attribute).Children /= System.Null_Address loop
+         Old := To_Node (Attribute).Children;
+         Unlink_Internal (Old);
+         Free_Tree (Old);
+      end loop;
+      if Replacement /= System.Null_Address then
+         Append_Child (Attribute, Replacement);
+         Replacement := System.Null_Address;
+      end if;
+      return Attribute;
+   exception
+      when others =>
+         if Replacement /= System.Null_Address then
+            Unlink_Internal (Replacement);
+            Free_Tree (Replacement);
+         end if;
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end Set_Prop;
+
+   function Plain_Attribute (Attribute : System.Address) return Boolean is
+   begin
+      return Attribute /= System.Null_Address
+        and then To_Node (Attribute).Node_Type = Attr_Type
+        and then To_Node (Attribute).Ns = System.Null_Address;
+   end Plain_Attribute;
+
+   function Remove_Prop (Attribute : System.Address) return int is
+   begin
+      if not Plain_Attribute (Attribute)
+        or else To_Node (Attribute).Parent = System.Null_Address
+      then
+         Report_Dom_Error (115);
+         return -1;
+      end if;
+      Unlink_Internal (Attribute);
+      Free_Tree (Attribute);
+      return 0;
+   exception
+      when others =>
+         Report_Dom_Error (115);
+         return -1;
+   end Remove_Prop;
+
+   function Unset_Prop (Node, Name : System.Address) return int is
+      Attribute : System.Address;
+   begin
+      if Node = System.Null_Address
+        or else To_Node (Node).Node_Type /= Element_Type
+        or else not Plain_Property_Name (Name)
+      then
+         Report_Dom_Error (115);
+         return -1;
+      end if;
+      Attribute := Has_Ns_Prop (Node, Name, System.Null_Address);
+      if Attribute = System.Null_Address then
+         return -1;
+      end if;
+      return Remove_Prop (Attribute);
+   exception
+      when others =>
+         Report_Dom_Error (115);
+         return -1;
+   end Unset_Prop;
+
+   procedure Free_Prop (Attribute : System.Address) is
+   begin
+      if Attribute = System.Null_Address then
+         return;
+      end if;
+      if not Plain_Attribute (Attribute) then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      Unlink_Internal (Attribute);
+      Free_Tree (Attribute);
+   exception
+      when others =>
+         Report_Dom_Error (115);
+   end Free_Prop;
+
    function Valid_Child_Kind (Kind : int) return Boolean is
    begin
       return Kind = Element_Type or else Kind = Text_Type
