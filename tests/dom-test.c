@@ -122,6 +122,74 @@ static void test_promote_descendant_to_root(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_namespace_lookup_after_move(void) {
+    static const char input[] =
+        "<r><source xmlns:p='urn:move'><p:item a='v'><leaf/>"
+        "<shadow xmlns:p='urn:other'><leaf/></shadow></p:item></source>"
+        "<target/></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNodePtr source;
+    xmlNodePtr target;
+    xmlNodePtr item;
+    xmlNodePtr leaf;
+    xmlNodePtr shadow;
+    xmlNodePtr shadow_leaf;
+    xmlNodePtr text;
+    xmlNodePtr borrowed;
+    xmlNodePtr borrowed_child;
+    xmlAttrPtr attr;
+    xmlNsPtr item_ns;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    source = root->children;
+    target = source->next;
+    item = source->children;
+    leaf = item->children;
+    shadow = leaf->next;
+    shadow_leaf = shadow->children;
+    attr = item->properties;
+    item_ns = item->ns;
+    assert(target != NULL && item != NULL && item_ns != NULL);
+    assert(leaf != NULL && shadow != NULL && shadow_leaf != NULL && attr != NULL);
+
+    assert(xmlAddChild(target, item) == item);
+    assert(item->ns == item_ns);
+    assert(xmlSearchNs(doc, item, BAD_CAST "p") == NULL);
+    assert(xmlSearchNsByHref(doc, item, BAD_CAST "urn:move") == NULL);
+
+    assert(xmlSearchNs(doc, leaf, BAD_CAST "p") == item_ns);
+    assert(xmlSearchNsByHref(doc, leaf, BAD_CAST "urn:move") == item_ns);
+    assert(xmlSearchNs(doc, (xmlNodePtr)attr, BAD_CAST "p") == item_ns);
+    assert(xmlSearchNsByHref(doc, (xmlNodePtr)attr, BAD_CAST "urn:move") ==
+           item_ns);
+
+    text = xmlNewText(BAD_CAST "added");
+    assert(text != NULL && xmlAddChild(item, text) == text);
+    assert(xmlSearchNs(doc, text, BAD_CAST "p") == item_ns);
+    assert(xmlSearchNsByHref(doc, text, BAD_CAST "urn:move") == item_ns);
+
+    assert(shadow->nsDef != NULL);
+    assert(xmlSearchNs(doc, shadow_leaf, BAD_CAST "p") == shadow->nsDef);
+    assert(xmlSearchNsByHref(doc, shadow_leaf, BAD_CAST "urn:other") ==
+           shadow->nsDef);
+    assert(xmlSearchNsByHref(doc, shadow_leaf, BAD_CAST "urn:move") == NULL);
+
+    borrowed = xmlNewNode(item_ns, BAD_CAST "borrowed");
+    borrowed_child = xmlNewNode(NULL, BAD_CAST "child");
+    assert(borrowed != NULL && borrowed_child != NULL);
+    assert(xmlAddChild(target, borrowed) == borrowed);
+    assert(xmlAddChild(borrowed, borrowed_child) == borrowed_child);
+    assert(borrowed->ns == item_ns);
+    assert(xmlSearchNs(doc, borrowed, BAD_CAST "p") == NULL);
+    assert(xmlSearchNsByHref(doc, borrowed, BAD_CAST "urn:move") == NULL);
+    assert(xmlSearchNs(doc, borrowed_child, BAD_CAST "p") == item_ns);
+    assert(xmlSearchNsByHref(doc, borrowed_child, BAD_CAST "urn:move") ==
+           item_ns);
+    xmlFreeDoc(doc);
+}
+
 static void test_text_merge_and_edit_flow(void) {
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
@@ -304,6 +372,7 @@ static void test_free_rejects_unsupported_types(void) {
 int main(void) {
     test_constructors_and_root_replacement();
     test_promote_descendant_to_root();
+    test_namespace_lookup_after_move();
     test_text_merge_and_edit_flow();
     test_parsed_unlink_and_reinsert();
 #ifndef XML3_REFERENCE_TEST

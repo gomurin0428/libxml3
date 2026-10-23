@@ -551,6 +551,13 @@ package body XML3_C is
                   end if;
                   Ns_Current := To_Ns (Ns_Current).Next;
                end loop;
+               if Current /= Node
+                 and then Item.Ns /= System.Null_Address
+                 and then To_Ns (Item.Ns).Href /= System.Null_Address
+                 and then Equal_Names (To_Ns (Item.Ns).Prefix, Prefix)
+               then
+                  return Item.Ns;
+               end if;
             end if;
             Current := Item.Parent;
          end;
@@ -598,6 +605,23 @@ package body XML3_C is
                   end if;
                   Ns_Current := To_Ns (Ns_Current).Next;
                end loop;
+               if Current /= Node
+                 and then Item.Ns /= System.Null_Address
+               then
+                  declare
+                     Candidate : constant Ns_Access := To_Ns (Item.Ns);
+                  begin
+                     if (not Attribute_Input
+                         or else Candidate.Prefix /= System.Null_Address)
+                       and then Candidate.Href /= System.Null_Address
+                       and then Equal_Names (Candidate.Href, Href)
+                       and then Search_Ns_Internal
+                         (Node, Candidate.Prefix) = Item.Ns
+                     then
+                        return Item.Ns;
+                     end if;
+                  end;
+               end if;
             end if;
             Current := Item.Parent;
          end;

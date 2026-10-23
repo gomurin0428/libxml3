@@ -55,6 +55,9 @@ DOM fields の直接変更はサポートせず、構造編集には下記 API �
 document arena に格納されます。`xmlFreeDoc` は現在接続されている subtree を
 反復解放して document の参照を解放しますが、detached live node や借用 namespace
 が参照を保持している arena とその文字列は最後の参照が解放されるまで残ります。
+node の `ns` は移動時に再調整されません。宣言 scope 外へ移動した node 自身の
+lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重して ancestor
+の retained `ns` binding を参照します。
 
 ### 限定的な作成・編集 API
 
