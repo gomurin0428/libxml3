@@ -217,7 +217,7 @@ DTD、未知の entity、複雑な libxml2 parser options、ファイル入力�
 SAX、XInclude、検証、上記に列挙していない変更 API、XPath、スキーマ、
 UTF-8/UTF-16 以外の encoding は未対応です。XML 読み込み時の属性値と通常テキストでは predefined/numeric reference を処理し、
 CDATA・コメント・PI は reference 展開しません。
-名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
+名前空間は読み取り・参照 API と、上記の限定した編集 API に対応します。読み込み時の QName は XML 1.0 Fifth Edition の Unicode NCName の
 単一 prefix/local-name 組だけを受理し、prefix は宣言済みでなければなりません。
 無効な QName、予約 namespace binding、未束縛 prefix、または同じ expanded
 attribute name は `XML3_STATUS_MALFORMED` として fail-closed で拒否します。
