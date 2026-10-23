@@ -193,7 +193,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \

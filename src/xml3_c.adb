@@ -32,6 +32,10 @@ package body XML3_C is
    Initial_Arena : constant := 2_048;
    Allowed_Options : constant Interfaces.Unsigned_32 := 16#0008_0860#;
    Arena_Status : constant int := -1;
+   Implicit_Xml_Prefix : aliased constant String :=
+     "xml" & Character'Val (0);
+   Implicit_Xml_Href : aliased constant String :=
+     XML3_Namespaces.XML_URI & Character'Val (0);
 
    type Xml_Node is record
       Private_Data : System.Address := System.Null_Address;
@@ -186,7 +190,8 @@ package body XML3_C is
    procedure Append_Ns_Def (Element, Namespace : System.Address);
    function Implicit_Ns_For_Node (Node : System.Address) return System.Address;
    function Search_Ns_Internal
-     (Node, Prefix : System.Address) return System.Address;
+     (Node, Prefix : System.Address;
+      Creation_Failed : access Boolean := null) return System.Address;
    function Search_Ns_By_Href_Internal
      (Node, Href : System.Address) return System.Address;
    function Content_Length (Start : System.Address) return Natural;
@@ -542,17 +547,29 @@ package body XML3_C is
    end Implicit_Ns_For_Node;
 
    function Search_Ns_Internal
-     (Node, Prefix : System.Address) return System.Address
+     (Node, Prefix : System.Address;
+      Creation_Failed : access Boolean := null) return System.Address
    is
       Current : System.Address := Node;
+      Closest_Element : System.Address := System.Null_Address;
+      Is_Xml_Prefix : Boolean := False;
       Steps : Natural := 0;
       Ns_Steps : Natural := 0;
    begin
       if Node = System.Null_Address then
          return System.Null_Address;
       end if;
-      if Same_Text (Prefix, "xml") then
-         return Implicit_Ns_For_Node (Node);
+      if Prefix /= System.Null_Address then
+         Is_Xml_Prefix := Same_Text (Prefix, "xml");
+      end if;
+      if Is_Xml_Prefix then
+         declare
+            Implicit : constant System.Address := Implicit_Ns_For_Node (Node);
+         begin
+            if Implicit /= System.Null_Address then
+               return Implicit;
+            end if;
+         end;
       end if;
       if To_Node (Current).Node_Type = Attr_Type then
          Current := To_Node (Current).Parent;
@@ -565,11 +582,20 @@ package body XML3_C is
             Ns_Current : System.Address;
          begin
             if Item.Node_Type = Element_Type then
+               if Is_Xml_Prefix
+                 and then Closest_Element = System.Null_Address
+               then
+                  Closest_Element := Current;
+               end if;
                Ns_Current := Item.Ns_Def;
                while Ns_Current /= System.Null_Address loop
                   Ns_Steps := Ns_Steps + 1;
                   exit when Ns_Steps > Step_Limit;
-                  if Equal_Names (To_Ns (Ns_Current).Prefix, Prefix) then
+                  if Equal_Names (To_Ns (Ns_Current).Prefix, Prefix)
+                    and then (not Is_Xml_Prefix
+                              or else To_Ns (Ns_Current).Href /=
+                                System.Null_Address)
+                  then
                      return Ns_Current;
                   end if;
                   Ns_Current := To_Ns (Ns_Current).Next;
@@ -585,6 +611,38 @@ package body XML3_C is
             Current := Item.Parent;
          end;
       end loop;
+      if Is_Xml_Prefix and then Closest_Element /= System.Null_Address then
+         declare
+            Namespace : constant System.Address :=
+              New_Ns
+                (Closest_Element, Implicit_Xml_Href'Address,
+                 Implicit_Xml_Prefix'Address);
+         begin
+            if Namespace = System.Null_Address then
+               if Creation_Failed /= null then
+                  Creation_Failed.all := True;
+               end if;
+               return System.Null_Address;
+            end if;
+            declare
+               Head : constant System.Address :=
+                 To_Node (Closest_Element).Ns_Def;
+               Previous : System.Address := System.Null_Address;
+               Scan : System.Address := Head;
+            begin
+               while Scan /= System.Null_Address and then Scan /= Namespace loop
+                  Previous := Scan;
+                  Scan := To_Ns (Scan).Next;
+               end loop;
+               if Scan = Namespace and then Previous /= System.Null_Address then
+                  To_Ns (Previous).Next := To_Ns (Namespace).Next;
+                  To_Ns (Namespace).Next := Head;
+                  To_Node (Closest_Element).Ns_Def := Namespace;
+               end if;
+            end;
+            return Namespace;
+         end;
+      end if;
       return System.Null_Address;
    end Search_Ns_Internal;
 
@@ -595,12 +653,20 @@ package body XML3_C is
       Steps : Natural := 0;
       Ns_Steps : Natural := 0;
       Attribute_Input : Boolean;
+      Is_Xml_Href : Boolean := False;
    begin
       if Node = System.Null_Address or else Href = System.Null_Address then
          return System.Null_Address;
       end if;
-      if Same_Text (Href, XML3_Namespaces.XML_URI) then
-         return Implicit_Ns_For_Node (Node);
+      Is_Xml_Href := Same_Text (Href, XML3_Namespaces.XML_URI);
+      if Is_Xml_Href then
+         declare
+            Implicit : constant System.Address := Implicit_Ns_For_Node (Node);
+         begin
+            if Implicit /= System.Null_Address then
+               return Implicit;
+            end if;
+         end;
       end if;
       Attribute_Input := To_Node (Node).Node_Type = Attr_Type;
       if Attribute_Input then
@@ -649,6 +715,19 @@ package body XML3_C is
             Current := Item.Parent;
          end;
       end loop;
+      if Is_Xml_Href then
+         declare
+            Namespace : constant System.Address :=
+              Search_Ns_Internal (Node, Implicit_Xml_Prefix'Address);
+         begin
+            if Namespace /= System.Null_Address
+              and then To_Ns (Namespace).Href /= System.Null_Address
+              and then Equal_Names (To_Ns (Namespace).Href, Href)
+            then
+               return Namespace;
+            end if;
+         end;
+      end if;
       return System.Null_Address;
    end Search_Ns_By_Href_Internal;
 
@@ -2281,11 +2360,15 @@ package body XML3_C is
                     Full_Name (Full_Name'First .. I - 1) & Character'Val (0);
                   Local : aliased constant String :=
                     Full_Name (I + 1 .. Full_Name'Last) & Character'Val (0);
+                  Creation_Failed : aliased Boolean := False;
                   Ns : constant System.Address :=
-                    Search_Ns_Internal (Node, Prefix'Address);
+                    Search_Ns_Internal
+                      (Node, Prefix'Address, Creation_Failed'Access);
                begin
                   if Ns = System.Null_Address then
-                     Report_Dom_Error (115);
+                     if not Creation_Failed then
+                        Report_Dom_Error (115);
+                     end if;
                      return System.Null_Address;
                   end if;
                   return Set_Ns_Prop (Node, Ns, Local'Address, Value);

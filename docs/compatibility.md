@@ -225,8 +225,13 @@ libxml2 が namespace error を報告しながら tree を返す入力でも、l
 を返しません。要素名・属性名・namespace prefix・PI target は UTF-8 で読み取り、
 Unicode 正規化や大文字小文字変換をせず、元のバイト列を保持・比較します。
 名前の先頭では結合文字を拒否し、補助平面は仕様どおり U+EFFFF まで受理します。
-namespace mutation、namespace writer API は
-未対応です。`xmlGetProp`/`xmlHasProp` は local name で検索し、URI を考慮する場合は
+parse 時の QName/NCName と namespace binding は XML 1.0 Fifth Edition に従って
+検証されます。DOM editing は上記の限定 API に別途記載した raw string semantics
+に従い、parse-time の完全な名前検証は適用しません。`xmlSetProp` は QName を
+prefix/local name に分解して scope を解決し、malformed QName と未束縛 prefix を
+tree error 115 で拒否します。これらの API を超える namespace reconciliation、
+copy/adoption、cross-document move、writer/serialization は未対応です。
+`xmlGetProp`/`xmlHasProp` は local name で検索し、URI を考慮する場合は
 namespace-aware getter/query API を使用してください。
 名前空間 URI の entity 参照には libxml2 版による差があります。固定ターゲットの
 libxml2 2.15.4 と libxml3 は `urn:&amp;one` を `urn:&one` として扱いますが、

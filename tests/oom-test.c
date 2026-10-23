@@ -652,6 +652,38 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)created->children->content, "value") == 0);
             xmlFreeProp(created);
         }
+    } else if (strcmp(operation, "ns-xml-qname") == 0) {
+        xmlNodePtr root;
+        xmlNsPtr ns;
+        xmlAttrPtr created;
+
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(root != NULL && root->doc == NULL);
+        xml3_oom_enable(fail_index);
+        created = xmlSetProp(root, BAD_CAST "xml:lang", BAD_CAST "ja");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL && root->properties == NULL);
+            if (fail_index == 0) {
+                assert(root->nsDef == NULL);
+            } else {
+                ns = root->nsDef;
+                assert(ns != NULL && ns->next == NULL);
+                assert(strcmp((const char *)ns->prefix, "xml") == 0);
+                assert(strcmp((const char *)ns->href,
+                              "http://www.w3.org/XML/1998/namespace") == 0);
+            }
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->properties == created);
+            ns = root->nsDef;
+            assert(ns != NULL && created->ns == ns);
+            assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == ns);
+            assert(strcmp((const char *)created->children->content, "ja") == 0);
+        }
+        xmlFreeNode(root);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");

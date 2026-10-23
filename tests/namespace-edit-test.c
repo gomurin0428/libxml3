@@ -96,6 +96,32 @@ static void test_namespace_and_attribute_flow(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_docless_xml_namespace(void) {
+    static const xmlChar *xml_href =
+        BAD_CAST "http://www.w3.org/XML/1998/namespace";
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlAttrPtr lang, space;
+    xmlNsPtr ns;
+
+    assert(root != NULL && root->doc == NULL);
+    lang = xmlSetProp(root, BAD_CAST "xml:lang", BAD_CAST "ja");
+    assert(lang != NULL && lang->parent == root);
+    ns = lang->ns;
+    assert(ns != NULL && root->nsDef == ns && ns->next == NULL);
+    assert(strcmp((const char *)ns->prefix, "xml") == 0);
+    assert(strcmp((const char *)ns->href, (const char *)xml_href) == 0);
+    assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == ns);
+    assert(xmlSearchNsByHref(NULL, root, xml_href) == ns);
+    assert(xmlSearchNs(NULL, (xmlNodePtr)lang, BAD_CAST "xml") == ns);
+    assert(xmlSearchNsByHref(NULL, (xmlNodePtr)lang, xml_href) == ns);
+
+    space = xmlSetProp(root, BAD_CAST "xml:space", BAD_CAST "preserve");
+    assert(space != NULL && space->ns == ns);
+    assert(root->nsDef == ns && ns->next == NULL);
+    assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == ns);
+    xmlFreeNode(root);
+}
+
 static void test_standalone_and_parsed(void) {
     static const char input[] = "<r xmlns:p='urn:one' p:a='old'/>";
     xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
@@ -227,6 +253,25 @@ static void test_retained_namespace_lifetimes(void) {
     assert(borrower->ns == NULL && borrower->doc->type == XML_DOCUMENT_NODE);
     xmlFreeNode(borrower);
 }
+
+static void test_docless_xml_namespace_lifetime(void) {
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlAttrPtr lang, detached;
+    xmlNsPtr ns;
+
+    assert(root != NULL);
+    lang = xmlSetProp(root, BAD_CAST "xml:lang", BAD_CAST "ja");
+    assert(lang != NULL && lang->ns != NULL);
+    ns = lang->ns;
+    detached = xmlNewNsProp(NULL, ns, BAD_CAST "detached", BAD_CAST "value");
+    assert(detached != NULL && detached->parent == NULL && detached->ns == ns);
+    xmlFreeNode(root);
+    assert(detached->ns == ns);
+    assert(strcmp((const char *)detached->ns->prefix, "xml") == 0);
+    assert(strcmp((const char *)detached->ns->href,
+                  "http://www.w3.org/XML/1998/namespace") == 0);
+    xmlFreeProp(detached);
+}
 #endif
 
 int main(void) {
@@ -235,10 +280,12 @@ int main(void) {
     assert(strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) == 0);
 #endif
     test_namespace_and_attribute_flow();
+    test_docless_xml_namespace();
     test_standalone_and_parsed();
 #ifndef XML3_REFERENCE_TEST
     test_rejected_operations();
     test_retained_namespace_lifetimes();
+    test_docless_xml_namespace_lifetime();
 #endif
     puts("Namespace editing tests passed");
     return 0;
