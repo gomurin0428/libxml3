@@ -18,6 +18,7 @@ make test-api
 make reference
 make test-encoding
 make test-dom
+make test-attributes
 make check-inventory
 make compare
 make check

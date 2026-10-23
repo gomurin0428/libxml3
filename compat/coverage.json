@@ -169,7 +169,7 @@
   },
   "function:tree.h:xmlSetProp": {
     "implementation": "partial",
-    "scope": "namespace-free attribute のみ。既存 attribute pointer/_private/list links を保持し、replacement child は無効化。未存在時は末尾追加。C DOM ownership は SPARK proof 対象外。",
+    "scope": "namespace-free attribute のみ。既存 attribute pointer/_private/list links を保持し、旧 value children は解放。未存在時は末尾追加。C DOM ownership は SPARK proof 対象外。",
     "tests": [
       "tests/attribute-test.c",
       "tests/oom-test.c"
