@@ -55,13 +55,15 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 ```
 
 主なサブセットは、UTF-8/UTF-16LE/BE のメモリ入力、要素・属性・テキスト・CDATA・
-コメント・PI の DOM 閲覧、読み取り専用の namespace lookup に加え、
+コメント・PI の DOM 閲覧、namespace lookup と限定的な namespace editing に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` と namespace-free attribute の
-作成・更新・削除 API をサポートします。attribute 名に colon は使えません。
-namespace 作成・編集、namespace-qualified attribute 編集、copy、文書間移動、
-serialization は未対応です。
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、
+`xmlNewProp`、`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp`
+をサポートします。`xmlSetProp` は in-scope prefix を解決しますが、
+namespace 宣言の自動追加・reconciliation は行いません。URI/prefix と raw name
+の完全な検証、schema/DTD/ID index、copy、文書間移動、serialization は未対応です。
 構造 fields の直接変更はサポートしません。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味

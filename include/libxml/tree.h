@@ -92,6 +92,14 @@ xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 void xmlUnlinkNode(xmlNodePtr cur);
 void xmlFreeNode(xmlNodePtr cur);
 void xmlFreeDoc(xmlDocPtr cur);
+xmlNsPtr xmlNewNs(xmlNodePtr node, const xmlChar *href, const xmlChar *prefix);
+void xmlSetNs(xmlNodePtr node, xmlNsPtr ns);
+void xmlFreeNs(xmlNsPtr cur);
+xmlAttrPtr xmlNewNsProp(xmlNodePtr node, xmlNsPtr ns, const xmlChar *name,
+                       const xmlChar *value);
+xmlAttrPtr xmlSetNsProp(xmlNodePtr node, xmlNsPtr ns, const xmlChar *name,
+                       const xmlChar *value);
+int xmlUnsetNsProp(xmlNodePtr node, xmlNsPtr ns, const xmlChar *name);
 xmlAttrPtr xmlNewProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlSetProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
 int xmlUnsetProp(xmlNodePtr node, const xmlChar *name);

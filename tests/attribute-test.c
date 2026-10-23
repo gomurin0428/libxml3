@@ -137,7 +137,7 @@ static void test_rejections_and_safe_free(void) {
     root = xmlDocGetRootElement(doc);
     namespaced = root->properties;
     plain = namespaced->next;
-    assert(xmlSetProp(root, BAD_CAST "p:a", BAD_CAST "bad") == NULL);
+    assert(xmlSetProp(root, BAD_CAST "missing:a", BAD_CAST "bad") == NULL);
     assert_tree_error();
     assert(xmlNewProp(root, BAD_CAST "p:b", BAD_CAST "bad") == NULL);
     assert_tree_error();
@@ -150,10 +150,6 @@ static void test_rejections_and_safe_free(void) {
     assert(xmlNewProp((xmlNodePtr)doc, BAD_CAST "a", BAD_CAST "bad") == NULL);
     assert_tree_error();
     assert(xmlNewProp((xmlNodePtr)root->nsDef, BAD_CAST "a", NULL) == NULL);
-    assert_tree_error();
-    assert(xmlRemoveProp(namespaced) == -1);
-    assert_tree_error();
-    xmlFreeProp(namespaced);
     assert_tree_error();
     xmlFreeProp((xmlAttrPtr)root->nsDef);
     assert_tree_error();

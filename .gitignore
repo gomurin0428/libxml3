@@ -38,6 +38,9 @@ tests/dom-test-sanitize
 tests/attribute-test
 tests/attribute-test-reference
 tests/attribute-test-sanitize
+tests/namespace-edit-test
+tests/namespace-edit-test-reference
+tests/namespace-edit-test-sanitize
 tests/limit-error-test
 tests/differential-libxml3
 tests/differential-system

@@ -158,6 +158,24 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewNs": {
+    "implementation": "partial",
+    "scope": "raw href/prefix strings を独立 owner block にコピー。URI/prefix 検証なし。NULL/default と empty prefix を区別し、NULL href 可。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNsProp": {
+    "implementation": "partial",
+    "scope": "明示 namespace handle で qualified attribute を作成。local name の colon は拒否し、URI/prefix 検証や宣言 reconciliation は行わない。NULL parent 可。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewProp": {
     "implementation": "partial",
     "scope": "colon のない namespace-free attribute を raw C string から作成。XML name/UTF-8 検証なし。NULL value は child なし、empty value は text child。C DOM ownership は SPARK proof 対象外。",
@@ -169,9 +187,10 @@
   },
   "function:tree.h:xmlSetProp": {
     "implementation": "partial",
-    "scope": "namespace-free attribute のみ。既存 attribute pointer/_private/list links を保持し、旧 value children は解放。未存在時は末尾追加。C DOM ownership は SPARK proof 対象外。",
+    "scope": "plain name は no-namespace attribute を扱い、QName は in-scope prefix を解決。malformed/unbound QName は code 115。更新時 pointer/_private/list links 維持、旧 value children は無効化。C ownership layer は SPARK proof 対象外。",
     "tests": [
       "tests/attribute-test.c",
+      "tests/namespace-edit-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
@@ -187,18 +206,55 @@
   },
   "function:tree.h:xmlRemoveProp": {
     "implementation": "partial",
-    "scope": "attached namespace-free attribute を安全に unlink/free。detached・namespace-qualified attribute は拒否。C DOM ownership は SPARK proof 対象外。",
+    "scope": "attached namespace-free/qualified attribute を安全に unlink/free。detached attribute は拒否。C ownership layer は SPARK proof 対象外。",
     "tests": [
       "tests/attribute-test.c",
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeNs": {
+    "implementation": "partial",
+    "scope": "standalone constructed namespace owner のみ解放。attached declaration、parsed、implicit borrowed namespace は code 115 で拒否。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
   },
   "function:tree.h:xmlFreeProp": {
     "implementation": "partial",
-    "scope": "namespace-free attribute を解放。attached pointer は先に安全に unlink し、detached pointer も解放。namespace-qualified attribute は code 115 で拒否。",
+    "scope": "namespace-free/qualified attribute を解放。attached pointer は先に安全に unlink し、detached pointer も解放。C ownership layer は SPARK proof 対象外。",
     "tests": [
-      "tests/attribute-test.c"
+      "tests/attribute-test.c",
+      "tests/namespace-edit-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetNs": {
+    "implementation": "partial",
+    "scope": "node の ns pointer を明示 namespace handle に置換/解除し、borrowed owner を pin。declaration scope reconciliation は行わない。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetNsProp": {
+    "implementation": "partial",
+    "scope": "href/local-name で qualified attribute を更新。別 prefix の同 URI handle を渡すと ns pointer も置換。OOM 時は旧 property/value/list を維持。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlUnsetNsProp": {
+    "implementation": "partial",
+    "scope": "href/local-name で namespace-qualified attribute を削除。NULL href は no-namespace として照合。C ownership layer は SPARK proof 対象外。",
+    "tests": [
+      "tests/namespace-edit-test.c"
     ],
     "proof": "not-proved"
   },

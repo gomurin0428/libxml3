@@ -87,6 +87,26 @@ package XML3_C is
       Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlGetProp";
 
+   function New_Ns (Node, Href, Prefix : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewNs";
+
+   procedure Set_Ns (Node, Ns : System.Address)
+     with Export, Convention => C, External_Name => "xmlSetNs";
+
+   procedure Free_Ns (Ns : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeNs";
+
+   function New_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewNsProp";
+
+   function Set_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlSetNsProp";
+
+   function Unset_Ns_Prop (Node, Ns, Name : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlUnsetNsProp";
+
    function New_Prop
      (Node, Name, Value : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewProp";

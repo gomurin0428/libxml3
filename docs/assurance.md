@@ -55,8 +55,9 @@ proof gate pass.
 
 * The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
   reference ownership, and foreign pointer conversions are outside SPARK.
-  This includes the DOM constructors, child and attribute mutation/free operations;
-  their ownership and structural behavior is tested in C but is not formally proved.
+  This includes the DOM constructors, child, namespace, and attribute mutation/free
+  operations; their ownership and structural behavior is tested in C but is not
+  formally proved.
   Callers must use these APIs rather than directly changing public tree links,
   and must not use a document handle after `xmlFreeDoc`.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
@@ -86,15 +87,16 @@ own name, `libxml3`, and must not be loaded alongside libxml2 into the same symb
 namespace. Only APIs and structure fields explicitly listed in the compatibility
 document are supported. The minimal DOM editor API includes `xmlNewDoc`,
 `xmlNewNode`, `xmlNewText`, `xmlDocSetRootElement`, `xmlAddChild`,
-`xmlUnlinkNode`, `xmlFreeNode`, and the namespace-free attribute APIs
-`xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and `xmlFreeProp`.
-Namespace creation, attribute/namespace copying, namespace-qualified attribute
-editing, cross-document moves, and serialization are deferred. Unsupported
-operations fail without silently creating invalid links. Unsupported parser
-options fail, not silently degrade.
+`xmlUnlinkNode`, `xmlFreeNode`, namespace APIs `xmlNewNs`, `xmlSetNs`, and
+`xmlFreeNs`, and attribute APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`,
+`xmlRemoveProp`, `xmlFreeProp`, `xmlNewNsProp`, `xmlSetNsProp`, and
+`xmlUnsetNsProp`. Namespace scope reconciliation, URI/prefix/name validation,
+schema/DTD/ID indexes, copying/adoption, cross-document moves, and serialization
+are deferred. Unsupported operations fail without silently creating invalid
+links. Unsupported parser options fail, not silently degrade.
 
 The current profile supports XML 1.0 UTF-8 and UTF-16LE/BE input, Unicode NCNames and qualified
-element/attribute names, namespace declarations and read-only namespace lookup,
+element/attribute names, namespace declarations and namespace lookup,
 attributes, text, the five predefined entities, numeric references, comments,
 CDATA and processing instructions. Normal resource ceilings are 50,000 bytes
 per QName component/PI target, 10,000,000 decoded bytes per value, and depth

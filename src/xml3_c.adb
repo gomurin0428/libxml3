@@ -114,6 +114,8 @@ package body XML3_C is
 
    type Ns_Metadata is record
       Owner : System.Address := System.Null_Address;
+      Attached : Boolean := False;
+      Reference_Held : Boolean := False;
    end record with Convention => C;
 
    type Ns_Metadata_Access is access all Ns_Metadata;
@@ -424,11 +426,31 @@ package body XML3_C is
       Owner : constant System.Address := Metadata.Owner;
       Ns_Pin : constant System.Address := Metadata.Namespace_Pin;
       Doc_Pin : constant System.Address := Metadata.Document_Pin;
+      Namespace : System.Address;
    begin
       if not Metadata.Live then
          return;
       end if;
       Metadata.Live := False;
+      if To_Node (Node).Node_Type = Element_Type then
+         Namespace := To_Node (Node).Ns_Def;
+         To_Node (Node).Ns_Def := System.Null_Address;
+         while Namespace /= System.Null_Address loop
+            declare
+               Next : constant System.Address := To_Ns (Namespace).Next;
+               Ns_Meta : constant Ns_Metadata_Access :=
+                 Ns_Metadata_At (Namespace);
+            begin
+               To_Ns (Namespace).Next := System.Null_Address;
+               Ns_Meta.Attached := False;
+               if Ns_Meta.Reference_Held then
+                  Ns_Meta.Reference_Held := False;
+                  Release_Block (Ns_Meta.Owner);
+               end if;
+               Namespace := Next;
+            end;
+         end loop;
+      end if;
       if Metadata.Owned_Content /= System.Null_Address then
          C_Free (Metadata.Owned_Content);
          Metadata.Owned_Content := System.Null_Address;
@@ -482,6 +504,7 @@ package body XML3_C is
       Item  : constant Ns_Access := To_Ns (Namespace);
       Scan  : System.Address := Owner.Ns_Def;
    begin
+      Ns_Metadata_At (Namespace).Attached := True;
       if Scan = System.Null_Address then
          Owner.Ns_Def := Namespace;
          return;
@@ -932,7 +955,7 @@ package body XML3_C is
          To_Ns_Metadata
            (Namespaces_Base + To_Storage_Offset_Checked
               (Multiply_Size (size_t (Index), size_t (Ns_Stride)))).all :=
-           (Owner => Block);
+           (Owner => Block, others => <>);
          Namespace_At (Namespaces_Base, Index).all := (others => <>);
       end loop;
       To_Header (Block).all :=
@@ -1625,7 +1648,7 @@ package body XML3_C is
             Ns : constant Ns_Access :=
               To_Ns (Cursor + Ns_Metadata_Bytes);
          begin
-            Ns_Meta.all := (Owner => Block);
+            Ns_Meta.all := (Owner => Block, others => <>);
             Ns.all := (others => <>);
             Ns.Ns_Type := Namespace_Decl_Type;
             Cursor := Cursor + Ns_Stride;
@@ -1722,6 +1745,166 @@ package body XML3_C is
       end if;
       return To_String (Value, Natural (Length));
    end C_String_Value;
+
+   function Valid_Namespace (Ns : System.Address) return Boolean is
+   begin
+      return Ns = System.Null_Address
+        or else (To_Ns (Ns).Ns_Type = Namespace_Decl_Type
+          and then Ns_Metadata_At (Ns).Owner /= System.Null_Address
+          and then To_Header (Ns_Metadata_At (Ns).Owner).Magic = Block_Magic);
+   end Valid_Namespace;
+
+   function Set_Node_Namespace (Node, Ns : System.Address) return Boolean is
+      Metadata : constant Node_Metadata_Access := Metadata_At (Node);
+      Old_Pin : constant System.Address := Metadata.Namespace_Pin;
+      New_Pin : constant System.Address :=
+        (if Ns = System.Null_Address then System.Null_Address
+         else Ns_Metadata_At (Ns).Owner);
+   begin
+      if New_Pin /= System.Null_Address
+        and then New_Pin /= Old_Pin
+        and then New_Pin /= Metadata.Owner
+        and then New_Pin /= Metadata.Document_Pin
+      then
+         if To_Header (New_Pin).References = Natural'Last then
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            return False;
+         end if;
+         Retain_Block (New_Pin);
+      end if;
+      To_Node (Node).Ns := Ns;
+      Metadata.Namespace_Pin := New_Pin;
+      if Old_Pin /= System.Null_Address
+        and then Old_Pin /= New_Pin
+        and then Old_Pin /= Metadata.Owner
+        and then Old_Pin /= Metadata.Document_Pin
+      then
+         Release_Block (Old_Pin);
+      end if;
+      return True;
+   end Set_Node_Namespace;
+
+   procedure Set_Ns (Node, Ns : System.Address) is
+   begin
+      if Node = System.Null_Address then
+         return;
+      end if;
+      if (To_Node (Node).Node_Type /= Element_Type
+          and then To_Node (Node).Node_Type /= Attr_Type)
+        or else not Valid_Namespace (Ns)
+      then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      if not Set_Node_Namespace (Node, Ns) then
+         return;
+      end if;
+   exception
+      when others =>
+         Report_Dom_Error (115);
+   end Set_Ns;
+
+   function New_Ns (Node, Href, Prefix : System.Address) return System.Address is
+      Block : System.Address := System.Null_Address;
+      Namespace : System.Address;
+      Cursor : System.Address;
+      Scan : System.Address;
+   begin
+      if Node /= System.Null_Address then
+         if To_Node (Node).Node_Type /= Element_Type then
+            Report_Dom_Error (115);
+            return System.Null_Address;
+         end if;
+         Scan := To_Node (Node).Ns_Def;
+         while Scan /= System.Null_Address loop
+            if To_Ns (Scan).Href /= System.Null_Address
+              and then Equal_Names (To_Ns (Scan).Prefix, Prefix)
+            then
+               Report_Dom_Error (115);
+               return System.Null_Address;
+            end if;
+            Scan := To_Ns (Scan).Next;
+         end loop;
+      end if;
+      declare
+         Href_Value : constant String := C_String_Value (Href);
+         Prefix_Value : constant String := C_String_Value (Prefix);
+         Block_Size : constant size_t := Add_Size
+           (Add_Size (size_t (Header_Bytes), size_t (Ns_Stride)),
+            Add_Size (size_t (Href_Value'Length) + 1,
+                      size_t (Prefix_Value'Length) + 1));
+      begin
+         Block := C_Malloc (Block_Size);
+         if Block = System.Null_Address then
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            return System.Null_Address;
+         end if;
+         To_Header (Block).all :=
+           (Magic => Block_Magic, Size => Block_Size, References => 1,
+            Implicit_Ns => System.Null_Address, Doc_Freed => False);
+         To_Ns_Metadata (Block + Header_Bytes).all :=
+           (Owner => Block, Attached => False, Reference_Held => True);
+         Namespace := Block + Header_Bytes + Ns_Metadata_Bytes;
+         To_Ns (Namespace).all := (others => <>);
+         To_Ns (Namespace).Ns_Type := Namespace_Decl_Type;
+         Cursor := Block + Header_Bytes + Ns_Stride;
+         if Href /= System.Null_Address then
+            To_Ns (Namespace).Href := Cursor;
+            declare
+               Target : String (1 .. Href_Value'Length + 1)
+                 with Import, Address => Cursor;
+            begin
+               Target (1 .. Href_Value'Length) := Href_Value;
+               Target (Target'Last) := Character'Val (0);
+            end;
+         end if;
+         Cursor := Cursor + To_Storage_Offset_Checked
+           (size_t (Href_Value'Length) + 1);
+         if Prefix /= System.Null_Address then
+            To_Ns (Namespace).Prefix := Cursor;
+            declare
+               Target : String (1 .. Prefix_Value'Length + 1)
+                 with Import, Address => Cursor;
+            begin
+               Target (1 .. Prefix_Value'Length) := Prefix_Value;
+               Target (Target'Last) := Character'Val (0);
+            end;
+         end if;
+      end;
+      if Node /= System.Null_Address then
+         Append_Ns_Def (Node, Namespace);
+      end if;
+      return Namespace;
+   exception
+      when others =>
+         if Block /= System.Null_Address then
+            C_Free (Block);
+         end if;
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end New_Ns;
+
+   procedure Free_Ns (Ns : System.Address) is
+      Metadata : Ns_Metadata_Access;
+   begin
+      if Ns = System.Null_Address then
+         return;
+      end if;
+      if not Valid_Namespace (Ns) then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      Metadata := Ns_Metadata_At (Ns);
+      if Metadata.Attached or else not Metadata.Reference_Held then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      Metadata.Reference_Held := False;
+      Release_Block (Metadata.Owner);
+   exception
+      when others =>
+         Report_Dom_Error (115);
+   end Free_Ns;
 
    function New_Doc (Version : System.Address) return System.Address is
    begin
@@ -1963,8 +2146,8 @@ package body XML3_C is
       return True;
    end Bind_Property_Subtree;
 
-   function New_Prop
-     (Node, Name, Value : System.Address) return System.Address
+   function New_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
    is
       Attribute : System.Address := System.Null_Address;
       Text : System.Address;
@@ -1972,12 +2155,13 @@ package body XML3_C is
       if (Node /= System.Null_Address
           and then To_Node (Node).Node_Type /= Element_Type)
         or else not Plain_Property_Name (Name)
+        or else not Valid_Namespace (Ns)
       then
          Report_Dom_Error (115);
          return System.Null_Address;
       end if;
       Attribute := Allocate_Node
-        (Attr_Type, C_String_Value (Name), "", False, System.Null_Address);
+        (Attr_Type, C_String_Value (Name), "", False, Ns);
       if Attribute = System.Null_Address then
          return System.Null_Address;
       end if;
@@ -2005,10 +2189,17 @@ package body XML3_C is
          end if;
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;
+   end New_Ns_Prop;
+
+   function New_Prop
+     (Node, Name, Value : System.Address) return System.Address
+   is
+   begin
+      return New_Ns_Prop (Node, System.Null_Address, Name, Value);
    end New_Prop;
 
-   function Set_Prop
-     (Node, Name, Value : System.Address) return System.Address
+   function Set_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
    is
       Attribute : System.Address;
       Replacement : System.Address := System.Null_Address;
@@ -2017,13 +2208,18 @@ package body XML3_C is
       if Node = System.Null_Address
         or else To_Node (Node).Node_Type /= Element_Type
         or else not Plain_Property_Name (Name)
+        or else not Valid_Namespace (Ns)
+        or else (Ns /= System.Null_Address
+                 and then To_Ns (Ns).Href = System.Null_Address)
       then
          Report_Dom_Error (115);
          return System.Null_Address;
       end if;
-      Attribute := Has_Ns_Prop (Node, Name, System.Null_Address);
+      Attribute := Has_Ns_Prop
+        (Node, Name, (if Ns = System.Null_Address then System.Null_Address
+                      else To_Ns (Ns).Href));
       if Attribute = System.Null_Address then
-         return New_Prop (Node, Name, Value);
+         return New_Ns_Prop (Node, Ns, Name, Value);
       end if;
       if Value /= System.Null_Address then
          Replacement := New_Text (Value);
@@ -2034,6 +2230,12 @@ package body XML3_C is
             Free_Tree (Replacement);
             return System.Null_Address;
          end if;
+      end if;
+      if not Set_Node_Namespace (Attribute, Ns) then
+         if Replacement /= System.Null_Address then
+            Free_Tree (Replacement);
+         end if;
+         return System.Null_Address;
       end if;
       while To_Node (Attribute).Children /= System.Null_Address loop
          Old := To_Node (Attribute).Children;
@@ -2053,18 +2255,60 @@ package body XML3_C is
          end if;
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;
+   end Set_Ns_Prop;
+
+   function Set_Prop
+     (Node, Name, Value : System.Address) return System.Address
+   is
+   begin
+      if Node = System.Null_Address or else Name = System.Null_Address
+        or else To_Node (Node).Node_Type /= Element_Type
+      then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      declare
+         Full_Name : constant String := C_String_Value (Name);
+      begin
+         for I in Full_Name'Range loop
+            if Full_Name (I) = ':' then
+               if I = Full_Name'First or else I = Full_Name'Last then
+                  Report_Dom_Error (115);
+                  return System.Null_Address;
+               end if;
+               declare
+                  Prefix : aliased constant String :=
+                    Full_Name (Full_Name'First .. I - 1) & Character'Val (0);
+                  Local : aliased constant String :=
+                    Full_Name (I + 1 .. Full_Name'Last) & Character'Val (0);
+                  Ns : constant System.Address :=
+                    Search_Ns_Internal (Node, Prefix'Address);
+               begin
+                  if Ns = System.Null_Address then
+                     Report_Dom_Error (115);
+                     return System.Null_Address;
+                  end if;
+                  return Set_Ns_Prop (Node, Ns, Local'Address, Value);
+               end;
+            end if;
+         end loop;
+      end;
+      return Set_Ns_Prop (Node, System.Null_Address, Name, Value);
+   exception
+      when others =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
    end Set_Prop;
 
-   function Plain_Attribute (Attribute : System.Address) return Boolean is
+   function Is_Attribute (Attribute : System.Address) return Boolean is
    begin
       return Attribute /= System.Null_Address
-        and then To_Node (Attribute).Node_Type = Attr_Type
-        and then To_Node (Attribute).Ns = System.Null_Address;
-   end Plain_Attribute;
+        and then To_Node (Attribute).Node_Type = Attr_Type;
+   end Is_Attribute;
 
    function Remove_Prop (Attribute : System.Address) return int is
    begin
-      if not Plain_Attribute (Attribute)
+      if not Is_Attribute (Attribute)
         or else To_Node (Attribute).Parent = System.Null_Address
       then
          Report_Dom_Error (115);
@@ -2079,17 +2323,20 @@ package body XML3_C is
          return -1;
    end Remove_Prop;
 
-   function Unset_Prop (Node, Name : System.Address) return int is
+   function Unset_Ns_Prop (Node, Ns, Name : System.Address) return int is
       Attribute : System.Address;
    begin
       if Node = System.Null_Address
         or else To_Node (Node).Node_Type /= Element_Type
         or else not Plain_Property_Name (Name)
+        or else not Valid_Namespace (Ns)
       then
          Report_Dom_Error (115);
          return -1;
       end if;
-      Attribute := Has_Ns_Prop (Node, Name, System.Null_Address);
+      Attribute := Has_Ns_Prop
+        (Node, Name, (if Ns = System.Null_Address then System.Null_Address
+                      else To_Ns (Ns).Href));
       if Attribute = System.Null_Address then
          return -1;
       end if;
@@ -2098,6 +2345,11 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (115);
          return -1;
+   end Unset_Ns_Prop;
+
+   function Unset_Prop (Node, Name : System.Address) return int is
+   begin
+      return Unset_Ns_Prop (Node, System.Null_Address, Name);
    end Unset_Prop;
 
    procedure Free_Prop (Attribute : System.Address) is
@@ -2105,7 +2357,7 @@ package body XML3_C is
       if Attribute = System.Null_Address then
          return;
       end if;
-      if not Plain_Attribute (Attribute) then
+      if not Is_Attribute (Attribute) then
          Report_Dom_Error (115);
          return;
       end if;

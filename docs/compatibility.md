@@ -15,8 +15,10 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
-  `xmlUnlinkNode`、`xmlFreeNode`、
-  `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
+  `xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、
+  `xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、`xmlSetProp`、
+  `xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp`、`xmlNodeGetContent`、`xmlGetProp`、
+  `xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlHasNsProp`、`xmlGetNsProp`、`xmlGetNoNsProp`、
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`
@@ -52,9 +54,11 @@ DOM fields の直接変更はサポートせず、構造編集には下記 API �
 を指し、default namespace は無接頭辞属性には適用しません。`xmlns:xml` は明示
 されても `nsDef` に重複登録せず、組み込み `xml` namespace は検索 API から取得
 できます。`xmlNs.context` は NULL です。parsed namespace records と文字列は
-document arena に格納されます。`xmlFreeDoc` は現在接続されている subtree を
-反復解放して document の参照を解放しますが、detached live node や借用 namespace
-が参照を保持している arena とその文字列は最後の参照が解放されるまで残ります。
+document arena に格納され、`xmlNewNs` で作った namespace records と文字列は
+独立した owner block に格納されます。`xmlFreeDoc` は現在接続されている subtree を
+反復解放し、document と constructed declaration の owner reference を解放します。
+detached live node や借用 namespace が参照を保持している arena/object は最後の
+参照が解放されるまで残ります。
 node の `ns` は移動時に再調整されません。宣言 scope 外へ移動した node 自身の
 lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重して ancestor
 の retained `ns` binding を参照します。
@@ -81,20 +85,47 @@ comment、CDATA、PI の subtree を先に安全に unlink してから反復解
 document、attribute、namespace pointer は code 115 で拒否します。これは呼び出し側に
 unlink を要求する upstream 動作より安全な差です。
 
-`xmlNewProp`、`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` は
-namespace-free attribute に限ります。name は `:` を含まない C string をコピーし、
-colon を含む場合は tree error 115 で拒否します。XML name/UTF-8 の妥当性は検証しません。
-value も raw string として扱い、entity syntax を展開しません。`xmlNewProp(NULL, ...)` は detached attribute を作成し、
-重複名は既存順の末尾に追加します。NULL value は text child なし、empty value は
-empty text child です。`xmlSetProp` は同名の no-namespace attribute があれば
-attribute pointer、`_private`、sibling links を保って値を置換し、なければ末尾に追加
-します。置換時に旧 value children は解放されます。新しい値の割り当てを置換前に
-完了するため、OOM では元の property list と値を保持します。`xmlUnsetProp` と
-`xmlRemoveProp` は attached attribute を削除し、欠落・非対応の場合は `-1` を返します。
-`xmlFreeProp` は detached attribute も解放でき、attached attribute は先に安全に
-unlink します。これは attached attribute の unlink を呼び出し側に要求する upstream
-動作より安全な差です。namespace-qualified attributes はこれらの API では編集できず、
-`xmlFreeProp` も code 115 で拒否します。
+`xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
+`xmlUnsetNsProp` は限定的な namespace/qualified-attribute 編集 API です。
+`xmlNewNs` は href/prefix の raw C string をコピーし、XML name、URI、prefix を
+検証しません。NULL href を許し、NULL prefix (default namespace) と empty prefix は
+区別します。宣言は `nsDef` の末尾に追加し、同じ要素上に href が non-NULL の同じ
+prefix が既にある場合は重複を拒否します。`xmlSetNs` と
+`xmlNewNsProp`/`xmlSetNsProp` は namespace を自動で宣言・reconcile せず、明示された
+namespace handle を使います。handle の有効 lifetime と利用先での namespace scope
+は caller の責任です。
+`xmlNewNsProp(NULL, ...)` は detached qualified attribute を作成できます。
+attribute local name に `:` は使えず、colon を含む場合は tree error 115 で拒否します。
+value は raw string として扱い、entity syntax を展開しません。
+
+`xmlSetNsProp` は href と local name が一致する property を更新し、同じ URI の別
+prefix/namespace pointer を渡した場合も attribute pointer、`_private`、sibling links
+を保ったまま `ns` pointer を渡されたものへ変更します。NULL href は no-namespace
+として照合します。`xmlUnsetNsProp` も href/local-name で削除します。
+`xmlNewProp` は namespace-free attribute を作り、NULL parent、重複名、NULL/empty
+value を受け付けます。NULL value は text child なし、empty value は empty text child
+です。`xmlSetProp` は unqualified name なら no-namespace property を扱い、QName なら
+in-scope prefix (暗黙の `xml` prefix を含む) を解決します。malformed QName と unbound
+prefix は tree error 115 で拒否します。これは upstream の raw-name fallback と異なる
+safety-oriented difference です。`xmlUnsetProp` は no-namespace attribute のみを対象に
+します。
+
+値の置換は新しい child subtree の割り当てを先に完了するため、OOM では旧 value と
+property list を保持します。成功時は attribute pointer、`_private`、list position を
+維持し、旧 value children は無効になります。`xmlRemoveProp` は attached の
+namespace-free/qualified attribute を削除し、detached attribute は拒否します。
+`xmlFreeProp` は detached attribute も解放でき、attached attribute は先に安全に unlink
+します。列挙した API を超える namespace mutation、URI/prefix/name の完全検証、
+declaration reconciliation、copy/adoption、schema/DTD/ID index、cross-document move、
+serialization は未対応です。
+
+`xmlFreeNs` は standalone の constructed namespace owner を解放する API です。attached
+declaration、parsed namespace、implicit borrowed namespace の直接解放は tree error 115
+で拒否します。`xmlSetNs` や namespace-qualified attribute の `ns` field は namespace
+handle を借用して lifetime pin を持ちます。caller は own handle を解放した後にその
+handle を再利用してはいけません。live borrower の `ns` field は object を保持します。
+parsed namespace/strings は document arena に保持され、constructed namespace は独立
+owner block で保持されます。
 
 添付可能なのは documentless subtree または同一文書に属する subtree のみです。
 他文書との移動や、別文書に関連付いた node の documentless parent への移動は
@@ -108,9 +139,8 @@ source document が解放されても node 自体が解放されるまで有効�
 
 caller は有効な library pointer lifetime、直接の tree field 書き換えをしないこと、
 同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
-ownership/refcount/pointer layer は SPARK proof の対象外です。namespace 作成、
-attribute/namespace copy、namespace-qualified attribute editing、cross-document move、
-serialization は未対応です。
+ownership/refcount/pointer layer は SPARK proof の対象外です。attribute/namespace
+copy/adoption、cross-document move、serialization は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
