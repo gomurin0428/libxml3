@@ -99,6 +99,9 @@ int main(int argc, char **argv) {
     long allocation_count;
     int injected;
     xmlDocPtr doc = NULL;
+    xmlNodePtr dom_node = NULL;
+    xmlNodePtr merge_left = NULL;
+    xmlNodePtr merge_right = NULL;
     xmlError copy = {0};
     xmlError source = {0};
     const xmlError *error;
@@ -254,12 +257,89 @@ int main(int argc, char **argv) {
             xmlResetError(&copy);
             assert(strcmp(emergency_message, "out of memory\n") == 0);
         }
+    } else if (strcmp(operation, "dom-new-doc") == 0) {
+        xml3_oom_enable(fail_index);
+        doc = xmlNewDoc(NULL);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(doc == NULL);
+            require_oom_error();
+        } else {
+            assert(doc != NULL);
+            xmlFreeDoc(doc);
+            doc = NULL;
+            assert(xmlGetLastError() == NULL);
+        }
+    } else if (strcmp(operation, "dom-new-node") == 0) {
+        xml3_oom_enable(fail_index);
+        dom_node = xmlNewNode(NULL, BAD_CAST "new-node");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(dom_node == NULL);
+            require_oom_error();
+        } else {
+            assert(dom_node != NULL);
+            xmlFreeNode(dom_node);
+            dom_node = NULL;
+            assert(xmlGetLastError() == NULL);
+        }
+    } else if (strcmp(operation, "dom-new-text") == 0) {
+        xml3_oom_enable(fail_index);
+        dom_node = xmlNewText(BAD_CAST "text");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(dom_node == NULL);
+            require_oom_error();
+        } else {
+            assert(dom_node != NULL);
+            xmlFreeNode(dom_node);
+            dom_node = NULL;
+            assert(xmlGetLastError() == NULL);
+        }
+    } else if (strcmp(operation, "dom-merge") == 0) {
+        xmlNodePtr root;
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        merge_left = xmlNewText(BAD_CAST "left");
+        merge_right = xmlNewText(BAD_CAST "right");
+        assert(doc != NULL && root != NULL && merge_left != NULL &&
+               merge_right != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        assert(xmlAddChild(root, merge_left) == merge_left);
+        xml3_oom_enable(fail_index);
+        dom_node = xmlAddChild(root, merge_right);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(dom_node == NULL);
+            assert(root->children == merge_left && root->last == merge_left);
+            assert(merge_left->parent == root && merge_left->next == NULL);
+            assert(merge_right->parent == NULL && merge_right->prev == NULL &&
+                   merge_right->next == NULL);
+            assert(strcmp((const char *)merge_left->content, "left") == 0);
+            assert(strcmp((const char *)merge_right->content, "right") == 0);
+            require_oom_error();
+        } else {
+            assert(dom_node == merge_left);
+            assert(root->children == merge_left && root->last == merge_left);
+            assert(strcmp((const char *)merge_left->content, "leftright") == 0);
+            merge_right = NULL;
+        }
     } else {
         assert(0);
         return 1;
     }
     if (doc != NULL)
         xmlFreeDoc(doc);
+    if (merge_right != NULL)
+        xmlFreeNode(merge_right);
     xmlResetLastError();
     doc = xmlReadMemory("<recovered/>", 12, NULL, NULL, 0);
     assert(doc != NULL);

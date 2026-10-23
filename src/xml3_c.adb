@@ -54,6 +54,24 @@ package body XML3_C is
    function To_Node is
      new Ada.Unchecked_Conversion (System.Address, Node_Access);
 
+   type Xml_Doc is record
+      Private_Data : System.Address := System.Null_Address;
+      Node_Type    : int := 0;
+      Name         : System.Address := System.Null_Address;
+      Children     : System.Address := System.Null_Address;
+      Last         : System.Address := System.Null_Address;
+      Parent       : System.Address := System.Null_Address;
+      Next         : System.Address := System.Null_Address;
+      Prev         : System.Address := System.Null_Address;
+      Doc          : System.Address := System.Null_Address;
+      Version      : System.Address := System.Null_Address;
+   end record with Convention => C;
+
+   type Doc_Access is access all Xml_Doc;
+
+   function To_Doc is
+     new Ada.Unchecked_Conversion (System.Address, Doc_Access);
+
    type Xml_Ns is record
       Next         : System.Address := System.Null_Address;
       Ns_Type      : int := 0;
@@ -68,13 +86,12 @@ package body XML3_C is
    function To_Ns is
      new Ada.Unchecked_Conversion (System.Address, Ns_Access);
 
-   --  Every document is a single heap block laid out as
-   --  [Block_Header][document node][node array][namespace array][string bytes].
-   --  Freeing a document never follows pointer fields exposed to C.
    type Block_Header is record
       Magic       : unsigned_long := 0;
       Size        : size_t := 0;
+      References  : Natural := 0;
       Implicit_Ns : System.Address := System.Null_Address;
+      Doc_Freed   : Boolean := False;
    end record with Convention => C;
 
    type Header_Access is access all Block_Header;
@@ -82,16 +99,46 @@ package body XML3_C is
    function To_Header is
      new Ada.Unchecked_Conversion (System.Address, Header_Access);
 
+   type Node_Metadata is record
+      Owner         : System.Address := System.Null_Address;
+      Namespace_Pin : System.Address := System.Null_Address;
+      Document_Pin  : System.Address := System.Null_Address;
+      Owned_Content : System.Address := System.Null_Address;
+      Live          : Boolean := False;
+   end record with Convention => C;
+
+   type Node_Metadata_Access is access all Node_Metadata;
+
+   function To_Node_Metadata is
+     new Ada.Unchecked_Conversion (System.Address, Node_Metadata_Access);
+
+   type Ns_Metadata is record
+      Owner : System.Address := System.Null_Address;
+   end record with Convention => C;
+
+   type Ns_Metadata_Access is access all Ns_Metadata;
+
+   function To_Ns_Metadata is
+     new Ada.Unchecked_Conversion (System.Address, Ns_Metadata_Access);
+
    Block_Magic : constant unsigned_long := 16#584D_4C33_444F_4331#;
 
    Header_Bytes : constant Storage_Offset :=
      Block_Header'Max_Size_In_Storage_Elements;
+   Node_Metadata_Bytes : constant Storage_Offset :=
+     Node_Metadata'Max_Size_In_Storage_Elements;
+   Ns_Metadata_Bytes : constant Storage_Offset :=
+     Ns_Metadata'Max_Size_In_Storage_Elements;
    Node_Bytes : constant Storage_Offset :=
      Xml_Node'Max_Size_In_Storage_Elements;
+   Node_Stride : constant Storage_Offset :=
+     Node_Metadata_Bytes + Node_Bytes;
    Parser_Node_Bytes : constant Storage_Offset :=
      XML3_Parser.Node'Max_Size_In_Storage_Elements;
    Ns_Bytes : constant Storage_Offset :=
      Xml_Ns'Max_Size_In_Storage_Elements;
+   Ns_Stride : constant Storage_Offset :=
+     Ns_Metadata_Bytes + Ns_Bytes;
    Name_Bytes : constant Storage_Offset :=
      XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements;
    Natural_Bytes : constant Storage_Offset :=
@@ -124,6 +171,14 @@ package body XML3_C is
    function Same_Text (Item : System.Address; Value : String) return Boolean;
    function Node_At (Base : System.Address; Index : Natural) return Node_Access;
    function Namespace_At (Base : System.Address; Index : Natural) return Ns_Access;
+   function Metadata_At (Node : System.Address) return Node_Metadata_Access;
+   function Ns_Metadata_At (Ns : System.Address) return Ns_Metadata_Access;
+   function Owner_Block (Node : System.Address) return System.Address;
+   procedure Retain_Block (Block : System.Address);
+   procedure Release_Block (Block : System.Address);
+   procedure Mark_Live (Node : System.Address);
+   procedure Release_Node (Node : System.Address);
+   procedure Free_Tree (Root : System.Address);
    procedure Append_Child (Parent, Child : System.Address);
    procedure Append_Property (Element, Attribute : System.Address);
    procedure Append_Ns_Def (Element, Namespace : System.Address);
@@ -288,7 +343,9 @@ package body XML3_C is
    begin
       return To_Node
         (Base + To_Storage_Offset_Checked
-           (Multiply_Size (size_t (Index), size_t (Node_Bytes))));
+           (Add_Size
+              (Multiply_Size (size_t (Index), size_t (Node_Stride)),
+               size_t (Node_Metadata_Bytes))));
    end Node_At;
 
    function Namespace_At
@@ -297,8 +354,97 @@ package body XML3_C is
    begin
       return To_Ns
         (Base + To_Storage_Offset_Checked
-           (Multiply_Size (size_t (Index), size_t (Ns_Bytes))));
+           (Add_Size
+              (Multiply_Size (size_t (Index), size_t (Ns_Stride)),
+               size_t (Ns_Metadata_Bytes))));
    end Namespace_At;
+
+   function Metadata_At
+     (Node : System.Address) return Node_Metadata_Access
+   is
+   begin
+      return To_Node_Metadata (Node - Node_Metadata_Bytes);
+   end Metadata_At;
+
+   function Ns_Metadata_At
+     (Ns : System.Address) return Ns_Metadata_Access
+   is
+   begin
+      return To_Ns_Metadata (Ns - Ns_Metadata_Bytes);
+   end Ns_Metadata_At;
+
+   function Owner_Block (Node : System.Address) return System.Address is
+   begin
+      if Node = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return Metadata_At (Node).Owner;
+   end Owner_Block;
+
+   procedure Retain_Block (Block : System.Address) is
+   begin
+      if Block = System.Null_Address
+        or else To_Header (Block).Magic /= Block_Magic
+        or else To_Header (Block).References = Natural'Last
+      then
+         raise Program_Error;
+      end if;
+      To_Header (Block).References := To_Header (Block).References + 1;
+   end Retain_Block;
+
+   procedure Release_Block (Block : System.Address) is
+   begin
+      if Block = System.Null_Address
+        or else To_Header (Block).Magic /= Block_Magic
+      then
+         return;
+      end if;
+      if To_Header (Block).References = 0 then
+         raise Program_Error;
+      end if;
+      To_Header (Block).References := To_Header (Block).References - 1;
+      if To_Header (Block).References = 0 then
+         To_Header (Block).Magic := 0;
+         C_Free (Block);
+      end if;
+   end Release_Block;
+
+   procedure Mark_Live (Node : System.Address) is
+      Metadata : constant Node_Metadata_Access := Metadata_At (Node);
+   begin
+      if Metadata.Live then
+         return;
+      end if;
+      Retain_Block (Metadata.Owner);
+      Metadata.Live := True;
+   end Mark_Live;
+
+   procedure Release_Node (Node : System.Address) is
+      Metadata : constant Node_Metadata_Access := Metadata_At (Node);
+      Owner : constant System.Address := Metadata.Owner;
+      Ns_Pin : constant System.Address := Metadata.Namespace_Pin;
+      Doc_Pin : constant System.Address := Metadata.Document_Pin;
+   begin
+      if not Metadata.Live then
+         return;
+      end if;
+      Metadata.Live := False;
+      if Metadata.Owned_Content /= System.Null_Address then
+         C_Free (Metadata.Owned_Content);
+         Metadata.Owned_Content := System.Null_Address;
+      end if;
+      Metadata.Namespace_Pin := System.Null_Address;
+      Metadata.Document_Pin := System.Null_Address;
+      if Ns_Pin /= System.Null_Address and then Ns_Pin /= Owner then
+         Release_Block (Ns_Pin);
+      end if;
+      if Doc_Pin /= System.Null_Address
+        and then Doc_Pin /= Owner and then Doc_Pin /= Ns_Pin
+      then
+         Release_Block (Doc_Pin);
+      end if;
+      Release_Block (Owner);
+   end Release_Node;
 
    procedure Append_Child (Parent, Child : System.Address) is
       Owner : constant Node_Access := To_Node (Parent);
@@ -361,7 +507,7 @@ package body XML3_C is
          if Doc = System.Null_Address then
             return System.Null_Address;
          end if;
-         Block := Doc - Header_Bytes;
+         Block := Owner_Block (Doc);
          if To_Header (Block).Magic /= Block_Magic then
             return System.Null_Address;
          end if;
@@ -728,8 +874,8 @@ package body XML3_C is
       Block_Size := Add_Size
         (Add_Size
            (Add_Size (size_t (Header_Bytes),
-              Multiply_Size (size_t (Node_Bytes), size_t (Node_Total))),
-            Multiply_Size (size_t (Ns_Bytes), size_t (Namespace_Total))),
+              Multiply_Size (size_t (Node_Stride), size_t (Node_Total))),
+            Multiply_Size (size_t (Ns_Stride), size_t (Namespace_Total))),
          String_Bytes);
       if Block_Size > size_t (Storage_Offset'Last) then
          raise Storage_Error;
@@ -744,31 +890,45 @@ package body XML3_C is
       Nodes_Base := Block + Header_Bytes;
       Namespaces_Base :=
         Nodes_Base + To_Storage_Offset_Checked
-          (Multiply_Size (size_t (Node_Total), size_t (Node_Bytes)));
+          (Multiply_Size (size_t (Node_Total), size_t (Node_Stride)));
       Cursor :=
         Namespaces_Base + To_Storage_Offset_Checked
-          (Multiply_Size (size_t (Namespace_Total), size_t (Ns_Bytes)));
+          (Multiply_Size (size_t (Namespace_Total), size_t (Ns_Stride)));
       Cursor_Limit := Cursor + To_Storage_Offset_Checked (String_Bytes);
       for Index in 0 .. Node_Total - 1 loop
+         To_Node_Metadata
+           (Nodes_Base + To_Storage_Offset_Checked
+              (Multiply_Size (size_t (Index), size_t (Node_Stride)))).all :=
+           (Owner => Block, Namespace_Pin => System.Null_Address,
+            Document_Pin => System.Null_Address,
+            Owned_Content => System.Null_Address, Live => False);
          Node_At (Nodes_Base, Index).all := (others => <>);
       end loop;
       for Index in 0 .. Namespace_Total - 1 loop
+         To_Ns_Metadata
+           (Namespaces_Base + To_Storage_Offset_Checked
+              (Multiply_Size (size_t (Index), size_t (Ns_Stride)))).all :=
+           (Owner => Block);
          Namespace_At (Namespaces_Base, Index).all := (others => <>);
       end loop;
       To_Header (Block).all :=
         (Magic => Block_Magic,
          Size => Block_Size,
-         Implicit_Ns => Namespace_At (Namespaces_Base, 0).all'Address);
+         References => 0,
+         Implicit_Ns => Namespace_At (Namespaces_Base, 0).all'Address,
+         Doc_Freed => False);
 
       declare
          Document : constant Node_Access := Node_At (Nodes_Base, 0);
          Implicit : constant Ns_Access := Namespace_At (Namespaces_Base, 0);
       begin
          Document.Node_Type := Document_Type;
-         Document.Doc := Nodes_Base;
+         Document.Doc := Document.all'Address;
+         To_Doc (Document.all'Address).Version := System.Null_Address;
          Implicit.Ns_Type := Namespace_Decl_Type;
          Put (XML3_Namespaces.XML_URI, Implicit.Href);
          Put ("xml", Implicit.Prefix);
+         Put ("1.0", To_Doc (Document.all'Address).Version);
       end;
 
       for K in 1 .. Count loop
@@ -793,7 +953,7 @@ package body XML3_C is
             Source : constant XML3_Parser.Node := Nodes (K);
             Item : constant Node_Access := Node_At (Nodes_Base, Dom_Index (K));
          begin
-            Item.Doc := Nodes_Base;
+            Item.Doc := Node_At (Nodes_Base, 0).all'Address;
             case Source.Kind is
                when XML3_Parser.Element_Node =>
                   Item.Node_Type := Element_Type;
@@ -810,7 +970,7 @@ package body XML3_C is
                           Node_At (Nodes_Base, Value_Index (K));
                      begin
                         Value.Node_Type := Text_Type;
-                        Value.Doc := Nodes_Base;
+                        Value.Doc := Node_At (Nodes_Base, 0).all'Address;
                         Put ("text", Value.Name);
                         Put_Decoded
                           (Source.Value_First, Source.Value_Last,
@@ -855,7 +1015,8 @@ package body XML3_C is
             Child : constant System.Address :=
               Node_At (Nodes_Base, Dom_Index (K)).all'Address;
             Owner : constant System.Address :=
-              (if Nodes (K).Parent = 0 then Nodes_Base
+              (if Nodes (K).Parent = 0
+               then Node_At (Nodes_Base, 0).all'Address
                else Node_At
                  (Nodes_Base, Dom_Index (Nodes (K).Parent)).all'Address);
          begin
@@ -916,7 +1077,13 @@ package body XML3_C is
          end if;
       end loop;
 
-      Result := Nodes_Base;
+      for Index in 0 .. Node_Total - 1 loop
+         if Node_At (Nodes_Base, Index).Node_Type /= 0 then
+            Mark_Live (Node_At (Nodes_Base, Index).all'Address);
+         end if;
+      end loop;
+
+      Result := Node_At (Nodes_Base, 0).all'Address;
    exception
       when Storage_Error =>
          if Block /= System.Null_Address then
@@ -1371,6 +1538,676 @@ package body XML3_C is
       return Read_Doc (Cur, System.Null_Address, System.Null_Address, 0);
    end Parse_Doc;
 
+   procedure Report_Dom_Error (Code : int) is
+   begin
+      XML3_Errors.Report_Simple (2, Code, 3, System.Null_Address);
+   end Report_Dom_Error;
+
+   function Allocate_Node
+     (Node_Type : int;
+      Name      : String;
+      Content   : String;
+      Has_Content : Boolean;
+      Ns        : System.Address;
+      Is_Doc    : Boolean := False) return System.Address
+   is
+      Name_Bytes_Total : constant size_t :=
+        (if Node_Type = Document_Type
+         then 0 else size_t (Name'Length) + 1);
+      Content_Bytes_Total : constant size_t :=
+        (if Has_Content then size_t (Content'Length) + 1 else 0);
+      Implicit_Ns_Bytes_Total : constant size_t :=
+        (if Is_Doc
+         then Add_Size
+           (size_t (Ns_Stride),
+            Add_Size (size_t (XML3_Namespaces.XML_URI'Length) + 1, 4))
+         else 0);
+      Block_Size : constant size_t :=
+        Add_Size
+          (Add_Size
+             (Add_Size
+                (Add_Size (size_t (Header_Bytes), size_t (Node_Stride)),
+                 Implicit_Ns_Bytes_Total),
+              Name_Bytes_Total),
+           Content_Bytes_Total);
+      Block : System.Address := C_Malloc (Block_Size);
+      Node : System.Address;
+      Cursor : System.Address;
+      Metadata : Node_Metadata_Access;
+   begin
+      if Block = System.Null_Address then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      end if;
+      Node := Block + Header_Bytes + Node_Metadata_Bytes;
+      Metadata := To_Node_Metadata (Block + Header_Bytes);
+      Metadata.all :=
+        (Owner => Block, Namespace_Pin => System.Null_Address,
+         Document_Pin => System.Null_Address,
+         Owned_Content => System.Null_Address, Live => False);
+      To_Node (Node).all := (others => <>);
+      To_Node (Node).Node_Type := Node_Type;
+      if Is_Doc then
+         To_Node (Node).Doc := Node;
+      end if;
+      To_Header (Block).all :=
+        (Magic => Block_Magic, Size => Block_Size, References => 0,
+         Implicit_Ns => System.Null_Address, Doc_Freed => False);
+      Cursor := Block + Header_Bytes + Node_Stride;
+      if Is_Doc then
+         declare
+            Ns_Meta : constant Ns_Metadata_Access :=
+              To_Ns_Metadata (Cursor);
+            Ns : constant Ns_Access :=
+              To_Ns (Cursor + Ns_Metadata_Bytes);
+         begin
+            Ns_Meta.all := (Owner => Block);
+            Ns.all := (others => <>);
+            Ns.Ns_Type := Namespace_Decl_Type;
+            Cursor := Cursor + Ns_Stride;
+            Ns.Href := Cursor;
+            declare
+               Target : String (1 .. XML3_Namespaces.XML_URI'Length + 1)
+                 with Import, Address => Cursor;
+            begin
+               Target (1 .. XML3_Namespaces.XML_URI'Length) :=
+                 XML3_Namespaces.XML_URI;
+               Target (Target'Last) := Character'Val (0);
+            end;
+            Cursor := Cursor
+              + To_Storage_Offset_Checked
+                (size_t (XML3_Namespaces.XML_URI'Length) + 1);
+            Ns.Prefix := Cursor;
+            declare
+               Target : String (1 .. 4) with Import, Address => Cursor;
+            begin
+               Target (1 .. 3) := "xml";
+               Target (4) := Character'Val (0);
+            end;
+            Cursor := Cursor + 4;
+            To_Header (Block).Implicit_Ns := Ns.all'Address;
+         end;
+      end if;
+      if Node_Type /= Document_Type then
+         declare
+            Target : String (1 .. Name'Length + 1)
+              with Import, Address => Cursor;
+         begin
+            Target (1 .. Name'Length) := Name;
+            Target (Name'Length + 1) := Character'Val (0);
+         end;
+         To_Node (Node).Name := Cursor;
+         Cursor := Cursor + To_Storage_Offset_Checked (Name_Bytes_Total);
+      end if;
+      if Has_Content then
+         declare
+            Target : String (1 .. Content'Length + 1)
+              with Import, Address => Cursor;
+         begin
+            Target (1 .. Content'Length) := Content;
+            Target (Content'Length + 1) := Character'Val (0);
+         end;
+         To_Node (Node).Content := Cursor;
+      end if;
+      if Ns /= System.Null_Address then
+         declare
+            Ns_Owner : constant System.Address := Ns_Metadata_At (Ns).Owner;
+         begin
+            if Ns_Owner = System.Null_Address
+              or else To_Header (Ns_Owner).Magic /= Block_Magic
+            then
+               C_Free (Block);
+               return System.Null_Address;
+            end if;
+            Retain_Block (Ns_Owner);
+            Metadata.Namespace_Pin := Ns_Owner;
+            To_Node (Node).Ns := Ns;
+         end;
+      end if;
+      if Is_Doc then
+         To_Doc (Node).Version := To_Node (Node).Content;
+         To_Node (Node).Content := System.Null_Address;
+      end if;
+      Mark_Live (Node);
+      return Node;
+   exception
+      when others =>
+         if Block /= System.Null_Address then
+            if Metadata /= null
+              and then Metadata.Namespace_Pin /= System.Null_Address
+            then
+               Release_Block (Metadata.Namespace_Pin);
+            end if;
+            C_Free (Block);
+         end if;
+         return System.Null_Address;
+   end Allocate_Node;
+
+   function C_String_Value
+     (Value : System.Address;
+      Default : String := "") return String
+   is
+      Length : Integer;
+   begin
+      if Value = System.Null_Address then
+         return Default;
+      end if;
+      Length := Scan_Length (Value, Max_Input + 1);
+      if Length < 0 then
+         raise Storage_Error;
+      end if;
+      return To_String (Value, Natural (Length));
+   end C_String_Value;
+
+   function New_Doc (Version : System.Address) return System.Address is
+   begin
+      return Allocate_Node
+        (Document_Type, "", C_String_Value (Version, "1.0"), True,
+         System.Null_Address, True);
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end New_Doc;
+
+   function New_Node
+     (Ns, Name : System.Address) return System.Address
+   is
+   begin
+      if Name = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return Allocate_Node
+        (Element_Type, C_String_Value (Name), "", False, Ns);
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end New_Node;
+
+   function New_Text (Content : System.Address) return System.Address is
+   begin
+      return Allocate_Node
+        (Text_Type, "text", C_String_Value (Content), Content /= System.Null_Address,
+         System.Null_Address);
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+   end New_Text;
+
+   procedure Unlink_Internal (Node : System.Address) is
+      Item : constant Node_Access := To_Node (Node);
+      Parent : Node_Access;
+      Is_Attribute : Boolean;
+   begin
+      if Item.Parent = System.Null_Address then
+         return;
+      end if;
+      Parent := To_Node (Item.Parent);
+      Is_Attribute := Item.Node_Type = Attr_Type;
+      if Is_Attribute then
+         if Item.Prev = System.Null_Address then
+            Parent.Properties := Item.Next;
+         else
+            To_Node (Item.Prev).Next := Item.Next;
+         end if;
+         if Item.Next /= System.Null_Address then
+            To_Node (Item.Next).Prev := Item.Prev;
+         end if;
+      else
+         if Item.Prev = System.Null_Address then
+            Parent.Children := Item.Next;
+         else
+            To_Node (Item.Prev).Next := Item.Next;
+         end if;
+         if Item.Next /= System.Null_Address then
+            To_Node (Item.Next).Prev := Item.Prev;
+         end if;
+         if Parent.Last = Node then
+            Parent.Last := Item.Prev;
+         end if;
+      end if;
+      Item.Parent := System.Null_Address;
+      Item.Next := System.Null_Address;
+      Item.Prev := System.Null_Address;
+   end Unlink_Internal;
+
+   function First_Subnode (Node : System.Address) return System.Address is
+   begin
+      if To_Node (Node).Properties /= System.Null_Address then
+         return To_Node (Node).Properties;
+      end if;
+      return To_Node (Node).Children;
+   end First_Subnode;
+
+   function Next_Subtree_Node
+     (Node, Root : System.Address;
+      Valid : out Boolean) return System.Address
+   is
+      Candidate : System.Address := Node;
+      Parent : System.Address;
+      Steps : Natural := 0;
+   begin
+      Valid := True;
+      if Node = Root then
+         return System.Null_Address;
+      end if;
+      if To_Node (Node).Next /= System.Null_Address then
+         return To_Node (Node).Next;
+      end if;
+      loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit then
+            Valid := False;
+            return System.Null_Address;
+         end if;
+         Parent := To_Node (Candidate).Parent;
+         if Parent = System.Null_Address then
+            return System.Null_Address;
+         end if;
+         if To_Node (Candidate).Node_Type = Attr_Type
+           and then To_Node (Parent).Children /= System.Null_Address
+         then
+            return To_Node (Parent).Children;
+         end if;
+         Candidate := Parent;
+         if Candidate = Root then
+            return System.Null_Address;
+         end if;
+         if To_Node (Candidate).Next /= System.Null_Address then
+            return To_Node (Candidate).Next;
+         end if;
+      end loop;
+   end Next_Subtree_Node;
+
+   function Valid_Subtree_Document
+     (Root, Target_Doc : System.Address;
+      Pin_Count : out Natural) return Boolean
+   is
+      Current : System.Address := Root;
+      Steps : Natural := 0;
+      Traversal_Valid : Boolean;
+   begin
+      Pin_Count := 0;
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit then
+            return False;
+         end if;
+         if To_Node (Current).Doc /= System.Null_Address
+           and then To_Node (Current).Doc /= Target_Doc
+         then
+            return False;
+         end if;
+         if Target_Doc /= System.Null_Address
+           and then Owner_Block (Current) /= Owner_Block (Target_Doc)
+           and then Metadata_At (Current).Document_Pin /= Owner_Block (Target_Doc)
+           and then Metadata_At (Current).Namespace_Pin /= Owner_Block (Target_Doc)
+         then
+            if Pin_Count = Natural'Last then
+               return False;
+            end if;
+            Pin_Count := Pin_Count + 1;
+         end if;
+         if First_Subnode (Current) /= System.Null_Address then
+            Current := First_Subnode (Current);
+         else
+            Current := Next_Subtree_Node (Current, Root, Traversal_Valid);
+            if not Traversal_Valid then
+               return False;
+            end if;
+         end if;
+      end loop;
+      return True;
+   end Valid_Subtree_Document;
+
+   procedure Set_Subtree_Document
+     (Root, Target_Doc, Target_Block : System.Address)
+   is
+      Current : System.Address := Root;
+      Steps : Natural := 0;
+      Traversal_Valid : Boolean;
+   begin
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit then
+            raise Program_Error;
+         end if;
+         To_Node (Current).Doc := Target_Doc;
+         if Target_Block /= System.Null_Address
+           and then Owner_Block (Current) /= Target_Block
+           and then Metadata_At (Current).Document_Pin /= Target_Block
+         then
+            if Metadata_At (Current).Namespace_Pin /= Target_Block then
+               Retain_Block (Target_Block);
+            end if;
+            Metadata_At (Current).Document_Pin := Target_Block;
+         end if;
+         if First_Subnode (Current) /= System.Null_Address then
+            Current := First_Subnode (Current);
+         else
+            Current := Next_Subtree_Node (Current, Root, Traversal_Valid);
+            if not Traversal_Valid then
+               raise Program_Error;
+            end if;
+         end if;
+      end loop;
+   end Set_Subtree_Document;
+
+   function Valid_Child_Kind (Kind : int) return Boolean is
+   begin
+      return Kind = Element_Type or else Kind = Text_Type
+        or else Kind = Comment_Type or else Kind = CData_Type
+        or else Kind = PI_Type;
+   end Valid_Child_Kind;
+
+   function Add_Child
+     (Parent, Child : System.Address) return System.Address
+   is
+      Parent_Node : Node_Access;
+      Child_Node : Node_Access;
+      Target_Doc : System.Address;
+      Target_Block : System.Address;
+      Ancestor : System.Address;
+      Pin_Count : Natural;
+      Steps : Natural := 0;
+   begin
+      if Parent = System.Null_Address or else Child = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Parent_Node := To_Node (Parent);
+      Child_Node := To_Node (Child);
+      if (Parent_Node.Node_Type /= Element_Type
+          and then Parent_Node.Node_Type /= Document_Type)
+        or else not Valid_Child_Kind (Child_Node.Node_Type)
+      then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      if Parent_Node.Node_Type = Document_Type then
+         if Child_Node.Node_Type = Text_Type
+           or else Child_Node.Node_Type = CData_Type
+           or else (Child_Node.Node_Type = Element_Type
+                    and then Doc_Get_Root_Element (Parent) /= System.Null_Address
+                    and then Doc_Get_Root_Element (Parent) /= Child)
+         then
+            Report_Dom_Error (115);
+            return System.Null_Address;
+         end if;
+      end if;
+      if Child_Node.Parent = Parent
+        and then Parent_Node.Last = Child
+      then
+         return Child;
+      end if;
+      Target_Doc :=
+        (if Parent_Node.Node_Type = Document_Type then Parent else Parent_Node.Doc);
+      Ancestor := Parent;
+      while Ancestor /= System.Null_Address loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit then
+            Report_Dom_Error (115);
+            return System.Null_Address;
+         end if;
+         if Ancestor = Child then
+            Report_Dom_Error (115);
+            return System.Null_Address;
+         end if;
+         Ancestor := To_Node (Ancestor).Parent;
+      end loop;
+      if not Valid_Subtree_Document (Child, Target_Doc, Pin_Count) then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      Target_Block :=
+        (if Target_Doc = System.Null_Address
+         then System.Null_Address else Owner_Block (Target_Doc));
+      if Target_Block /= System.Null_Address
+        and then To_Header (Target_Block).References > Natural'Last - Pin_Count
+      then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      end if;
+      if Child_Node.Node_Type = Text_Type
+        and then Parent_Node.Last /= System.Null_Address
+        and then To_Node (Parent_Node.Last).Node_Type = Text_Type
+      then
+         declare
+            Tail : constant System.Address := Parent_Node.Last;
+            Tail_Content : constant System.Address := To_Node (Tail).Content;
+            Child_Content : constant System.Address := Child_Node.Content;
+            Tail_Length : constant Integer :=
+              (if Tail_Content = System.Null_Address
+               then 0 else Scan_Length (Tail_Content, String_Limit));
+            Child_Length : constant Integer :=
+              (if Child_Content = System.Null_Address
+               then 0 else Scan_Length (Child_Content, String_Limit));
+            Combined : System.Address;
+         begin
+            if Tail_Length < 0 or else Child_Length < 0
+              or else Tail_Length > Integer'Last - Child_Length - 1
+            then
+               Report_Dom_Error (115);
+               return System.Null_Address;
+            end if;
+            Combined := C_Malloc (size_t (Tail_Length + Child_Length + 1));
+            if Combined = System.Null_Address then
+               XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+               return System.Null_Address;
+            end if;
+            declare
+               Output : String (1 .. Tail_Length + Child_Length + 1)
+                 with Import, Address => Combined;
+            begin
+               if Tail_Length > 0 then
+                  Output (1 .. Tail_Length) :=
+                    To_String (Tail_Content, Natural (Tail_Length));
+               end if;
+               if Child_Length > 0 then
+                  Output (Tail_Length + 1 .. Tail_Length + Child_Length) :=
+                    To_String (Child_Content, Natural (Child_Length));
+               end if;
+               Output (Tail_Length + Child_Length + 1) := Character'Val (0);
+            end;
+            Unlink_Internal (Child);
+            if Metadata_At (Tail).Owned_Content /= System.Null_Address then
+               C_Free (Metadata_At (Tail).Owned_Content);
+            end if;
+            Metadata_At (Tail).Owned_Content := Combined;
+            To_Node (Tail).Content := Combined;
+            Free_Tree (Child);
+            return Tail;
+         end;
+      end if;
+      Set_Subtree_Document (Child, Target_Doc, Target_Block);
+      Unlink_Internal (Child);
+      Append_Child (Parent, Child);
+      return Child;
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Add_Child;
+
+   function Doc_Set_Root_Element
+     (Doc, Root : System.Address) return System.Address
+   is
+      Old_Root : System.Address;
+      Target_Block : System.Address;
+      Pin_Count : Natural;
+      Ancestor : System.Address;
+      Steps : Natural := 0;
+   begin
+      if Doc = System.Null_Address or else To_Node (Doc).Node_Type /= Document_Type
+      then
+         return System.Null_Address;
+      end if;
+      if Root = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if To_Node (Root).Node_Type /= Element_Type then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      Old_Root := Doc_Get_Root_Element (Doc);
+      if Root = Old_Root then
+         return Root;
+      end if;
+      Ancestor := Doc;
+      while Ancestor /= System.Null_Address loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit or else Ancestor = Root then
+            Report_Dom_Error (115);
+            return System.Null_Address;
+         end if;
+         Ancestor := To_Node (Ancestor).Parent;
+      end loop;
+      if not Valid_Subtree_Document (Root, Doc, Pin_Count) then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      Target_Block := Owner_Block (Doc);
+      if To_Header (Target_Block).References > Natural'Last - Pin_Count then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      end if;
+      Set_Subtree_Document (Root, Doc, Target_Block);
+      Unlink_Internal (Root);
+      if Old_Root = System.Null_Address then
+         Append_Child (Doc, Root);
+         return System.Null_Address;
+      end if;
+      declare
+         Prev : constant System.Address := To_Node (Old_Root).Prev;
+         Next : constant System.Address := To_Node (Old_Root).Next;
+         Parent : constant System.Address := To_Node (Old_Root).Parent;
+      begin
+         if Prev = System.Null_Address then
+            To_Node (Parent).Children := Root;
+         else
+            To_Node (Prev).Next := Root;
+         end if;
+         if Next = System.Null_Address then
+            To_Node (Parent).Last := Root;
+         else
+            To_Node (Next).Prev := Root;
+         end if;
+         To_Node (Root).Parent := Parent;
+         To_Node (Root).Prev := Prev;
+         To_Node (Root).Next := Next;
+         To_Node (Old_Root).Parent := System.Null_Address;
+         To_Node (Old_Root).Prev := System.Null_Address;
+         To_Node (Old_Root).Next := System.Null_Address;
+      end;
+      return Old_Root;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Doc_Set_Root_Element;
+
+   procedure Free_Tree (Root : System.Address) is
+      Current : System.Address := Root;
+      Steps : Natural := 0;
+   begin
+      while Current /= System.Null_Address loop
+         Steps := Steps + 1;
+         if Steps > Step_Limit then
+            raise Program_Error;
+         end if;
+         if To_Node (Current).Properties /= System.Null_Address then
+            declare
+               Child : constant System.Address := To_Node (Current).Properties;
+               Rest : constant System.Address := To_Node (Child).Next;
+            begin
+               To_Node (Current).Properties := Rest;
+               if Rest /= System.Null_Address then
+                  To_Node (Rest).Prev := System.Null_Address;
+               end if;
+               To_Node (Child).Next := System.Null_Address;
+               Current := Child;
+            end;
+         elsif To_Node (Current).Children /= System.Null_Address then
+            declare
+               Child : constant System.Address := To_Node (Current).Children;
+               Rest : constant System.Address := To_Node (Child).Next;
+            begin
+               To_Node (Current).Children := Rest;
+               if Rest /= System.Null_Address then
+                  To_Node (Rest).Prev := System.Null_Address;
+               elsif To_Node (Current).Last = Child then
+                  To_Node (Current).Last := System.Null_Address;
+               end if;
+               To_Node (Child).Next := System.Null_Address;
+               Current := Child;
+            end;
+         else
+            declare
+               Parent : constant System.Address := To_Node (Current).Parent;
+            begin
+               To_Node (Current).Children := System.Null_Address;
+               To_Node (Current).Last := System.Null_Address;
+               To_Node (Current).Properties := System.Null_Address;
+               To_Node (Current).Parent := System.Null_Address;
+               To_Node (Current).Next := System.Null_Address;
+               To_Node (Current).Prev := System.Null_Address;
+               Release_Node (Current);
+               Current := Parent;
+            end;
+         end if;
+      end loop;
+   end Free_Tree;
+
+   procedure Unlink_Node (Node : System.Address) is
+   begin
+      if Node = System.Null_Address then
+         return;
+      end if;
+      if To_Node (Node).Node_Type = Document_Type
+        or else (To_Node (Node).Node_Type /= Element_Type
+                 and then To_Node (Node).Node_Type /= Text_Type
+                 and then To_Node (Node).Node_Type /= CData_Type
+                 and then To_Node (Node).Node_Type /= Comment_Type
+                 and then To_Node (Node).Node_Type /= PI_Type)
+      then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      Unlink_Internal (Node);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+   end Unlink_Node;
+
+   procedure Free_Node (Node : System.Address) is
+   begin
+      if Node = System.Null_Address then
+         return;
+      end if;
+      if To_Node (Node).Node_Type = Document_Type then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      Unlink_Internal (Node);
+      Free_Tree (Node);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+   end Free_Node;
+
    function Doc_Get_Root_Element (Doc : System.Address) return System.Address
    is
       Current : System.Address;
@@ -1401,18 +2238,25 @@ package body XML3_C is
       if Doc = System.Null_Address then
          return;
       end if;
+      if To_Node (Doc).Node_Type /= Document_Type then
+         Report_Dom_Error (115);
+         return;
+      end if;
       declare
-         Block : constant System.Address := Doc - Header_Bytes;
+         Block : constant System.Address := Owner_Block (Doc);
       begin
-         if To_Header (Block).Magic /= Block_Magic then
+         if Block = System.Null_Address
+           or else To_Header (Block).Magic /= Block_Magic
+           or else To_Header (Block).Doc_Freed
+         then
             return;
          end if;
-         To_Header (Block).Magic := 0;
-         C_Free (Block);
+         To_Header (Block).Doc_Freed := True;
+         Free_Tree (Doc);
       end;
    exception
       when others =>
-         null;
+         Report_Dom_Error (1);
    end Free_Doc;
 
    function Node_Get_Content (Node : System.Address) return System.Address is

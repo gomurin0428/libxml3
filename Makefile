@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
@@ -106,6 +106,18 @@ tests/encoding-resource-test-reference: tests/encoding-resource-test.c compat/ba
 tests/encoding-test-sanitize: tests/encoding-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
+tests/dom-test: tests/dom-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/dom-test-reference: tests/dom-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/dom-test-sanitize: tests/dom-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
 tests/error-test-sanitize: tests/error-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -pthread -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
@@ -129,6 +141,10 @@ test-encoding: tests/encoding-snapshot tests/encoding-snapshot-reference \
 	./tests/encoding-unit-test
 	/usr/bin/python3 tests/compare-encoding.py
 
+test-dom: tests/dom-test tests/dom-test-reference
+	LD_LIBRARY_PATH=lib ./tests/dom-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/dom-test-reference
+
 test-resources: tests/resource-test tests/resource-test-reference \
 		tests/error-snapshot tests/error-snapshot-reference \
 		tests/encoding-resource-test tests/encoding-resource-test-reference
@@ -145,7 +161,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -205,6 +221,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
+		xmlNewDoc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
 	xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory \
@@ -226,7 +243,7 @@ install: build
 
 test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
-		tests/error-test-sanitize tests/fuzz-test-sanitize
+		tests/error-test-sanitize tests/fuzz-test-sanitize tests/dom-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
@@ -237,6 +254,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/resource-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/error-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/fuzz-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/dom-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
@@ -250,4 +268,5 @@ clean:
 		tests/encoding-test tests/encoding-test-reference tests/encoding-unit-test \
 		tests/encoding-resource-test tests/encoding-resource-test-reference \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
-		tests/fuzz-test tests/fuzz-test-sanitize tests/*.out
+		tests/fuzz-test tests/fuzz-test-sanitize tests/dom-test \
+		tests/dom-test-reference tests/dom-test-sanitize tests/*.out

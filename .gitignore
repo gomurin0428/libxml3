@@ -32,6 +32,9 @@ tests/encoding-resource-test-sanitize
 tests/oom-test
 tests/fuzz-test
 tests/fuzz-test-sanitize
+tests/dom-test
+tests/dom-test-reference
+tests/dom-test-sanitize
 tests/limit-error-test
 tests/differential-libxml3
 tests/differential-system

@@ -17,6 +17,7 @@ make build
 make test-api
 make reference
 make test-encoding
+make test-dom
 make check-inventory
 make compare
 make check
@@ -52,10 +53,13 @@ int main(void) {
 cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 ```
 
-主な初期サブセットは、UTF-8/UTF-16LE/BE のメモリ入力の読み取り、
-要素・属性・テキスト・CDATA・
-コメント・PI の DOM 閲覧、読み取り専用の namespace lookup、文字列関数、
-所有権付き getter です。固定上限や
+主なサブセットは、UTF-8/UTF-16LE/BE のメモリ入力、要素・属性・テキスト・CDATA・
+コメント・PI の DOM 閲覧、読み取り専用の namespace lookup に加え、
+限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` のみを追加でサポートします。
+属性・namespace の作成、コピー、文書間移動、serialization は未対応です。
+構造 fields の直接変更はサポートしません。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
 ではありません。

@@ -80,9 +80,17 @@ struct _xmlDoc {
     xmlNodePtr next;
     xmlNodePtr prev;
     xmlDocPtr doc;
+    const xmlChar *version;
 };
 
 xmlNodePtr xmlDocGetRootElement(const xmlDoc *doc);
+xmlDocPtr xmlNewDoc(const xmlChar *version);
+xmlNodePtr xmlNewNode(xmlNsPtr ns, const xmlChar *name);
+xmlNodePtr xmlNewText(const xmlChar *content);
+xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
+xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
+void xmlUnlinkNode(xmlNodePtr cur);
+void xmlFreeNode(xmlNodePtr cur);
 void xmlFreeDoc(xmlDocPtr cur);
 xmlChar *xmlNodeGetContent(const xmlNode *cur);
 xmlChar *xmlGetProp(const xmlNode *node, const xmlChar *name);

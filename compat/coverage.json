@@ -64,6 +64,67 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewDoc": {
+    "implementation": "partial",
+    "scope": "XML 1.0 の文書作成と所有権付き単一ノード arena。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNode": {
+    "implementation": "partial",
+    "scope": "要素 node と library-owned namespace borrowing のみ。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewText": {
+    "implementation": "partial",
+    "scope": "UTF-8 text node 作成のみ。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocSetRootElement": {
+    "implementation": "partial",
+    "scope": "文書 root の検証済み置換。comments/PI と旧 root の detached ownership を維持。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlAddChild": {
+    "implementation": "partial",
+    "scope": "限定 node types、same-document/documentless subtree、adjacent text merge。cross-document move と属性追加は未対応。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlUnlinkNode": {
+    "implementation": "partial",
+    "scope": "通常 child unlink のみ。attribute unlink は拒否。",
+    "tests": [
+      "tests/dom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeNode": {
+    "implementation": "partial",
+    "scope": "非-document subtree を安全に unlink して反復解放。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlFreeDoc": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

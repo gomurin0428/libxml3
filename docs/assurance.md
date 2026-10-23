@@ -55,6 +55,10 @@ proof gate pass.
 
 * The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
   reference ownership, and foreign pointer conversions are outside SPARK.
+  This includes all seven DOM constructors and mutation/free operations; their
+  ownership and structural behavior is tested in C but is not formally proved.
+  Callers must use these APIs rather than directly changing public tree links,
+  and must not use a document handle after `xmlFreeDoc`.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
@@ -80,7 +84,12 @@ The user-selected target is **C source/API compatibility with recompilation**,
 not binary ABI compatibility or a replacement `libxml2.so.2`. The library uses its
 own name, `libxml3`, and must not be loaded alongside libxml2 into the same symbol
 namespace. Only APIs and structure fields explicitly listed in the compatibility
-document are supported. Unsupported parser options fail, not silently degrade.
+document are supported. The minimal DOM editor API is limited to `xmlNewDoc`,
+`xmlNewNode`, `xmlNewText`, `xmlDocSetRootElement`, `xmlAddChild`,
+`xmlUnlinkNode`, and `xmlFreeNode`. Attribute/namespace creation, copying,
+cross-document moves and serialization are deferred. Unsupported operations
+fail without silently creating invalid links. Unsupported parser options fail,
+not silently degrade.
 
 The current profile supports XML 1.0 UTF-8 and UTF-16LE/BE input, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,

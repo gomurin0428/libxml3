@@ -52,6 +52,30 @@ package XML3_C is
    function Doc_Get_Root_Element (Doc : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlDocGetRootElement";
 
+   function New_Doc (Version : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewDoc";
+
+   function New_Node
+     (Ns, Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewNode";
+
+   function New_Text (Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewText";
+
+   function Doc_Set_Root_Element
+     (Doc, Root : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlDocSetRootElement";
+
+   function Add_Child
+     (Parent, Child : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlAddChild";
+
+   procedure Unlink_Node (Node : System.Address)
+     with Export, Convention => C, External_Name => "xmlUnlinkNode";
+
+   procedure Free_Node (Node : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeNode";
+
    procedure Free_Doc (Doc : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeDoc";
 

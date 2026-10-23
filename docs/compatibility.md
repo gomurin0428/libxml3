@@ -14,6 +14,8 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
+  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlHasNsProp`、`xmlGetNsProp`、`xmlGetNoNsProp`、
   要素 sibling/child 関数
@@ -34,11 +36,11 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 構造体やその ABI を定義しません。`xmlNode` は `_private`、`type`、`name`、
 `children`、`last`、`parent`、`next`、`prev`、`doc`、`ns`、`content`、
 `properties`、`nsDef` を公開します。`xmlAttr` は `_private` から `ns` までの
-属性 prefix、`xmlDoc` は `_private` から `doc` までの文書 prefix のみです。
+属性 prefix、`xmlDoc` は `_private` から `version` までの文書 prefix のみです。
 `xmlNs` は `next`、`type`、`href`、`prefix`、`_private`、`context` を公開します。
-DOM fields は読み取り専用です。アプリケーションが設定できる例外は `_private`
-で、libxml3 はその値を参照・解放しません。個別 node/attribute の解放 API は
-なく、DOM 全体を `xmlFreeDoc` で解放します。属性には値を持つテキスト子ノード
+DOM fields の直接変更はサポートせず、構造編集には下記 API を使用してください。
+アプリケーションが設定できる例外は `_private` で、libxml3 はその値を参照・解放
+しません。属性には値を持つテキスト子ノード
 があります。名前と値は UTF-8 の NUL 終端文字列です。要素の `content` は NULL、
 テキスト名は `"text"`、コメント名は
 `"comment"`、CDATA 名は NULL、PI 名は target です。名前空間付き要素・属性の
@@ -48,6 +50,33 @@ DOM fields は読み取り専用です。アプリケーションが設定でき
 されても `nsDef` に重複登録せず、組み込み `xml` namespace は検索 API から取得
 できます。`xmlNs.context` は NULL です。namespace records と文字列も文書所有で、
 `xmlFreeDoc` が公開ポインターをたどらず一括解放します。
+
+### 限定的な作成・編集 API
+
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` を実装しています。新規文書は
+version が NULL の場合 `"1.0"` を持ち、パーサーが作る XML 1.0 文書にも
+`version` を設定します。`xmlAddChild` は document/element 親と element、
+text、comment、CDATA、PI 子を扱います。隣接 text は入力内容を先に確保してから
+既存末尾に結合し、既存末尾のポインターを返します。属性追加、属性 unlink、
+未対応 node type の編集は拒否します。`xmlFreeNode` は先に安全に unlink して
+から属性・子孫を反復解放します。これは呼び出し側に unlink を要求する upstream
+動作より安全な差です。
+
+添付可能なのは documentless subtree または同一文書に属する subtree のみです。
+他文書との移動や、別文書に関連付いた node の documentless parent への移動は
+変更前に拒否されます。root replacement は元 root の sibling 位置を保ち、
+top-level comment/PI を残します。既存 parsed arena は per-node 参照で保持され、
+その arena の最後の live node/reference が解放されるまで全 arena memory を保持
+することがあります。これは parsed strings の既存 inline 格納を保つための tradeoff
+です。detached parsed node とその inherited namespace/attribute backing bytes は
+source document が解放されても node 自体が解放されるまで有効です。借用 namespace
+で作成した node も namespace owner を pin します。
+
+caller は有効な library pointer lifetime、直接の tree field 書き換えをしないこと、
+同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
+ownership/refcount/pointer layer は SPARK proof の対象外です。属性・namespace の
+作成、copy、cross-document move、serialization は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。文書と DOM は `xmlFreeDoc`
