@@ -14,6 +14,8 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
+  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlHasNsProp`、`xmlGetNsProp`、`xmlGetNoNsProp`、
   要素 sibling/child 関数
@@ -34,11 +36,14 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 構造体やその ABI を定義しません。`xmlNode` は `_private`、`type`、`name`、
 `children`、`last`、`parent`、`next`、`prev`、`doc`、`ns`、`content`、
 `properties`、`nsDef` を公開します。`xmlAttr` は `_private` から `ns` までの
-属性 prefix、`xmlDoc` は `_private` から `doc` までの文書 prefix のみです。
+属性 prefix、`xmlDoc` は `_private` から `doc` までの compact な文書 prefix に
+`version` field を追加して公開します。upstream の `doc` と `version` の間にある
+fields は省略しているため、これは upstream の `xmlDoc` layout や ABI の再現では
+ありません。
 `xmlNs` は `next`、`type`、`href`、`prefix`、`_private`、`context` を公開します。
-DOM fields は読み取り専用です。アプリケーションが設定できる例外は `_private`
-で、libxml3 はその値を参照・解放しません。個別 node/attribute の解放 API は
-なく、DOM 全体を `xmlFreeDoc` で解放します。属性には値を持つテキスト子ノード
+DOM fields の直接変更はサポートせず、構造編集には下記 API を使用してください。
+アプリケーションが設定できる例外は `_private` で、libxml3 はその値を参照・解放
+しません。属性には値を持つテキスト子ノード
 があります。名前と値は UTF-8 の NUL 終端文字列です。要素の `content` は NULL、
 テキスト名は `"text"`、コメント名は
 `"comment"`、CDATA 名は NULL、PI 名は target です。名前空間付き要素・属性の
@@ -46,12 +51,56 @@ DOM fields は読み取り専用です。アプリケーションが設定でき
 `nsDef` にソース順で公開されます。要素と名前空間付き属性の `ns` は有効な binding
 を指し、default namespace は無接頭辞属性には適用しません。`xmlns:xml` は明示
 されても `nsDef` に重複登録せず、組み込み `xml` namespace は検索 API から取得
-できます。`xmlNs.context` は NULL です。namespace records と文字列も文書所有で、
-`xmlFreeDoc` が公開ポインターをたどらず一括解放します。
+できます。`xmlNs.context` は NULL です。parsed namespace records と文字列は
+document arena に格納されます。`xmlFreeDoc` は現在接続されている subtree を
+反復解放して document の参照を解放しますが、detached live node や借用 namespace
+が参照を保持している arena とその文字列は最後の参照が解放されるまで残ります。
+node の `ns` は移動時に再調整されません。宣言 scope 外へ移動した node 自身の
+lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重して ancestor
+の retained `ns` binding を参照します。
+
+### 限定的な作成・編集 API
+
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` を実装しています。`xmlNewDoc` は
+version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
+します。parser が受け付ける文書は XML 1.0 です。`xmlNewNode` の name と
+`xmlNewText` の content は NUL 終端 byte string としてコピーされますが、
+XML name/UTF-8 の妥当性検証は行いません。`xmlNewText(NULL)` は content が NULL
+の text node を作ります。
+
+`xmlAddChild` は document/element 親と element、text、comment、CDATA、PI 子を
+扱います。element 親ではこの子型を受け入れますが、document 親への text/CDATA
+直下追加と、すでに root がある document への別 element 追加は拒否します。
+隣接 text は入力内容を先に確保してから既存末尾に結合し、既存末尾のポインターを
+返します。属性追加、属性 unlink、未対応 node type の編集は拒否します。
+`xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
+旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
+comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。
+document、attribute、namespace pointer は code 115 で拒否します。これは呼び出し側に
+unlink を要求する upstream 動作より安全な差です。
+
+添付可能なのは documentless subtree または同一文書に属する subtree のみです。
+他文書との移動や、別文書に関連付いた node の documentless parent への移動は
+変更前に拒否されます。root replacement は元 root の sibling 位置を保ち、
+top-level comment/PI を残します。既存 parsed arena は per-node 参照で保持され、
+その arena の最後の live node/reference が解放されるまで全 arena memory を保持
+することがあります。これは parsed strings の既存 inline 格納を保つための tradeoff
+です。detached parsed node とその inherited namespace/attribute backing bytes は
+source document が解放されても node 自体が解放されるまで有効です。借用 namespace
+で作成した node も namespace owner を pin します。
+
+caller は有効な library pointer lifetime、直接の tree field 書き換えをしないこと、
+同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
+ownership/refcount/pointer layer は SPARK proof の対象外です。属性・namespace の
+作成、copy、cross-document move、serialization は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
-借用されて DOM にコピーされ、以後保持されません。文書と DOM は `xmlFreeDoc`
-まで所有されます。`xmlNodeGetContent` と `xmlGetProp` の返却値は
+借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
+いる文書 subtree と document の参照を解放します。detached node が残る場合は
+その arena backing も保持され、node の解放には `xmlFreeNode` を使います。
+`xmlFreeDoc` 後の document handle は使用できません。`xmlNodeGetContent` と
+`xmlGetProp` の返却値は
 `xmlFree` で解放してください。`xmlStrlen` は C `int` に収まらない長さに
 対して `-1` を返します。NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。

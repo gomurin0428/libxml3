@@ -64,11 +64,73 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewDoc": {
+    "implementation": "partial",
+    "scope": "version NULL 時は1.0、指定 C string はそのままコピー。XML 1.0 制限は parser に適用。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNode": {
+    "implementation": "partial",
+    "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewText": {
+    "implementation": "partial",
+    "scope": "raw C string content をコピーし UTF-8 検証なし。NULL content は NULL のまま。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocSetRootElement": {
+    "implementation": "partial",
+    "scope": "descendant root promotion を含む文書 root 置換。旧 root subtree の detached ownership を維持。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlAddChild": {
+    "implementation": "partial",
+    "scope": "限定 node types と same-document/documentless subtree。document parent は text/CDATA 直下と second root を拒否。adjacent text merge。cross-document move と属性追加は未対応。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlUnlinkNode": {
+    "implementation": "partial",
+    "scope": "通常 child unlink のみ。attribute unlink は拒否。",
+    "tests": [
+      "tests/dom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeNode": {
+    "implementation": "partial",
+    "scope": "element/text/comment/CDATA/PI subtree のみ unlink して反復解放。document/attribute/namespace pointer は code 115 で拒否。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/dom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlFreeDoc": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在接続された tree を解放し document 参照を落とす。detached live node/namespace がある parsed arena は参照解放まで保持。全ノード型の等価性は未確認。",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/dom-test.c"
     ],
     "proof": "not-proved"
   },
