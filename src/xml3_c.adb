@@ -2197,7 +2197,7 @@ package body XML3_C is
       if Node = System.Null_Address then
          return;
       end if;
-      if To_Node (Node).Node_Type = Document_Type then
+      if not Valid_Child_Kind (To_Node (Node).Node_Type) then
          Report_Dom_Error (115);
          return;
       end if;

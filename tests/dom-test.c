@@ -72,6 +72,54 @@ static void test_constructors_and_root_replacement(void) {
         xmlFreeNode(borrowed);
 #endif
     }
+    {
+        char version[] = "1.7";
+        char name[] = "copied-name";
+        char content[] = "copied-content";
+        xmlDocPtr copied_doc = xmlNewDoc(BAD_CAST version);
+        xmlNodePtr copied_node = xmlNewNode(NULL, BAD_CAST name);
+        xmlNodePtr copied_text = xmlNewText(BAD_CAST content);
+        xmlNodePtr null_text = xmlNewText(NULL);
+        assert(copied_doc != NULL && copied_node != NULL &&
+               copied_text != NULL && null_text != NULL);
+        version[0] = '9';
+        name[0] = 'x';
+        content[0] = 'x';
+        assert(strcmp((const char *)copied_doc->version, "1.7") == 0);
+        assert(strcmp((const char *)copied_node->name, "copied-name") == 0);
+        assert(strcmp((const char *)copied_text->content, "copied-content") == 0);
+        assert(null_text->content == NULL);
+        xmlFreeNode(copied_node);
+        xmlFreeNode(copied_text);
+        xmlFreeNode(null_text);
+        xmlFreeDoc(copied_doc);
+    }
+}
+
+static void test_promote_descendant_to_root(void) {
+    static const char input[] = "<r><a><b/></a><tail/></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr old_root;
+    xmlNodePtr promoted;
+    xmlNodePtr tail;
+    assert(doc != NULL);
+    old_root = xmlDocGetRootElement(doc);
+    promoted = old_root->children;
+    assert(promoted != NULL);
+    tail = promoted->next;
+    assert(tail != NULL);
+    assert(xmlDocSetRootElement(doc, promoted) == old_root);
+    assert(doc->children == promoted && doc->last == promoted);
+    assert(promoted->parent == (xmlNodePtr)doc && promoted->doc == doc);
+    assert(promoted->prev == NULL && promoted->next == NULL);
+    assert(old_root->parent == NULL && old_root->next == NULL);
+    assert(old_root->children == tail && old_root->last == tail);
+    assert(tail->parent == old_root && tail->prev == NULL);
+    xmlFreeNode(old_root);
+    assert(xmlDocGetRootElement(doc) == promoted);
+    assert(promoted->children != NULL);
+    assert(strcmp((const char *)promoted->children->name, "b") == 0);
+    xmlFreeDoc(doc);
 }
 
 static void test_text_merge_and_edit_flow(void) {
@@ -212,15 +260,56 @@ static void test_safe_ownership(void) {
         xmlFreeNode(top);
     }
 }
+
+static void test_free_rejects_unsupported_types(void) {
+    static const char input[] =
+        "<r xmlns:p='urn:free' a='value'><p:item>child</p:item></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNsPtr ns;
+    xmlAttrPtr attr;
+    xmlChar *value;
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    ns = root->nsDef;
+    attr = root->properties;
+    assert(ns != NULL && attr != NULL);
+
+    xmlFreeNode((xmlNodePtr)ns);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->domain == XML_FROM_TREE);
+    assert(xmlGetLastError()->code == 115);
+    assert(root->nsDef == ns && root->properties == attr);
+    assert(strcmp((const char *)root->name, "r") == 0);
+    assert(strcmp((const char *)ns->prefix, "p") == 0);
+    assert(strcmp((const char *)ns->href, "urn:free") == 0);
+    assert_text(root, "child");
+
+    xmlResetLastError();
+    xmlFreeNode((xmlNodePtr)attr);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->domain == XML_FROM_TREE);
+    assert(xmlGetLastError()->code == 115);
+    assert(root->properties == attr && attr->parent == root);
+    assert(strcmp((const char *)attr->name, "a") == 0);
+    value = xmlGetProp(root, BAD_CAST "a");
+    assert(value != NULL && strcmp((const char *)value, "value") == 0);
+    xmlFree(value);
+    assert_text(root, "child");
+    xmlResetLastError();
+    xmlFreeDoc(doc);
+}
 #endif
 
 int main(void) {
     test_constructors_and_root_replacement();
+    test_promote_descendant_to_root();
     test_text_merge_and_edit_flow();
     test_parsed_unlink_and_reinsert();
 #ifndef XML3_REFERENCE_TEST
     test_sticky_mutator_errors();
     test_safe_ownership();
+    test_free_rejects_unsupported_types();
 #endif
     puts("DOM ownership and editing tests passed");
     return 0;
