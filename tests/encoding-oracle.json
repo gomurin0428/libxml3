@@ -1655,7 +1655,7 @@
         "content_hex": null,
         "attribute_hex": null
       },
-      "libxml3_difference": "The short UTF-8 BOM prefix is rejected during encoding prevalidation with IO/code 81 instead of a start-tag error."
+      "libxml3_difference": "A lone 0xFF byte is invalid UTF-8 and is rejected during encoding prevalidation with IO/code 81 instead of a start-tag error."
     },
     {
       "name": "short/fffe",
@@ -2005,6 +2005,57 @@
         "attribute_hex": null
       },
       "libxml3_difference": "Malformed EncName uses code 79 and reports its value start rather than libxml2's final XML-declaration error and later position."
+    },
+    {
+      "name": "utf-8/double-bom",
+      "input_hex": "efbbbfefbbbf3c722f3e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/double-bom",
+      "input_hex": "fffefffe3c0072002f003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/double-bom",
+      "input_hex": "fefffeff003c0072002f003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **989 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **987 discharged checks**, **0 unproved**,
 and **0 justified**. The run emitted non-failing warnings about unused outputs and
 assignments; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
@@ -13,13 +13,13 @@ a whole and not a proof of full XML conformance. See [assurance.md](assurance.md
 | --- | ---: |
 | Data dependencies | 13 |
 | Initialization | 87 |
-| Run-time checks | 592 |
+| Run-time checks | 591 |
 | Assertions / loop invariants | 98 |
-| Functional contracts | 156 |
+| Functional contracts | 155 |
 | Termination | 43 |
-| Total | 989 |
+| Total | 987 |
 
-123 checks were discharged by flow analysis and 866 by proof. `Parse`, `Decode`,
+123 checks were discharged by flow analysis and 864 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -57,7 +57,7 @@ and checks input sizes and array bounds while supplying heap workspaces to the c
 7e1c81bf4f77e1e6d433710179b63f28bf00057aeef6f5cf07708a113dd4d809  src/xml3_text.ads
 47f78aaebd907be02955b0d9b991eb47d7b2c344c3cae7b924a7ca575ba10c5b  src/xml3_text.adb
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
-d8c805436661fc48888321833a25eb594a19789b3231af2abc8463f31e1874e9  src/xml3_parser.adb
+2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads

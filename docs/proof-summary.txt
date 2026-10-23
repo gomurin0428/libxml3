@@ -1,24 +1,24 @@
 Summary of SPARK analysis
 =========================
 
-------------------------------------------------------------------------------------------------------------
-SPARK Analysis results        Total         Flow                              Provers   Justified   Unproved
-------------------------------------------------------------------------------------------------------------
-Data Dependencies                13           13                                    .           .          .
-Flow Dependencies                 .            .                                    .           .          .
-Initialization                   87           87                                    .           .          .
-Non-Aliasing                      .            .                                    .           .          .
-Run-time Checks                 592            .    592 (CVC5 99%, Trivial 0%, Z3 1%)           .          .
-Assertions                       98            .     98 (CVC5 97%, Trivial 3%, Z3 1%)           .          .
-Functional Contracts            156            .    156 (CVC5 94%, Trivial 1%, Z3 5%)           .          .
-LSP Verification                  .            .                                    .           .          .
-Termination                      43           23                            20 (CVC5)           .          .
-Concurrency                       .            .                                    .           .          .
-------------------------------------------------------------------------------------------------------------
-Total                           989    123 (12%)                            866 (88%)           .          .
+-------------------------------------------------------------------------------------------------------------
+SPARK Analysis results        Total         Flow                               Provers   Justified   Unproved
+-------------------------------------------------------------------------------------------------------------
+Data Dependencies                13           13                                     .           .          .
+Flow Dependencies                 .            .                                     .           .          .
+Initialization                   87           87                                     .           .          .
+Non-Aliasing                      .            .                                     .           .          .
+Run-time Checks                 591            .    591 (CVC5 89%, Trivial 0%, Z3 10%)           .          .
+Assertions                       98            .     98 (CVC5 77%, Trivial 3%, Z3 21%)           .          .
+Functional Contracts            155            .    155 (CVC5 74%, Trivial 1%, Z3 25%)           .          .
+LSP Verification                  .            .                                     .           .          .
+Termination                      43           23                 20 (CVC5 90%, Z3 10%)           .          .
+Concurrency                       .            .                                     .           .          .
+-------------------------------------------------------------------------------------------------------------
+Total                           987    123 (12%)                             864 (88%)           .          .
 
 
-max steps used for successful proof: 13316
+max steps used for successful proof: 3644
 
 Analyzed 4 units
 in unit xml3_encoding, 9 subprograms and packages out of 9 analyzed
@@ -43,7 +43,7 @@ in unit xml3_namespaces, 8 subprograms and packages out of 8 analyzed
 in unit xml3_parser, 15 subprograms and packages out of 15 analyzed
   XML3_Parser at xml3_parser.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Layout at xml3_parser.adb:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_Parser.Parse at xml3_parser.ads:38 flow analyzed (0 errors, 0 checks, 21 warnings and 0 pragma Assume statements) and proved (249 checks)
+  XML3_Parser.Parse at xml3_parser.ads:38 flow analyzed (0 errors, 0 checks, 21 warnings and 0 pragma Assume statements) and proved (247 checks)
   XML3_Parser.Parse.Add at xml3_parser.adb:364 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
   XML3_Parser.Parse.At_Text at xml3_parser.adb:210 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
   XML3_Parser.Parse.Line_At at xml3_parser.adb:57 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (11 checks)

@@ -464,9 +464,6 @@ package body XML3_Parser with SPARK_Mode is
            (81, Position (Text_Error_Position), Domain => 8);
          exit Parse_Body;
       end if;
-      if At_Text (Character'Val (16#EF#) & Character'Val (16#BB#) & Character'Val (16#BF#)) then
-         P := P + 3;
-      end if;
       if At_Text ("<?xml") then
          Saved := P;
          P := P + 5;

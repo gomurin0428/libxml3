@@ -15,8 +15,8 @@ Ubuntu では `libxml2-dev`、`pkg-config`、Ada の GNAT/GPRbuild が必要で�
 export PATH="$HOME/.local/share/ada/candidate-14/bin:$PATH"
 make build
 make test-api
-make test-encoding
 make reference
+make test-encoding
 make check-inventory
 make compare
 make check

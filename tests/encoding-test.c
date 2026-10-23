@@ -157,6 +157,49 @@ static void test_empty_and_bom_only(void) {
     assert(parse_reset(be_bom, sizeof(be_bom), NULL, 0) == NULL);
 }
 
+static void check_double_bom(const unsigned char *single_bom,
+                             size_t single_bom_length,
+                             const unsigned char *double_bom,
+                             size_t double_bom_length,
+                             const char *encoding) {
+    for (int explicit_encoding = 0; explicit_encoding < 2;
+         ++explicit_encoding) {
+        const char *requested = explicit_encoding ? encoding : NULL;
+        xmlDocPtr doc = parse_reset(single_bom, single_bom_length,
+                                    requested, 0);
+        assert(doc != NULL);
+        xmlFreeDoc(doc);
+
+        doc = parse_reset(double_bom, double_bom_length, requested, 0);
+        assert(doc == NULL);
+        assert(xmlGetLastError() != NULL);
+    }
+}
+
+static void test_double_bom(void) {
+    static const unsigned char utf8_single[] =
+        {0xef, 0xbb, 0xbf, '<', 'r', '/', '>'};
+    static const unsigned char utf8_double[] =
+        {0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, '<', 'r', '/', '>'};
+    static const unsigned char utf16le_single[] =
+        {0xff, 0xfe, 0x3c, 0x00, 0x72, 0x00, 0x2f, 0x00, 0x3e, 0x00};
+    static const unsigned char utf16le_double[] =
+        {0xff, 0xfe, 0xff, 0xfe, 0x3c, 0x00, 0x72, 0x00, 0x2f, 0x00,
+         0x3e, 0x00};
+    static const unsigned char utf16be_single[] =
+        {0xfe, 0xff, 0x00, 0x3c, 0x00, 0x72, 0x00, 0x2f, 0x00, 0x3e};
+    static const unsigned char utf16be_double[] =
+        {0xfe, 0xff, 0xfe, 0xff, 0x00, 0x3c, 0x00, 0x72, 0x00, 0x2f,
+         0x00, 0x3e};
+
+    check_double_bom(utf8_single, sizeof(utf8_single), utf8_double,
+                     sizeof(utf8_double), "UTF-8");
+    check_double_bom(utf16le_single, sizeof(utf16le_single), utf16le_double,
+                     sizeof(utf16le_double), "UTF-16LE");
+    check_double_bom(utf16be_single, sizeof(utf16be_single), utf16be_double,
+                     sizeof(utf16be_double), "UTF-16BE");
+}
+
 static void test_malformed_utf16(void) {
     static const char valid[] = "<r/>";
     size_t base_length;
@@ -330,6 +373,7 @@ int main(void) {
     assert_utf16_tree(1, 0, "UTF-16BE");
     test_bomless_declarations();
     test_empty_and_bom_only();
+    test_double_bom();
     test_malformed_utf16();
     test_declaration_precedence_and_endian_conflict();
     test_warning_lifecycle();
