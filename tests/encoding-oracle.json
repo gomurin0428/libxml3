@@ -1,0 +1,2061 @@
+{
+  "version": "2.15.4",
+  "cases": [
+    {
+      "name": "utf-8/bom=False/decl=None",
+      "input_hex": "3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=True/decl=None",
+      "input_hex": "efbbbf3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=False/decl=UTF-8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d38223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=True/decl=UTF-8",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d38223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=False/decl=UTF-16",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d3136223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 38,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 38,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Rejects UTF-8 input declaring UTF-16 with prevalidation code 81 at the encoding value, rather than libxml2's declaration error 57."
+    },
+    {
+      "name": "utf-8/bom=True/decl=UTF-16",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d3136223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 38,
+        "message": "Encoding 'UTF-16' doesn't match auto-detected 'UTF-8'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=False/decl=UTF-16LE",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d31364c45223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Rejects UTF-8 input declaring UTF-16LE with prevalidation code 81 at the encoding value, rather than libxml2's declaration error 57."
+    },
+    {
+      "name": "utf-8/bom=True/decl=UTF-16LE",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d31364c45223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16LE' doesn't match auto-detected 'UTF-8'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=False/decl=UTF-16BE",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d31364245223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Rejects UTF-8 input declaring UTF-16BE with prevalidation code 81 at the encoding value, rather than libxml2's declaration error 57."
+    },
+    {
+      "name": "utf-8/bom=True/decl=UTF-16BE",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462d31364245223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16BE' doesn't match auto-detected 'UTF-8'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/bom=False/decl=other",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 32,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Unsupported encoding: other\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-8/bom=True/decl=other",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-8'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/explicit=UTF-8",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/explicit=UTF8",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF8",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-8/explicit=UTF-16",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-16",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-8/explicit=UTF16",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF16",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-8/explicit=UTF-16LE",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-16LE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-8/explicit=uTf-16bE",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "uTf-16bE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-8/explicit=other",
+      "input_hex": "efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d226f74686572223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "other",
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-8'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 32,
+        "level": 3,
+        "line": 0,
+        "int1": 0,
+        "int2": 0,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An unknown explicit encoding fails with code 32 instead of falling back to the BOM-detected UTF-8 input and returning a warning tree."
+    },
+    {
+      "name": "utf-16le/bom=False/decl=None",
+      "input_hex": "3c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 68,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 2,
+        "message": "StartTag: invalid element name\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=None",
+      "input_hex": "fffe3c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=False/decl=UTF-8",
+      "input_hex": "3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00380022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'UTF-8' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=UTF-8",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00380022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'UTF-8' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=False/decl=UTF-16",
+      "input_hex": "3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d003100360022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=UTF-16",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d003100360022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=False/decl=UTF-16LE",
+      "input_hex": "3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004c00450022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=UTF-16LE",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004c00450022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=False/decl=UTF-16BE",
+      "input_hex": "3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004200450022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16BE' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=UTF-16BE",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004200450022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16BE' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=False/decl=other",
+      "input_hex": "3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/bom=True/decl=other",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/explicit=UTF-8",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An explicit UTF-8 request remains authoritative; the UTF-16 bytes fail UTF-8 prevalidation with code 81 instead of libxml2's start-tag error 4."
+    },
+    {
+      "name": "utf-16le/explicit=UTF8",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An explicit UTF-8 request remains authoritative; the UTF-16 bytes fail UTF-8 prevalidation with code 81 instead of libxml2's start-tag error 4."
+    },
+    {
+      "name": "utf-16le/explicit=UTF-16",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-16",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/explicit=UTF16",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF16",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/explicit=UTF-16LE",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-16LE",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/explicit=uTf-16bE",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "uTf-16bE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/explicit=other",
+      "input_hex": "fffe3c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "other",
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16LE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 32,
+        "level": 3,
+        "line": 0,
+        "int1": 0,
+        "int2": 0,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An unknown explicit encoding fails with code 32 instead of falling back to the BOM-detected UTF-16 input and returning a warning tree."
+    },
+    {
+      "name": "utf-16be/bom=False/decl=None",
+      "input_hex": "003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Document is empty\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=None",
+      "input_hex": "feff003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=False/decl=UTF-8",
+      "input_hex": "003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00380022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'UTF-8' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=UTF-8",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00380022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'UTF-8' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=False/decl=UTF-16",
+      "input_hex": "003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d003100360022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=UTF-16",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d003100360022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=False/decl=UTF-16LE",
+      "input_hex": "003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004c00450022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16LE' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=UTF-16LE",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004c00450022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 40,
+        "message": "Encoding 'UTF-16LE' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=False/decl=UTF-16BE",
+      "input_hex": "003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004200450022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=UTF-16BE",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022005500540046002d00310036004200450022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=False/decl=other",
+      "input_hex": "003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/bom=True/decl=other",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/explicit=UTF-8",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An explicit UTF-8 request remains authoritative; the UTF-16 bytes fail UTF-8 prevalidation with code 81 instead of libxml2's start-tag error 4."
+    },
+    {
+      "name": "utf-16be/explicit=UTF8",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An explicit UTF-8 request remains authoritative; the UTF-16 bytes fail UTF-8 prevalidation with code 81 instead of libxml2's start-tag error 4."
+    },
+    {
+      "name": "utf-16be/explicit=UTF-16",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-16",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/explicit=UTF16",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF16",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/explicit=UTF-16LE",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-16LE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/explicit=uTf-16bE",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "uTf-16bE",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/explicit=other",
+      "input_hex": "feff003c003f0078006d006c002000760065007200730069006f006e003d00220031002e0030002200200065006e0063006f00640069006e0067003d0022006f00740068006500720022003f003e003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "other",
+      "expected": {
+        "tree": true,
+        "domain": 1,
+        "code": 113,
+        "level": 1,
+        "line": 1,
+        "int1": 0,
+        "int2": 37,
+        "message": "Encoding 'other' doesn't match auto-detected 'UTF-16BE'\n",
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 32,
+        "level": 3,
+        "line": 0,
+        "int1": 0,
+        "int2": 0,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "An unknown explicit encoding fails with code 32 instead of falling back to the BOM-detected UTF-16 input and returning a warning tree."
+    },
+    {
+      "name": "utf-16le/no-bom/explicit=UTF-16",
+      "input_hex": "3c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-16",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/no-bom/explicit=UTF-16LE",
+      "input_hex": "3c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-16LE",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16le/no-bom/explicit=UTF-16BE",
+      "input_hex": "3c003968200061007400740072003d002200e90022003e00e5652c673dd800de3c002f0039683e00",
+      "encoding": "UTF-16BE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/odd",
+      "input_hex": "fffe3c0072002f003e0078",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 5,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Odd trailing UTF-16 bytes are rejected before parsing with IO/code 81 at 1:1 rather than after the valid prefix."
+    },
+    {
+      "name": "utf-16le/truncated",
+      "input_hex": "fffe3c0072",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 68,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 2,
+        "message": "StartTag: invalid element name\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "A truncated UTF-16 code unit is rejected before parsing with IO/code 81 at 1:1 rather than a downstream parser diagnostic."
+    },
+    {
+      "name": "utf-16le/high-surrogate",
+      "input_hex": "fffe3c0072003e0000d83c002f0072003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/low-surrogate",
+      "input_hex": "fffe3c0072003e0000dc3c002f0072003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/truncated-pair",
+      "input_hex": "fffe3c0072003e0000d8",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 77,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "Premature end of data in tag r line 1\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "A truncated UTF-16 surrogate pair is rejected before parsing with IO/code 81 at 1:1 rather than a downstream parser diagnostic."
+    },
+    {
+      "name": "utf-16le/nul",
+      "input_hex": "fffe3c0072003e0000003c002f0072003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 4,
+        "message": "PCDATA invalid Char value 0\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/control",
+      "input_hex": "fffe3c0072003e0001003c002f0072003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "PCDATA invalid Char value 1\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/mismatch",
+      "input_hex": "fffe3c0072003e000a003c0061003e003c002f0062003e003c002f0072003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 2,
+        "int1": 2,
+        "int2": 8,
+        "message": "Opening and ending tag mismatch: a line 2 and b\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/no-bom/explicit=UTF-16",
+      "input_hex": "003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-16",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/no-bom/explicit=UTF-16LE",
+      "input_hex": "003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-16LE",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/no-bom/explicit=UTF-16BE",
+      "input_hex": "003c683900200061007400740072003d002200e90022003e65e5672cd83dde00003c002f6839003e",
+      "encoding": "UTF-16BE",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "utf-16be/odd",
+      "input_hex": "feff003c0072002f003e78",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 5,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Odd trailing UTF-16 bytes are rejected before parsing with IO/code 81 at 1:1 rather than after the valid prefix."
+    },
+    {
+      "name": "utf-16be/truncated",
+      "input_hex": "feff003c00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 68,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 2,
+        "message": "StartTag: invalid element name\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "A truncated UTF-16 code unit is rejected before parsing with IO/code 81 at 1:1 rather than a downstream parser diagnostic."
+    },
+    {
+      "name": "utf-16be/high-surrogate",
+      "input_hex": "feff003c0072003ed800003c002f0072003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/low-surrogate",
+      "input_hex": "feff003c0072003edc00003c002f0072003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Invalid bytes in character encoding\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/truncated-pair",
+      "input_hex": "feff003c0072003ed800",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 77,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "Premature end of data in tag r line 1\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "A truncated UTF-16 surrogate pair is rejected before parsing with IO/code 81 at 1:1 rather than a downstream parser diagnostic."
+    },
+    {
+      "name": "utf-16be/nul",
+      "input_hex": "feff003c0072003e0000003c002f0072003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 4,
+        "message": "PCDATA invalid Char value 0\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/control",
+      "input_hex": "feff003c0072003e0001003c002f0072003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 9,
+        "level": 3,
+        "line": 1,
+        "int1": 1,
+        "int2": 4,
+        "message": "PCDATA invalid Char value 1\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/mismatch",
+      "input_hex": "feff003c0072003e000a003c0061003e003c002f0062003e003c002f0072003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 76,
+        "level": 3,
+        "line": 2,
+        "int1": 2,
+        "int2": 8,
+        "message": "Opening and ending tag mismatch: a line 2 and b\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/",
+      "input_hex": "",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Document is empty\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/ff",
+      "input_hex": "ff",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "A lone 0xFF byte is invalid UTF-8 and is rejected during encoding prevalidation with IO/code 81 instead of a start-tag error."
+    },
+    {
+      "name": "short/fffe",
+      "input_hex": "fffe",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/feff",
+      "input_hex": "feff",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/efbb",
+      "input_hex": "efbb",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 8,
+        "code": 81,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "The short UTF-8 BOM prefix is rejected during encoding prevalidation with IO/code 81 instead of a start-tag error."
+    },
+    {
+      "name": "short/efbbbf",
+      "input_hex": "efbbbf",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Start tag expected, '<' not found\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/fffe0000",
+      "input_hex": "fffe0000",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Document is empty\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "short/0000feff",
+      "input_hex": "0000feff",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "message": "Document is empty\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "declaration/UTF8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d2255544638223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "explicit-utf8/declaration/UTF8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d2255544638223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "declaration/uTf-8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d227554662d38223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "explicit-utf8/declaration/uTf-8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d227554662d38223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": true,
+        "domain": null,
+        "code": null,
+        "level": null,
+        "line": null,
+        "int1": null,
+        "int2": null,
+        "name_hex": "e6a0b9",
+        "content_hex": "e697a5e69cacf09f9880",
+        "attribute_hex": "c3a9"
+      }
+    },
+    {
+      "name": "declaration/",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d22223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "message": "Invalid XML encoding name\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "explicit-utf8/declaration/",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d22223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "message": "Invalid XML encoding name\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "declaration/8UTF",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d2238555446223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Malformed EncName uses code 79 at the value start instead of libxml2's final XML-declaration error 57."
+    },
+    {
+      "name": "explicit-utf8/declaration/8UTF",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d2238555446223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Malformed EncName uses code 79 at the value start instead of libxml2's final XML-declaration error 57."
+    },
+    {
+      "name": "declaration/UTF 8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462038223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 35,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Malformed EncName uses code 79 and reports its value start rather than libxml2's final XML-declaration error and later position."
+    },
+    {
+      "name": "explicit-utf8/declaration/UTF 8",
+      "input_hex": "3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e673d225554462038223f3e3ce6a0b920617474723d22c3a9223ee697a5e69cacf09f98803c2fe6a0b93e",
+      "encoding": "UTF-8",
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 57,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 35,
+        "message": "parsing XML declaration: '?>' expected\n",
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 79,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 31,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      },
+      "libxml3_difference": "Malformed EncName uses code 79 and reports its value start rather than libxml2's final XML-declaration error and later position."
+    },
+    {
+      "name": "utf-8/double-bom",
+      "input_hex": "efbbbfefbbbf3c722f3e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16le/double-bom",
+      "input_hex": "fffefffe3c0072002f003e00",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    },
+    {
+      "name": "utf-16be/double-bom",
+      "input_hex": "fefffeff003c0072002f003e",
+      "encoding": null,
+      "expected": {
+        "tree": false,
+        "domain": 1,
+        "code": 4,
+        "level": 3,
+        "line": 1,
+        "int1": 0,
+        "int2": 1,
+        "name_hex": null,
+        "content_hex": null,
+        "attribute_hex": null
+      }
+    }
+  ]
+}

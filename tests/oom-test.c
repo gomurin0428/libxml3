@@ -141,6 +141,49 @@ int main(int argc, char **argv) {
             error = xmlGetLastError();
             assert(error != NULL && error->code == XML_ERR_TAG_NAME_MISMATCH);
         }
+    } else if (strcmp(operation, "utf16") == 0) {
+        static const unsigned char input[] = {
+            0xff, 0xfe, '<', 0, 'r', 0, '/', 0, '>', 0
+        };
+        int status = -1;
+        xml3_oom_enable(fail_index);
+        doc = xml3ReadMemory((const char *)input, sizeof(input), &status);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(doc == NULL);
+            assert(status == XML3_STATUS_NO_MEMORY);
+            require_oom_error();
+        } else {
+            assert(doc != NULL);
+            assert(status == XML3_STATUS_OK);
+            assert(xmlGetLastError() == NULL);
+        }
+    } else if (strcmp(operation, "warning") == 0) {
+        static const unsigned char input[] = {
+            0xef, 0xbb, 0xbf, '<', '?', 'x', 'm', 'l', ' ',
+            'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '\'', '1', '.', '0',
+            '\'', ' ', 'e', 'n', 'c', 'o', 'd', 'i', 'n', 'g', '=', '\'',
+            'U', 'T', 'F', '-', '1', '6', '\'', '?', '>', '<', 'r', '/', '>'
+        };
+        int status = -1;
+        xml3_oom_enable(fail_index);
+        doc = xml3ReadMemory((const char *)input, sizeof(input), &status);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(doc == NULL);
+            assert(status == XML3_STATUS_NO_MEMORY);
+            require_oom_error();
+        } else {
+            assert(doc != NULL);
+            assert(status == XML3_STATUS_OK);
+            error = xmlGetLastError();
+            assert(error != NULL && error->code == 113);
+            assert(error->level == XML_ERR_WARNING);
+        }
     } else if (strcmp(operation, "copy") == 0) {
         xmlError source_before;
         xmlError destination_before;

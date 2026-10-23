@@ -75,7 +75,7 @@ package body XML3_Errors is
    Message_PI : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("PI not finished" & ASCII.LF);
    Message_UTF8 : aliased constant Interfaces.C.char_array :=
-     Interfaces.C.To_C ("Invalid UTF-8" & ASCII.LF);
+     Interfaces.C.To_C ("Invalid character encoding" & ASCII.LF);
    Message_Namespace : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("Namespace error" & ASCII.LF);
    Message_No_Memory : aliased constant Interfaces.C.char_array :=
@@ -98,6 +98,10 @@ package body XML3_Errors is
      Interfaces.C.To_C ("External entities are unsupported" & ASCII.LF);
    Message_Encoding : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("Unsupported document encoding" & ASCII.LF);
+   Message_Encoding_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C ("Invalid encoding name" & ASCII.LF);
+   Message_Encoding_Mismatch : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C ("Document encoding does not match its declaration" & ASCII.LF);
    Message_Attribute_Value : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("Invalid attribute value" & ASCII.LF);
    Message_Attribute_Unclosed : aliased constant Interfaces.C.char_array :=
@@ -153,6 +157,10 @@ package body XML3_Errors is
          return Message_External_Entity'Address;
       elsif Code = 32 then
          return Message_Encoding'Address;
+      elsif Code = 79 then
+         return Message_Encoding_Name'Address;
+      elsif Code = 113 then
+         return Message_Encoding_Mismatch'Address;
       elsif Code = 34 or else Code = 40 then
          return Message_Attribute_Unclosed'Address;
       elsif Code = 38 then

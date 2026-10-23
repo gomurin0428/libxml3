@@ -1,7 +1,7 @@
 {
   "function:parser.h:xmlInitParser": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -9,7 +9,7 @@
   },
   "function:parser.h:xmlCleanupParser": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -17,18 +17,21 @@
   },
   "function:parser.h:xmlReadMemory": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c",
       "tests/fuzz-test.c",
-      "tests/resource-test.c"
+      "tests/resource-test.c",
+      "tests/encoding-test.c",
+      "tests/encoding-resource-test.c",
+      "tests/compare-encoding.py"
     ],
     "proof": "not-proved"
   },
   "function:parser.h:xmlParseMemory": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c"
@@ -37,7 +40,7 @@
   },
   "function:parser.h:xmlReadDoc": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c"
@@ -46,7 +49,7 @@
   },
   "function:parser.h:xmlParseDoc": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c"
@@ -55,7 +58,7 @@
   },
   "function:tree.h:xmlDocGetRootElement": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -63,7 +66,7 @@
   },
   "function:tree.h:xmlFreeDoc": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -71,7 +74,7 @@
   },
   "function:tree.h:xmlNodeGetContent": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -79,7 +82,7 @@
   },
   "function:tree.h:xmlGetProp": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -87,7 +90,7 @@
   },
   "function:tree.h:xmlHasProp": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -95,7 +98,7 @@
   },
   "function:tree.h:xmlFirstElementChild": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -103,7 +106,7 @@
   },
   "function:tree.h:xmlNextElementSibling": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -111,7 +114,7 @@
   },
   "function:tree.h:xmlChildElementCount": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -119,7 +122,7 @@
   },
   "function:xmlstring.h:xmlStrcmp": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -127,7 +130,7 @@
   },
   "function:xmlstring.h:xmlStrEqual": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],
@@ -135,7 +138,7 @@
   },
   "function:xmlstring.h:xmlStrlen": {
     "implementation": "partial",
-    "scope": "現在のUTF-8・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
     "tests": [
       "tests/api-test.c"
     ],

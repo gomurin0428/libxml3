@@ -62,7 +62,25 @@ NUL 終端の `xmlReadDoc`/`xmlParseDoc` は呼び出し側が提供する有効
 
 ## 対応範囲と資源プロファイル
 
-入力は UTF-8 のみで、文書全体に対する 64 KiB の上限はありません。通常プロファイル
+`xmlReadMemory` は UTF-8 と UTF-16LE/BE を受け付け、DOM 内の名前と値は常に UTF-8
+です。UTF-16 は matching BOM、XML 宣言を示す BOMless byte signature、または明示
+encoding で判定します。encoding 名は ASCII 大文字小文字を区別せず、
+`UTF-8`/`UTF8`、`UTF-16`/`UTF16`、`UTF-16LE`、`UTF-16BE` を認識します。
+generic `UTF-16`/`UTF16` は pinned libxml2 built-in handler の観測に合わせて
+little-endian として扱います。明示 encoding は XML 宣言より優先しますが、
+宣言の文法検査は省略しません。未知の明示 encoding は code 32 で拒否し、
+暗黙の UTF-8 fallback は行いません。自動検出 encoding と宣言の不一致は
+成功した parse で warning code 113 を保持します。UTF-8/no-BOM の文書が
+`UTF-16` を宣言していても decoder を途中切替せず code 81 で拒否します。
+
+UTF-16 の binary input には長さを受け取る `xmlReadMemory` を使用してください。
+NUL 終端文字列を `strlen` で測る `xmlReadDoc`/`xmlParseDoc` は binary UTF-16
+entrypoint ではありません。UTF-16 prevalidation の malformed input は parse 前に
+IO/code 81、line 1 column 1 として報告します。XML parser の位置は変換後 UTF-8
+入力の decoded character column です。1 GB value profile は実際の大規模 allocation
+では試していません。
+
+文書全体に対する 64 KiB の上限はありません。通常プロファイル
 では各 QName の prefix/local-name component および PI target はそれぞれ最大
 50,000 bytes、各 decoded/normalized text・attribute・comment・CDATA・PI value は
 最大 10,000,000 bytes、要素深さは 256 です。`XML_PARSE_HUGE` は各 name component
@@ -98,7 +116,7 @@ callback は使用しません。libxml3 は libxml2 と同名の `xml*` symbols
 文字列は C の `malloc`/`free` allocator family を使用します。
 
 DTD、未知の entity、複雑な libxml2 parser options、ファイル入力、
-SAX、XInclude、検証、変更 API、XPath、スキーマ、エンコーディング変換は
+SAX、XInclude、検証、変更 API、XPath、スキーマ、UTF-8/UTF-16 以外の encoding は
 未対応です。属性値と通常テキストでは predefined/numeric reference を処理し、
 CDATA・コメント・PI は reference 展開しません。
 名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
@@ -163,9 +181,25 @@ The allocation-failure harness uses a C `malloc` interposer that delegates to
 glibc `__libc_malloc`; it is not run under ASan leak checking because those
 allocations bypass the sanitizer's allocator interception.
 
+The length-taking `xmlReadMemory` entry point accepts UTF-8 and UTF-16LE/BE;
+the DOM always stores names and values as UTF-8. Encoding names are ASCII
+case-insensitive aliases `UTF-8`/`UTF8`, `UTF-16`/`UTF16`, `UTF-16LE`, and
+`UTF-16BE`. Generic UTF-16 is little-endian to match the pinned built-in handler
+observation. Explicit encoding takes precedence over the declaration, but does
+not bypass declaration grammar. Unknown explicit encodings fail with code 32;
+there is no silent fallback. An auto-detected/declaration mismatch is retained
+as warning 113 on successful parse. UTF-8 without a BOM that claims UTF-16 is
+not switched mid-document and fails with code 81. `xmlReadDoc`/`xmlParseDoc`
+use `strlen` and are not binary UTF-16 entry points. UTF-16 prevalidation errors
+report IO/code 81 at 1:1 before parsing; parser positions refer to decoded
+UTF-8 character columns. The frozen observations in `tests/encoding-oracle.json`
+are compared without normalizing snapshot fields, with explicit per-case reasons
+for intentional libxml3 differences. A 1 GB value allocation is not tested.
+
 ## 保証について
 
-`XML3_Text` と `XML3_Parser` の固定境界コアには別の SPARK 契約と検査結果が
-あります。`XML3_Namespaces` も proof project に含まれます。C adapter、FFI、
-公開ポインター、allocator、所有権境界は形式検証の対象外です。完全な libxml2
-API 目標と現在の実装を混同しないでください。
+`XML3_Text`、`XML3_Parser`、`XML3_Namespaces`、`XML3_Encoding` の固定境界コアは
+proof project に含まれます。証明範囲は実行時境界、算術、契約、終了性であり、
+libxml2 との機能的同等性や全ての脆弱性がないことを証明するものではありません。
+C adapter、FFI、公開ポインター、allocator、所有権境界は形式検証の対象外です。
+完全な libxml2 API 目標と現在の実装を混同しないでください。

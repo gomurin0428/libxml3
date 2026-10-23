@@ -1,5 +1,6 @@
 package body XML3_Parser with SPARK_Mode is
    use type XML3_Text.Text_Error_Kind;
+   use type XML3_Encoding.Encoding_Kind;
 
    function Space (C : Character) return Boolean is
      (C = ' ' or C = Character'Val (9) or C = Character'Val (10)
@@ -25,10 +26,12 @@ package body XML3_Parser with SPARK_Mode is
       Root   : out Node_Id;
       Status : out Parse_Status;
       Huge   : Boolean;
-      Diagnostic : out Diagnostic_Info)
+      Diagnostic : out Diagnostic_Info;
+      Encoding : XML3_Encoding.Encoding_Info := (others => <>))
    is
       P : Position := 1;
       Error_Position : Positive range 1 .. Input'Length + 1 := 1;
+      Encoding_Warning : Natural range 0 .. Input'Length + 1 := 0;
       Depth : Natural range 0 .. Max_Depth := 0;
       Stack : array (Positive range 1 .. Max_Depth) of Node_Id := (others => 0);
       Body_Pending : Boolean := True;
@@ -461,9 +464,6 @@ package body XML3_Parser with SPARK_Mode is
            (81, Position (Text_Error_Position), Domain => 8);
          exit Parse_Body;
       end if;
-      if At_Text (Character'Val (16#EF#) & Character'Val (16#BB#) & Character'Val (16#BF#)) then
-         P := P + 3;
-      end if;
       if At_Text ("<?xml") then
          Saved := P;
          P := P + 5;
@@ -497,9 +497,29 @@ package body XML3_Parser with SPARK_Mode is
                   exit Parse_Body;
                end if;
                if Input (NF .. NL) = "encoding" and not Seen_Encoding and not Seen_Standalone then
-                  if Input (VF .. VL) /= "UTF-8" and Input (VF .. VL) /= "utf-8" then
+                  if not XML3_Encoding.Valid_Name (Input (VF .. VL)) then
+                     Status := Malformed;
+                     Set_Diagnostic (79, VF);
+                     exit Parse_Body;
+                  elsif Encoding.Explicit then
+                     null;
+                  elsif Encoding.Auto_Detected then
+                     if not XML3_Encoding.Declaration_Matches
+                       (Input (VF .. VL), Encoding.Kind)
+                     then
+                        Encoding_Warning := P;
+                     end if;
+                  elsif XML3_Encoding.Classify (Input (VF .. VL)) =
+                    XML3_Encoding.Unsupported
+                  then
                      Status := Unsupported;
                      Set_Diagnostic (32, P);
+                     exit Parse_Body;
+                  elsif not XML3_Encoding.Declaration_Matches
+                    (Input (VF .. VL), Encoding.Kind)
+                  then
+                     Status := Malformed;
+                     Set_Diagnostic (81, P);
                      exit Parse_Body;
                   end if;
                   Seen_Encoding := True;
@@ -798,5 +818,8 @@ package body XML3_Parser with SPARK_Mode is
          exit Parse_Body;
       end loop Parse_Body;
       Diagnostic.Byte_Position := Error_Position;
+      if Status = Success and then Encoding_Warning /= 0 then
+         Set_Diagnostic (113, Encoding_Warning, Level => 1);
+      end if;
    end Parse;
 end XML3_Parser;

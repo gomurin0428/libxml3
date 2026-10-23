@@ -1,4 +1,5 @@
 with XML3_Text;
+with XML3_Encoding;
 
 package XML3_Parser with SPARK_Mode is
    Max_Nodes : constant := XML3_Text.Max_Bytes / 2;
@@ -42,7 +43,8 @@ package XML3_Parser with SPARK_Mode is
       Root   : out Node_Id;
       Status : out Parse_Status;
       Huge   : Boolean;
-      Diagnostic : out Diagnostic_Info)
+      Diagnostic : out Diagnostic_Info;
+      Encoding : XML3_Encoding.Encoding_Info := (others => <>))
      with Global => null, Always_Terminates,
        Pre => Input'First = 1
          and then Input'Length <= XML3_Text.Max_Bytes
