@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-resources test-errors test-oom test-fuzz compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
@@ -69,6 +69,43 @@ tests/error-snapshot-reference: tests/error-snapshot.c compat/baseline.json buil
 		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
 		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
 
+tests/encoding-snapshot: tests/encoding-snapshot.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/encoding-snapshot-reference: tests/encoding-snapshot.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/encoding-test: tests/encoding-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/encoding-test-reference: tests/encoding-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/encoding-unit-test: tests/encoding_test.adb tests/encoding_test.gpr \
+		src/xml3_text.ads src/xml3_text.adb src/xml3_encoding.ads src/xml3_encoding.adb
+	$(ADA_BIN)/gprbuild -p -P tests/encoding_test.gpr -o encoding-unit-test
+
+tests/encoding-resource-test: tests/encoding-resource-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/encoding-resource-test-sanitize: tests/encoding-resource-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/encoding-resource-test-reference: tests/encoding-resource-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/encoding-test-sanitize: tests/encoding-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
 tests/error-test-sanitize: tests/error-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -pthread -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
@@ -85,10 +122,20 @@ test-unicode: tests/unicode-test tests/unicode-test-reference
 	LD_LIBRARY_PATH=lib ./tests/unicode-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/unicode-test-reference
 
+test-encoding: tests/encoding-snapshot tests/encoding-snapshot-reference \
+		tests/encoding-test tests/encoding-test-reference tests/encoding-unit-test
+	LD_LIBRARY_PATH=lib ./tests/encoding-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/encoding-test-reference
+	./tests/encoding-unit-test
+	/usr/bin/python3 tests/compare-encoding.py
+
 test-resources: tests/resource-test tests/resource-test-reference \
-		tests/error-snapshot tests/error-snapshot-reference
+		tests/error-snapshot tests/error-snapshot-reference \
+		tests/encoding-resource-test tests/encoding-resource-test-reference
 	LD_LIBRARY_PATH=lib ./tests/resource-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/resource-test-reference
+	LD_LIBRARY_PATH=lib ./tests/encoding-resource-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/encoding-resource-test-reference
 	/usr/bin/python3 tests/compare-errors.py --limits
 
 test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
@@ -98,7 +145,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed copy replacement tls; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -178,12 +225,15 @@ install: build
 		$(DESTDIR)$(PREFIX)/lib/pkgconfig/libxml3.pc
 
 test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
+		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/error-test-sanitize tests/fuzz-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/unicode-test.c -Llib -lxml3 -o tests/unicode-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/unicode-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/encoding-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/encoding-resource-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/resource-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/error-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/fuzz-test-sanitize
@@ -196,4 +246,8 @@ clean:
 		tests/resource-test-reference tests/resource-test-sanitize tests/error-test \
 		tests/error-test-reference tests/error-test-sanitize tests/error-snapshot \
 		tests/error-snapshot-reference tests/oom-test \
+		tests/encoding-snapshot tests/encoding-snapshot-reference \
+		tests/encoding-test tests/encoding-test-reference tests/encoding-unit-test \
+		tests/encoding-resource-test tests/encoding-resource-test-reference \
+		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/fuzz-test tests/fuzz-test-sanitize tests/*.out

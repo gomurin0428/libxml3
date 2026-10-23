@@ -2,25 +2,35 @@ Summary of SPARK analysis
 =========================
 
 ------------------------------------------------------------------------------------------------------------
-SPARK Analysis results        Total        Flow                               Provers   Justified   Unproved
+SPARK Analysis results        Total         Flow                              Provers   Justified   Unproved
 ------------------------------------------------------------------------------------------------------------
-Data Dependencies                 7           7                                     .           .          .
-Flow Dependencies                 .           .                                     .           .          .
-Initialization                   77          77                                     .           .          .
-Non-Aliasing                      .           .                                     .           .          .
-Run-time Checks                 517           .    517 (CVC5 88%, Trivial 0%, Z3 11%)           .          .
-Assertions                       94           .     94 (CVC5 77%, Trivial 1%, Z3 22%)           .          .
-Functional Contracts            148           .    148 (CVC5 80%, Trivial 1%, Z3 19%)           .          .
-LSP Verification                  .           .                                     .           .          .
-Termination                      34          15                 19 (CVC5 89%, Z3 11%)           .          .
-Concurrency                       .           .                                     .           .          .
+Data Dependencies                13           13                                    .           .          .
+Flow Dependencies                 .            .                                    .           .          .
+Initialization                   87           87                                    .           .          .
+Non-Aliasing                      .            .                                    .           .          .
+Run-time Checks                 592            .    592 (CVC5 99%, Trivial 0%, Z3 1%)           .          .
+Assertions                       98            .     98 (CVC5 97%, Trivial 3%, Z3 1%)           .          .
+Functional Contracts            156            .    156 (CVC5 94%, Trivial 1%, Z3 5%)           .          .
+LSP Verification                  .            .                                    .           .          .
+Termination                      43           23                            20 (CVC5)           .          .
+Concurrency                       .            .                                    .           .          .
 ------------------------------------------------------------------------------------------------------------
-Total                           877    99 (11%)                             778 (89%)           .          .
+Total                           989    123 (12%)                            866 (88%)           .          .
 
 
-max steps used for successful proof: 3644
+max steps used for successful proof: 13316
 
-Analyzed 3 units
+Analyzed 4 units
+in unit xml3_encoding, 9 subprograms and packages out of 9 analyzed
+  XML3_Encoding at xml3_encoding.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Encoding.Classify at xml3_encoding.ads:15 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Encoding.Declaration_Matches at xml3_encoding.ads:21 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Encoding.Decode_UTF16 at xml3_encoding.ads:38 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (50 checks)
+  XML3_Encoding.Decode_UTF16.Unit_At at xml3_encoding.adb:121 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_Encoding.Detect at xml3_encoding.ads:25 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Encoding.Equal_Name at xml3_encoding.adb:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_Encoding.Upper at xml3_encoding.adb:2 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Encoding.Valid_Name at xml3_encoding.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_namespaces, 8 subprograms and packages out of 8 analyzed
   XML3_Namespaces at xml3_namespaces.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Namespaces.Resolve at xml3_namespaces.ads:17 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (152 checks)
@@ -31,21 +41,21 @@ in unit xml3_namespaces, 8 subprograms and packages out of 8 analyzed
   XML3_Namespaces.Resolve.Same_Namespace at xml3_namespaces.adb:63 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
   XML3_Namespaces.Resolve.Value_Matches at xml3_namespaces.adb:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
 in unit xml3_parser, 15 subprograms and packages out of 15 analyzed
-  XML3_Parser at xml3_parser.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Parser.Layout at xml3_parser.adb:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_Parser.Parse at xml3_parser.ads:37 flow analyzed (0 errors, 0 checks, 20 warnings and 0 pragma Assume statements) and proved (238 checks)
-  XML3_Parser.Parse.Add at xml3_parser.adb:361 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
-  XML3_Parser.Parse.At_Text at xml3_parser.adb:207 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_Parser.Parse.Line_At at xml3_parser.adb:54 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (11 checks)
-  XML3_Parser.Parse.Peek at xml3_parser.adb:203 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Parser.Parse.Pseudo_Attribute at xml3_parser.adb:408 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (16 checks)
-  XML3_Parser.Parse.Read_Name at xml3_parser.adb:227 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (28 checks)
-  XML3_Parser.Parse.Read_Quoted at xml3_parser.adb:271 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
-  XML3_Parser.Parse.Set_Diagnostic at xml3_parser.adb:75 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Parser.Parse.Set_Reference_Diagnostic at xml3_parser.adb:90 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (63 checks)
-  XML3_Parser.Parse.Skip_Space at xml3_parser.adb:213 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
-  XML3_Parser.Parse.Validate_Value at xml3_parser.adb:311 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
-  XML3_Parser.Space at xml3_parser.adb:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser at xml3_parser.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Layout at xml3_parser.adb:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
+  XML3_Parser.Parse at xml3_parser.ads:38 flow analyzed (0 errors, 0 checks, 21 warnings and 0 pragma Assume statements) and proved (249 checks)
+  XML3_Parser.Parse.Add at xml3_parser.adb:364 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  XML3_Parser.Parse.At_Text at xml3_parser.adb:210 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
+  XML3_Parser.Parse.Line_At at xml3_parser.adb:57 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (11 checks)
+  XML3_Parser.Parse.Peek at xml3_parser.adb:206 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Parser.Parse.Pseudo_Attribute at xml3_parser.adb:411 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (16 checks)
+  XML3_Parser.Parse.Read_Name at xml3_parser.adb:230 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (28 checks)
+  XML3_Parser.Parse.Read_Quoted at xml3_parser.adb:274 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
+  XML3_Parser.Parse.Set_Diagnostic at xml3_parser.adb:78 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Parser.Parse.Set_Reference_Diagnostic at xml3_parser.adb:93 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (63 checks)
+  XML3_Parser.Parse.Skip_Space at xml3_parser.adb:216 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_Parser.Parse.Validate_Value at xml3_parser.adb:314 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
+  XML3_Parser.Space at xml3_parser.adb:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_text, 7 subprograms and packages out of 7 analyzed
   XML3_Text at xml3_text.ads:1 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.Decode at xml3_text.ads:33 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (82 checks)

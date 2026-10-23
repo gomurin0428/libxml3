@@ -6,11 +6,14 @@ with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Text;
 with XML3_Errors;
+with XML3_Encoding;
 
 package body XML3_C is
 
    use type System.Address;
    use type Interfaces.Unsigned_32;
+   use type XML3_Encoding.Encoding_Kind;
+   use type XML3_Encoding.Conversion_Status;
    use type XML3_Parser.Node_Kind;
    use type XML3_Parser.Parse_Status;
 
@@ -134,6 +137,7 @@ package body XML3_C is
    procedure Build
      (Input  : String;
       Huge   : Boolean;
+      Encoding : XML3_Encoding.Encoding_Info;
       Result : out System.Address;
       Status : out int;
       Diagnostic : out XML3_Parser.Diagnostic_Info);
@@ -570,6 +574,7 @@ package body XML3_C is
    procedure Build_Arena
      (Input           : String;
       Huge            : Boolean;
+      Encoding        : XML3_Encoding.Encoding_Info;
       Capacity        : Positive;
       Nodes_Buffer    : System.Address;
       Names_Buffer    : System.Address;
@@ -672,7 +677,7 @@ package body XML3_C is
       pragma Unreferenced (Root);
       XML3_Parser.Parse
         (Input, Scratch_A, Nodes, Count, Root, Parse_Status, Huge,
-         Parse_Diagnostic);
+         Parse_Diagnostic, Encoding);
       Diagnostic := Parse_Diagnostic;
       if Parse_Status = XML3_Parser.Arena_Exhausted then
          Status := Arena_Status;
@@ -682,7 +687,11 @@ package body XML3_C is
          XML3_Namespaces.Resolve
            (Input, Nodes, Count, Names, Scratch_A, Scratch_B, Parse_Status,
             Namespace_Diagnostic);
-         Diagnostic := Namespace_Diagnostic;
+         if Parse_Status /= XML3_Parser.Success
+           or else Namespace_Diagnostic.Code /= 0
+         then
+            Diagnostic := Namespace_Diagnostic;
+         end if;
       end if;
       case Parse_Status is
          when XML3_Parser.Success => Status := Status_OK;
@@ -926,6 +935,7 @@ package body XML3_C is
    procedure Build
      (Input  : String;
       Huge   : Boolean;
+      Encoding : XML3_Encoding.Encoding_Info;
       Result : out System.Address;
       Status : out int;
       Diagnostic : out XML3_Parser.Diagnostic_Info)
@@ -987,7 +997,7 @@ package body XML3_C is
             return;
          end if;
          Build_Arena
-           (Input, Huge, Positive (Capacity), Nodes_Buffer, Names_Buffer,
+           (Input, Huge, Encoding, Positive (Capacity), Nodes_Buffer, Names_Buffer,
             Index_Buffer, Scratch_A_Buffer, Scratch_B_Buffer, Result, Status,
             Diagnostic);
          Free_Workspaces;
@@ -1035,7 +1045,68 @@ package body XML3_C is
       Result : System.Address;
       Huge : Boolean;
       Diagnostic : XML3_Parser.Diagnostic_Info;
+      Converted_Buffer : System.Address := System.Null_Address;
+
+      procedure Free_Converted is
+      begin
+         if Converted_Buffer /= System.Null_Address then
+            C_Free (Converted_Buffer);
+            Converted_Buffer := System.Null_Address;
+         end if;
+      end Free_Converted;
+
+      procedure Parse_And_Report
+        (Input : String;
+         Encoding_Info : XML3_Encoding.Encoding_Info)
+      is
+      begin
+         Build (Input, Huge, Encoding_Info, Result, Status, Diagnostic);
+         if Status = Status_No_Memory then
+            XML3_Errors.Report_Simple (6, 2, 3, URL);
+         elsif Status = Status_Internal_Error then
+            XML3_Errors.Report_Simple (1, 1, 3, URL);
+         elsif Status = Status_Unsupported and then Diagnostic.Code = 0 then
+            XML3_Errors.Report_Simple (1, 115, 3, URL);
+         elsif Status = Status_OK then
+            if Diagnostic.Code /= 0 then
+               XML3_Errors.Report
+                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
+                  Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
+               if XML3_Errors.Last_Error_Is_OOM then
+                  if Result /= System.Null_Address then
+                     Free_Doc (Result);
+                     Result := System.Null_Address;
+                  end if;
+                  Status := Status_No_Memory;
+               end if;
+            end if;
+         elsif Status /= Arena_Status then
+            if Diagnostic.Code = 0 then
+               XML3_Errors.Report_Simple (1, 1, 3, URL);
+            else
+               XML3_Errors.Report
+                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
+                  Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
+            end if;
+         end if;
+         if Status /= Status_OK and then XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
+      end Parse_And_Report;
+
+      procedure Report_Conversion_Error
+        (Code : Natural; Domain : Natural; Error_Status : int)
+      is
+      begin
+         Status := Error_Status;
+         XML3_Errors.Report (Domain, Code, 3, 1, 0, "", URL);
+         if XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
+      end Report_Conversion_Error;
    begin
+      Status := Status_Internal_Error;
+      Result := System.Null_Address;
       if Buffer = System.Null_Address
         or else Size < 0
         or else Size > int (Max_Input)
@@ -1043,17 +1114,34 @@ package body XML3_C is
          Status := Status_Invalid_Argument;
          return System.Null_Address;
       end if;
-      if Encoding /= System.Null_Address
-        and then not Same_Text (Encoding, "UTF-8")
-        and then not Same_Text (Encoding, "utf-8")
-      then
-         Status := Status_Unsupported;
-         XML3_Errors.Report_Simple (1, 32, 3, URL);
-         if XML3_Errors.Last_Error_Is_OOM then
-            Status := Status_No_Memory;
+      declare
+         Requested : XML3_Encoding.Encoding_Kind :=
+           XML3_Encoding.Unspecified;
+      begin
+         if Encoding /= System.Null_Address then
+            declare
+               Encoding_Length : constant Integer := Scan_Length (Encoding, 9);
+            begin
+               if Encoding_Length < 0 then
+                  Status := Status_Unsupported;
+                  XML3_Errors.Report_Simple (1, 32, 3, URL);
+                  if XML3_Errors.Last_Error_Is_OOM then
+                     Status := Status_No_Memory;
+                  end if;
+                  return System.Null_Address;
+               end if;
+               Requested := XML3_Encoding.Classify
+                 (To_String (Encoding, Natural (Encoding_Length)));
+            end;
+            if Requested = XML3_Encoding.Unsupported then
+               Status := Status_Unsupported;
+               XML3_Errors.Report_Simple (1, 32, 3, URL);
+               if XML3_Errors.Last_Error_Is_OOM then
+                  Status := Status_No_Memory;
+               end if;
+               return System.Null_Address;
+            end if;
          end if;
-         return System.Null_Address;
-      end if;
       if Options < 0 then
          Status := Status_Unsupported;
          XML3_Errors.Report_Simple (1, 115, 3, URL);
@@ -1079,27 +1167,100 @@ package body XML3_C is
       declare
          Source : String (1 .. Natural (Size)) with Import, Address => Buffer;
       begin
-         Build (Source, Huge, Result, Status, Diagnostic);
-         if Status = Status_No_Memory then
-            XML3_Errors.Report_Simple (6, 2, 3, URL);
-         elsif Status = Status_Internal_Error then
-            XML3_Errors.Report_Simple (1, 1, 3, URL);
-         elsif Status = Status_Unsupported and then Diagnostic.Code = 0 then
-            XML3_Errors.Report_Simple (1, 115, 3, URL);
-         elsif Status /= Status_OK and then Status /= Arena_Status then
-            if Diagnostic.Code = 0 then
-               XML3_Errors.Report_Simple (1, 1, 3, URL);
+         declare
+            Info : constant XML3_Encoding.Encoding_Info :=
+              XML3_Encoding.Detect (Source, Requested);
+            Normalized_Length : constant Natural := Source'Length - Info.Skip;
+            Normalized_Address : constant System.Address :=
+              Buffer + To_Storage_Offset_Checked (size_t (Info.Skip));
+            Normalized : String (1 .. Normalized_Length)
+              with Import, Address => Normalized_Address;
+         begin
+            if Info.Kind = XML3_Encoding.UTF8 then
+               Parse_And_Report (Normalized, Info);
             else
-               XML3_Errors.Report
-                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
-                  Diagnostic.Byte_Position, Diagnostic.Int1, Source, URL);
+               declare
+                  Empty_Output : String (1 .. 0) := "";
+                  Decoded_Length : XML3_Text.Byte_Count;
+                  Decode_Status : XML3_Encoding.Conversion_Status;
+                  Error_Position : Natural;
+                  pragma Unreferenced (Error_Position);
+               begin
+                  XML3_Encoding.Decode_UTF16
+                    (Normalized, Info.Kind = XML3_Encoding.UTF16LE,
+                     Empty_Output, Decoded_Length, Decode_Status,
+                     Error_Position, Measure_Only => True);
+                  if Decode_Status = XML3_Encoding.Invalid_Encoding then
+                     Report_Conversion_Error (81, 8, Status_Malformed);
+                  elsif Decode_Status = XML3_Encoding.Output_Too_Small then
+                     Report_Conversion_Error
+                       (114, 1, Status_Limit_Exceeded);
+                  else
+                     Converted_Buffer := C_Malloc
+                       (size_t (Natural'Max (1, Natural (Decoded_Length))));
+                     if Converted_Buffer = System.Null_Address then
+                        Status := Status_No_Memory;
+                        XML3_Errors.Report_Simple (6, 2, 3, URL);
+                        if XML3_Errors.Last_Error_Is_OOM then
+                           Status := Status_No_Memory;
+                        end if;
+                     else
+                        declare
+                           Converted : String (1 .. Natural (Decoded_Length))
+                             with Import, Address => Converted_Buffer;
+                           Filled_Length : XML3_Text.Byte_Count;
+                           Fill_Status : XML3_Encoding.Conversion_Status;
+                           Fill_Error_Position : Natural;
+                           pragma Unreferenced (Fill_Error_Position);
+                        begin
+                           XML3_Encoding.Decode_UTF16
+                             (Normalized,
+                              Info.Kind = XML3_Encoding.UTF16LE,
+                              Converted, Filled_Length, Fill_Status,
+                              Fill_Error_Position);
+                           if Fill_Status = XML3_Encoding.Success
+                             and then Filled_Length = Decoded_Length
+                           then
+                              Parse_And_Report (Converted, Info);
+                           elsif Fill_Status =
+                             XML3_Encoding.Invalid_Encoding
+                           then
+                              Report_Conversion_Error
+                                (81, 8, Status_Malformed);
+                           else
+                              Report_Conversion_Error
+                                (114, 1, Status_Limit_Exceeded);
+                           end if;
+                        end;
+                     end if;
+                  end if;
+               end;
+               Free_Converted;
             end if;
-         end if;
-         if Status /= Status_OK and then XML3_Errors.Last_Error_Is_OOM then
-            Status := Status_No_Memory;
-         end if;
+         end;
       end;
+      end;
+      Free_Converted;
       return Result;
+      exception
+         when Storage_Error =>
+            if Result /= System.Null_Address then
+               Free_Doc (Result);
+            end if;
+            Free_Converted;
+            Status := Status_No_Memory;
+            XML3_Errors.Report_Simple (6, 2, 3, URL);
+            return System.Null_Address;
+         when others =>
+            if Result /= System.Null_Address then
+               Free_Doc (Result);
+            end if;
+            Free_Converted;
+            XML3_Errors.Report_Simple (1, 1, 3, URL);
+            Status :=
+              (if XML3_Errors.Last_Error_Is_OOM
+               then Status_No_Memory else Status_Internal_Error);
+            return System.Null_Address;
    end Parse_Buffer;
 
    procedure Init_Parser is

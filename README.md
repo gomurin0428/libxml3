@@ -15,6 +15,7 @@ Ubuntu では `libxml2-dev`、`pkg-config`、Ada の GNAT/GPRbuild が必要で�
 export PATH="$HOME/.local/share/ada/candidate-14/bin:$PATH"
 make build
 make test-api
+make test-encoding
 make reference
 make check-inventory
 make compare
@@ -27,7 +28,8 @@ make check
 `make compare-system` はOS付属版での補助比較です。
 
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
-`src/xml3_namespaces.*`）を GNATprove で検査します。名前空間は読み取りと
+`src/xml3_namespaces.*`、`src/xml3_encoding.*`）を GNATprove で検査します。
+名前空間は読み取りと
 参照 API のみをサポートし、完全な XML/namespace conformance は主張しません。
 C 境界やヒープ所有権は SPARK の保証範囲外です。保証範囲の詳細は
 [docs/assurance.md](docs/assurance.md) と、コアの実行結果を記録した
@@ -50,7 +52,8 @@ int main(void) {
 cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 ```
 
-主な初期サブセットは、メモリ入力の読み取り、要素・属性・テキスト・CDATA・
+主な初期サブセットは、UTF-8/UTF-16LE/BE のメモリ入力の読み取り、
+要素・属性・テキスト・CDATA・
 コメント・PI の DOM 閲覧、読み取り専用の namespace lookup、文字列関数、
 所有権付き getter です。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
@@ -63,6 +66,15 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 上限や 2,048-node policy cap はなく、C adapter は heap arena を必要に応じて
 拡張します。これらは表現・割り当て可能性の保証や完全な DoS 防止を意味せず、
 詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。
+
+UTF-16 の binary input には、明示長を渡せる `xmlReadMemory` を使用します。
+`xmlReadDoc`/`xmlParseDoc` は `strlen` を使うため binary UTF-16 用ではありません。
+DOM の名前と値は常に UTF-8 です。`UTF-8`/`UTF8`、`UTF-16`/`UTF16`、
+`UTF-16LE`、`UTF-16BE` は ASCII case-insensitive で、generic UTF-16 は
+little-endian です。明示 encoding は宣言より優先しますが宣言文法は検査され、
+不明な encoding を暗黙 fallback しません。自動検出と宣言の不一致は成功時 warning
+113 になります。変換前の malformed UTF-16 は IO/code 81 at 1:1、parser error
+position は変換後 UTF-8 の character column で示されます。
 
 エラー API は `xmlGetLastError`、明示 reset/copy と OS thread ごとの所有状態を
 提供し、成功後も直前のエラーを保持します。互換方針は、last-error 保持など害のない

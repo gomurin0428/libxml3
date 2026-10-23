@@ -5,7 +5,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 ## Intended proof claims
 
-`proof.gpr` includes exactly `XML3_Text`, `XML3_Parser`, and `XML3_Namespaces`.
+`proof.gpr` includes exactly `XML3_Text`, `XML3_Parser`, `XML3_Namespaces`, and
+`XML3_Encoding`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
 The parser is iterative. Its statically bounded nesting stack holds at most
@@ -18,15 +19,23 @@ heap scratch buffers, grows the arena geometrically when the parser reports
 `Arena_Exhausted`, and reparses; adapter allocation, pointer arithmetic, and
 ownership remain outside the proof scope.
 
-The recorded result is [877 checks discharged, none unproved](proof-report.md)
-across the three core units, including `XML3_Namespaces`, but not the C adapter.
+The recorded result is listed in [proof-report.md](proof-report.md) across the
+four SPARK core units, including `XML3_Encoding`, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
-The decoder's output never exceeds its input length. Numeric reference arithmetic
-is checked before multiplication. Termination of the core `Parse` and `Decode`
-procedures and namespace `Resolve` is proved with `Always_Terminates` and loop
-variants; this does **not**
+UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
+measures its exact UTF-8 output length before allocation and checks bounded
+conversion arithmetic and writes. Numeric reference arithmetic is checked
+before multiplication. Termination of core `Parse`, text and UTF-16 decoding,
+and namespace `Resolve` is proved with `Always_Terminates` and loop variants;
+this does **not**
 claim an end-to-end CPU-time or memory-use theorem.
+
+The proof establishes SPARK run-time bounds, arithmetic safety, written
+contracts, and termination for the selected core units. It does not prove
+functional equivalence of UTF-8/UTF-16 behavior to libxml2, XML conformance, or
+absence of vulnerabilities. Conversion-buffer allocation, pointer arithmetic,
+and the FFI remain outside proof.
 
 An accepted document contains one root element with balanced, matching tags.
 That XML-language property is tested and reviewed, **not formally proved by the
@@ -73,16 +82,25 @@ own name, `libxml3`, and must not be loaded alongside libxml2 into the same symb
 namespace. Only APIs and structure fields explicitly listed in the compatibility
 document are supported. Unsupported parser options fail, not silently degrade.
 
-The current profile supports XML 1.0 UTF-8 content, Unicode NCNames and qualified
+The current profile supports XML 1.0 UTF-8 and UTF-16LE/BE input, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,
 attributes, text, the five predefined entities, numeric references, comments,
 CDATA and processing instructions. Normal resource ceilings are 50,000 bytes
 per QName component/PI target, 10,000,000 decoded bytes per value, and depth
 256. `XML_PARSE_HUGE` raises these to 10,000,000 bytes, 1,000,000,000 bytes, and
 depth 2,048 respectively; it does not enable DTD, recovery, or other unsupported
-features. These per-component/per-value thresholds are distinct from whole-input
-and representation bounds. XML declarations accept version 1.0,
-encoding `UTF-8`/`utf-8`, and standalone yes/no, in XML order. CR/CRLF line endings
+features. The DOM is always UTF-8. UTF-16 input uses the length-taking
+`xmlReadMemory`; `xmlReadDoc`/`xmlParseDoc` use `strlen` and are not binary UTF-16
+entry points. Names `UTF-8`/`UTF8`, `UTF-16`/`UTF16`, `UTF-16LE`, and
+`UTF-16BE` are case-insensitive; generic UTF-16 selects little-endian. Explicit
+encoding overrides the declaration while declaration grammar is still checked.
+Unknown explicit names fail rather than falling back. Auto-detected declaration
+mismatches produce warning 113 on success. Malformed UTF-16 is rejected before
+the parser at IO/code 81 and 1:1; later parser positions use decoded UTF-8
+character columns. These are tested behaviors, not a proof of functional
+encoding equivalence. These per-component/per-value thresholds are distinct from whole-input
+and representation bounds. XML declarations accept version 1.0, the supported
+UTF-8/UTF-16 encoding aliases, and standalone yes/no, in XML order. CR/CRLF line endings
 are normalized, and literal attribute whitespace is normalized to spaces while
 character references retain their referenced characters. Names follow the XML 1.0
 fifth-edition ranges, without Unicode normalization. Invalid or unbound namespace
