@@ -158,6 +158,50 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewProp": {
+    "implementation": "partial",
+    "scope": "colon のない namespace-free attribute を raw C string から作成。XML name/UTF-8 検証なし。NULL value は child なし、empty value は text child。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetProp": {
+    "implementation": "partial",
+    "scope": "namespace-free attribute のみ。既存 attribute pointer/_private/list links を保持し、replacement child は無効化。未存在時は末尾追加。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlUnsetProp": {
+    "implementation": "partial",
+    "scope": "同名の namespace-free attribute を削除。欠落・非対応は -1。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlRemoveProp": {
+    "implementation": "partial",
+    "scope": "attached namespace-free attribute を安全に unlink/free。detached・namespace-qualified attribute は拒否。C DOM ownership は SPARK proof 対象外。",
+    "tests": [
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeProp": {
+    "implementation": "partial",
+    "scope": "namespace-free attribute を解放。attached pointer は先に安全に unlink し、detached pointer も解放。namespace-qualified attribute は code 115 で拒否。",
+    "tests": [
+      "tests/attribute-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlFirstElementChild": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

@@ -11,6 +11,13 @@ int main() {
         xmlNsPtr (*)(xmlDocPtr, xmlNodePtr, const xmlChar *);
     const SearchNsFunction search_ns = xmlSearchNs;
     const SearchNsFunction search_ns_by_href = xmlSearchNsByHref;
+    xmlAttrPtr (*new_prop)(xmlNodePtr, const xmlChar *, const xmlChar *) =
+        xmlNewProp;
+    xmlAttrPtr (*set_prop)(xmlNodePtr, const xmlChar *, const xmlChar *) =
+        xmlSetProp;
+    int (*unset_prop)(xmlNodePtr, const xmlChar *) = xmlUnsetProp;
+    int (*remove_prop)(xmlAttrPtr) = xmlRemoveProp;
+    void (*free_prop)(xmlAttrPtr) = xmlFreeProp;
     xmlDocPtr doc = xmlReadMemory("<r/>", 4, nullptr, nullptr, XML_PARSE_NONET);
     if (!doc) return 1;
     xmlNodePtr root = xmlDocGetRootElement(doc);
@@ -19,6 +26,11 @@ int main() {
     (void)equal;
     (void)search_ns;
     (void)search_ns_by_href;
+    (void)new_prop;
+    (void)set_prop;
+    (void)unset_prop;
+    (void)remove_prop;
+    (void)free_prop;
     (void)last_error;
     xmlFreeDoc(doc);
     return 0;

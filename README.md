@@ -57,8 +57,10 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 コメント・PI の DOM 閲覧、読み取り専用の namespace lookup に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` のみを追加でサポートします。
-属性・namespace の作成、コピー、文書間移動、serialization は未対応です。
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` と namespace-free attribute の
+作成・更新・削除 API をサポートします。attribute 名に colon は使えません。
+namespace 作成・編集、namespace-qualified attribute 編集、copy、文書間移動、
+serialization は未対応です。
 構造 fields の直接変更はサポートしません。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
