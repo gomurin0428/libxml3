@@ -30,10 +30,13 @@ make check
 `make compare-system` はOS付属版での補助比較です。
 
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
-`src/xml3_namespaces.*`、`src/xml3_encoding.*`）を GNATprove で検査します。
+`src/xml3_namespaces.*`、`src/xml3_encoding.*`）と、新しい DOM 状態・反映基盤
+（`src/xml3_dom.*`、`src/xml3_dom_bridge.*`）を GNATprove で検査します。
 名前空間は読み取りと
 参照 API のみをサポートし、完全な XML/namespace conformance は主張しません。
-C 境界やヒープ所有権は SPARK の保証範囲外です。保証範囲の詳細は
+**公開 C API はまだ旧 DOM 実装を使っており、新基盤への切替前です。**
+新基盤の寿命・参照数・反映／解放手順の契約は証明対象ですが、現行 C API の
+所有権、外部ポインター、ネイティブ allocator は保証範囲外です。保証範囲の詳細は
 [docs/assurance.md](docs/assurance.md) と、コアの実行結果を記録した
 [docs/proof-report.md](docs/proof-report.md) を参照してください。
 

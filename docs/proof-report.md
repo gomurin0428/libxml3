@@ -2,24 +2,25 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **987 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **3,358 discharged checks**, **0 unproved**,
 and **0 justified**. The run emitted non-failing warnings about unused outputs and
 assignments; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
-This is a report for the four SPARK units, not a proof of the C-facing library as
-a whole and not a proof of full XML conformance. See [assurance.md](assurance.md).
+This reports the parser/decoder and new DOM foundation, not a proof of the
+C-facing library or full XML conformance. **The public C API still uses the old
+DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 13 |
-| Initialization | 87 |
-| Run-time checks | 591 |
-| Assertions / loop invariants | 98 |
-| Functional contracts | 155 |
-| Termination | 43 |
-| Total | 987 |
+| Data dependencies | 91 |
+| Initialization | 117 |
+| Run-time checks | 1,833 |
+| Assertions / loop invariants | 497 |
+| Functional contracts | 697 |
+| Termination | 123 |
+| Total | 3,358 |
 
-123 checks were discharged by flow analysis and 864 by proof. `Parse`, `Decode`,
+287 checks were discharged by flow analysis and 3,071 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -45,11 +46,19 @@ exit unsuccessfully if proof checks remain unproved. Earlier incomplete-proof
 runs did exit with code 1; no check suppressions or assumption pragmas were added.
 The final summary is generated at `obj/proof/gnatprove/gnatprove.out`.
 
-The proof project explicitly selects all four complete core specs and bodies. It
-does **not** include the Ada C adapter. No model replaces a core body and no
-imported executable function appears in the core. All public core preconditions
-must be established by their callers; the C adapter is outside the proof scope
-and checks input sizes and array bounds while supplying heap workspaces to the core.
+The proof project selects six complete SPARK units (the original four plus
+`XML3_DOM` and `XML3_DOM_Bridge`) and the two trusted boundary specs
+`XML3_Native_Memory` and `XML3_DOM_Allocation`; the analyzer reports eight units.
+The two native bodies remain explicitly outside SPARK. Native memory layout and
+allocation correctness are trusted, not replaced with a proved implementation.
+The Ada C adapter is **not** in this proof project. All SPARK preconditions must
+be established by callers; new DOM contracts do not cover exported functions
+that still use the legacy implementation.
+
+DOM runtime checks: `make test-dom-core test-dom-bridge build` passed. The bridge
+test uses real allocated facades read through the public C headers and wraps
+`free` to check projection ordering and tracked-allocation lifetimes. It is not
+a test of the exported C APIs using the new state store: they are not connected.
 
 ## Source identity (SHA-256)
 
@@ -62,7 +71,15 @@ and checks input sizes and array bounds while supplying heap workspaces to the c
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-acdafd1faea5cde058a67f4d85a89822f420e1d74f1dfa6178684fb2a82e40ae  proof.gpr
+449b6910327b1fc541c2247fd3bf01f0f7839a3b6339534d869c03cafd371113  src/xml3_dom.ads
+1e1b4c201124be3357b3696585a47a98d37d11f9b50fe825d364e29529408814  src/xml3_dom.adb
+c8330e5907f2b6f3be23757a20b3a02e37b5a282e1d8ed8b3ddd6d139d41dd40  src/xml3_dom_bridge.ads
+db96daf269750c2bdfc57ac56a3353c34cb445f591454d86a53829645e7737de  src/xml3_dom_bridge.adb
+414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
+4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
+b87754dd3f575f8f64ad374aee2832ab60bff6eb9c2477900f743d7805865122  src/xml3_dom_allocation.ads
+42b3dd88e64ac8b1e6ccc43947ae926102ca80aa06de6c29ea77356f88e2b7a3  src/xml3_dom_allocation.adb
+13834802bd21b8a91f07d051f0b4ea1731ebac3ab081b6952ad1552e6bf6315b  proof.gpr
 ```
 
 A source or contract change invalidates the recorded result until proof is rerun.

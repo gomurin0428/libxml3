@@ -5,22 +5,23 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 ## Intended proof claims
 
-`proof.gpr` includes exactly `XML3_Text`, `XML3_Parser`, `XML3_Namespaces`, and
-`XML3_Encoding`.
+`proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
+`XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, and `XML3_DOM_Bridge`, plus
+the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
 The parser is iterative. Its statically bounded nesting stack holds at most
 2,048 elements; the normal profile permits depth 256 and `XML_PARSE_HUGE` permits
 2,048. There is no fixed whole-document byte cap or 2,048-node policy cap. Input
 indices are bounded by `XML3_Text.Max_Bytes = Integer'Last - 16`, and node IDs by
-half that representation bound. The SPARK core has no allocator, filesystem,
+half that representation bound. The parser/decoder core has no allocator, filesystem,
 network, or callback access. The C adapter supplies bounded node/name arrays and
 heap scratch buffers, grows the arena geometrically when the parser reports
 `Arena_Exhausted`, and reparses; adapter allocation, pointer arithmetic, and
 ownership remain outside the proof scope.
 
-The recorded result is listed in [proof-report.md](proof-report.md) across the
-four SPARK core units, including `XML3_Encoding`, but not the C adapter.
+The recorded result is listed in [proof-report.md](proof-report.md). It covers
+the new DOM foundation as well as the parser/decoder, but not the C adapter.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -51,6 +52,39 @@ not constitute a completed proof. No `Assume`, suppressed run-time checks,
 false-positive annotations, or excluded parser bodies may be used to make the
 proof gate pass.
 
+## DOM foundation: not yet the public C implementation
+
+`XML3_DOM` stores the actual logical node, namespace, and owner slots used by
+its operations. Contracts cover bidirectional links, rank-based cycle prevention,
+subtree document propagation, and owner reference counts equal to distinct live
+node holds plus explicit reservations. Rejected attachments preserve graph data.
+Unlinked nodes can pin a retired document's allocation; IDs are not reused before
+release acknowledgement. Allocation failure handling and copying the backing
+state are separated from the trusted state allocator.
+
+`XML3_DOM_Bridge.Synchronize` consumes the core's projection/release protocol.
+Its proved control flow projects nodes and namespaces before issuing a release,
+then calls native free before acknowledging that release. This establishes the
+protocol per owner ID, not an unconditional theorem about arbitrary C addresses.
+The native integration test additionally checks real C fields, retained document
+storage, preserved `_private`, and exactly-once frees for its tracked allocations.
+
+**`XML3_C` has not been connected to this foundation.** Its parser materialization,
+DOM editing/ownership, root replacement and text merging remain the old unproved
+implementation. The new kernel and integration test are not a substitute for
+migrating those exported entry points. No public C API is newly classified as
+proved by this change.
+
+Native bodies remain trusted for pointer conversion, layout, allocation/free,
+byte operations, metadata IDs and field writes. The caller of the foundation must
+register addresses backed by the right live allocation, with unique owners and
+non-overlapping facades, and ensure strings/ranges remain readable/writable.
+These allocation/projection correspondence and address-uniqueness assumptions
+are not established by the ID/reference-count equations. Native effect specs do
+not model every C field or byte, so the bridge proof does not prove the native
+body implements its projection command correctly. The C integration tests
+exercise this correspondence without proving it for every layout or execution.
+
 ## Trusted / unproved boundary
 
 * The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
@@ -59,6 +93,11 @@ proof gate pass.
   their ownership and structural behavior is tested in C but is not formally proved.
   Callers must use these APIs rather than directly changing public tree links,
   and must not use a document handle after `xmlFreeDoc`.
+* `XML3_Native_Memory` and `XML3_DOM_Allocation` specs are analyzed, but their
+  bodies are explicitly outside SPARK. The former performs no DOM traversal,
+  ownership decision, or release scheduling; the latter only allocates/frees
+  the Ada backing state. Their body correctness and foreign-memory assumptions
+  are trusted, not discharged by the 3,358-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
