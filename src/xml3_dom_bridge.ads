@@ -19,6 +19,7 @@ package XML3_DOM_Bridge with SPARK_Mode is
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Valid (S) and then Can_Edit (S) and then Facades_Present (S),
        Post => Valid (S) and then Can_Edit (S)
-         and then not Projection_Required (S),
+         and then not Projection_Required (S)
+         and then Live_Entries_Preserved (S'Old, S),
        Always_Terminates;
 end XML3_DOM_Bridge;

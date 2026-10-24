@@ -91,6 +91,7 @@ package body XML3_DOM_Bridge with SPARK_Mode is
    end Preserve_Facades;
 
    procedure Synchronize (S : in out State) is
+      Initial : constant State := S with Ghost;
       N : Node_Ref;
       Ns : Namespace_Ref;
       B : Owner_Ref;
@@ -107,6 +108,7 @@ package body XML3_DOM_Bridge with SPARK_Mode is
             pragma Loop_Invariant
               (Valid (S) and then Phase (S) = Projecting_Nodes
                and then Facades_Present (S));
+            pragma Loop_Invariant (Live_Entries_Preserved (Initial, S));
             pragma Loop_Variant (Increases => Projection_Cursor (S));
             declare
                Before : constant State := S with Ghost;
@@ -127,6 +129,7 @@ package body XML3_DOM_Bridge with SPARK_Mode is
             pragma Loop_Invariant
               (Valid (S) and then Phase (S) = Projecting_Namespaces
                and then Facades_Present (S));
+            pragma Loop_Invariant (Live_Entries_Preserved (Initial, S));
             pragma Loop_Variant (Increases => Projection_Cursor (S));
             declare
                Before : constant State := S with Ghost;
@@ -148,6 +151,7 @@ package body XML3_DOM_Bridge with SPARK_Mode is
       loop
          pragma Loop_Invariant
            (Valid (S) and then Can_Edit (S) and then not Projection_Required (S));
+         pragma Loop_Invariant (Live_Entries_Preserved (Initial, S));
          pragma Loop_Variant (Increases => Release_Cursor (S));
          Take_Release (S, B, Address);
          exit when B = Null_Owner;

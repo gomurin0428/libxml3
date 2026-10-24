@@ -209,6 +209,28 @@ package XML3_DOM with SPARK_Mode is
      with Ghost, Global => null,
        Annotate => (GNATprove, Inline_For_Proof);
 
+   function Live_Entries_Preserved (Before, After : State) return Boolean is
+     (Capacity_Of (Before) = Capacity_Of (After)
+      and then Node_Count (Before) = Node_Count (After)
+      and then Namespace_Count (Before) = Namespace_Count (After)
+      and then Owner_Count (Before) = Owner_Count (After)
+      and then (for all N in Node_Ref range 1 .. Node_Ref (Node_Count (Before)) =>
+        (if Node (Before, N).State = Live then
+           Node (After, N) = Node (Before, N)))
+      and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (Before)) =>
+        (if Owner (Before, B).State = Live then
+           Owner (After, B) = Owner (Before, B)))
+      and then (for all N in Namespace_Ref range
+        1 .. Namespace_Ref (Namespace_Count (Before)) =>
+          (if Namespace (Before, N).State = Live
+             and then Namespace (Before, N).Owner in
+               1 .. Owner_Ref (Owner_Count (Before))
+             and then Owner (Before, Namespace (Before, N).Owner).State = Live
+           then Namespace (After, N) = Namespace (Before, N))))
+     with Ghost, Global => null,
+       Pre => Well_Sized (Before) and then Well_Sized (After),
+       Annotate => (GNATprove, Inline_For_Proof);
+
    function Ancestor_In_Nodes
      (Nodes : Node_View_Array; Used : Natural; Candidate, N : Node_Ref)
       return Boolean
@@ -695,6 +717,7 @@ package XML3_DOM with SPARK_Mode is
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S) and then not Projection_Required (S),
      Post => Valid (S) and then not Projection_Required (S)
+       and then Live_Entries_Preserved (S'Old, S)
        and then (if B = Null_Owner then Can_Edit (S)
            and then Address = System.Null_Address and then Same_Graph (S, S'Old)
          else Phase (S) = Release_Pending
@@ -720,6 +743,7 @@ package XML3_DOM with SPARK_Mode is
        and then Owner (S, B).Release_Emitted,
      Post => Valid (S) and then Can_Edit (S)
        and then not Projection_Required (S)
+       and then Live_Entries_Preserved (S'Old, S)
        and then Release_Cursor (S) = Release_Cursor (S)'Old
        and then Owner (S, B).State = Unused
        and then (for all N in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
