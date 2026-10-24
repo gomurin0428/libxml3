@@ -68,6 +68,15 @@ static xmlNs *import_ns;
 static xmlDoc import_original_snapshot;
 static unsigned import_frees, import_failures;
 static size_t import_failure_size;
+static unsigned fail_malloc_nth, malloc_calls, injected_malloc_failures;
+static void *failure_allocations[3];
+static unsigned failure_allocation_count;
+static int failure_allocation_freed[3], track_failure_allocations;
+static void *materialize_arena;
+static xmlDoc *materialize_doc;
+static xmlNode *materialize_nodes[12];
+static xmlNs *materialize_namespaces[4];
+static unsigned materialize_frees;
 
 void bridge_import_track(void *arena, xmlDoc *doc, xmlNode *root,
                          xmlNode *text, xmlNs *ns, xmlDoc *original) {
@@ -90,6 +99,46 @@ void bridge_import_fail_allocation(size_t size) {
 
 void bridge_import_check_allocation_failure(void) {
     assert(import_failures == 1 && import_failure_size == 0);
+}
+
+void bridge_fail_malloc_nth(unsigned nth) {
+    assert(nth > 0);
+    fail_malloc_nth = nth;
+    malloc_calls = 0;
+    injected_malloc_failures = 0;
+    failure_allocation_count = 0;
+    for (unsigned i = 0; i < 3; ++i) {
+        failure_allocations[i] = NULL;
+        failure_allocation_freed[i] = 0;
+    }
+    track_failure_allocations = 1;
+}
+
+void bridge_begin_malloc_tracking(void) {
+    assert(fail_malloc_nth == 0 && track_failure_allocations == 0);
+    malloc_calls = 0;
+    injected_malloc_failures = 0;
+    failure_allocation_count = 0;
+    for (unsigned i = 0; i < 3; ++i) {
+        failure_allocations[i] = NULL;
+        failure_allocation_freed[i] = 0;
+    }
+    track_failure_allocations = 1;
+}
+
+void bridge_end_malloc_tracking(void) {
+    assert(fail_malloc_nth == 0 && injected_malloc_failures == 0);
+    assert(failure_allocation_count == 3);
+    for (unsigned i = 0; i < failure_allocation_count; ++i)
+        assert(failure_allocation_freed[i] == 1);
+    track_failure_allocations = 0;
+}
+
+void bridge_check_malloc_failure(void) {
+    assert(fail_malloc_nth == 0 && injected_malloc_failures == 1);
+    for (unsigned i = 0; i < failure_allocation_count; ++i)
+        assert(failure_allocation_freed[i] == 1);
+    track_failure_allocations = 0;
 }
 
 unsigned bridge_import_free_count(void) {
@@ -137,11 +186,21 @@ void * __wrap_malloc(size_t size) {
         ++import_failures;
         return NULL;
     }
+    if (fail_malloc_nth != 0 && ++malloc_calls == fail_malloc_nth) {
+        fail_malloc_nth = 0;
+        ++injected_malloc_failures;
+        return NULL;
+    }
     if (fail_next_malloc) {
         fail_next_malloc = 0;
         return NULL;
     }
-    return __real_malloc(size);
+    void *result = __real_malloc(size);
+    if (track_failure_allocations && result != NULL) {
+        assert(failure_allocation_count < 3);
+        failure_allocations[failure_allocation_count++] = result;
+    }
+    return result;
 }
 
 void bridge_merge_reset_tracking(void) {
@@ -309,6 +368,94 @@ void bridge_check_detached(xmlDoc *doc, xmlNode *root, xmlNode *child, xmlNs *ns
     assert(strcmp((const char *)ns->href, (const char *)XML_XML_NAMESPACE) == 0);
 }
 
+void bridge_materialize_check
+  (xmlDoc *doc, xmlNode *before, xmlNode *root, xmlNode *attr,
+   xmlNode *attr_value, xmlNode *lang, xmlNode *lang_value,
+   xmlNode *text, xmlNode *cdata, xmlNode *comment, xmlNode *pi,
+   xmlNode *child, xmlNs *implicit, xmlNs *def, xmlNs *prefix, xmlNs *empty) {
+    assert(doc->type == XML_DOCUMENT_NODE && doc->doc == doc);
+    assert(strcmp((const char *)doc->version, "1.0") == 0);
+    assert(doc->children == before && before->next == root);
+    assert(before->type == XML_PI_NODE && strcmp((const char *)before->name, "before") == 0);
+    assert(strcmp((const char *)before->content, "x") == 0);
+    assert(root->type == XML_ELEMENT_NODE && root->parent == (xmlNode *)doc);
+    assert(strcmp((const char *)root->name, "r") == 0);
+    assert((xmlNode *)root->properties == attr && attr->next == lang);
+    assert(strcmp((const char *)attr->name, "a") == 0);
+    assert(attr->content == NULL && attr->children == attr_value);
+    assert(strcmp((const char *)attr_value->content, "A&B") == 0);
+    assert(strcmp((const char *)lang->name, "lang") == 0);
+    assert(lang->ns == implicit);
+    assert(lang->children == lang_value);
+    assert(strcmp((const char *)lang_value->content, "ja") == 0);
+    assert(root->children == text && text->next == cdata && cdata->next == comment);
+    assert(comment->next == pi && pi->next == child && child->next == NULL);
+    assert(strcmp((const char *)text->content, "one") == 0);
+    assert(strcmp((const char *)cdata->content, "two") == 0);
+    assert(strcmp((const char *)comment->content, "c") == 0);
+    assert(strcmp((const char *)pi->name, "pi") == 0);
+    assert(strcmp((const char *)pi->content, "x") == 0);
+    assert(strcmp((const char *)child->name, "c") == 0);
+    assert(root->nsDef == def && def->next == prefix && prefix->next == NULL);
+    assert(strcmp((const char *)def->href, "urn:d") == 0 && def->prefix == NULL);
+    assert(strcmp((const char *)prefix->href, "urn:p") == 0);
+    assert(strcmp((const char *)prefix->prefix, "p") == 0);
+    assert(child->nsDef == empty && empty->href != NULL
+           && ((const char *)empty->href)[0] == '\0' && empty->prefix == NULL);
+    assert(root->ns == def && attr->ns == prefix && child->ns == prefix);
+    assert(implicit->context == NULL && strcmp((const char *)implicit->prefix, "xml") == 0);
+}
+
+void bridge_materialize_track
+  (void *arena, xmlDoc *doc, xmlNode *before, xmlNode *root,
+   xmlNode *attr, xmlNode *attr_value, xmlNode *lang, xmlNode *lang_value,
+   xmlNode *text, xmlNode *cdata, xmlNode *comment, xmlNode *pi,
+   xmlNode *child, xmlNs *implicit, xmlNs *def, xmlNs *prefix, xmlNs *empty) {
+    assert(materialize_arena == NULL);
+    materialize_arena = arena;
+    materialize_doc = doc;
+    materialize_nodes[0] = before;
+    materialize_nodes[1] = root;
+    materialize_nodes[2] = attr;
+    materialize_nodes[3] = attr_value;
+    materialize_nodes[4] = lang;
+    materialize_nodes[5] = lang_value;
+    materialize_nodes[6] = text;
+    materialize_nodes[7] = cdata;
+    materialize_nodes[8] = comment;
+    materialize_nodes[9] = pi;
+    materialize_nodes[10] = child;
+    materialize_namespaces[0] = implicit;
+    materialize_namespaces[1] = def;
+    materialize_namespaces[2] = prefix;
+    materialize_namespaces[3] = empty;
+    materialize_frees = 0;
+}
+
+void bridge_materialize_check_retained(xmlNode *root, xmlNode *attr,
+                                       xmlNode *attr_value, xmlNode *lang,
+                                       xmlNode *lang_value, xmlNode *text,
+                                       xmlNode *cdata, xmlNode *comment,
+                                       xmlNode *pi, xmlNode *child,
+                                       xmlNs *implicit, xmlNs *def,
+                                       xmlNs *prefix, xmlNs *empty) {
+    assert(root->parent == NULL && root->prev == NULL && root->next == NULL);
+    assert(root->properties == (xmlAttr *)attr && root->children == text);
+    assert(attr->children == attr_value && lang->children == lang_value);
+    assert(text->next == cdata && cdata->next == comment);
+    assert(comment->next == pi && pi->next == child);
+    assert(root->nsDef == def && def->next == prefix && child->nsDef == empty);
+    assert(strcmp((const char *)attr_value->content, "A&B") == 0);
+    assert(strcmp((const char *)lang_value->content, "ja") == 0);
+    assert(strcmp((const char *)child->name, "c") == 0);
+    assert(lang->ns == implicit);
+    assert(strcmp((const char *)implicit->prefix, "xml") == 0);
+    assert(strcmp((const char *)implicit->href,
+                  (const char *)XML_XML_NAMESPACE) == 0);
+    assert(strcmp((const char *)prefix->href, "urn:p") == 0);
+    assert(empty->href != NULL && ((const char *)empty->href)[0] == '\0');
+}
+
 unsigned bridge_free_count(unsigned index) {
     assert(index < 3);
     return free_counts[index];
@@ -317,6 +464,32 @@ unsigned bridge_free_count(unsigned index) {
 void __real_free(void *pointer);
 
 void __wrap_free(void *pointer) {
+    if (track_failure_allocations && pointer != NULL) {
+        for (unsigned i = 0; i < failure_allocation_count; ++i) {
+            if (pointer == failure_allocations[i]) {
+                assert(failure_allocation_freed[i] == 0);
+                failure_allocation_freed[i] = 1;
+            }
+        }
+    }
+    if (pointer != NULL && pointer == materialize_arena) {
+        assert(materialize_frees == 0);
+        assert(materialize_doc->children == NULL && materialize_doc->last == NULL);
+        assert(materialize_doc->doc == NULL && materialize_doc->version == NULL);
+        for (unsigned i = 0; i < 11; ++i) {
+            const xmlNode *node = materialize_nodes[i];
+            assert(node->name == NULL && node->content == NULL);
+            assert(node->children == NULL && node->last == NULL);
+            assert(node->parent == NULL && node->prev == NULL && node->next == NULL);
+            assert(node->doc == NULL && node->ns == NULL);
+            assert(node->properties == NULL && node->nsDef == NULL);
+        }
+        for (unsigned i = 0; i < 4; ++i) {
+            const xmlNs *ns = materialize_namespaces[i];
+            assert(ns->href == NULL && ns->prefix == NULL && ns->next == NULL);
+        }
+        ++materialize_frees;
+    }
     if (pointer != NULL && pointer == import_arena) {
         assert(import_frees == 0);
         assert(import_doc->children == NULL && import_doc->last == NULL);
@@ -390,4 +563,19 @@ void __wrap_free(void *pointer) {
         break;
     }
     __real_free(pointer);
+}
+
+unsigned bridge_materialize_free_count(void) {
+    return materialize_frees;
+}
+
+void bridge_materialize_reset(void) {
+    assert(materialize_frees == 1);
+    materialize_arena = NULL;
+    materialize_doc = NULL;
+    for (unsigned i = 0; i < 12; ++i)
+        materialize_nodes[i] = NULL;
+    for (unsigned i = 0; i < 4; ++i)
+        materialize_namespaces[i] = NULL;
+    materialize_frees = 0;
 }

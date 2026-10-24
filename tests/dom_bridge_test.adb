@@ -7,7 +7,10 @@ with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
 with XML3_DOM_Store;
+with XML3_DOM.Materialize;
 with XML3_Native_Memory;
+with XML3_Namespaces;
+with XML3_Parser;
 
 procedure DOM_Bridge_Test is
    package Native renames XML3_Native_Memory;
@@ -66,6 +69,30 @@ procedure DOM_Bridge_Test is
    function Merge_Free_Count (Index : Interfaces.C.unsigned)
       return Interfaces.C.unsigned
      with Import, Convention => C, External_Name => "bridge_merge_free_count";
+   procedure Materialize_Check
+     (Doc, Before, Root, Attr, Attr_Value, Lang, Lang_Value,
+      Text, CData, Comment, PI, Child,
+      Implicit, Default_Ns, Prefix_Ns, Empty_Ns : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_materialize_check";
+   procedure Materialize_Track
+     (Arena, Doc, Before, Root, Attr, Attr_Value, Lang, Lang_Value,
+      Text, CData, Comment, PI, Child,
+      Implicit, Default_Ns, Prefix_Ns, Empty_Ns : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_materialize_track";
+   procedure Materialize_Check_Retained
+     (Root, Attr, Attr_Value, Lang, Lang_Value, Text, CData,
+      Comment, PI, Child, Implicit, Default_Ns,
+      Prefix_Ns, Empty_Ns : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_materialize_check_retained";
+   function Materialize_Free_Count return Interfaces.C.unsigned
+     with Import, Convention => C,
+       External_Name => "bridge_materialize_free_count";
+   procedure Materialize_Reset
+     with Import, Convention => C,
+       External_Name => "bridge_materialize_reset";
 
    Version : aliased constant String := "1.0" & Character'Val (0);
    Root_Name : aliased constant String := "r" & Character'Val (0);
@@ -668,6 +695,181 @@ begin
       XML3_DOM_Bridge.Synchronize (Destination.all);
       XML3_DOM_Allocation.Free_State (Destination);
       XML3_DOM_Allocation.Free_State (Tiny);
+   end;
+   declare
+      use type XML3_Parser.Parse_Status;
+      use type XML3_DOM_Constructors.Construction_Status;
+      use type XML3_DOM.Import.Import_Status;
+      Input : constant String :=
+        "<?before x?><r xmlns=""urn:d"" xmlns:p=""urn:p"" p:a=""A&amp;B"" xml:lang=""ja"">one<![CDATA[two]]><!--c--><?pi x?><p:c xmlns=""""/></r>";
+      Scratch, Scratch_B : String (1 .. Input'Length) := (others => ' ');
+      Parsed_Nodes : XML3_Parser.Node_Array (1 .. 64);
+      Parsed_Names : XML3_Namespaces.Name_Array (1 .. 64);
+      Count, Parser_Root : XML3_Parser.Node_Id;
+      Parse_Status, Resolve_Status : XML3_Parser.Parse_Status;
+      Parse_Diag, Resolve_Diag : XML3_Parser.Diagnostic_Info;
+      Source, Destination : State_Access := null;
+      Build_Status : XML3_DOM_Constructors.Construction_Status;
+      Import_Status : XML3_DOM.Import.Import_Status;
+      Destination_Doc, Imported_Doc, Imported_Root : Node_Ref;
+      Destination_Ns : Namespace_Ref;
+      Destination_Doc_Before : Node_View;
+      N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12 : Node_Ref;
+      procedure Fail_Malloc_Nth (Nth : Interfaces.C.unsigned)
+        with Import, Convention => C,
+          External_Name => "bridge_fail_malloc_nth";
+      procedure Check_Malloc_Failure
+        with Import, Convention => C,
+          External_Name => "bridge_check_malloc_failure";
+      procedure Begin_Malloc_Tracking
+        with Import, Convention => C,
+          External_Name => "bridge_begin_malloc_tracking";
+      procedure End_Malloc_Tracking
+        with Import, Convention => C,
+          External_Name => "bridge_end_malloc_tracking";
+   begin
+      XML3_Parser.Parse
+        (Input, Scratch, Parsed_Nodes, Count, Parser_Root, Parse_Status,
+         False, Parse_Diag);
+      pragma Assert (Parse_Status = XML3_Parser.Success);
+      XML3_Namespaces.Resolve
+        (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Scratch_B,
+         Resolve_Status, Resolve_Diag);
+      pragma Assert (Resolve_Status = XML3_Parser.Success);
+      Initialize (Destination, 32, OK);
+      pragma Assert (OK);
+      XML3_DOM_Constructors.Create_Node
+        (Destination, Document_Node, "", "", False, 0, Destination_Doc,
+         Destination_Ns, Build_Status);
+      pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+      Destination_Doc_Before := Node (Destination.all, Destination_Doc);
+      declare
+         Before_Destination : constant State := Destination.all;
+      begin
+         for Nth in 1 .. 3 loop
+            Fail_Malloc_Nth (Interfaces.C.unsigned (Nth));
+            XML3_DOM.Materialize.Build
+              (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
+               Build_Status);
+            Check_Malloc_Failure;
+            pragma Assert
+              (Build_Status = XML3_DOM_Constructors.No_Memory
+               and then Source = null
+               and then Same_Graph (Destination.all, Before_Destination));
+         end loop;
+         declare
+         Valid_Binding : constant XML3_Namespaces.Binding_Id :=
+              Parsed_Names (5).Binding;
+         begin
+            Parsed_Names (5).Binding := 1;
+            Begin_Malloc_Tracking;
+            XML3_DOM.Materialize.Build
+              (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
+               Build_Status);
+            End_Malloc_Tracking;
+            pragma Assert
+              (Build_Status = XML3_DOM_Constructors.Internal_Error
+               and then Source = null
+               and then Same_Graph (Destination.all, Before_Destination));
+            Parsed_Names (5).Binding := Valid_Binding;
+         end;
+      end;
+      XML3_DOM.Materialize.Build
+        (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
+         Build_Status);
+      pragma Assert
+        (Build_Status = XML3_DOM_Constructors.Created
+         and then Source /= null
+         and then Node_Count (Source.all) = 12
+         and then Namespace_Count (Source.all) = 4);
+      XML3_DOM.Import.Adopt
+        (Destination.all, Source, Imported_Doc, Import_Status);
+      pragma Assert
+        (Import_Status = XML3_DOM.Import.Imported and then Source = null);
+      Imported_Root :=
+        Node (Destination.all,
+              Node (Destination.all, Imported_Doc).First_Child).Next;
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      N1 := 2; N2 := 3; N3 := 4; N4 := 5; N5 := 6; N6 := 7;
+      N7 := 8; N8 := 9; N9 := 10; N10 := 11; N11 := 12; N12 := 13;
+      Materialize_Check
+        (Node (Destination.all, N1).Facade,
+         Node (Destination.all, N2).Facade,
+         Node (Destination.all, N3).Facade,
+         Node (Destination.all, N4).Facade,
+         Node (Destination.all, N5).Facade,
+         Node (Destination.all, N6).Facade,
+         Node (Destination.all, N7).Facade,
+         Node (Destination.all, N8).Facade,
+         Node (Destination.all, N9).Facade,
+         Node (Destination.all, N10).Facade,
+         Node (Destination.all, N11).Facade,
+         Node (Destination.all, N12).Facade,
+         Namespace (Destination.all, 2).Facade,
+         Namespace (Destination.all, 3).Facade,
+         Namespace (Destination.all, 4).Facade,
+         Namespace (Destination.all, 5).Facade);
+      pragma Assert (Imported_Root = N3);
+      Materialize_Track
+        (Owner (Destination.all, Node (Destination.all, N1).Owner).Address,
+         Node (Destination.all, N1).Facade,
+         Node (Destination.all, N2).Facade,
+         Node (Destination.all, N3).Facade,
+         Node (Destination.all, N4).Facade,
+         Node (Destination.all, N5).Facade,
+         Node (Destination.all, N6).Facade,
+         Node (Destination.all, N7).Facade,
+         Node (Destination.all, N8).Facade,
+         Node (Destination.all, N9).Facade,
+         Node (Destination.all, N10).Facade,
+         Node (Destination.all, N11).Facade,
+         Node (Destination.all, N12).Facade,
+         Namespace (Destination.all, 2).Facade,
+         Namespace (Destination.all, 3).Facade,
+         Namespace (Destination.all, 4).Facade,
+         Namespace (Destination.all, 5).Facade);
+      for I in 1 .. 12 loop
+         pragma Assert
+           (Native.Node_Id (Node (Destination.all, Node_Ref (I + 1)).Facade)
+            = I + 1);
+      end loop;
+      for I in 1 .. 4 loop
+         pragma Assert
+           (Native.Namespace_Id
+              (Namespace (Destination.all, Namespace_Ref (I + 1)).Facade)
+            = I + 1);
+      end loop;
+      pragma Assert
+        (Node (Destination.all, Destination_Doc) = Destination_Doc_Before);
+      Unlink (Destination.all, Imported_Root);
+      Free_Subtree (Destination.all, Imported_Doc);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      Materialize_Check_Retained
+        (Node (Destination.all, Imported_Root).Facade,
+         Node (Destination.all, N4).Facade,
+         Node (Destination.all, N5).Facade,
+         Node (Destination.all, N6).Facade,
+         Node (Destination.all, N7).Facade,
+         Node (Destination.all, N8).Facade,
+         Node (Destination.all, N9).Facade,
+         Node (Destination.all, N10).Facade,
+         Node (Destination.all, N11).Facade,
+         Node (Destination.all, N12).Facade,
+         Namespace (Destination.all, 2).Facade,
+         Namespace (Destination.all, 3).Facade,
+         Namespace (Destination.all, 4).Facade,
+         Namespace (Destination.all, 5).Facade);
+      Free_Subtree (Destination.all, Imported_Root);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      pragma Assert
+        (Materialize_Free_Count = 1
+         and then Node (Destination.all, Destination_Doc) =
+                    Destination_Doc_Before);
+      Free_Subtree (Destination.all, Destination_Doc);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      pragma Assert (Materialize_Free_Count = 1);
+      Materialize_Reset;
+      XML3_DOM_Allocation.Free_State (Destination);
    end;
    Ada.Text_IO.Put_Line ("DOM arena adoption, rollback, and release tests passed");
 end DOM_Bridge_Test;

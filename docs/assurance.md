@@ -7,7 +7,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
-`XML3_DOM_Constructors`, `XML3_DOM_Store`, and `XML3_DOM.Import`, plus
+`XML3_DOM_Constructors`, `XML3_DOM_Store`, `XML3_DOM.Import`, and
+`XML3_DOM.Materialize`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
@@ -22,7 +23,8 @@ heap scratch buffers, grows the arena geometrically when the parser reports
 ownership remain outside the proof scope.
 
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
-the new DOM foundation as well as the parser/decoder, but not the C adapter.
+the parser/decoder, DOM foundation, and internal parser-arena materializer, but
+not the C adapter or public C API routing.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -119,8 +121,28 @@ The bridge clears namespace pointer fields when the core's
 `Namespace_Release_Required` reports a releasing owner, in addition to clearing
 retired nodes. Native tests cover capacity/allocation rollback, slot reuse,
 remapped IDs, detached lifetime and clearing before exactly-once release.
-This does not implement conversion from parser output to a source state or connect
-the parser/public C API to the Store.
+
+`XML3_DOM.Materialize.Build` converts successful internal `Parse` and `Resolve`
+output into a fresh candidate arena. It assigns IDs and constructs
+ownership/topology in SPARK, uses checked string budgeting, and validates the
+candidate with executable shared graph predicates. The proved `Check_Arena`
+postcondition establishes `Valid`, editability, facade presence, arena
+ownership, and projection requirement; parser/resolver range facts alone are
+not treated as proof of arbitrary graph structure. A successful source is then
+adopted once and synchronized through the destination bridge. The integration
+test exercises this full internal sequence on the mixed parser sample, checks
+12 nodes and 4 namespaces through C facade traversal, validates destination
+preservation and remapped metadata, injects failure at all three allocation
+stages, and checks invalid-binding rejection with exactly-once cleanup. It also
+checks detached lifetime and final arena release.
+
+The materializer performs direct non-ghost construction and O(1) tail appends,
+so its assembly work is linear in emitted nodes and namespaces. Assertion-enabled
+ghost checks may be superlinear; no performance benchmark is claimed. Native
+allocation/free, offsets, facade initialization, and byte/string writes remain
+trusted primitives. The native layout/address correspondence is tested but not
+proved. Ownership, graph topology, validation, release decisions, and policy
+remain in SPARK.
 
 **`XML3_C` has not been connected to this foundation.** Its parser materialization,
 DOM editing/ownership, root replacement and text merging remain the old unproved
@@ -150,7 +172,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 5,916-check result.
+  are trusted, not discharged by the 6,389-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

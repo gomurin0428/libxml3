@@ -1054,12 +1054,12 @@ private
    function Live_Node (S : Graph_State; N : Node_Ref) return Boolean is
      (N in 1 .. Node_Ref (S.Node_Used)
       and then S.Nodes (Positive (N)).State = Live)
-     with Ghost, Pre => Well_Sized (S);
+     with Pre => Well_Sized (S);
 
    function Live_Owner (S : Graph_State; B : Owner_Ref) return Boolean is
      (B in 1 .. Owner_Ref (S.Owner_Used)
       and then S.Owners (Positive (B)).State = Live)
-     with Ghost, Pre => Well_Sized (S);
+     with Pre => Well_Sized (S);
 
    function Node_Pins_Valid (S : Graph_State; I : Positive) return Boolean is
      (declare
@@ -1084,7 +1084,7 @@ private
              and then S.Namespaces (Positive (N.Namespace)).State = Live
              and then N.Ns_Pin =
                S.Namespaces (Positive (N.Namespace)).Owner)))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Node_Used;
+     with Pre => Well_Sized (S) and then I <= S.Node_Used;
 
    function Node_Siblings_Valid (S : Graph_State; I : Positive) return Boolean is
      (declare
@@ -1118,7 +1118,7 @@ private
              (if N.Kind = Attribute_Node then
                 S.Nodes (Positive (N.Parent)).Last_Prop = Node_Ref (I)
               else S.Nodes (Positive (N.Parent)).Last_Child = Node_Ref (I)))))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Node_Used;
+     with Pre => Well_Sized (S) and then I <= S.Node_Used;
 
    function Node_Children_Valid (S : Graph_State; I : Positive) return Boolean is
      (declare
@@ -1147,13 +1147,13 @@ private
              and then S.Nodes (Positive (N.Last_Prop)).Next = 0
              and then S.Nodes (Positive (N.Last_Prop)).Parent = Node_Ref (I)
              and then S.Nodes (Positive (N.Last_Prop)).Kind = Attribute_Node)))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Node_Used;
+     with Pre => Well_Sized (S) and then I <= S.Node_Used;
 
    function Allocated_Namespace
      (S : Graph_State; N : Namespace_Ref) return Boolean is
      (N in 1 .. Namespace_Ref (S.Ns_Used)
       and then S.Namespaces (Positive (N)).State = Live)
-     with Ghost, Pre => Well_Sized (S);
+     with Pre => Well_Sized (S);
 
    function Node_Namespaces_Valid (S : Graph_State; I : Positive) return Boolean is
      (declare
@@ -1173,7 +1173,7 @@ private
              and then S.Namespaces (Positive (N.Last_Namespace)).Parent = Node_Ref (I)
              and then S.Namespaces (Positive (N.Last_Namespace)).Owner = N.Owner
              and then S.Namespaces (Positive (N.Last_Namespace)).Next = 0)))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Node_Used;
+     with Pre => Well_Sized (S) and then I <= S.Node_Used;
 
    function Namespace_Links_Valid (S : Graph_State; I : Positive) return Boolean is
      (declare
@@ -1204,12 +1204,12 @@ private
              S.Nodes (Positive (N.Parent)).First_Namespace = Namespace_Ref (I))
            and then (if N.Parent /= 0 and then N.Next = 0 then
              S.Nodes (Positive (N.Parent)).Last_Namespace = Namespace_Ref (I))))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Ns_Used;
+     with Pre => Well_Sized (S) and then I <= S.Ns_Used;
 
    function Node_Links_Valid (S : Graph_State; I : Positive) return Boolean is
      (Node_Pins_Valid (S, I) and then Node_Siblings_Valid (S, I)
       and then Node_Children_Valid (S, I) and then Node_Namespaces_Valid (S, I))
-     with Ghost, Pre => Well_Sized (S) and then I <= S.Node_Used,
+     with Pre => Well_Sized (S) and then I <= S.Node_Used,
        Annotate => (GNATprove, Inline_For_Proof);
 
    function Links_Valid (S : State) return Boolean is
