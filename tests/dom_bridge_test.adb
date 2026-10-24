@@ -15,12 +15,27 @@ procedure DOM_Bridge_Test is
    procedure Track
      (Doc_Block, Root_Block, Child_Block, Doc, Root, Child : System.Address)
      with Import, Convention => C, External_Name => "bridge_track";
+   procedure Reset_Tracking
+     with Import, Convention => C, External_Name => "bridge_reset_tracking";
+   procedure Merge_Track
+     (Target_Block, Source_Content, Source_Block, Old_Content, New_Content,
+      Target, Source : System.Address)
+     with Import, Convention => C, External_Name => "bridge_merge_track";
+   procedure Merge_Check_Initial
+     with Import, Convention => C, External_Name => "bridge_merge_check_initial";
+   procedure Merge_Check_Pending
+     with Import, Convention => C, External_Name => "bridge_merge_check_pending";
+   procedure Merge_Check_Target
+     with Import, Convention => C, External_Name => "bridge_merge_check_target";
    procedure Check_Live (Doc, Root, Child, Ns : System.Address)
      with Import, Convention => C, External_Name => "bridge_check_live";
    procedure Check_Detached (Doc, Root, Child, Ns : System.Address)
      with Import, Convention => C, External_Name => "bridge_check_detached";
    function Free_Count (Index : Interfaces.C.unsigned) return Interfaces.C.unsigned
      with Import, Convention => C, External_Name => "bridge_free_count";
+   function Merge_Free_Count (Index : Interfaces.C.unsigned)
+      return Interfaces.C.unsigned
+     with Import, Convention => C, External_Name => "bridge_merge_free_count";
 
    Version : aliased constant String := "1.0" & Character'Val (0);
    Root_Name : aliased constant String := "r" & Character'Val (0);
@@ -29,6 +44,16 @@ procedure DOM_Bridge_Test is
    Prefix : aliased constant String := "xml" & Character'Val (0);
    Href : aliased constant String :=
      "http://www.w3.org/XML/1998/namespace" & Character'Val (0);
+   Merge_Target_Name : aliased constant String :=
+     "target" & Character'Val (0);
+   Merge_Source_Name : aliased constant String :=
+     "source" & Character'Val (0);
+   Merge_Target_Content : aliased constant String :=
+     "ab" & Character'Val (0);
+   Merge_Source_Content : aliased constant String :=
+     "cd" & Character'Val (0);
+   Merge_New_Content : aliased constant String :=
+     "abcd" & Character'Val (0);
    S : State_Access;
    OK : Boolean;
    Doc_Block, Root_Block, Child_Block : System.Address;
@@ -36,6 +61,13 @@ procedure DOM_Bridge_Test is
    Doc, Root, Child : Node_Ref;
    Ns : Namespace_Ref;
    Doc_Owner, Root_Owner, Child_Owner : Owner_Ref;
+   Merge_Target_Block, Merge_Source_Block : System.Address;
+   Merge_Source_Content_Block, Merge_Old_Content_Block,
+     Merge_New_Content_Block : System.Address;
+   Merge_Target_Facade, Merge_Source_Facade : System.Address;
+   Merge_Target, Merge_Source : Node_Ref;
+   Merge_Target_Owner, Merge_Source_Owner, Merge_Source_Content_Owner,
+     Merge_Old_Content_Owner, Merge_New_Content_Owner : Owner_Ref;
 begin
    Initialize (S, 16, OK);
    pragma Assert (OK);
@@ -115,5 +147,113 @@ begin
    XML3_DOM_Bridge.Synchronize (S.all);
    pragma Assert (Free_Count (0) = 1 and then Free_Count (1) = 1 and then Free_Count (2) = 1);
    XML3_DOM_Allocation.Free_State (S);
+   Reset_Tracking;
+
+   Initialize (S, 16, OK);
+   pragma Assert (OK);
+   Native.Allocate (Native.Node_Stride, Merge_Target_Block);
+   Native.Allocate (Native.Node_Stride, Merge_Source_Block);
+   Native.Allocate
+     (Native.Byte_Count (Merge_Target_Content'Length), Merge_Old_Content_Block);
+   Native.Allocate
+     (Native.Byte_Count (Merge_Source_Content'Length),
+      Merge_Source_Content_Block);
+   Native.Allocate
+     (Native.Byte_Count (Merge_New_Content'Length), Merge_New_Content_Block);
+   pragma Assert
+     (Merge_Target_Block /= System.Null_Address
+      and then Merge_Source_Block /= System.Null_Address
+      and then Merge_Old_Content_Block /= System.Null_Address
+      and then Merge_Source_Content_Block /= System.Null_Address
+      and then Merge_New_Content_Block /= System.Null_Address);
+   Merge_Target_Facade :=
+     Native.Offset (Merge_Target_Block, Native.Metadata_Bytes);
+   Merge_Source_Facade :=
+     Native.Offset (Merge_Source_Block, Native.Metadata_Bytes);
+   Native.Initialize_Node (Merge_Target_Facade);
+   Native.Initialize_Node (Merge_Source_Facade);
+   Native.Write_String (Merge_Old_Content_Block, 0, Merge_Target_Content);
+   Native.Write_String
+     (Merge_Source_Content_Block, 0, Merge_Source_Content);
+   Native.Write_String (Merge_New_Content_Block, 0, Merge_New_Content);
+   Merge_Track
+     (Merge_Target_Block, Merge_Source_Content_Block, Merge_Source_Block,
+      Merge_Old_Content_Block, Merge_New_Content_Block,
+      Merge_Target_Facade, Merge_Source_Facade);
+
+   Register_Owner (S.all, Merge_Target_Block, Merge_Target_Owner, OK);
+   pragma Assert (OK);
+   Register_Owner
+     (S.all, Merge_Source_Content_Block, Merge_Source_Content_Owner, OK);
+   pragma Assert (OK);
+   Register_Owner (S.all, Merge_Source_Block, Merge_Source_Owner, OK);
+   pragma Assert (OK);
+   Register_Owner
+     (S.all, Merge_Old_Content_Block, Merge_Old_Content_Owner, OK);
+   pragma Assert (OK);
+   Register_Owner
+     (S.all, Merge_New_Content_Block, Merge_New_Content_Owner, OK);
+   pragma Assert (OK);
+   Register_Node
+     (S.all, Text_Node, Merge_Target_Facade, Merge_Target_Owner, 0,
+      Merge_Target, OK);
+   pragma Assert (OK);
+   Register_Node
+     (S.all, Text_Node, Merge_Source_Facade, Merge_Source_Owner, 0,
+      Merge_Source, OK);
+   pragma Assert (OK);
+   Set_Node_Projection
+     (S.all, Merge_Target, Merge_Target_Name'Address,
+      Merge_Target_Name'Length - 1, Merge_Old_Content_Block,
+      Merge_Target_Content'Length - 1, 0, 0, 0, 0,
+      Merge_Old_Content_Owner, OK);
+   pragma Assert (OK);
+   Set_Node_Projection
+     (S.all, Merge_Source, Merge_Source_Name'Address,
+      Merge_Source_Name'Length - 1, Merge_Source_Content_Block,
+      Merge_Source_Content'Length - 1, 0, 0, 0, 0,
+      Merge_Source_Content_Owner, OK);
+   pragma Assert (OK);
+   Release_Reservation (S.all, Merge_Target_Owner);
+   Release_Reservation (S.all, Merge_Source_Owner);
+   Release_Reservation (S.all, Merge_Source_Content_Owner);
+   Release_Reservation (S.all, Merge_Old_Content_Owner);
+   XML3_DOM_Bridge.Synchronize (S.all);
+   Merge_Check_Initial;
+   Merge_Text
+     (S.all, Merge_Target, Merge_Source, Merge_New_Content_Block,
+      Merge_New_Content'Length - 1, Merge_New_Content_Owner, OK);
+   pragma Assert (OK);
+   Release_Reservation (S.all, Merge_New_Content_Owner);
+   pragma Assert
+     (Merge_Free_Count (0) = 0
+      and then Merge_Free_Count (1) = 0
+      and then Merge_Free_Count (2) = 0
+      and then Merge_Free_Count (3) = 0
+      and then Merge_Free_Count (4) = 0);
+   Merge_Check_Pending;
+   XML3_DOM_Bridge.Synchronize (S.all);
+   Merge_Check_Target;
+   pragma Assert
+     (Merge_Free_Count (0) = 0
+      and then Merge_Free_Count (1) = 1
+      and then Merge_Free_Count (2) = 1
+      and then Merge_Free_Count (3) = 1
+      and then Merge_Free_Count (4) = 0);
+   Free_Subtree (S.all, Merge_Target);
+   XML3_DOM_Bridge.Synchronize (S.all);
+   pragma Assert
+     (Merge_Free_Count (0) = 1
+      and then Merge_Free_Count (1) = 1
+      and then Merge_Free_Count (2) = 1
+      and then Merge_Free_Count (3) = 1
+      and then Merge_Free_Count (4) = 1);
+   XML3_DOM_Bridge.Synchronize (S.all);
+   pragma Assert
+     (Merge_Free_Count (0) = 1
+      and then Merge_Free_Count (1) = 1
+      and then Merge_Free_Count (2) = 1
+      and then Merge_Free_Count (3) = 1
+      and then Merge_Free_Count (4) = 1);
    Ada.Text_IO.Put_Line ("Native DOM projection, pin lifetime, and release ordering tests passed");
 end DOM_Bridge_Test;

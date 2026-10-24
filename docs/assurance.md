@@ -72,6 +72,9 @@ rebinds the target's content hold, and retires the source atomically in the logi
 graph. Failure leaves the graph unchanged. Actual concatenated bytes and their
 allocation bounds are not modeled by this operation; the caller must prepare the
 buffer and retain its reservation through the commit.
+The source may be detached or attached under another parent in the same
+document; this intentional move/append behavior does not require same-parent
+adjacency.
 
 `XML3_DOM_Bridge.Synchronize` consumes the core's projection/release protocol.
 Its proved control flow projects nodes and namespaces before issuing a release,

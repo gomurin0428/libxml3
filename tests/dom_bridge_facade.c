@@ -9,6 +9,19 @@ static void *facades[3];
 static unsigned free_counts[3];
 static int private_marker;
 
+enum {
+    MERGE_TARGET_BLOCK,
+    MERGE_SOURCE_CONTENT,
+    MERGE_SOURCE_BLOCK,
+    MERGE_OLD_CONTENT,
+    MERGE_NEW_CONTENT,
+    MERGE_ALLOCATION_COUNT
+};
+
+static void *merge_blocks[MERGE_ALLOCATION_COUNT];
+static void *merge_facades[2];
+static unsigned merge_free_counts[MERGE_ALLOCATION_COUNT];
+
 void bridge_track(void *doc_block, void *root_block, void *child_block,
                   void *doc, void *root, void *child) {
     blocks[0] = doc_block;
@@ -17,6 +30,77 @@ void bridge_track(void *doc_block, void *root_block, void *child_block,
     facades[0] = doc;
     facades[1] = root;
     facades[2] = child;
+}
+
+void bridge_reset_tracking(void) {
+    for (unsigned i = 0; i < 3; ++i) {
+        assert(free_counts[i] == 1);
+        blocks[i] = NULL;
+        facades[i] = NULL;
+        free_counts[i] = 0;
+    }
+}
+
+void bridge_merge_track(void *target_block, void *source_content,
+                        void *source_block, void *old_content,
+                        void *new_content, void *target, void *source) {
+    merge_blocks[MERGE_TARGET_BLOCK] = target_block;
+    merge_blocks[MERGE_SOURCE_CONTENT] = source_content;
+    merge_blocks[MERGE_SOURCE_BLOCK] = source_block;
+    merge_blocks[MERGE_OLD_CONTENT] = old_content;
+    merge_blocks[MERGE_NEW_CONTENT] = new_content;
+    merge_facades[0] = target;
+    merge_facades[1] = source;
+    for (unsigned i = 0; i < MERGE_ALLOCATION_COUNT; ++i) {
+        assert(merge_blocks[i] != NULL);
+        merge_free_counts[i] = 0;
+    }
+    assert(target != NULL && source != NULL && target != source);
+}
+
+unsigned bridge_merge_free_count(unsigned index) {
+    assert(index < MERGE_ALLOCATION_COUNT);
+    return merge_free_counts[index];
+}
+
+static void merge_check_target_content(void) {
+    const xmlNode *target = merge_facades[0];
+    assert(merge_free_counts[MERGE_TARGET_BLOCK] == 0);
+    assert(target != NULL && target->content != NULL);
+    assert(target->content == (xmlChar *)merge_blocks[MERGE_NEW_CONTENT]);
+    assert(strcmp((const char *)target->content, "abcd") == 0);
+}
+
+static void merge_check_source_cleared(void) {
+    const xmlNode *source;
+    assert(merge_free_counts[MERGE_SOURCE_BLOCK] == 0);
+    source = merge_facades[1];
+    assert(source != NULL);
+    assert(source->children == NULL && source->last == NULL);
+    assert(source->parent == NULL && source->next == NULL && source->prev == NULL);
+    assert(source->doc == NULL && source->ns == NULL && source->content == NULL);
+    assert(source->properties == NULL && source->nsDef == NULL);
+}
+
+void bridge_merge_check_initial(void) {
+    const xmlNode *target = merge_facades[0];
+    const xmlNode *source = merge_facades[1];
+    assert(merge_free_counts[MERGE_TARGET_BLOCK] == 0);
+    assert(merge_free_counts[MERGE_SOURCE_BLOCK] == 0);
+    assert(target != NULL && target->content != NULL);
+    assert(source != NULL && source->content != NULL);
+    assert(target->content == (xmlChar *)merge_blocks[MERGE_OLD_CONTENT]);
+    assert(source->content == (xmlChar *)merge_blocks[MERGE_SOURCE_CONTENT]);
+    assert(strcmp((const char *)target->content, "ab") == 0);
+    assert(strcmp((const char *)source->content, "cd") == 0);
+}
+
+void bridge_merge_check_pending(void) {
+    bridge_merge_check_initial();
+}
+
+void bridge_merge_check_target(void) {
+    merge_check_target_content();
 }
 
 void bridge_check_live(xmlDoc *doc, xmlNode *root, xmlNode *child, xmlNs *ns) {
@@ -75,6 +159,18 @@ void __wrap_free(void *pointer) {
             }
         }
         ++free_counts[i];
+    }
+    for (unsigned i = 0; i < MERGE_ALLOCATION_COUNT; ++i) {
+        if (pointer != merge_blocks[i] || pointer == NULL)
+            continue;
+        assert(merge_free_counts[i] == 0);
+        if (i == MERGE_SOURCE_CONTENT || i == MERGE_SOURCE_BLOCK ||
+            i == MERGE_OLD_CONTENT)
+            merge_check_target_content();
+        if (i == MERGE_SOURCE_CONTENT || i == MERGE_SOURCE_BLOCK)
+            merge_check_source_cleared();
+        ++merge_free_counts[i];
+        break;
     }
     __real_free(pointer);
 }
