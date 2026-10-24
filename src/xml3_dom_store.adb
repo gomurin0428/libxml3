@@ -5,6 +5,7 @@ package body XML3_DOM_Store with SPARK_Mode is
    use XML3_DOM;
    use XML3_DOM_Constructors;
    package Native renames XML3_Native_Memory;
+   use type Native.Byte_Count;
 
    function Find_Node (S : Store; Facade : System.Address) return Node_Ref
      with Global => (Input => Native.Foreign_Memory),
@@ -163,6 +164,115 @@ package body XML3_DOM_Store with SPARK_Mode is
          Status := Created;
       end if;
    end Attach;
+
+   procedure Add_Child
+     (S : in out Store; Parent, Child : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      P : constant Node_Ref := Find_Node (S, Parent);
+      C : constant Node_Ref := Find_Node (S, Child);
+      Tail : Node_Ref;
+      Changed : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if P = Null_Node or else C = Null_Node then
+         return;
+      end if;
+      if Node (S.Current.all, P).Kind not in Element_Node | Document_Node
+        or else Node (S.Current.all, C).Kind not in
+          Element_Node | Text_Node | CData_Node | Comment_Node
+          | Processing_Instruction_Node
+        or else (Node (S.Current.all, P).Kind = Document_Node
+          and then Node (S.Current.all, C).Kind in Text_Node | CData_Node)
+      then
+         return;
+      end if;
+      Tail := Node (S.Current.all, P).Last_Child;
+      if Node (S.Current.all, C).Parent = P and then Tail = C then
+         Result := Child;
+         Status := Created;
+         return;
+      end if;
+      if Node (S.Current.all, C).Kind = Text_Node
+        and then Tail in 1 .. Node_Ref (Node_Count (S.Current.all))
+        and then Node (S.Current.all, Tail).State = Live
+        and then Node (S.Current.all, Tail).Kind = Text_Node
+      then
+         declare
+            Target : constant Node_View := Node (S.Current.all, Tail);
+            Source : constant Node_View := Node (S.Current.all, C);
+            Length : Natural;
+            Buffer, Suffix : System.Address;
+            Own : Owner_Ref;
+            Allocated : Boolean;
+         begin
+            if Source.Document /= Null_Node
+              and then Source.Document /= Target.Document
+            then
+               return;
+            end if;
+            if (Target.Content_Length > 0
+                  and then Target.Content = System.Null_Address)
+              or else (Source.Content_Length > 0
+                and then Source.Content = System.Null_Address)
+            then
+               Status := Internal_Error;
+               return;
+            end if;
+            if Source.Content_Length >= Natural'Last - Target.Content_Length
+              or else Owner_Count (S.Current.all) = Natural'Last
+            then
+               Status := Limit_Exceeded;
+               return;
+            end if;
+            Length := Target.Content_Length + Source.Content_Length;
+            Ensure_Capacity
+              (S.Current, Node_Count (S.Current.all),
+               Namespace_Count (S.Current.all), Owner_Count (S.Current.all) + 1,
+               Allocated);
+            if not Allocated then
+               Status := No_Memory;
+               return;
+            end if;
+            Native.Allocate (Native.Byte_Count (Length) + 1, Buffer);
+            if Buffer = System.Null_Address then
+               Status := No_Memory;
+               return;
+            end if;
+            Suffix := Native.Offset
+              (Buffer, Native.Byte_Count (Target.Content_Length));
+            if Suffix = System.Null_Address then
+               Native.Free (Buffer);
+               Status := No_Memory;
+               return;
+            end if;
+            Native.Copy_Bytes (Target.Content, Buffer, Target.Content_Length);
+            Native.Copy_Bytes (Source.Content, Suffix, Source.Content_Length);
+            Native.Write_Byte (Buffer, Length, Character'Val (0));
+            Register_Owner (S.Current.all, Buffer, Own, Allocated);
+            if not Allocated then
+               Native.Free (Buffer);
+               Status := Internal_Error;
+               return;
+            end if;
+            Merge_Text (S.Current.all, Tail, C, Buffer, Length, Own, Changed);
+            Release_Reservation (S.Current.all, Own);
+            XML3_DOM_Bridge.Synchronize (S.Current.all);
+            if Changed then
+               Result := Target.Facade;
+               Status := Created;
+            end if;
+         end;
+      else
+         Attach_Child (S.Current.all, P, C, Changed);
+         XML3_DOM_Bridge.Synchronize (S.Current.all);
+         if Changed then
+            Result := Child;
+            Status := Created;
+         end if;
+      end if;
+   end Add_Child;
 
    procedure Set_Root
      (S : in out Store; Doc, Root : System.Address;

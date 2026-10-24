@@ -818,10 +818,18 @@ package XML3_DOM with SPARK_Mode is
        and then Node (S, Target).State = Live
        and then Node (S, Source).State = Live,
      Post => Valid (S) and then Can_Edit (S)
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then Capacity_Of (S) = Capacity_Of (S)'Old
        and then Node_Count (S) = Node_Count (S)'Old
        and then Namespace_Count (S) = Namespace_Count (S)'Old
        and then Owner_Count (S) = Owner_Count (S)'Old
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           Owner (S, B).Reservations = Owner (S'Old, B).Reservations
+           and then (if Owner (S'Old, B).State = Live
+             and then Owner (S'Old, B).Reservations > 0 then
+             Owner (S, B).State = Live))
        and then (if Success then
          Node (S, Target).State = Live
          and then Node (S, Target).Content = Content

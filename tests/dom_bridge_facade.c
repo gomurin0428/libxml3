@@ -26,6 +26,37 @@ static void *constructor_facades[3];
 static void *constructor_namespace;
 static unsigned constructor_free_counts[3];
 static int fail_next_malloc;
+static xmlNode *store_merge_root, *store_merge_target, *store_merge_source;
+static void *store_merge_source_block;
+static unsigned store_merge_source_frees;
+
+void bridge_store_merge_track(xmlNode *root, xmlNode *target, xmlNode *source) {
+    store_merge_root = root;
+    store_merge_target = target;
+    store_merge_source = source;
+    store_merge_source_block = (size_t *)source - 1;
+    store_merge_source_frees = 0;
+}
+
+void bridge_store_merge_check(int merged) {
+    assert(store_merge_root->children == store_merge_target);
+    assert(store_merge_root->last == store_merge_target);
+    assert(store_merge_target->parent == store_merge_root);
+    assert(store_merge_target->prev == NULL && store_merge_target->next == NULL);
+    assert(strcmp((const char *)store_merge_target->content,
+                  merged ? "abcd" : "ab") == 0);
+    assert(store_merge_source_frees == (merged ? 1u : 0u));
+    if (!merged) {
+        assert(store_merge_source->parent == NULL);
+        assert(strcmp((const char *)store_merge_source->content, "cd") == 0);
+    }
+}
+
+void bridge_store_merge_reset(void) {
+    assert(store_merge_source_frees == 1);
+    store_merge_root = store_merge_target = store_merge_source = NULL;
+    store_merge_source_block = NULL;
+}
 
 void * __real_malloc(size_t);
 void bridge_check_live(xmlDoc *, xmlNode *, xmlNode *, xmlNs *);
@@ -215,6 +246,13 @@ unsigned bridge_free_count(unsigned index) {
 void __real_free(void *pointer);
 
 void __wrap_free(void *pointer) {
+    if (pointer != NULL && pointer == store_merge_source_block) {
+        assert(store_merge_source_frees == 0);
+        assert(store_merge_source->parent == NULL);
+        assert(store_merge_source->content == NULL);
+        ++store_merge_source_frees;
+        bridge_store_merge_check(1);
+    }
     for (unsigned i = 0; i < 3; ++i) {
         if (pointer != blocks[i] || pointer == NULL)
             continue;

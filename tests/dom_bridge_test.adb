@@ -14,6 +14,13 @@ procedure DOM_Bridge_Test is
    use type System.Address;
    use type Interfaces.C.unsigned;
 
+   procedure Store_Merge_Track (Root, Target, Source : System.Address)
+     with Import, Convention => C, External_Name => "bridge_store_merge_track";
+   procedure Store_Merge_Check (Merged : Interfaces.C.int)
+     with Import, Convention => C, External_Name => "bridge_store_merge_check";
+   procedure Store_Merge_Reset
+     with Import, Convention => C, External_Name => "bridge_store_merge_reset";
+
    procedure Track
      (Doc_Block, Root_Block, Child_Block, Doc, Root, Child : System.Address)
      with Import, Convention => C, External_Name => "bridge_track";
@@ -437,4 +444,59 @@ begin
       pragma Assert (not Found);
    end;
    Ada.Text_IO.Put_Line ("Opaque DOM store lifecycle tests passed");
+
+   declare
+      package Stores renames XML3_DOM_Store;
+      use XML3_DOM_Constructors;
+      Managed : Stores.Store;
+      Root, Target, Source, Ignored, Result : System.Address;
+      Status : Stores.Operation_Status;
+      Before_Root, Before_Target, Before_Source, Item : Node_View;
+      Found : Boolean;
+   begin
+      Stores.Construct
+        (Managed, Element_Node, "r", "", False, System.Null_Address,
+         Root, Ignored, Status);
+      pragma Assert (Status = Created);
+      Stores.Construct
+        (Managed, Text_Node, "text", "ab", True, System.Null_Address,
+         Target, Ignored, Status);
+      pragma Assert (Status = Created);
+      Stores.Construct
+        (Managed, Text_Node, "text", "cd", True, System.Null_Address,
+         Source, Ignored, Status);
+      pragma Assert (Status = Created);
+      Stores.Add_Child (Managed, Root, Target, Result, Status);
+      pragma Assert (Status = Created and then Result = Target);
+      Store_Merge_Track (Root, Target, Source);
+      Store_Merge_Check (0);
+      Stores.Inspect (Managed, Root, Before_Root, Found);
+      pragma Assert (Found);
+      Stores.Inspect (Managed, Target, Before_Target, Found);
+      pragma Assert (Found);
+      Stores.Inspect (Managed, Source, Before_Source, Found);
+      pragma Assert (Found);
+
+      Fail_Next_Malloc;
+      Stores.Add_Child (Managed, Root, Source, Result, Status);
+      pragma Assert (Status = No_Memory and then Result = System.Null_Address);
+      Stores.Inspect (Managed, Root, Item, Found);
+      pragma Assert (Found and then Item = Before_Root);
+      Stores.Inspect (Managed, Target, Item, Found);
+      pragma Assert (Found and then Item = Before_Target);
+      Stores.Inspect (Managed, Source, Item, Found);
+      pragma Assert (Found and then Item = Before_Source);
+      Store_Merge_Check (0);
+
+      Stores.Add_Child (Managed, Root, Source, Result, Status);
+      pragma Assert (Status = Created and then Result = Target);
+      Store_Merge_Check (1);
+      Stores.Add_Child (Managed, Root, Target, Result, Status);
+      pragma Assert (Status = Created and then Result = Target);
+      Store_Merge_Check (1);
+      Store_Merge_Reset;
+      Stores.Release (Managed, Root, Stores.Content_Node, False, Status);
+      pragma Assert (Status = Created and then Stores.Is_Empty (Managed));
+   end;
+   Ada.Text_IO.Put_Line ("Opaque DOM store text merge and rollback tests passed");
 end DOM_Bridge_Test;

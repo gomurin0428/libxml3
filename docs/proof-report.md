@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **4,741 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **4,811 discharged checks**, **0 unproved**,
 and **0 justified**. Non-failing warnings remain for unused outputs and
 assignments, trusted external subprogram termination, and representation
 generation for a trusted package spec; no proof checks remained unproved.
@@ -13,15 +13,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 120 |
-| Initialization | 166 |
-| Run-time checks | 2,293 |
+| Data dependencies | 121 |
+| Initialization | 175 |
+| Run-time checks | 2,320 |
 | Assertions / loop invariants | 637 |
-| Functional contracts | 1,389 |
+| Functional contracts | 1,422 |
 | Termination | 136 |
-| Total | 4,741 |
+| Total | 4,811 |
 
-374 checks were discharged by flow analysis and 4,367 by proof. `Parse`, `Decode`,
+384 checks were discharged by flow analysis and 4,427 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -111,9 +111,14 @@ correspondence are still trusted, not proved by these contracts. The exported
 live IDs and exact facade identity before delegating construction, attachment,
 root replacement, unlinking and release, synchronizes effects, and reclaims an
 empty backing state. Its lifecycle tests cover real C facade fields, namespace
-rejection, allocation failure, detached lifetime and final reclamation. Native
-metadata reads still require valid library pointers; this is not arbitrary
-pointer validation, a protected shared runtime, or public C API integration.
+rejection, allocation failure, detached lifetime, final reclamation, and text
+merge/rollback ordering. `Add_Child` appends ordinary children or merges
+adjacent text with a prepared NUL-terminated buffer. It registers the buffer
+with a reserved owner before `Merge_Text`; reservation release and
+synchronization route a rejected prepared buffer through the release protocol.
+The public C API remains on the legacy DOM. Native metadata reads still require
+valid library pointers; this is not arbitrary pointer validation or a protected
+shared runtime.
 
 Attachment validation, topology mutation and document propagation now have
 separate proof boundaries. `Unlink_Tail_Lemma`, `Append_Child_Links`,
@@ -132,14 +137,14 @@ proved obligations, not assumptions; the original attachment contract remains.
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-fe0f95305285e0fa11b6c9bb27bb85d2a859a259cecb9bc192b953b5e2b7ae40  src/xml3_dom.ads
+6b75ff52bc924bda2ef80b2982d77b9d9437c1055fdcd2db95070c104960525e  src/xml3_dom.ads
 78b58dc29347cbfc5e9dd78044c4079418866fdeac37cdfc3ecf56de9256dd93  src/xml3_dom.adb
 a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
 6c5b0151f2d06bc264e23026480383e1ef4a10722785bf26575c50b628dd42c0  src/xml3_dom_bridge.adb
 5a434888dd9904ff0bebfd1ef6aa3711047cf97375d3e0d538f0dc4dbb8d9839  src/xml3_dom_constructors.ads
 e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_constructors.adb
-5885dd1d83afeca1a16e9ce6c148eb7c15f047eb108c36f4b20dad58f7d0fff9  src/xml3_dom_store.ads
-bc707afc11cbb6094d743b56759943bc7ab406237a2bc989fa8e50d379edcbf1  src/xml3_dom_store.adb
+226fe71425702680e9c7e80ed8b120b38f4eb5207ac7075e8fc6049b6d0b6b72  src/xml3_dom_store.ads
+7daa23ede36f064256cad01ef66955dbbc6336f2df1089549f162fb4c326d26e  src/xml3_dom_store.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
 4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
 b87754dd3f575f8f64ad374aee2832ab60bff6eb9c2477900f743d7805865122  src/xml3_dom_allocation.ads

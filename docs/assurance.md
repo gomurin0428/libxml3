@@ -99,7 +99,13 @@ malloc failure, and retained namespace/document storage after detachment.
 operations with facade lookup and synchronization. Lookup checks the metadata
 ID range, live state and exact facade equality; the native metadata read itself
 still assumes a valid library pointer. The store reclaims its backing state only
-after no logical owners remain. This is not yet a protected shared runtime.
+after no logical owners remain. `Add_Child` attaches ordinary children or merges
+adjacent text using a prepared NUL-terminated buffer whose owner reservation is
+released before synchronization; a rejected merge buffer therefore follows the
+existing release protocol. Tests cover allocation failure with unchanged views,
+real facade/content updates, source-clear-before-free ordering, repeated-tail
+no-op, and final Store reclamation. The public C API remains on the legacy DOM;
+this is not yet a protected shared runtime.
 
 **`XML3_C` has not been connected to this foundation.** Its parser materialization,
 DOM editing/ownership, root replacement and text merging remain the old unproved
@@ -129,7 +135,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 4,741-check result.
+  are trusted, not discharged by the 4,811-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
