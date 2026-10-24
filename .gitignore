@@ -33,6 +33,8 @@ tests/oom-test
 tests/fuzz-test
 tests/fuzz-test-sanitize
 tests/dom-test
+tests/dom-core-test
+tests/dom-bridge-test
 tests/dom-test-reference
 tests/dom-test-sanitize
 tests/attribute-test

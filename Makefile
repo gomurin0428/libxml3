@@ -8,10 +8,25 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
+
+tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
+		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_core_test.gpr -o dom-core-test
+
+test-dom-core: tests/dom-core-test
+	./tests/dom-core-test
+
+tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
+		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
+		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_bridge_test.gpr -o dom-bridge-test
+
+test-dom-bridge: tests/dom-bridge-test
+	./tests/dom-bridge-test
 
 tests/api-test tests/differential-libxml3: | build
 

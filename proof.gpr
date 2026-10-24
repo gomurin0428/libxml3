@@ -2,7 +2,11 @@ project Proof is
    for Source_Dirs use ("src");
    for Source_Files use ("xml3_text.ads", "xml3_text.adb", "xml3_parser.ads", "xml3_parser.adb",
                         "xml3_namespaces.ads", "xml3_namespaces.adb",
-                        "xml3_encoding.ads", "xml3_encoding.adb");
+                        "xml3_encoding.ads", "xml3_encoding.adb",
+                        "xml3_dom.ads", "xml3_dom.adb",
+                        "xml3_dom_bridge.ads", "xml3_dom_bridge.adb",
+                        "xml3_native_memory.ads",
+                        "xml3_dom_allocation.ads");
    for Object_Dir use "obj/proof";
    package Compiler is
       for Default_Switches ("Ada") use ("-gnat2022", "-gnata", "-gnato", "-gnatwa");
