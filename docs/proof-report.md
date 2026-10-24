@@ -2,10 +2,10 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **3,819 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **4,309 discharged checks**, **0 unproved**,
 and **0 justified**. Non-failing warnings remain for unused outputs and
 assignments, trusted external subprogram termination, and representation
-generation for two trusted package specs; no proof checks remained unproved.
+generation for a trusted package spec; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This reports the parser/decoder and new DOM foundation, not a proof of the
 C-facing library or full XML conformance. **The public C API still uses the old
@@ -13,15 +13,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 99 |
-| Initialization | 123 |
-| Run-time checks | 1,990 |
-| Assertions / loop invariants | 579 |
-| Functional contracts | 900 |
-| Termination | 128 |
-| Total | 3,819 |
+| Data dependencies | 105 |
+| Initialization | 140 |
+| Run-time checks | 2,195 |
+| Assertions / loop invariants | 614 |
+| Functional contracts | 1,123 |
+| Termination | 132 |
+| Total | 4,309 |
 
-304 checks were discharged by flow analysis and 3,515 by proof. `Parse`, `Decode`,
+329 checks were discharged by flow analysis and 3,980 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -46,31 +46,38 @@ gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=10 -j4
 exit unsuccessfully if proof checks remain unproved. Earlier incomplete-proof
 runs did exit with code 1; no check suppressions or assumption pragmas were added.
 The final summary is generated at `obj/proof/gnatprove/gnatprove.out`.
+The focused `Attach` proof was also run successfully with `--timeout=30`;
+the final aggregate invocation above reused the proof session. A cold run may
+need that larger solver budget. This changes neither the contracts nor the
+proof obligations.
 
-The proof project selects six complete SPARK units (the original four plus
-`XML3_DOM` and `XML3_DOM_Bridge`) and the two trusted boundary specs
-`XML3_Native_Memory` and `XML3_DOM_Allocation`; the analyzer reports eight units.
+The proof project selects seven complete SPARK units (the original four plus
+`XML3_DOM`, `XML3_DOM_Bridge`, and `XML3_DOM_Constructors`) and the two trusted
+boundary specs `XML3_Native_Memory` and `XML3_DOM_Allocation`; the analyzer
+reports nine units.
 The two native bodies remain explicitly outside SPARK. Native memory layout and
 allocation correctness are trusted, not replaced with a proved implementation.
 The full run reported that representation information could not be generated
-from the standalone `xml3_native_memory.ads` and `xml3_dom_allocation.ads`
-package specs, and continued with partial representation data. No compiler
-internal error occurred. This result is not evidence for native layout accuracy.
+from the standalone `xml3_dom_allocation.ads` package spec, and continued with
+partial representation data. No compiler internal error occurred in the final
+run. A development-time GNAT 14 contract-compilation ICE was avoided by taking
+explicit array snapshots in contracts, without weakening them. This result is
+not evidence for native layout accuracy.
 The Ada C adapter is **not** in this proof project. All SPARK preconditions must
 be established by callers; new DOM contracts do not cover exported functions
 that still use the legacy implementation.
 
 DOM runtime checks for this revision: `make test-dom-core test-dom-bridge`
-passed. A prior `make check` also passed, including both foundation test
-targets; `make -n clean` includes both test binaries.
-Focused proofs passed for `Replace_Child_Links` (122), `Replace_Lemma` (66),
-`Attach` (463), `Replace_Root` (58), and `Projection_Pins_Allowed` (13).
+passed. `make check` also passed on this revision, including both foundation
+test targets; `make -n clean` includes both test binaries.
+The full proof covers `Replace_Child_Links`, `Replace_Lemma`,
+`Attach`, `Replace_Root`, and `Projection_Pins_Allowed`.
 The full run also covers the public/internal projection setters. The new tests
 exercise position-preserving root replacement, descendant replacement, document
 propagation, unchanged graphs on rejection, and public projection mismatch
 rejection. These are foundation tests, not exported root-replacement API tests.
-`Merge_Text` (24 focused checks), `Free_Marked_Subtree` (64), and its public
-`Free_Subtree` wrapper (6) also passed. Merge tests check unchanged graphs for
+`Merge_Text`, `Free_Marked_Subtree`, and its public
+`Free_Subtree` wrapper also passed. Merge tests check unchanged graphs for
 invalid lengths, null buffers, self-merges and foreign documents, plus sibling
 unlinking, target retention and content-owner transitions on success. This is the
 logical commit of a prepared merged buffer; buffer allocation, copying and the
@@ -79,12 +86,26 @@ The bridge
 test uses real allocated facades read through the public C headers and wraps
 `free` to check projection ordering and tracked-allocation lifetimes. It is not
 a test of the exported C APIs using the new state store: they are not connected.
-Focused live-entry framing proofs passed for `Take_Release` (40),
-`Acknowledge_Release` (83), and `XML3_DOM_Bridge.Synchronize` (41). The
+Live-entry framing proofs passed for `Take_Release`,
+`Acknowledge_Release`, and `XML3_DOM_Bridge.Synchronize`. The
 `Live_Entries_Preserved` frame retains capacity and counts, existing live nodes
 and owners, and live namespaces whose pre-state owner was live. This logical
 store guarantee does not assert native facade freshness or pointer bounds; the
 public XML3_C adapter remains on the legacy implementation.
+
+`XML3_DOM_Constructors.Create_Node` now orchestrates checked allocation sizing,
+node/owner registration, implicit XML namespace creation, projection, and
+rollback. Registered allocations are retired through the logical store and
+release protocol, never directly freed. Its contract preserves pre-existing
+live nodes on both success and failure. Capacity growth and facade presence
+have explicit frame contracts; a proved leaf-subtree lemma supports rollback.
+`Set_Marked_Document` isolates document propagation with an exact node frame.
+The native bridge test constructs document/element/text facades from capacity
+one, checks fields and strings through C headers, rejects a namespace on a text
+node, injects native malloc failure, and verifies detached-node lifetime and
+exactly-once freeing. Native bytes, address freshness/non-overlap, and layout
+correspondence are still trusted, not proved by these contracts. The exported
+`xmlNewDoc`, `xmlNewNode`, and `xmlNewText` are not wired to this constructor yet.
 
 ## Source identity (SHA-256)
 
@@ -97,15 +118,17 @@ public XML3_C adapter remains on the legacy implementation.
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-5b87b46cec94cd4dfc7623ba59196cda91a42b8eb24ebd837d3d38e427bd30f8  src/xml3_dom.ads
-260b45392f6f57c001ae21045cbe36ccafb14b8117e2d300e1e1e7b519daf070  src/xml3_dom.adb
-7d9abff736767e5f9548f2eeff3004296c940ae1a72bbd2b1cebaf92a34baa28  src/xml3_dom_bridge.ads
-7217455f7ce3e9bedc1b9c8cd5dcc94f26ac2d832cd9a4afbb9f5393d6384ec7  src/xml3_dom_bridge.adb
+0543f81b4e1ad1a7ee9617ec6f7d13bdafcce8587ed02b3b92284f61975e4117  src/xml3_dom.ads
+5e89e794c05fb206fb56c332f0179f514ef58649e590b956e1c567dde569d5a1  src/xml3_dom.adb
+a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
+6c5b0151f2d06bc264e23026480383e1ef4a10722785bf26575c50b628dd42c0  src/xml3_dom_bridge.adb
+5a434888dd9904ff0bebfd1ef6aa3711047cf97375d3e0d538f0dc4dbb8d9839  src/xml3_dom_constructors.ads
+e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_constructors.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
 4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
 b87754dd3f575f8f64ad374aee2832ab60bff6eb9c2477900f743d7805865122  src/xml3_dom_allocation.ads
 42b3dd88e64ac8b1e6ccc43947ae926102ca80aa06de6c29ea77356f88e2b7a3  src/xml3_dom_allocation.adb
-13834802bd21b8a91f07d051f0b4ea1731ebac3ab081b6952ad1552e6bf6315b  proof.gpr
+e5f2db92eb726b08af031fe32c69348a032682f9abeee3ed5249952a6f3e3d35  proof.gpr
 ```
 
 A source or contract change invalidates the recorded result until proof is rerun.

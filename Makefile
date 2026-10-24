@@ -22,7 +22,10 @@ test-dom-core: tests/dom-core-test
 
 tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
 		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
-		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb
+		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
+		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
+		src/xml3_text.ads src/xml3_text.adb src/xml3_parser.ads src/xml3_parser.adb \
+		src/xml3_encoding.ads src/xml3_encoding.adb
 	$(ADA_BIN)/gprbuild -p -P tests/dom_bridge_test.gpr -o dom-bridge-test
 
 test-dom-bridge: tests/dom-bridge-test

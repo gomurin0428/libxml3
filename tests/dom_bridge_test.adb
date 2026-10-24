@@ -4,6 +4,7 @@ with System;
 with XML3_DOM; use XML3_DOM;
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
+with XML3_DOM_Constructors;
 with XML3_Native_Memory;
 
 procedure DOM_Bridge_Test is
@@ -16,7 +17,27 @@ procedure DOM_Bridge_Test is
      (Doc_Block, Root_Block, Child_Block, Doc, Root, Child : System.Address)
      with Import, Convention => C, External_Name => "bridge_track";
    procedure Reset_Tracking
-     with Import, Convention => C, External_Name => "bridge_reset_tracking";
+   with Import, Convention => C, External_Name => "bridge_reset_tracking";
+   procedure Merge_Reset_Tracking
+     with Import, Convention => C,
+       External_Name => "bridge_merge_reset_tracking";
+   procedure Fail_Next_Malloc
+     with Import, Convention => C, External_Name => "bridge_fail_next_malloc";
+   procedure Constructor_Track
+     (Doc_Block, Root_Block, Text_Block, Doc, Root, Text, Ns : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_constructor_track";
+   procedure Constructor_Check_Live
+     (Doc, Root, Text, Ns : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_constructor_check_live";
+   function Constructor_Free_Count (Index : Interfaces.C.unsigned)
+      return Interfaces.C.unsigned
+     with Import, Convention => C,
+       External_Name => "bridge_constructor_free_count";
+   procedure Constructor_Reset_Tracking
+     with Import, Convention => C,
+       External_Name => "bridge_constructor_reset_tracking";
    procedure Merge_Track
      (Target_Block, Source_Content, Source_Block, Old_Content, New_Content,
       Target, Source : System.Address)
@@ -255,6 +276,106 @@ begin
       and then Merge_Free_Count (2) = 1
       and then Merge_Free_Count (3) = 1
       and then Merge_Free_Count (4) = 1);
+   XML3_DOM_Allocation.Free_State (S);
+   Merge_Reset_Tracking;
+
+   Initialize (S, 1, OK);
+   pragma Assert (OK);
+   declare
+      use XML3_DOM_Constructors;
+      Doc_N, Root_N, Text_N : Node_Ref;
+      Bad_N : Node_Ref;
+      Previous : Node_Ref;
+      Xml_Ns, Ignored_Ns, Bad_Ns : Namespace_Ref;
+      Build_Status : Construction_Status;
+      Attach_OK : Boolean;
+      Before_Nodes : constant Natural := Node_Count (S.all);
+      Before_Doc, Before_Root, Before_Text : Node_View;
+   begin
+      Create_Node
+        (S, Document_Node, "ignored", "1.0", True, Null_Namespace,
+         Doc_N, Xml_Ns, Build_Status);
+      pragma Assert (Build_Status = Created);
+      Create_Node
+        (S, Element_Node, "r", "", False, Xml_Ns,
+         Root_N, Ignored_Ns, Build_Status);
+      pragma Assert (Build_Status = Created);
+      Create_Node
+        (S, Text_Node, "text", "x", True, Null_Namespace,
+         Text_N, Ignored_Ns, Build_Status);
+      pragma Assert (Build_Status = Created);
+      pragma Assert (Node_Count (S.all) = Before_Nodes + 3);
+      pragma Assert
+        (Node (S.all, Doc_N).Document = Doc_N
+         and then Node (S.all, Doc_N).Namespace = Null_Namespace
+         and then Namespace (S.all, Xml_Ns).Owner = Node (S.all, Doc_N).Owner
+         and then Node (S.all, Root_N).Namespace = Xml_Ns
+         and then Node (S.all, Root_N).Ns_Pin = Node (S.all, Doc_N).Owner);
+      Attach_Child (S.all, Root_N, Text_N, Attach_OK);
+      pragma Assert (Attach_OK);
+      Replace_Root (S.all, Doc_N, Root_N, Previous, Attach_OK);
+      pragma Assert (Attach_OK);
+      XML3_DOM_Bridge.Synchronize (S.all);
+      Constructor_Track
+        (Owner (S.all, Node (S.all, Doc_N).Owner).Address,
+         Owner (S.all, Node (S.all, Root_N).Owner).Address,
+         Owner (S.all, Node (S.all, Text_N).Owner).Address,
+         Node (S.all, Doc_N).Facade,
+         Node (S.all, Root_N).Facade,
+         Node (S.all, Text_N).Facade,
+         Namespace (S.all, Xml_Ns).Facade);
+      pragma Assert (Capacity_Of (S.all) = 4);
+      Constructor_Check_Live
+        (Node (S.all, Doc_N).Facade, Node (S.all, Root_N).Facade,
+         Node (S.all, Text_N).Facade, Namespace (S.all, Xml_Ns).Facade);
+      Before_Doc := Node (S.all, Doc_N);
+      Before_Root := Node (S.all, Root_N);
+      Before_Text := Node (S.all, Text_N);
+      Create_Node
+        (S, Text_Node, "bad", "y", True, Xml_Ns,
+         Bad_N, Bad_Ns, Build_Status);
+      pragma Assert
+        (Build_Status = Invalid_Argument
+         and then Bad_N = Null_Node
+         and then Bad_Ns = Null_Namespace
+        and then Node (S.all, Doc_N) = Before_Doc
+        and then Node (S.all, Root_N) = Before_Root
+        and then Node (S.all, Text_N) = Before_Text
+        and then Constructor_Free_Count (0) = 0
+        and then Constructor_Free_Count (1) = 0
+        and then Constructor_Free_Count (2) = 0);
+      Fail_Next_Malloc;
+      Create_Node
+        (S, Text_Node, "bad", "y", True, Null_Namespace,
+         Bad_N, Bad_Ns, Build_Status);
+      pragma Assert
+        (Build_Status = No_Memory
+         and then Bad_N = Null_Node
+         and then Bad_Ns = Null_Namespace
+         and then Node (S.all, Doc_N) = Before_Doc
+         and then Node (S.all, Root_N) = Before_Root
+         and then Node (S.all, Text_N) = Before_Text
+         and then Constructor_Free_Count (0) = 0
+         and then Constructor_Free_Count (1) = 0
+         and then Constructor_Free_Count (2) = 0);
+      Unlink (S.all, Root_N);
+      Free_Subtree (S.all, Doc_N);
+      XML3_DOM_Bridge.Synchronize (S.all);
+      pragma Assert
+        (Constructor_Free_Count (0) = 0
+         and then Constructor_Free_Count (1) = 0
+         and then Constructor_Free_Count (2) = 0);
+      Check_Detached
+        (Node (S.all, Doc_N).Facade, Node (S.all, Root_N).Facade,
+         Node (S.all, Text_N).Facade, Namespace (S.all, Xml_Ns).Facade);
+      Free_Subtree (S.all, Root_N);
+      XML3_DOM_Bridge.Synchronize (S.all);
+      pragma Assert
+        (Constructor_Free_Count (0) = 1
+         and then Constructor_Free_Count (1) = 1
+         and then Constructor_Free_Count (2) = 1);
+      Constructor_Reset_Tracking;
+   end;
    XML3_DOM_Allocation.Free_State (S);
    Ada.Text_IO.Put_Line ("Native DOM projection, pin lifetime, and release ordering tests passed");
 end DOM_Bridge_Test;

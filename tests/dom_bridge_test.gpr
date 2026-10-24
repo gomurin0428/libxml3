@@ -3,7 +3,12 @@ project DOM_Bridge_Test is
    for Source_Dirs use ("../src", ".");
    for Source_Files use
      ("xml3_dom.ads", "xml3_dom.adb",
+      "xml3_dom_constructors.ads", "xml3_dom_constructors.adb",
       "xml3_dom_allocation.ads", "xml3_dom_allocation.adb",
+      "xml3_namespaces.ads", "xml3_namespaces.adb",
+      "xml3_text.ads", "xml3_text.adb",
+      "xml3_parser.ads", "xml3_parser.adb",
+      "xml3_encoding.ads", "xml3_encoding.adb",
       "xml3_native_memory.ads", "xml3_native_memory.adb",
       "xml3_dom_bridge.ads", "xml3_dom_bridge.adb",
       "dom_bridge_test.adb", "dom_bridge_facade.c");
@@ -18,6 +23,7 @@ project DOM_Bridge_Test is
          "-I" & DOM_Bridge_Test'Project_Dir & "../include");
    end Compiler;
    package Linker is
-      for Default_Switches ("Ada") use ("-Wl,--wrap=free");
+      for Default_Switches ("Ada") use
+        ("-Wl,--wrap=free", "-Wl,--wrap=malloc");
    end Linker;
 end DOM_Bridge_Test;

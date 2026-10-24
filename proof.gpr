@@ -4,6 +4,7 @@ project Proof is
                         "xml3_namespaces.ads", "xml3_namespaces.adb",
                         "xml3_encoding.ads", "xml3_encoding.adb",
                         "xml3_dom.ads", "xml3_dom.adb",
+                        "xml3_dom_constructors.ads", "xml3_dom_constructors.adb",
                         "xml3_dom_bridge.ads", "xml3_dom_bridge.adb",
                         "xml3_native_memory.ads",
                         "xml3_dom_allocation.ads");

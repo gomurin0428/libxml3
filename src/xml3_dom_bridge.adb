@@ -151,6 +151,7 @@ package body XML3_DOM_Bridge with SPARK_Mode is
       loop
          pragma Loop_Invariant
            (Valid (S) and then Can_Edit (S) and then not Projection_Required (S));
+         pragma Loop_Invariant (Facades_Present (S));
          pragma Loop_Invariant (Live_Entries_Preserved (Initial, S));
          pragma Loop_Variant (Increases => Release_Cursor (S));
          Take_Release (S, B, Address);

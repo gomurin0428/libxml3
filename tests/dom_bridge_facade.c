@@ -21,6 +21,82 @@ enum {
 static void *merge_blocks[MERGE_ALLOCATION_COUNT];
 static void *merge_facades[2];
 static unsigned merge_free_counts[MERGE_ALLOCATION_COUNT];
+static void *constructor_blocks[3];
+static void *constructor_facades[3];
+static void *constructor_namespace;
+static unsigned constructor_free_counts[3];
+static int fail_next_malloc;
+
+void * __real_malloc(size_t);
+void bridge_check_live(xmlDoc *, xmlNode *, xmlNode *, xmlNs *);
+
+void bridge_fail_next_malloc(void) {
+    fail_next_malloc = 1;
+}
+
+void * __wrap_malloc(size_t size) {
+    if (fail_next_malloc) {
+        fail_next_malloc = 0;
+        return NULL;
+    }
+    return __real_malloc(size);
+}
+
+void bridge_merge_reset_tracking(void) {
+    for (unsigned i = 0; i < MERGE_ALLOCATION_COUNT; ++i) {
+        assert(merge_free_counts[i] == 1);
+        merge_blocks[i] = NULL;
+        merge_free_counts[i] = 0;
+    }
+    merge_facades[0] = NULL;
+    merge_facades[1] = NULL;
+}
+
+void bridge_constructor_track(void *doc_block, void *root_block,
+                             void *text_block, void *doc, void *root,
+                             void *text, void *ns) {
+    constructor_blocks[0] = doc_block;
+    constructor_blocks[1] = root_block;
+    constructor_blocks[2] = text_block;
+    constructor_facades[0] = doc;
+    constructor_facades[1] = root;
+    constructor_facades[2] = text;
+    constructor_namespace = ns;
+    for (unsigned i = 0; i < 3; ++i) {
+        assert(constructor_blocks[i] != NULL);
+        assert(constructor_facades[i] != NULL);
+        constructor_free_counts[i] = 0;
+    }
+    assert(constructor_namespace != NULL);
+}
+
+unsigned bridge_constructor_free_count(unsigned index) {
+    assert(index < 3);
+    return constructor_free_counts[index];
+}
+
+void bridge_constructor_reset_tracking(void) {
+    for (unsigned i = 0; i < 3; ++i) {
+        assert(constructor_free_counts[i] == 1);
+        constructor_blocks[i] = NULL;
+        constructor_facades[i] = NULL;
+        constructor_free_counts[i] = 0;
+    }
+    constructor_namespace = NULL;
+}
+
+void bridge_constructor_check_live(void *doc, void *root, void *text, void *ns) {
+    const xmlDoc *document = doc;
+    const xmlNode *element = root;
+    const xmlNode *content = text;
+    const xmlNs *namespace = ns;
+    bridge_check_live((xmlDoc *)document, (xmlNode *)element, (xmlNode *)content,
+                      (xmlNs *)namespace);
+    assert(*((const size_t *)doc - 1) == 1);
+    assert(*((const size_t *)root - 1) == 2);
+    assert(*((const size_t *)text - 1) == 3);
+    assert(*((const size_t *)ns - 1) == 1);
+}
 
 void bridge_track(void *doc_block, void *root_block, void *child_block,
                   void *doc, void *root, void *child) {
@@ -170,6 +246,22 @@ void __wrap_free(void *pointer) {
         if (i == MERGE_SOURCE_CONTENT || i == MERGE_SOURCE_BLOCK)
             merge_check_source_cleared();
         ++merge_free_counts[i];
+        break;
+    }
+    for (unsigned i = 0; i < 3; ++i) {
+        if (pointer != constructor_blocks[i] || pointer == NULL)
+            continue;
+        assert(constructor_free_counts[i] == 0);
+        for (unsigned j = 0; j < 3; ++j) {
+            if (constructor_free_counts[j] != 0)
+                continue;
+            const xmlNode *node = constructor_facades[j];
+            assert(node->children == NULL && node->last == NULL);
+            assert(node->parent == NULL && node->next == NULL && node->prev == NULL);
+            assert(node->doc == NULL && node->ns == NULL && node->content == NULL);
+            assert(node->properties == NULL && node->nsDef == NULL);
+        }
+        ++constructor_free_counts[i];
         break;
     }
     __real_free(pointer);

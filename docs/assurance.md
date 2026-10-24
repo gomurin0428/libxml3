@@ -6,7 +6,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 ## Intended proof claims
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
-`XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, and `XML3_DOM_Bridge`, plus
+`XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
+and `XML3_DOM_Constructors`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
@@ -83,6 +84,17 @@ protocol per owner ID, not an unconditional theorem about arbitrary C addresses.
 The native integration test additionally checks real C fields, retained document
 storage, preserved `_private`, and exactly-once frees for its tracked allocations.
 
+`XML3_DOM_Constructors.Create_Node` performs checked sizing, allocation,
+registration, implicit XML namespace setup, and synchronization. Before
+registration, a failed native block may be freed directly; after registration,
+rollback uses subtree retirement, reservation release, and the effect protocol.
+The contract preserves all pre-existing live nodes on success and failure,
+including when backing-state capacity grows. Raw string writes, offset addresses,
+allocation freshness/non-overlap, and correspondence to native layout remain
+trusted external-memory operations. Integration tests exercise successful
+document/element/text construction, invalid namespace/kind rejection, native
+malloc failure, and retained namespace/document storage after detachment.
+
 **`XML3_C` has not been connected to this foundation.** Its parser materialization,
 DOM editing/ownership, root replacement and text merging remain the old unproved
 implementation. The new kernel and integration test are not a substitute for
@@ -103,7 +115,7 @@ exercise this correspondence without proving it for every layout or execution.
 
 * The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
   reference ownership, and foreign pointer conversions are outside SPARK.
-  This includes the DOM constructors, child and attribute mutation/free operations;
+  This includes the exported C DOM constructors, child and attribute mutation/free operations;
   their ownership and structural behavior is tested in C but is not formally proved.
   Callers must use these APIs rather than directly changing public tree links,
   and must not use a document handle after `xmlFreeDoc`.
@@ -111,7 +123,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 3,790-check result.
+  are trusted, not discharged by the 4,309-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
