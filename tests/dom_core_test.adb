@@ -62,7 +62,7 @@ procedure DOM_Core_Test is
    procedure Document_Propagation is
       T : State_Access;
       A, B, F : Owner_Ref;
-      D, R, C, Foreign_D, FR, FC : Node_Ref;
+      D, R, C, Foreign_D, FR, FC, Detached_R, Detached_C : Node_Ref;
       Before_References : Natural;
       Local_OK : Boolean;
 
@@ -74,6 +74,14 @@ procedure DOM_Core_Test is
             Document, 0, 0, Doc_Pin, 0, Local_OK);
          pragma Assert (Local_OK);
       end Project_Node;
+
+      procedure Try_Project_Node
+        (N, Document : Node_Ref; Doc_Pin : Owner_Ref := 0) is
+      begin
+         Set_Node_Projection
+           (T.all, N, System.Null_Address, 0, System.Null_Address, 0,
+            Document, 0, 0, Doc_Pin, 0, Local_OK);
+      end Try_Project_Node;
    begin
       Initialize (T, 32, Local_OK);
       pragma Assert (Local_OK);
@@ -113,23 +121,182 @@ procedure DOM_Core_Test is
       pragma Assert (Local_OK);
       Register_Node (T.all, Element_Node, Token (28), B, 0, FC, Local_OK);
       pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (29), B, 0, Detached_R, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (30), B, 0, Detached_C, Local_OK);
+      pragma Assert (Local_OK);
       Project_Node (Foreign_D, Foreign_D);
       Project_Node (FR, 0);
       Project_Node (FC, 0);
+      Project_Node (Detached_R, 0);
+      Project_Node (Detached_C, 0);
+      declare
+         Before : constant State := T.all with Ghost;
+      begin
+         Try_Project_Node (C, Foreign_D, F);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+      end;
       Attach_Child (T.all, FR, FC, Local_OK);
       pragma Assert (Local_OK);
-      Project_Node (FC, Foreign_D, F);
+      declare
+         Before : constant State := T.all with Ghost;
+      begin
+         Try_Project_Node (FC, Foreign_D, F);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+      end;
+      Attach_Child (T.all, Foreign_D, FR, Local_OK);
+      pragma Assert (Local_OK);
       declare
          Before : constant State := T.all with Ghost;
       begin
          Attach_Child (T.all, R, FR, Local_OK);
          pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
       end;
+      Attach_Child (T.all, Detached_R, Detached_C, Local_OK);
+      pragma Assert (Local_OK);
+      declare
+         Before : constant State := T.all with Ghost;
+      begin
+         Try_Project_Node (Detached_R, Foreign_D, F);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+      end;
       XML3_DOM_Allocation.Free_State (T);
       pragma Assert (T = null);
    end Document_Propagation;
+
+   procedure Root_Replacement is
+      T : State_Access;
+      A, B : Owner_Ref;
+      D, Comment_N, PI, Old_Root, Old_Child : Node_Ref;
+      New_Root, New_Child : Node_Ref;
+      Foreign_Doc, Foreign_Root : Node_Ref;
+      Empty_Doc, Empty_Root : Node_Ref;
+      Previous : Node_Ref;
+      Before : State (32) with Ghost;
+      Local_OK : Boolean;
+
+      procedure Project_Node
+        (N, Document : Node_Ref; Doc_Pin : Owner_Ref := Null_Owner) is
+      begin
+         Set_Node_Projection
+           (T.all, N, System.Null_Address, 0, System.Null_Address, 0,
+            Document, 0, 0, Doc_Pin, 0, Local_OK);
+         pragma Assert (Local_OK);
+      end Project_Node;
+   begin
+      Initialize (T, 32, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (30), A, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (31), B, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Document_Node, Token (32), A, 0, D, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Comment_Node, Token (33), A, 0, Comment_N, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Processing_Instruction_Node, Token (34), A, 0, PI, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (35), A, 0, Old_Root, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (36), A, 0, Old_Child, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (37), A, 0, New_Root, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (38), A, 0, New_Child, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Document_Node, Token (39), B, 0, Foreign_Doc, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (40), B, 0, Foreign_Root, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Document_Node, Token (41), A, 0, Empty_Doc, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (42), A, 0, Empty_Root, Local_OK);
+      pragma Assert (Local_OK);
+
+      Project_Node (D, D);
+      Project_Node (Comment_N, 0);
+      Project_Node (PI, 0);
+      Project_Node (Old_Root, 0);
+      Project_Node (Old_Child, 0);
+      Project_Node (New_Root, 0);
+      Project_Node (New_Child, 0);
+      Project_Node (Foreign_Doc, Foreign_Doc);
+      Project_Node (Foreign_Root, 0);
+      Project_Node (Empty_Doc, Empty_Doc);
+      Project_Node (Empty_Root, 0);
+
+      Attach_Child (T.all, Old_Root, Old_Child, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, New_Root, New_Child, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, D, Comment_N, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, D, Old_Root, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, D, PI, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Foreign_Doc, Foreign_Root, Local_OK);
+      pragma Assert (Local_OK);
+
+      Replace_Root (T.all, D, New_Root, Previous, Local_OK);
+      pragma Assert (Local_OK and then Previous = Old_Root);
+      pragma Assert
+        (Node (T.all, New_Root).Parent = D
+         and then Node (T.all, New_Root).Previous = Comment_N
+         and then Node (T.all, New_Root).Next = PI
+         and then Node (T.all, New_Root).Sibling_Order =
+           Node (T.all, Old_Root).Sibling_Order);
+      pragma Assert
+        (Node (T.all, D).First_Child = Comment_N
+         and then Node (T.all, D).Last_Child = PI
+         and then Node (T.all, Comment_N).Next = New_Root
+         and then Node (T.all, PI).Previous = New_Root
+         and then Node (T.all, Comment_N).Sibling_Order <
+           Node (T.all, New_Root).Sibling_Order
+         and then Node (T.all, New_Root).Sibling_Order <
+           Node (T.all, PI).Sibling_Order);
+      pragma Assert
+        (Node (T.all, Old_Root).State = Live
+         and then Node (T.all, Old_Root).Parent = Null_Node
+         and then Node (T.all, Old_Root).Previous = Null_Node
+         and then Node (T.all, Old_Root).Next = Null_Node
+         and then Node (T.all, Old_Child).Parent = Old_Root
+         and then Node (T.all, New_Child).Document = D
+         and then Node (T.all, New_Child).Doc_Pin = A);
+
+      Before := T.all;
+      Replace_Root (T.all, D, Foreign_Root, Previous, Local_OK);
+      pragma Assert (not Local_OK and then Previous = Null_Node);
+      pragma Assert (Same_Graph (T.all, Before));
+
+      Replace_Root (T.all, D, New_Child, Previous, Local_OK);
+      pragma Assert (Local_OK and then Previous = New_Root);
+      pragma Assert
+         (Node (T.all, New_Child).Parent = D
+         and then Node (T.all, New_Root).Parent = Null_Node
+         and then Node (T.all, New_Child).Previous = Comment_N
+         and then Node (T.all, New_Child).Next = PI
+         and then Node (T.all, New_Root).First_Child = Null_Node);
+      Before := T.all;
+      Replace_Root (T.all, D, New_Child, Previous, Local_OK);
+      pragma Assert
+        (Local_OK and then Previous = New_Child
+         and then Same_Graph (T.all, Before));
+
+      Replace_Root (T.all, Empty_Doc, Empty_Root, Previous, Local_OK);
+      pragma Assert
+        (Local_OK and then Previous = Null_Node
+         and then Node (T.all, Empty_Root).Parent = Empty_Doc);
+      XML3_DOM_Allocation.Free_State (T);
+      pragma Assert (T = null);
+   end Root_Replacement;
+
 begin
    Document_Propagation;
+   Root_Replacement;
    Initialize (S, 16, OK);
    pragma Assert (OK and then S /= null);
    Register_Owner (S.all, Token (1), Arena, OK);

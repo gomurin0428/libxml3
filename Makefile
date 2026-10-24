@@ -250,7 +250,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 	./tests/differential-system > tests/differential-system.out
 	diff -u tests/differential-system.out tests/differential-libxml3.out
 
-check: build tests/header-smoke.o
+check: build tests/header-smoke.o test-dom-core test-dom-bridge
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
 		xmlNewDoc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
@@ -304,5 +304,6 @@ clean:
 		tests/encoding-resource-test tests/encoding-resource-test-reference \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/fuzz-test tests/fuzz-test-sanitize tests/dom-test \
-		tests/dom-test-reference tests/dom-test-sanitize tests/attribute-test \
+		tests/dom-test-reference tests/dom-test-sanitize tests/dom-core-test \
+		tests/dom-bridge-test tests/attribute-test \
 		tests/attribute-test-reference tests/attribute-test-sanitize tests/*.out

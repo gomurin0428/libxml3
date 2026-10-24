@@ -385,34 +385,6 @@ package XML3_DOM with SPARK_Mode is
 
    function Projection_Allowed
      (S : State; N : Node_Ref; Proposed : Node_View) return Boolean
-   is
-     (Proposed = Projected_View
-        (Node (S, N), Proposed.Name, Proposed.Name_Length,
-         Proposed.Content, Proposed.Content_Length,
-         Proposed.Document, Proposed.Namespace,
-         Proposed.Ns_Pin, Proposed.Doc_Pin, Proposed.Content_Pin)
-      and then (Proposed.Ns_Pin = 0 or else
-        (Proposed.Ns_Pin <= Owner_Ref (Owner_Count (S))
-         and then Owner (S, Proposed.Ns_Pin).State = Live))
-      and then (Proposed.Doc_Pin = 0 or else
-        (Proposed.Doc_Pin <= Owner_Ref (Owner_Count (S))
-         and then Owner (S, Proposed.Doc_Pin).State = Live))
-      and then (Proposed.Content_Pin = 0 or else
-        (Proposed.Content_Pin <= Owner_Ref (Owner_Count (S))
-         and then Owner (S, Proposed.Content_Pin).State = Live))
-      and then (Proposed.Document = 0 or else
-        (Proposed.Document <= Node_Ref (Node_Count (S))
-         and then Node (S, Proposed.Document).Kind = Document_Node
-         and then Node (S, Proposed.Document).State in Live | Tombstone
-         and then (N = Proposed.Document or else
-           Proposed.Doc_Pin = Node (S, Proposed.Document).Owner)))
-      and then (Proposed.Namespace = 0 or else
-        (Proposed.Namespace <= Namespace_Ref (Namespace_Count (S))
-         and then Namespace (S, Proposed.Namespace).State = Live
-         and then Proposed.Ns_Pin = Namespace (S, Proposed.Namespace).Owner))
-      and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
-        (Holds (Node (S, N), B) or else not Holds (Proposed, B)
-         or else Owner (S, B).References < Natural'Last)))
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S)
        and then N in 1 .. Node_Ref (Node_Count (S))
@@ -579,6 +551,44 @@ package XML3_DOM with SPARK_Mode is
                     (if Node (S'Old, Parent).Kind = Document_Node
                      then Parent else Node (S'Old, Parent).Document)).Owner))))
        );
+
+   procedure Replace_Root
+     (S : in out State; Doc, Root : Node_Ref;
+      Previous : out Node_Ref; Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Doc in 1 .. Node_Ref (Node_Count (S))
+       and then Root in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Doc).State = Live
+       and then Node (S, Root).State = Live,
+     Post => Valid (S) and then Can_Edit (S)
+       and then S.Capacity = S'Old.Capacity
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (Previous = Null_Node
+         or else (Previous in 1 .. Node_Ref (Node_Count (S))
+           and then Node (S, Previous).State = Live))
+       and then (if Success then Node (S, Root).Parent = Doc)
+       and then
+         (if not Success then
+            Previous = Null_Node and then Same_Graph (S, S'Old)
+          elsif Previous = Root then
+            Same_Graph (S, S'Old)
+          elsif Previous = Null_Node then
+            True
+          else
+            Previous /= Root
+              and then Node (S, Previous).State = Live
+              and then Node (S, Previous).Parent = Null_Node
+              and then Node (S, Previous).Previous = Null_Node
+              and then Node (S, Previous).Next = Null_Node
+              and then Node (S, Root).Previous =
+                Node (S'Old, Previous).Previous
+              and then Node (S, Root).Next =
+                Node (S'Old, Previous).Next
+              and then Node (S, Root).Sibling_Order =
+                Node (S'Old, Previous).Sibling_Order);
 
    procedure Attach_Property
      (S : in out State; Element, Attribute : Node_Ref;
@@ -962,4 +972,114 @@ private
      (S.Graph.Namespaces);
    function Snapshot_Owners (S : State) return Owner_View_Array is
      (S.Graph.Owners);
+
+   function Projection_Pins_Allowed
+     (S : State; N : Node_Ref; Proposed : Node_View) return Boolean is
+     (Proposed = Projected_View
+        (Node (S, N), Proposed.Name, Proposed.Name_Length,
+         Proposed.Content, Proposed.Content_Length,
+         Proposed.Document, Proposed.Namespace,
+         Proposed.Ns_Pin, Proposed.Doc_Pin, Proposed.Content_Pin)
+      and then (Proposed.Ns_Pin = 0 or else
+        (Proposed.Ns_Pin <= Owner_Ref (Owner_Count (S))
+         and then Owner (S, Proposed.Ns_Pin).State = Live))
+      and then (Proposed.Doc_Pin = 0 or else
+        (Proposed.Doc_Pin <= Owner_Ref (Owner_Count (S))
+         and then Owner (S, Proposed.Doc_Pin).State = Live))
+      and then (Proposed.Content_Pin = 0 or else
+        (Proposed.Content_Pin <= Owner_Ref (Owner_Count (S))
+         and then Owner (S, Proposed.Content_Pin).State = Live))
+      and then (Proposed.Document = 0 or else
+        (Proposed.Document <= Node_Ref (Node_Count (S))
+         and then Node (S, Proposed.Document).Kind = Document_Node
+         and then Node (S, Proposed.Document).State in Live | Tombstone
+         and then (N = Proposed.Document or else
+           Proposed.Doc_Pin = Node (S, Proposed.Document).Owner)))
+      and then (Proposed.Namespace = 0 or else
+        (Proposed.Namespace <= Namespace_Ref (Namespace_Count (S))
+         and then Namespace (S, Proposed.Namespace).State = Live
+         and then Proposed.Ns_Pin = Namespace (S, Proposed.Namespace).Owner))
+      and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+        (Holds (Node (S, N), B) or else not Holds (Proposed, B)
+         or else Owner (S, B).References < Natural'Last)))
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then N in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, N).State = Live;
+
+   function Projection_Allowed
+     (S : State; N : Node_Ref; Proposed : Node_View) return Boolean is
+     (Projection_Pins_Allowed (S, N, Proposed)
+      and then (if Node (S, N).Kind = Document_Node then
+        Proposed.Document = N)
+      and then (Node (S, N).Parent = Null_Node
+        or else Proposed.Document =
+          (if Node (S, Node (S, N).Parent).Kind = Document_Node then
+             Node (S, N).Parent
+           else Node (S, Node (S, N).Parent).Document))
+      and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+        (Node (S, I).State /= Live or else Node (S, I).Parent /= N
+         or else Node (S, I).Document =
+           (if Node (S, N).Kind = Document_Node then N
+            else Proposed.Document))));
+
+   procedure Set_Node_Projection_Internal
+     (S : in out State;
+      N : Node_Ref;
+      Name : System.Address;
+      Name_Length : Natural;
+      Content : System.Address;
+      Content_Length : Natural;
+      Document : Node_Ref;
+      Namespace : Namespace_Ref;
+      Namespace_Pin : Owner_Ref;
+      Doc_Pin : Owner_Ref;
+      Content_Pin : Owner_Ref;
+      Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then N in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, N).State = Live,
+     Post => (declare
+       Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S)'Old;
+       Original_Ns : constant Namespace_View_Array := Snapshot_Namespaces (S)'Old;
+       Original_Owners : constant Owner_View_Array := Snapshot_Owners (S)'Old;
+       Allowed : constant Boolean := Projection_Pins_Allowed
+         (S, N, Projected_View
+           (Node (S, N), Name, Name_Length, Content, Content_Length,
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin))'Old;
+     begin
+       Valid (S) and then Can_Edit (S)
+       and then Capacity_Of (S) = Capacity_Of (S)'Old
+       and then Node_Count (S) = Node_Count (S)'Old
+       and then Namespace_Count (S) = Namespace_Count (S)'Old
+       and then Owner_Count (S) = Owner_Count (S)'Old
+       and then Snapshot_Marks (S) = Snapshot_Marks (S)'Old
+       and then Same_Marks (S, S'Old)
+       and then Release_Cursor (S) = Release_Cursor (S)'Old
+       and then Success = Allowed
+       and then (if Success then Projection_Required (S)
+         and then Node (S, N) = Projected_View
+           (Original_Nodes (Positive (N)),
+            Name, Name_Length, Content, Content_Length,
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin)
+         else Projection_Required (S) = Projection_Required (S)'Old)
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+         (if not Success or else I /= N then
+           Node (S, I) = Original_Nodes (Positive (I))))
+       and then (for all I in Namespace_Ref range 1 .. Namespace_Ref (Namespace_Count (S)) =>
+         XML3_DOM.Namespace (S, I) = Original_Ns (Positive (I)))
+       and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+         (if Holds (Original_Nodes (Positive (N)), B) = Holds (Node (S, N), B) then
+           Owner (S, B) = Original_Owners (Positive (B))
+          else Owner (S, B).Address = Original_Owners (Positive (B)).Address
+            and then Owner (S, B).Reservations =
+              Original_Owners (Positive (B)).Reservations
+            and then not Owner (S, B).Release_Emitted
+            and then Owner (S, B).State =
+              (if Owner (S, B).References = 0 then Releasing else Live)
+            and then Long_Long_Integer (Owner (S, B).References)
+              + Boolean'Pos (Holds (Original_Nodes (Positive (N)), B)) =
+                Long_Long_Integer (Original_Owners (Positive (B)).References)
+                  + Boolean'Pos (Holds (Node (S, N), B)))));
 end XML3_DOM;
