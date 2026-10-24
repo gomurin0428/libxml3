@@ -610,6 +610,12 @@ package body XML3_DOM with SPARK_Mode is
       S.Effects.Phase := Projecting_Namespaces;
    end Next_Node_Projection;
 
+   function Namespace_Release_Required (S : State; N : Namespace_Ref) return Boolean is
+   begin
+      pragma Assert (Namespace_Links_Valid (S.Graph, Positive (N)));
+      return Owner (S, Namespace (S, N).Owner).State = Releasing;
+   end Namespace_Release_Required;
+
    procedure Next_Namespace_Projection (S : in out State; N : out Namespace_Ref) is
    begin
       while S.Effects.Cursor < S.Graph.Ns_Used loop

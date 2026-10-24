@@ -241,6 +241,14 @@ package XML3_DOM with SPARK_Mode is
          and then Pin_Equation (S)
          and then Links_Valid (S))
      with Ghost, Global => null;
+   function Namespace_Release_Required (S : State; N : Namespace_Ref) return Boolean
+     with Global => null,
+       Pre => Valid (S) and then N in 1 .. Namespace_Ref (Namespace_Count (S))
+         and then Namespace (S, N).State = Live,
+       Post => Namespace (S, N).Owner in 1 .. Owner_Ref (Owner_Count (S))
+         and then Namespace_Release_Required'Result =
+           (Owner (S, Namespace (S, N).Owner).State = Releasing);
+
    function Snapshot_Namespaces (S : State) return Namespace_View_Array
      with Ghost, Global => null,
        Annotate => (GNATprove, Inline_For_Proof);

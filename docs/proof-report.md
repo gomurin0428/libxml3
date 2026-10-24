@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **4,811 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **5,916 discharged checks**, **0 unproved**,
 and **0 justified**. Non-failing warnings remain for unused outputs and
 assignments, trusted external subprogram termination, and representation
 generation for a trusted package spec; no proof checks remained unproved.
@@ -13,15 +13,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 121 |
-| Initialization | 175 |
-| Run-time checks | 2,320 |
-| Assertions / loop invariants | 637 |
-| Functional contracts | 1,422 |
-| Termination | 136 |
-| Total | 4,811 |
+| Data dependencies | 138 |
+| Initialization | 180 |
+| Run-time checks | 2,889 |
+| Assertions / loop invariants | 852 |
+| Functional contracts | 1,710 |
+| Termination | 147 |
+| Total | 5,916 |
 
-384 checks were discharged by flow analysis and 4,427 by proof. `Parse`, `Decode`,
+417 checks were discharged by flow analysis and 5,499 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -50,11 +50,14 @@ The private `Attach` and its extracted helpers were proved separately with
 `--proof=progressive --timeout=10 --counterexamples=off`, followed by the whole
 DOM unit and the aggregate invocation above. The aggregate reused that proof
 session; this is not evidence of cold-cache proof timing or reproducibility.
+`XML3_DOM.Import`, `Namespace_Release_Required`, and the bridge were also proved
+with the progressive settings before the final aggregate run.
 
-The proof project selects eight complete SPARK units (the original four plus
-`XML3_DOM`, `XML3_DOM_Bridge`, `XML3_DOM_Constructors`, and `XML3_DOM_Store`) and the two trusted
+The proof project selects nine complete SPARK units (the original four plus
+`XML3_DOM`, `XML3_DOM_Bridge`, `XML3_DOM_Constructors`, `XML3_DOM_Store`, and
+`XML3_DOM.Import`) and the two trusted
 boundary specs `XML3_Native_Memory` and `XML3_DOM_Allocation`; the analyzer
-reports ten units.
+reports eleven units.
 The two native bodies remain explicitly outside SPARK. Native memory layout and
 allocation correctness are trusted, not replaced with a proved implementation.
 The full run reported that representation information could not be generated
@@ -126,6 +129,30 @@ separate proof boundaries. `Unlink_Tail_Lemma`, `Append_Child_Links`,
 `Set_Marked_Document` all passed. Explicit frame and result assertions are
 proved obligations, not assumptions; the original attachment contract remains.
 
+`XML3_DOM.Import.Adopt` transfers a single-owner source arena into the destination
+without per-node construction/attachment. Checked, strictly increasing maps
+translate node/namespace links and pins; existing live/tombstone nodes, live
+namespaces, and live/releasing owners are preserved. The destination retains the
+source native allocation and the source Ada state is consumed only after
+installation. Capacity rejection or map allocation failure preserves both
+graphs. No native arena is freed during adoption; synchronization subsequently
+rewrites facade metadata IDs. The current preflight conservatively reserves
+append space for every source node/namespace and one owner, even though mapping
+reuses unused slots. A caller must grow the destination for that worst case;
+free holes alone do not ensure admission at capacity. This is an internal
+foundation constraint, not a new public parser size policy.
+
+The native arena test covers this transfer with reusable node/namespace/owner
+slots, unchanged original-document fields, capacity rejection, and a size-targeted
+map allocation failure. It checks that source-state consumption does not free the
+arena, metadata IDs change on synchronization, a detached subtree keeps its
+arena/document/namespace storage alive, and the final native free occurs exactly
+once after node and namespace pointer fields are cleared. The test exposed a
+missing namespace-clear command: the bridge now uses the proved core query
+`Namespace_Release_Required` to emit empty pointer fields when that namespace's
+owner is releasing. These tests do not establish arbitrary-pointer validity,
+native layout correctness, or parser materialization through this new path.
+
 ## Source identity (SHA-256)
 
 ```text
@@ -137,19 +164,21 @@ proved obligations, not assumptions; the original attachment contract remains.
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-6b75ff52bc924bda2ef80b2982d77b9d9437c1055fdcd2db95070c104960525e  src/xml3_dom.ads
-78b58dc29347cbfc5e9dd78044c4079418866fdeac37cdfc3ecf56de9256dd93  src/xml3_dom.adb
+e6f61aa9373d3b7af528f786221609d9f40584a6bb18bb19f5ad8d89d8c39265  src/xml3_dom.ads
+ee3d1035e276e306af97a1723de1927ca0598e446cb95fe670678a7a881da852  src/xml3_dom.adb
+e78f63f7e14aea6b616796ca85eb355022c43b4a17a5839ec54707908774c7f1  src/xml3_dom-import.ads
+d96c80620eb295816de0e000a976500fca97c1365d33dd96c57d31a726c2d5eb  src/xml3_dom-import.adb
 a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
-6c5b0151f2d06bc264e23026480383e1ef4a10722785bf26575c50b628dd42c0  src/xml3_dom_bridge.adb
+dd29f41eca701df16260920c23075459c3eedc99175d2d9302ee7225d1d945a8  src/xml3_dom_bridge.adb
 5a434888dd9904ff0bebfd1ef6aa3711047cf97375d3e0d538f0dc4dbb8d9839  src/xml3_dom_constructors.ads
 e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_constructors.adb
 226fe71425702680e9c7e80ed8b120b38f4eb5207ac7075e8fc6049b6d0b6b72  src/xml3_dom_store.ads
 7daa23ede36f064256cad01ef66955dbbc6336f2df1089549f162fb4c326d26e  src/xml3_dom_store.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
 4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
-b87754dd3f575f8f64ad374aee2832ab60bff6eb9c2477900f743d7805865122  src/xml3_dom_allocation.ads
-42b3dd88e64ac8b1e6ccc43947ae926102ca80aa06de6c29ea77356f88e2b7a3  src/xml3_dom_allocation.adb
-159afdfcbdac3164db8d55188df17a9afe29d030f45af298ce26b8814ba03e27  proof.gpr
+38c4ff80e2a8bafa63579a0cb03026926cb4ad4ee44d2324d86842e119ac1c05  src/xml3_dom_allocation.ads
+1b0b582fc5ab3c34e5d96d5fce20b536426df9f68fbe4b4e99423785eb978002  src/xml3_dom_allocation.adb
+4f117ed775f67f4917cc519905fcc89f21be2042d36932455e2f7045b54a005f  proof.gpr
 ```
 
 A source or contract change invalidates the recorded result until proof is rerun.

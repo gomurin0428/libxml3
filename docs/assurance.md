@@ -7,7 +7,7 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
-`XML3_DOM_Constructors`, and `XML3_DOM_Store`, plus
+`XML3_DOM_Constructors`, `XML3_DOM_Store`, and `XML3_DOM.Import`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
@@ -107,6 +107,21 @@ real facade/content updates, source-clear-before-free ordering, repeated-tail
 no-op, and final Store reclamation. The public C API remains on the legacy DOM;
 this is not yet a protected shared runtime.
 
+`XML3_DOM.Import.Adopt` consumes a single-owner source state after installing its
+arena into a destination with capacity already reserved. Sorted maps reuse
+unused slots and translate links/pins while preserving existing live entries.
+The native arena is not copied or freed; only the source Ada state and temporary
+integer maps are deallocated. Failed preflight or map allocation preserves both
+graphs. Preflight currently requires worst-case append capacity without credit
+for reusable holes; capacity growth is the caller's responsibility. Synchronizing
+the destination updates native metadata before the imported facades are exposed.
+The bridge clears namespace pointer fields when the core's
+`Namespace_Release_Required` reports a releasing owner, in addition to clearing
+retired nodes. Native tests cover capacity/allocation rollback, slot reuse,
+remapped IDs, detached lifetime and clearing before exactly-once release.
+This does not implement conversion from parser output to a source state or connect
+the parser/public C API to the Store.
+
 **`XML3_C` has not been connected to this foundation.** Its parser materialization,
 DOM editing/ownership, root replacement and text merging remain the old unproved
 implementation. The new kernel and integration test are not a substitute for
@@ -134,8 +149,8 @@ exercise this correspondence without proving it for every layout or execution.
 * `XML3_Native_Memory` and `XML3_DOM_Allocation` specs are analyzed, but their
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
-  the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 4,811-check result.
+  the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
+  are trusted, not discharged by the 5,916-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

@@ -61,11 +61,82 @@ void bridge_store_merge_reset(void) {
 void * __real_malloc(size_t);
 void bridge_check_live(xmlDoc *, xmlNode *, xmlNode *, xmlNs *);
 
+static void *import_arena;
+static xmlDoc *import_doc, *import_original;
+static xmlNode *import_root, *import_text;
+static xmlNs *import_ns;
+static xmlDoc import_original_snapshot;
+static unsigned import_frees, import_failures;
+static size_t import_failure_size;
+
+void bridge_import_track(void *arena, xmlDoc *doc, xmlNode *root,
+                         xmlNode *text, xmlNs *ns, xmlDoc *original) {
+    assert(import_arena == NULL);
+    import_arena = arena;
+    import_doc = doc;
+    import_root = root;
+    import_text = text;
+    import_ns = ns;
+    import_original = original;
+    import_original_snapshot = *original;
+    import_frees = 0;
+}
+
+void bridge_import_fail_allocation(size_t size) {
+    assert(size > 0 && import_failure_size == 0);
+    import_failure_size = size;
+    import_failures = 0;
+}
+
+void bridge_import_check_allocation_failure(void) {
+    assert(import_failures == 1 && import_failure_size == 0);
+}
+
+unsigned bridge_import_free_count(void) {
+    return import_frees;
+}
+
+void bridge_import_check_live(void) {
+    assert(import_frees == 0);
+    bridge_check_live(import_doc, import_root, import_text, import_ns);
+    assert(*((size_t *)import_doc - 1) == 2);
+    assert(*((size_t *)import_root - 1) == 3);
+    assert(*((size_t *)import_text - 1) == 4);
+    assert(*((size_t *)import_ns - 1) == 1);
+    assert(memcmp(import_original, &import_original_snapshot,
+                  sizeof(import_original_snapshot)) == 0);
+}
+
+void bridge_import_check_retained(void) {
+    assert(import_frees == 0);
+    assert(import_doc->children == NULL && import_doc->version == NULL);
+    assert(import_root->parent == NULL);
+    assert(import_root->children == import_text && import_root->last == import_text);
+    assert(import_text->parent == import_root);
+    assert(strcmp((const char *)import_root->name, "r") == 0);
+    assert(strcmp((const char *)import_text->content, "x") == 0);
+    assert(strcmp((const char *)import_ns->href,
+                  "http://www.w3.org/XML/1998/namespace") == 0);
+}
+
+void bridge_import_reset(void) {
+    assert(import_frees == 1 && import_failure_size == 0);
+    import_arena = NULL;
+    import_doc = import_original = NULL;
+    import_root = import_text = NULL;
+    import_ns = NULL;
+}
+
 void bridge_fail_next_malloc(void) {
     fail_next_malloc = 1;
 }
 
 void * __wrap_malloc(size_t size) {
+    if (size == import_failure_size && size != 0) {
+        import_failure_size = 0;
+        ++import_failures;
+        return NULL;
+    }
     if (fail_next_malloc) {
         fail_next_malloc = 0;
         return NULL;
@@ -246,6 +317,22 @@ unsigned bridge_free_count(unsigned index) {
 void __real_free(void *pointer);
 
 void __wrap_free(void *pointer) {
+    if (pointer != NULL && pointer == import_arena) {
+        assert(import_frees == 0);
+        assert(import_doc->children == NULL && import_doc->last == NULL);
+        assert(import_doc->doc == NULL && import_doc->version == NULL);
+        const xmlNode *nodes[] = {import_root, import_text};
+        for (unsigned i = 0; i < 2; ++i) {
+            const xmlNode *node = nodes[i];
+            assert(node->name == NULL && node->content == NULL);
+            assert(node->children == NULL && node->last == NULL);
+            assert(node->parent == NULL && node->prev == NULL && node->next == NULL);
+            assert(node->doc == NULL && node->ns == NULL);
+            assert(node->properties == NULL && node->nsDef == NULL);
+        }
+        assert(import_ns->href == NULL && import_ns->prefix == NULL && import_ns->next == NULL);
+        ++import_frees;
+    }
     if (pointer != NULL && pointer == store_merge_source_block) {
         assert(store_merge_source_frees == 0);
         assert(store_merge_source->parent == NULL);

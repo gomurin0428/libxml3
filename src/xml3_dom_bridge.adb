@@ -56,6 +56,9 @@ package body XML3_DOM_Bridge with SPARK_Mode is
    function Namespace_Command (S : State; N : Namespace_Ref) return Native.Namespace_Projection is
       Item : constant Namespace_View := Namespace (S, N);
    begin
+      if Namespace_Release_Required (S, N) then
+         return (Id => Natural (N), others => <>);
+      end if;
       return (Id => Natural (N), Next => Namespace_Address (S, Item.Next),
               Href => Item.Href, Prefix => Item.Prefix);
    end Namespace_Command;

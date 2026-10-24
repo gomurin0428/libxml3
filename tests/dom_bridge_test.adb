@@ -2,6 +2,7 @@ with Ada.Text_IO;
 with Interfaces.C;
 with System;
 with XML3_DOM; use XML3_DOM;
+with XML3_DOM.Import;
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
@@ -499,4 +500,174 @@ begin
       pragma Assert (Status = Created and then Stores.Is_Empty (Managed));
    end;
    Ada.Text_IO.Put_Line ("Opaque DOM store text merge and rollback tests passed");
+   declare
+      package Importer renames XML3_DOM.Import;
+      use type Importer.Import_Status;
+      Source, Destination, Tiny : State_Access;
+      Arena, Original_Block, Spare_Block : System.Address;
+      Arena_Doc, Arena_Root, Arena_Text, Arena_Ns, Original_Facade,
+        Spare_Facade, Spare_Ns_Facade : System.Address;
+      Version_At, Name_At, Text_Name_At, Content_At, Prefix_At, Href_At : System.Address;
+      Arena_Owner, Original_Owner, Spare_Owner : Owner_Ref;
+      Source_Doc, Source_Root, Source_Text, Original, Spare, Imported_Doc : Node_Ref;
+      Source_Ns, Spare_Ns : Namespace_Ref;
+      Status : Importer.Import_Status;
+      Payload : constant Native.Byte_Count := 3 * Native.Node_Stride + Native.Namespace_Stride;
+      Strings : constant String := Version & Root_Name & Text_Name & Content & Prefix & Href;
+      subtype Map_Block is XML3_DOM_Allocation.Import_Maps (3);
+
+      procedure Import_Track
+        (Arena, Doc, Root, Text, Ns, Original : System.Address)
+        with Import, Convention => C, External_Name => "bridge_import_track";
+      procedure Import_Check_Live
+        with Import, Convention => C, External_Name => "bridge_import_check_live";
+      procedure Import_Check_Retained
+        with Import, Convention => C, External_Name => "bridge_import_check_retained";
+      procedure Import_Reset
+        with Import, Convention => C, External_Name => "bridge_import_reset";
+      function Import_Free_Count return Interfaces.C.unsigned
+        with Import, Convention => C, External_Name => "bridge_import_free_count";
+      procedure Import_Fail_Allocation (Size : Interfaces.C.size_t)
+        with Import, Convention => C, External_Name => "bridge_import_fail_allocation";
+      procedure Import_Check_Allocation_Failure
+        with Import, Convention => C, External_Name => "bridge_import_check_allocation_failure";
+   begin
+      Initialize (Source, 4, OK);
+      pragma Assert (OK);
+      Initialize (Destination, 8, OK);
+      pragma Assert (OK);
+      Initialize (Tiny, 2, OK);
+      pragma Assert (OK);
+      Native.Allocate (Payload + Native.Byte_Count (Strings'Length), Arena);
+      Native.Allocate (Native.Node_Stride, Original_Block);
+      Native.Allocate (Native.Node_Stride + Native.Namespace_Stride, Spare_Block);
+      pragma Assert (Arena /= System.Null_Address and then Original_Block /= System.Null_Address
+                     and then Spare_Block /= System.Null_Address);
+      Arena_Doc := Native.Offset (Arena, Native.Metadata_Bytes);
+      Arena_Root := Native.Offset (Arena, Native.Node_Stride + Native.Metadata_Bytes);
+      Arena_Text := Native.Offset (Arena, 2 * Native.Node_Stride + Native.Metadata_Bytes);
+      Arena_Ns := Native.Offset (Arena, 3 * Native.Node_Stride + Native.Metadata_Bytes);
+      Original_Facade := Native.Offset (Original_Block, Native.Metadata_Bytes);
+      Spare_Facade := Native.Offset (Spare_Block, Native.Metadata_Bytes);
+      Spare_Ns_Facade := Native.Offset (Spare_Block, Native.Node_Stride + Native.Metadata_Bytes);
+      Native.Initialize_Node (Arena_Doc);
+      Native.Initialize_Node (Arena_Root);
+      Native.Initialize_Node (Arena_Text);
+      Native.Initialize_Namespace (Arena_Ns);
+      Native.Initialize_Node (Original_Facade);
+      Native.Initialize_Node (Spare_Facade);
+      Native.Initialize_Namespace (Spare_Ns_Facade);
+      Version_At := Native.Offset (Arena, Payload);
+      Native.Write_String (Version_At, 0, Strings);
+      Name_At := Native.Offset (Version_At, Version'Length);
+      Text_Name_At := Native.Offset (Name_At, Root_Name'Length);
+      Content_At := Native.Offset (Text_Name_At, Text_Name'Length);
+      Prefix_At := Native.Offset (Content_At, Content'Length);
+      Href_At := Native.Offset (Prefix_At, Prefix'Length);
+
+      Register_Owner (Source.all, Arena, Arena_Owner, OK);
+      pragma Assert (OK and then Arena_Owner = 1);
+      Register_Node (Source.all, Document_Node, Arena_Doc, Arena_Owner, 0, Source_Doc, OK);
+      pragma Assert (OK and then Source_Doc = 1);
+      Register_Node (Source.all, Element_Node, Arena_Root, Arena_Owner, 0, Source_Root, OK);
+      pragma Assert (OK and then Source_Root = 2);
+      Register_Node (Source.all, Text_Node, Arena_Text, Arena_Owner, 0, Source_Text, OK);
+      pragma Assert (OK and then Source_Text = 3);
+      Register_Namespace
+        (Source.all, Arena_Ns, Href_At, Href'Length - 1,
+         Prefix_At, Prefix'Length - 1, Arena_Owner, Source_Ns, OK);
+      pragma Assert (OK and then Source_Ns = 1);
+      Set_Node_Projection
+        (Source.all, Source_Doc, System.Null_Address, 0,
+         Version_At, Version'Length - 1, Source_Doc, 0, 0, 0, 0, OK);
+      pragma Assert (OK);
+      Set_Node_Projection
+        (Source.all, Source_Root, Name_At, Root_Name'Length - 1,
+         System.Null_Address, 0, 0, Source_Ns, Arena_Owner, 0, 0, OK);
+      pragma Assert (OK);
+      Set_Node_Projection
+        (Source.all, Source_Text, Text_Name_At, Text_Name'Length - 1,
+         Content_At, Content'Length - 1, 0, 0, 0, 0, 0, OK);
+      pragma Assert (OK);
+      Attach_Child (Source.all, Source_Root, Source_Text, OK);
+      pragma Assert (OK);
+      Attach_Child (Source.all, Source_Doc, Source_Root, OK);
+      pragma Assert (OK);
+      Release_Reservation (Source.all, Arena_Owner);
+      XML3_DOM_Bridge.Synchronize (Source.all);
+      pragma Assert (Importer.Is_Arena (Source.all));
+
+      Register_Owner (Destination.all, Original_Block, Original_Owner, OK);
+      pragma Assert (OK);
+      Register_Node
+        (Destination.all, Document_Node, Original_Facade, Original_Owner, 0, Original, OK);
+      pragma Assert (OK and then Original = 1);
+      Set_Node_Projection
+        (Destination.all, Original, System.Null_Address, 0,
+         Version'Address, Version'Length - 1, Original, 0, 0, 0, 0, OK);
+      pragma Assert (OK);
+      Release_Reservation (Destination.all, Original_Owner);
+      Register_Owner (Destination.all, Spare_Block, Spare_Owner, OK);
+      pragma Assert (OK and then Spare_Owner = 2);
+      Register_Node
+        (Destination.all, Element_Node, Spare_Facade, Spare_Owner, 0, Spare, OK);
+      pragma Assert (OK and then Spare = 2);
+      Register_Namespace
+        (Destination.all, Spare_Ns_Facade, Href'Address, Href'Length - 1,
+         Prefix'Address, Prefix'Length - 1, Spare_Owner, Spare_Ns, OK);
+      pragma Assert (OK and then Spare_Ns = 1);
+      Release_Reservation (Destination.all, Spare_Owner);
+      Free_Subtree (Destination.all, Spare);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      pragma Assert (Node (Destination.all, Spare).State = Unused
+                     and then Owner (Destination.all, Spare_Owner).State = Unused
+                     and then Namespace (Destination.all, Spare_Ns).State = Unused);
+      Import_Track (Arena, Arena_Doc, Arena_Root, Arena_Text, Arena_Ns, Original_Facade);
+
+      declare
+         Original_Source : constant State_Access := Source;
+         Before_Source : constant State := Source.all;
+         Before_Tiny : constant State := Tiny.all;
+         Before_Destination : constant State := Destination.all;
+      begin
+         Importer.Adopt (Tiny.all, Source, Imported_Doc, Status);
+         pragma Assert (Status = Importer.Limit_Exceeded and then Imported_Doc = 0);
+         pragma Assert (Source = Original_Source and then Same_Graph (Source.all, Before_Source));
+         pragma Assert (Same_Graph (Tiny.all, Before_Tiny) and then Import_Free_Count = 0);
+         Import_Fail_Allocation (Interfaces.C.size_t (Map_Block'Size / System.Storage_Unit));
+         Importer.Adopt (Destination.all, Source, Imported_Doc, Status);
+         Import_Check_Allocation_Failure;
+         pragma Assert (Status = Importer.No_Memory and then Imported_Doc = 0);
+         pragma Assert (Source = Original_Source and then Same_Graph (Source.all, Before_Source));
+         pragma Assert (Same_Graph (Destination.all, Before_Destination)
+                        and then Import_Free_Count = 0);
+         Importer.Adopt (Destination.all, Source, Imported_Doc, Status);
+         pragma Assert (Status = Importer.Imported and then Source = null and then Imported_Doc = 2);
+         pragma Assert (Node (Destination.all, Original) = Node (Before_Destination, Original));
+      end;
+      pragma Assert (Import_Free_Count = 0);
+      pragma Assert (Node (Destination.all, 2).Owner = Spare_Owner
+                     and then Node (Destination.all, 3).Facade = Arena_Root
+                     and then Node (Destination.all, 4).Facade = Arena_Text
+                     and then Namespace (Destination.all, Spare_Ns).Facade = Arena_Ns);
+      pragma Assert (Native.Node_Id (Arena_Doc) = 1);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      Import_Check_Live;
+      Unlink (Destination.all, 3);
+      Free_Subtree (Destination.all, Imported_Doc);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      Import_Check_Retained;
+      pragma Assert (Import_Free_Count = 0);
+      Free_Subtree (Destination.all, 3);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      pragma Assert (Import_Free_Count = 1);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      pragma Assert (Import_Free_Count = 1);
+      Import_Reset;
+      Free_Subtree (Destination.all, Original);
+      XML3_DOM_Bridge.Synchronize (Destination.all);
+      XML3_DOM_Allocation.Free_State (Destination);
+      XML3_DOM_Allocation.Free_State (Tiny);
+   end;
+   Ada.Text_IO.Put_Line ("DOM arena adoption, rollback, and release tests passed");
 end DOM_Bridge_Test;
