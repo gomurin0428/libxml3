@@ -119,6 +119,22 @@ map-allocation and growth-allocation failures, successful import and C facade
 traversal, preservation of an existing document across a second import, and
 detached-root lifetime through final Store cleanup.
 
+`XML3_DOM_Store.Queries` adds internal, read-only element selection, property
+lookup, namespace search, and content retrieval. Traversal uses Store node and
+namespace IDs through `Node_View` and `Namespace_View`; it does not follow
+native DOM links. Namespace scope is limited to element nodes, including when
+queries originate from attribute values, and resolution errors remain
+distinguishable from a normal no-match. `Get_Content` walks descendants in tree
+order and returns a fresh NUL-terminated allocation owned by the caller, not the
+Store. Regression tests cover mixed-document selection/property/namespace
+results, default-namespace shadowing, a detached namespaced attribute value,
+content ordering after a text move, and allocation failure followed by retry.
+The internal Store unlink operation now supports detaching an attribute for this
+topology case; the test reattaches it before release. Native byte comparison,
+copying, allocation/free and address correspondence remain trusted boundary
+operations. The public C getters are not routed through these queries, and
+`XML3_C` remains on the legacy implementation.
+
 The ghost `Count_Holders` helper retains the recursive holder-count definition
 with a bounded-result postcondition and decreasing variant. `Holder_Count`
 delegates to it while stating the same recurrence through the helper, avoiding
@@ -189,7 +205,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 6,432-check result.
+  are trusted, not discharged by the 6,681-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

@@ -7,6 +7,7 @@ with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
 with XML3_DOM_Store;
+with XML3_DOM_Store.Queries;
 with XML3_DOM.Materialize;
 with XML3_Native_Memory;
 with XML3_Namespaces;
@@ -873,8 +874,33 @@ begin
       declare
          Managed : XML3_DOM_Store.Store;
          Existing, Existing_Ns, Imported, Second, Root_Facade : System.Address;
+         Source_Doc, Source_Before, Source_Root, Source_Attr,
+           Source_Attr_Value, Source_Lang, Source_Lang_Value,
+           Source_Text, Source_CData, Source_Comment, Source_PI,
+           Source_Child : System.Address;
+         Source_Implicit, Source_Default, Source_Prefix,
+           Source_Empty : System.Address;
+         Query_Result : System.Address;
+         Query_Count : Natural;
+         Query_Status : XML3_DOM_Constructors.Construction_Status;
          Existing_View, Found_View : Node_View;
          Found : Boolean;
+         procedure Check_Content
+           (Base : System.Address; Expected : String)
+         is
+         begin
+            pragma Assert (Base /= System.Null_Address);
+            if Expected'Length > 0 then
+               for I in 0 .. Expected'Length - 1 loop
+                  pragma Assert
+                    (Native.Byte_At (Base, I)
+                     = Expected (Expected'First + I));
+               end loop;
+            end if;
+            pragma Assert
+              (Native.Byte_At (Base, Expected'Length) = Character'Val (0));
+            Native.Free (Base);
+         end Check_Content;
          procedure Store_Arena_Check (Doc : System.Address)
            with Import, Convention => C,
              External_Name => "bridge_store_arena_check";
@@ -883,6 +909,31 @@ begin
            (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
             Build_Status);
          pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         pragma Assert
+           (Source /= null
+            and then Node_Count (Source.all) = 12
+            and then Namespace_Count (Source.all) = 4);
+         Source_Doc := Node (Source.all, 1).Facade;
+         Source_Before := Node (Source.all, 2).Facade;
+         Source_Root := Node (Source.all, 3).Facade;
+         Source_Attr := Node (Source.all, 4).Facade;
+         Source_Attr_Value := Node (Source.all, 5).Facade;
+         Source_Lang := Node (Source.all, 6).Facade;
+         Source_Lang_Value := Node (Source.all, 7).Facade;
+         Source_Text := Node (Source.all, 8).Facade;
+         Source_CData := Node (Source.all, 9).Facade;
+         Source_Comment := Node (Source.all, 10).Facade;
+         Source_PI := Node (Source.all, 11).Facade;
+         Source_Child := Node (Source.all, 12).Facade;
+         Source_Implicit := Namespace (Source.all, 1).Facade;
+         Source_Default := Namespace (Source.all, 2).Facade;
+         Source_Prefix := Namespace (Source.all, 3).Facade;
+         Source_Empty := Namespace (Source.all, 4).Facade;
+         pragma Assert
+           (Source_Before /= System.Null_Address
+            and then Source_Attr_Value /= System.Null_Address
+            and then Source_Lang_Value /= System.Null_Address
+            and then Source_Empty /= System.Null_Address);
          declare
             Before_Source : constant State := Source.all;
          begin
@@ -913,6 +964,223 @@ begin
          pragma Assert
            (Build_Status = XML3_DOM_Constructors.Created and then Source = null);
          Store_Arena_Check (Imported);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Doc,
+            XML3_DOM_Store.Queries.Document_Root,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Root and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Doc,
+            XML3_DOM_Store.Queries.First_Element,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Root and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Before,
+            XML3_DOM_Store.Queries.Next_Element,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Root and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Next_Element,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address
+            and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.First_Element,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Child and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, Source_Doc,
+            XML3_DOM_Store.Queries.Element_Count,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address
+            and then Query_Count = 1);
+         XML3_DOM_Store.Queries.Select_Element
+           (Managed, System.Null_Address,
+            XML3_DOM_Store.Queries.First_Element,
+            Query_Result, Query_Count, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Invalid_Argument
+            and then Query_Result = System.Null_Address
+            and then Query_Count = 0);
+         XML3_DOM_Store.Queries.Find_Property
+           (Managed, Source_Root, "a",
+            XML3_DOM_Store.Queries.Any_Namespace, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Attr);
+         XML3_DOM_Store.Queries.Find_Property
+           (Managed, Source_Root, "a",
+            XML3_DOM_Store.Queries.No_Namespace, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Find_Property
+           (Managed, Source_Root, "a",
+            XML3_DOM_Store.Queries.Exact_Namespace, "urn:p",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Attr);
+         XML3_DOM_Store.Queries.Find_Property
+           (Managed, Source_Root, "lang",
+            XML3_DOM_Store.Queries.Exact_Namespace,
+            XML3_Namespaces.XML_URI, Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Lang);
+         XML3_DOM_Store.Queries.Find_Property
+           (Managed, System.Null_Address, "a",
+            XML3_DOM_Store.Queries.Any_Namespace, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Invalid_Argument
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Prefix_Search, True, "p",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Prefix);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Prefix_Search, False, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Default);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Child,
+            XML3_DOM_Store.Queries.Prefix_Search, False, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Empty);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Prefix_Search, True, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Prefix_Search, True, "xml",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Implicit);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Href_Search, True, "urn:p",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Prefix);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Child,
+            XML3_DOM_Store.Queries.Href_Search, True, "urn:d",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Child,
+            XML3_DOM_Store.Queries.Href_Search, True, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Empty);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Lang,
+            XML3_DOM_Store.Queries.Href_Search, True, "urn:d",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Href_Search, False, "",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Invalid_Argument
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Root, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "onetwo");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Doc, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "onetwo");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Attr, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "A&B");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Attr_Value, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "A&B");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Lang, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "ja");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Lang_Value, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "ja");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, System.Null_Address, Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Invalid_Argument
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Text, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "one");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_CData, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "two");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Comment, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "c");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_PI, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "x");
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Child, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "");
+         Fail_Next_Malloc;
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Root, Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.No_Memory
+            and then Query_Result = System.Null_Address);
+         Store_Arena_Check (Imported);
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Root, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "onetwo");
          XML3_DOM_Store.Inspect (Managed, Root_Facade, Found_View, Found);
          pragma Assert (Found and then Found_View.Kind = Element_Node);
          XML3_DOM.Materialize.Build
@@ -934,6 +1202,27 @@ begin
            (Build_Status = XML3_DOM_Constructors.Created and then Source = null);
          Store_Arena_Check (Imported);
          Store_Arena_Check (Second);
+         XML3_DOM_Store.Unlink (Managed, Source_Attr, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Attr_Value,
+            XML3_DOM_Store.Queries.Prefix_Search, True, "p",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = System.Null_Address);
+         XML3_DOM_Store.Attach
+           (Managed, Source_Root, Source_Attr, True, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Add_Child
+           (Managed, Source_Root, Source_Text, Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Text);
+         XML3_DOM_Store.Queries.Get_Content
+           (Managed, Source_Root, Query_Result, Query_Status);
+         pragma Assert (Query_Status = XML3_DOM_Constructors.Created);
+         Check_Content (Query_Result, "twoone");
          XML3_DOM_Store.Inspect (Managed, Existing, Found_View, Found);
          pragma Assert (Found and then Found_View = Existing_View);
          XML3_DOM_Store.Unlink (Managed, Root_Facade, Build_Status);
@@ -941,6 +1230,13 @@ begin
          XML3_DOM_Store.Release
            (Managed, Imported, XML3_DOM_Store.Document_Only, False, Build_Status);
          pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Queries.Search_Namespace
+           (Managed, Source_Root,
+            XML3_DOM_Store.Queries.Prefix_Search, True, "xml",
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result = Source_Implicit);
          XML3_DOM_Store.Inspect (Managed, Root_Facade, Found_View, Found);
          pragma Assert (Found and then Found_View.Parent = Null_Node);
          XML3_DOM_Store.Release

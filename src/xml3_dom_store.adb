@@ -8,18 +8,6 @@ package body XML3_DOM_Store with SPARK_Mode is
    use type Native.Byte_Count;
 
    function Find_Node (S : Store; Facade : System.Address) return Node_Ref
-     with Global => (Input => Native.Foreign_Memory),
-       Pre => S.Current = null
-         or else
-           (Valid (S.Current.all)
-            and then Can_Edit (S.Current.all)
-            and then not Projection_Required (S.Current.all)
-            and then Facades_Present (S.Current.all)),
-       Post => (if Find_Node'Result /= Null_Node then
-         S.Current /= null
-         and then Find_Node'Result in 1 .. Node_Ref (Node_Count (S.Current.all))
-         and then Node (S.Current.all, Find_Node'Result).State = Live
-         and then Node (S.Current.all, Find_Node'Result).Facade = Facade)
    is
       Id : Natural;
    begin
@@ -361,7 +349,7 @@ package body XML3_DOM_Store with SPARK_Mode is
       elsif N = Null_Node then
          return;
       end if;
-      if Node (S.Current.all, N).Kind in Document_Node | Attribute_Node then
+      if Node (S.Current.all, N).Kind = Document_Node then
          return;
       end if;
       XML3_DOM.Unlink (S.Current.all, N);
