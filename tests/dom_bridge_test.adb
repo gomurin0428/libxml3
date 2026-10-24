@@ -870,6 +870,91 @@ begin
       pragma Assert (Materialize_Free_Count = 1);
       Materialize_Reset;
       XML3_DOM_Allocation.Free_State (Destination);
+      declare
+         Managed : XML3_DOM_Store.Store;
+         Existing, Existing_Ns, Imported, Second, Root_Facade : System.Address;
+         Existing_View, Found_View : Node_View;
+         Found : Boolean;
+         procedure Store_Arena_Check (Doc : System.Address)
+           with Import, Convention => C,
+             External_Name => "bridge_store_arena_check";
+      begin
+         XML3_DOM.Materialize.Build
+           (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
+            Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         declare
+            Before_Source : constant State := Source.all;
+         begin
+            Fail_Next_Malloc;
+            XML3_DOM_Store.Adopt_Arena (Managed, Source, Imported, Build_Status);
+            pragma Assert
+              (Build_Status = XML3_DOM_Constructors.No_Memory
+               and then Imported = System.Null_Address and then Source /= null
+               and then Source.all = Before_Source
+               and then XML3_DOM_Store.Is_Empty (Managed));
+            XML3_DOM_Store.Construct
+              (Managed, Document_Node, "", "", False, System.Null_Address,
+               Existing, Existing_Ns, Build_Status);
+            pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+            XML3_DOM_Store.Inspect (Managed, Existing, Existing_View, Found);
+            pragma Assert (Found);
+            Fail_Next_Malloc;
+            XML3_DOM_Store.Adopt_Arena (Managed, Source, Imported, Build_Status);
+            pragma Assert
+              (Build_Status = XML3_DOM_Constructors.No_Memory
+               and then Imported = System.Null_Address and then Source /= null
+               and then Source.all = Before_Source);
+            XML3_DOM_Store.Inspect (Managed, Existing, Found_View, Found);
+            pragma Assert (Found and then Found_View = Existing_View);
+         end;
+         Root_Facade := Node (Source.all, 3).Facade;
+         XML3_DOM_Store.Adopt_Arena (Managed, Source, Imported, Build_Status);
+         pragma Assert
+           (Build_Status = XML3_DOM_Constructors.Created and then Source = null);
+         Store_Arena_Check (Imported);
+         XML3_DOM_Store.Inspect (Managed, Root_Facade, Found_View, Found);
+         pragma Assert (Found and then Found_View.Kind = Element_Node);
+         XML3_DOM.Materialize.Build
+           (Input, Parsed_Nodes, Count, Parsed_Names, Scratch, Source,
+            Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         declare
+            Before_Source : constant State := Source.all;
+         begin
+            Fail_Next_Malloc;
+            XML3_DOM_Store.Adopt_Arena (Managed, Source, Second, Build_Status);
+            pragma Assert
+              (Build_Status = XML3_DOM_Constructors.No_Memory
+               and then Source /= null and then Source.all = Before_Source);
+            Store_Arena_Check (Imported);
+         end;
+         XML3_DOM_Store.Adopt_Arena (Managed, Source, Second, Build_Status);
+         pragma Assert
+           (Build_Status = XML3_DOM_Constructors.Created and then Source = null);
+         Store_Arena_Check (Imported);
+         Store_Arena_Check (Second);
+         XML3_DOM_Store.Inspect (Managed, Existing, Found_View, Found);
+         pragma Assert (Found and then Found_View = Existing_View);
+         XML3_DOM_Store.Unlink (Managed, Root_Facade, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Release
+           (Managed, Imported, XML3_DOM_Store.Document_Only, False, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Inspect (Managed, Root_Facade, Found_View, Found);
+         pragma Assert (Found and then Found_View.Parent = Null_Node);
+         XML3_DOM_Store.Release
+           (Managed, Root_Facade, XML3_DOM_Store.Content_Node, False, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Release
+           (Managed, Second, XML3_DOM_Store.Document_Only, False, Build_Status);
+         pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
+         XML3_DOM_Store.Release
+           (Managed, Existing, XML3_DOM_Store.Document_Only, False, Build_Status);
+         pragma Assert
+           (Build_Status = XML3_DOM_Constructors.Created
+            and then XML3_DOM_Store.Is_Empty (Managed));
+      end;
    end;
    Ada.Text_IO.Put_Line ("DOM arena adoption, rollback, and release tests passed");
 end DOM_Bridge_Test;

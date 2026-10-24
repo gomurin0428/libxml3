@@ -133,19 +133,26 @@ package XML3_DOM with SPARK_Mode is
    function Snapshot_Nodes (S : State) return Node_View_Array
      with Ghost, Global => null;
 
-   function Holder_Count
+   function Count_Holders
      (Nodes : Node_View_Array; B : Owner_Ref; N : Natural) return Natural
    is (if N = 0 then 0
        else (if Holds (Nodes (N), B) then 1 else 0)
-         + Holder_Count (Nodes, B, N - 1))
+         + Count_Holders (Nodes, B, N - 1))
+     with Ghost, Global => null,
+       Pre => Nodes'First = 1 and then N <= Nodes'Last,
+       Post => Count_Holders'Result <= N,
+       Subprogram_Variant => (Decreases => N);
+
+   function Holder_Count
+     (Nodes : Node_View_Array; B : Owner_Ref; N : Natural) return Natural
+   is (Count_Holders (Nodes, B, N))
      with Ghost, Global => null,
        Pre => Nodes'First = 1 and then N <= Nodes'Last,
        Post => Holder_Count'Result <= N
          and then Holder_Count'Result =
            (if N = 0 then 0
             else (if Holds (Nodes (N), B) then 1 else 0)
-              + Holder_Count (Nodes, B, N - 1)),
-       Subprogram_Variant => (Decreases => N);
+              + Count_Holders (Nodes, B, N - 1));
    function Well_Sized (S : State) return Boolean
      with Ghost, Global => null;
 

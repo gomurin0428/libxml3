@@ -456,6 +456,26 @@ void bridge_materialize_check_retained(xmlNode *root, xmlNode *attr,
     assert(empty->href != NULL && ((const char *)empty->href)[0] == '\0');
 }
 
+void bridge_store_arena_check(xmlDoc *doc) {
+    xmlNode *before = doc->children;
+    assert(before != NULL && before->next != NULL);
+    xmlNode *root = before->next;
+    xmlNode *attr = (xmlNode *)root->properties;
+    assert(attr != NULL && attr->next != NULL);
+    xmlNode *lang = attr->next;
+    xmlNode *text = root->children;
+    assert(text != NULL && text->next != NULL);
+    xmlNode *cdata = text->next;
+    assert(cdata->next != NULL && cdata->next->next != NULL);
+    xmlNode *comment = cdata->next;
+    xmlNode *pi = comment->next;
+    assert(pi->next != NULL && root->nsDef != NULL);
+    xmlNode *child = pi->next;
+    bridge_materialize_check(doc, before, root, attr, attr->children,
+      lang, lang->children, text, cdata, comment, pi, child,
+      lang->ns, root->nsDef, root->nsDef->next, child->nsDef);
+}
+
 unsigned bridge_free_count(unsigned index) {
     assert(index < 3);
     return free_counts[index];

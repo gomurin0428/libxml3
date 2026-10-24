@@ -1,5 +1,6 @@
 with System;
 with XML3_DOM;
+with XML3_DOM.Import;
 with XML3_DOM_Constructors;
 with XML3_Native_Memory;
 
@@ -7,6 +8,9 @@ package XML3_DOM_Store with SPARK_Mode is
    use type System.Address;
    use type XML3_DOM.Slot_State;
    use type XML3_DOM_Constructors.Construction_Status;
+   use type XML3_DOM.State_Access;
+   use type XML3_DOM.State;
+   pragma Unevaluated_Use_Of_Old (Allow);
 
    type Store is limited private
      with Default_Initial_Condition => Ready (Store);
@@ -15,6 +19,19 @@ package XML3_DOM_Store with SPARK_Mode is
 
    subtype Operation_Status is XML3_DOM_Constructors.Construction_Status;
    type Release_Kind is (Document_Only, Content_Node, Plain_Attribute);
+
+   procedure Adopt_Arena
+     (S : in out Store; Source : in out XML3_DOM.State_Access;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Source /= null
+         and then XML3_DOM.Valid (Source.all)
+         and then XML3_DOM.Can_Edit (Source.all)
+         and then XML3_DOM.Import.Is_Arena (Source.all),
+       Post => (if Status = XML3_DOM_Constructors.Created then
+         Source = null and then Result /= System.Null_Address
+       else Result = System.Null_Address and then Source /= null
+         and then Source.all = Source.all'Old);
 
    procedure Construct
      (S : in out Store; Kind : XML3_DOM.Node_Kind;
@@ -66,8 +83,6 @@ package XML3_DOM_Store with SPARK_Mode is
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
 
 private
-   use type XML3_DOM.State_Access;
-
    type Store is limited record
       Current : XML3_DOM.State_Access := null;
    end record with Type_Invariant =>

@@ -109,14 +109,31 @@ real facade/content updates, source-clear-before-free ordering, repeated-tail
 no-op, and final Store reclamation. The public C API remains on the legacy DOM;
 this is not yet a protected shared runtime.
 
+`Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
+nodes, namespaces and one owner before calling `Import.Adopt` exactly once.
+Success synchronizes the destination and returns the imported document facade.
+Failure preserves the complete source state and caller ownership; newly
+initialized empty backing state is reclaimed with `Reclaim_Empty`. The native
+source arena is never directly freed by adoption. Tests cover empty-Store,
+map-allocation and growth-allocation failures, successful import and C facade
+traversal, preservation of an existing document across a second import, and
+detached-root lifetime through final Store cleanup.
+
+The ghost `Count_Holders` helper retains the recursive holder-count definition
+with a bounded-result postcondition and decreasing variant. `Holder_Count`
+delegates to it while stating the same recurrence through the helper, avoiding
+a recursively evaluated wrapper postcondition. `Valid` and `Pin_Equation` are
+unchanged.
+
 `XML3_DOM.Import.Adopt` consumes a single-owner source state after installing its
 arena into a destination with capacity already reserved. Sorted maps reuse
 unused slots and translate links/pins while preserving existing live entries.
 The native arena is not copied or freed; only the source Ada state and temporary
 integer maps are deallocated. Failed preflight or map allocation preserves both
-graphs. Preflight currently requires worst-case append capacity without credit
-for reusable holes; capacity growth is the caller's responsibility. Synchronizing
-the destination updates native metadata before the imported facades are exposed.
+graphs. Direct `Import.Adopt` requires worst-case append capacity without credit
+for reusable holes; `Store.Adopt_Arena` performs checked initialization/growth
+around that requirement. Synchronizing the destination updates native metadata
+before the imported facades are exposed.
 The bridge clears namespace pointer fields when the core's
 `Namespace_Release_Required` reports a releasing owner, in addition to clearing
 retired nodes. Native tests cover capacity/allocation rollback, slot reuse,
@@ -172,7 +189,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 6,389-check result.
+  are trusted, not discharged by the 6,432-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

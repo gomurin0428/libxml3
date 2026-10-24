@@ -89,6 +89,56 @@ package body XML3_DOM_Store with SPARK_Mode is
       XML3_DOM_Allocation.Free_State (S.Current);
    end Reclaim_Empty;
 
+   procedure Adopt_Arena
+     (S : in out Store; Source : in out State_Access;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      use type XML3_DOM.Import.Import_Status;
+      Source_Nodes : constant Natural := Node_Count (Source.all);
+      Source_Namespaces : constant Natural := Namespace_Count (Source.all);
+      Root : Node_Ref;
+      Imported : XML3_DOM.Import.Import_Status;
+      Allocated : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := No_Memory;
+      if S.Current = null then
+         Initialize
+           (S.Current, Positive (Natural'Max
+              (16, Natural'Max (Source_Nodes, Source_Namespaces))), Allocated);
+         if not Allocated then
+            return;
+         end if;
+      end if;
+      if Source_Nodes > Natural'Last - Node_Count (S.Current.all)
+        or else Source_Namespaces >
+          Natural'Last - Namespace_Count (S.Current.all)
+        or else Owner_Count (S.Current.all) = Natural'Last
+      then
+         Status := Limit_Exceeded;
+         Reclaim_Empty (S);
+         return;
+      end if;
+      Ensure_Capacity
+        (S.Current, Node_Count (S.Current.all) + Source_Nodes,
+         Namespace_Count (S.Current.all) + Source_Namespaces,
+         Owner_Count (S.Current.all) + 1, Allocated);
+      if not Allocated then
+         Reclaim_Empty (S);
+         return;
+      end if;
+      XML3_DOM.Import.Adopt (S.Current.all, Source, Root, Imported);
+      if Imported = XML3_DOM.Import.Imported then
+         Result := Node (S.Current.all, Root).Facade;
+         XML3_DOM_Bridge.Synchronize (S.Current.all);
+         Status := Created;
+      else
+         Status := (if Imported = XML3_DOM.Import.No_Memory
+                    then No_Memory else Limit_Exceeded);
+         Reclaim_Empty (S);
+      end if;
+   end Adopt_Arena;
+
    procedure Construct
      (S : in out Store; Kind : Node_Kind;
       Name, Content : String; Has_Content : Boolean;

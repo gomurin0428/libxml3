@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **6,389 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **6,432 discharged checks**, **0 unproved**,
 and **0 justified**. Non-failing warnings remain for unused outputs and
 assignments, unavailable termination aspects on trusted external operations, and
 representation generation for a trusted package spec; no proof checks remained
@@ -14,15 +14,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 152 |
-| Initialization | 225 |
-| Run-time checks | 3,199 |
+| Data dependencies | 154 |
+| Initialization | 230 |
+| Run-time checks | 3,224 |
 | Assertions / loop invariants | 884 |
-| Functional contracts | 1,778 |
+| Functional contracts | 1,789 |
 | Termination | 151 |
-| Total | 6,389 |
+| Total | 6,432 |
 
-480 checks were discharged by flow analysis and 5,909 by proof. `Parse`, `Decode`,
+488 checks were discharged by flow analysis and 5,944 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -51,10 +51,13 @@ The private `Attach` and its extracted helpers were proved separately with
 `--proof=progressive --timeout=10 --counterexamples=off`, followed by the whole
 DOM unit and the aggregate invocation above. The aggregate reused that proof
 session; this is not evidence of cold-cache proof timing or reproducibility.
-`XML3_DOM.Import`, `Namespace_Release_Required`, the bridge, and
-`XML3_DOM.Materialize` were also proved with focused invocations before the final
-aggregate run. The focused materializer proof included `Fill_Node` and
-`Fill_Namespace` and passed with zero unproved checks.
+Focused whole-unit invocations for `XML3_DOM`, `XML3_DOM.Import`, and
+`XML3_DOM_Store` passed before the final aggregate run. The Store proof includes
+`Adopt_Arena` and its source/destination rollback contracts. The `Count_Holders`
+ghost helper and `Holder_Count` recurrence wrapper also passed proof; `Valid`
+and `Pin_Equation` were unchanged. The focused materializer proof included
+`Fill_Node` and `Fill_Namespace` and passed with zero unproved checks; the
+materializer was unchanged for the Store adoption delta.
 
 The proof project selects ten complete SPARK units (the original four plus
 `XML3_DOM`, `XML3_DOM_Bridge`, `XML3_DOM_Constructors`, `XML3_DOM_Store`, and
@@ -121,6 +124,15 @@ merge/rollback ordering. `Add_Child` appends ordinary children or merges
 adjacent text with a prepared NUL-terminated buffer. It registers the buffer
 with a reserved owner before `Merge_Text`; reservation release and
 synchronization route a rejected prepared buffer through the release protocol.
+`Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
+nodes, namespaces and one owner, calls `Import.Adopt` once, then synchronizes
+and returns the imported document facade on success. On failure the source
+remains wholly unchanged and caller-owned; newly initialized empty backing
+state is reclaimed through `Reclaim_Empty`, and the native source arena is
+never directly freed. Tests cover empty-Store allocation failure, map-allocation
+failure with an existing document, growth-allocation failure, successful
+adoption and native traversal, preservation of the first document during a
+second import, unlinking, detached-root lifetime, and final Store cleanup.
 The public C API remains on the legacy DOM. Native metadata reads still require
 valid library pointers; this is not arbitrary pointer validation or a protected
 shared runtime.
@@ -138,11 +150,12 @@ namespaces, and live/releasing owners are preserved. The destination retains the
 source native allocation and the source Ada state is consumed only after
 installation. Capacity rejection or map allocation failure preserves both
 graphs. No native arena is freed during adoption; synchronization subsequently
-rewrites facade metadata IDs. The current preflight conservatively reserves
-append space for every source node/namespace and one owner, even though mapping
-reuses unused slots. A caller must grow the destination for that worst case;
-free holes alone do not ensure admission at capacity. This is an internal
-foundation constraint, not a new public parser size policy.
+rewrites facade metadata IDs. Direct `Import.Adopt` still requires worst-case
+append capacity for every source node/namespace and one owner, even though
+mapping reuses unused slots. `Store.Adopt_Arena` provides checked destination
+initialization/growth around that preflight; free holes alone do not ensure
+admission at capacity. This is an internal foundation constraint, not a new
+public parser size policy.
 
 The native arena test covers this transfer with reusable node/namespace/owner
 slots, unchanged original-document fields, capacity rejection, and a size-targeted
@@ -196,9 +209,9 @@ topology, graph validation, release decisions, and policy remain in SPARK.
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-be3968b17b0ddb8227699f4525e484b001ab79a418e37f65448998adeac57cfc  src/xml3_dom.ads
+0c04531dac383e80a73568cb2c306013d5ea74dad1dbd0b5383df400866566b5  src/xml3_dom.ads
 ee3d1035e276e306af97a1723de1927ca0598e446cb95fe670678a7a881da852  src/xml3_dom.adb
-e78f63f7e14aea6b616796ca85eb355022c43b4a17a5839ec54707908774c7f1  src/xml3_dom-import.ads
+52e5a8f207dbf63a67ca2d5ad99622ddee3d1d931d2822830dbb490fdd4a5713  src/xml3_dom-import.ads
 d96c80620eb295816de0e000a976500fca97c1365d33dd96c57d31a726c2d5eb  src/xml3_dom-import.adb
 11b0272dbbf8cf7988fb7c96ef8f104f22db1a1390e2c3f5df0bd6d3f6ef60c1  src/xml3_dom-materialize.ads
 16edecdcbf79a79f0568afe025877c9b9113afaab08bf983d5b7dd053b757392  src/xml3_dom-materialize.adb
@@ -206,8 +219,8 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 dd29f41eca701df16260920c23075459c3eedc99175d2d9302ee7225d1d945a8  src/xml3_dom_bridge.adb
 5a434888dd9904ff0bebfd1ef6aa3711047cf97375d3e0d538f0dc4dbb8d9839  src/xml3_dom_constructors.ads
 e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_constructors.adb
-226fe71425702680e9c7e80ed8b120b38f4eb5207ac7075e8fc6049b6d0b6b72  src/xml3_dom_store.ads
-7daa23ede36f064256cad01ef66955dbbc6336f2df1089549f162fb4c326d26e  src/xml3_dom_store.adb
+58da3a27e44f5600ed0d8dcf03f5e73818c473d45b49b70010a347590adbc1fa  src/xml3_dom_store.ads
+d0f36b20a2f2e37a8b121530cb48676e8a0387df0affec40fb8c04fbdc935e21  src/xml3_dom_store.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
 4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
 38c4ff80e2a8bafa63579a0cb03026926cb4ad4ee44d2324d86842e119ac1c05  src/xml3_dom_allocation.ads
@@ -215,8 +228,8 @@ e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_c
 126d2cb2b55b01f0c18ac5ee4dd8f6a4c670f4e2e340e32e2e56f1f20a14f453  proof.gpr
 6f5bc198d60a35d2307e415ba89a4ab63fad8568a994887615d84acae966adb5  Makefile
 472f04d1a860daaf7d0d381b0b3025f6e6d3b427b167706909c2696cb0f4dc53  tests/dom_bridge_test.gpr
-75311f9c3ccb388b81084bf29f78677c65d68ca211a16e303bafa3131b907d34  tests/dom_bridge_test.adb
-23caf71de19534bf7a948544b17fb031672f7d292f4107caad16e6c527ecd60d  tests/dom_bridge_facade.c
+2666eefa8c6789cdc15c13e4c297d4b3bfb9af08898aaaed815cbb42df788b9e  tests/dom_bridge_test.adb
+84bf1b9432e3daa394b3da8c29ed55fd72924bafba81ff5632aaedc47cdd7de7  tests/dom_bridge_facade.c
 ```
 
 A source or contract change invalidates the recorded result until proof is rerun.
