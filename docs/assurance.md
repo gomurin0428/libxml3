@@ -7,7 +7,7 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
-and `XML3_DOM_Constructors`, plus
+`XML3_DOM_Constructors`, and `XML3_DOM_Store`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
 contracts for those units.
@@ -95,6 +95,12 @@ trusted external-memory operations. Integration tests exercise successful
 document/element/text construction, invalid namespace/kind rejection, native
 malloc failure, and retained namespace/document storage after detachment.
 
+`XML3_DOM_Store` owns a private limited backing state and composes those
+operations with facade lookup and synchronization. Lookup checks the metadata
+ID range, live state and exact facade equality; the native metadata read itself
+still assumes a valid library pointer. The store reclaims its backing state only
+after no logical owners remain. This is not yet a protected shared runtime.
+
 **`XML3_C` has not been connected to this foundation.** Its parser materialization,
 DOM editing/ownership, root replacement and text merging remain the old unproved
 implementation. The new kernel and integration test are not a substitute for
@@ -123,7 +129,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 4,309-check result.
+  are trusted, not discharged by the 4,741-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

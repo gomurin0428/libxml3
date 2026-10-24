@@ -5,6 +5,7 @@ with XML3_DOM; use XML3_DOM;
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
+with XML3_DOM_Store;
 with XML3_Native_Memory;
 
 procedure DOM_Bridge_Test is
@@ -378,4 +379,62 @@ begin
    end;
    XML3_DOM_Allocation.Free_State (S);
    Ada.Text_IO.Put_Line ("Native DOM projection, pin lifetime, and release ordering tests passed");
+
+   declare
+      package Stores renames XML3_DOM_Store;
+      use XML3_DOM_Constructors;
+      Managed : Stores.Store;
+      Doc, Root, Text, Xml_Ns, Ignored, Previous, Rejected : System.Address;
+      Status : Stores.Operation_Status;
+      Item, Before_Root : Node_View;
+      Found : Boolean;
+   begin
+      pragma Assert (Stores.Is_Empty (Managed));
+      Stores.Construct
+        (Managed, Document_Node, "", "1.0", True, System.Null_Address,
+         Doc, Xml_Ns, Status);
+      pragma Assert (Status = Created);
+      Stores.Construct
+        (Managed, Element_Node, "r", "", False, Xml_Ns,
+         Root, Ignored, Status);
+      pragma Assert (Status = Created);
+      Stores.Construct
+        (Managed, Text_Node, "text", "x", True, System.Null_Address,
+         Text, Ignored, Status);
+      pragma Assert (Status = Created);
+      Stores.Attach (Managed, Root, Text, False, Status);
+      pragma Assert (Status = Created);
+      Stores.Set_Root (Managed, Doc, Root, Previous, Status);
+      pragma Assert (Status = Created and then Previous = System.Null_Address);
+      Constructor_Check_Live (Doc, Root, Text, Xml_Ns);
+      Stores.Inspect (Managed, Root, Before_Root, Found);
+      pragma Assert (Found);
+
+      Stores.Construct
+        (Managed, Element_Node, "bad", "", False, Doc,
+         Rejected, Ignored, Status);
+      pragma Assert (Status = Invalid_Argument and then Rejected = System.Null_Address);
+      Fail_Next_Malloc;
+      Stores.Construct
+        (Managed, Text_Node, "text", "y", True, System.Null_Address,
+         Rejected, Ignored, Status);
+      pragma Assert (Status = No_Memory and then Rejected = System.Null_Address);
+      Stores.Inspect (Managed, Root, Item, Found);
+      pragma Assert (Found and then Item = Before_Root);
+
+      Stores.Unlink (Managed, Root, Status);
+      pragma Assert (Status = Created);
+      Stores.Release (Managed, Doc, Stores.Document_Only, False, Status);
+      pragma Assert (Status = Created and then not Stores.Is_Empty (Managed));
+      Check_Detached (Doc, Root, Text, Xml_Ns);
+      Stores.Inspect (Managed, Doc, Item, Found);
+      pragma Assert (not Found);
+      Stores.Inspect (Managed, Root, Item, Found);
+      pragma Assert (Found);
+      Stores.Release (Managed, Root, Stores.Content_Node, False, Status);
+      pragma Assert (Status = Created and then Stores.Is_Empty (Managed));
+      Stores.Inspect (Managed, System.Null_Address, Item, Found);
+      pragma Assert (not Found);
+   end;
+   Ada.Text_IO.Put_Line ("Opaque DOM store lifecycle tests passed");
 end DOM_Bridge_Test;

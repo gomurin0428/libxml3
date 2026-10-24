@@ -680,6 +680,7 @@ package XML3_DOM with SPARK_Mode is
        and then N <= Node_Ref (Node_Count (S))
        and then Node (S, N).State = Live,
      Post => Valid (S) and then Can_Edit (S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then Node (S, N).Parent = Null_Node
        and then Node (S, N).Previous = Null_Node
        and then Node (S, N).Next = Null_Node
@@ -724,6 +725,7 @@ package XML3_DOM with SPARK_Mode is
          (if Node (S'Old, Parent).Kind = Document_Node
           then Parent else Node (S'Old, Parent).Document);
      begin Valid (S) and then Can_Edit (S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then (if Success then Node (S, Child).Parent = Parent)
        and then (if not Success then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old)
        and then (if Success then
@@ -747,6 +749,7 @@ package XML3_DOM with SPARK_Mode is
        and then Node (S, Doc).State = Live
        and then Node (S, Root).State = Live,
      Post => Valid (S) and then Can_Edit (S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then S.Capacity = S'Old.Capacity
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
@@ -790,6 +793,7 @@ package XML3_DOM with SPARK_Mode is
          (if Node (S'Old, Element).Kind = Document_Node
           then Element else Node (S'Old, Element).Document);
      begin Valid (S) and then Can_Edit (S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then (if Success then Node (S, Attribute).Parent = Element)
        and then (if not Success then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old)
        and then (if Success then

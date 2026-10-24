@@ -4,6 +4,7 @@ project DOM_Bridge_Test is
    for Source_Files use
      ("xml3_dom.ads", "xml3_dom.adb",
       "xml3_dom_constructors.ads", "xml3_dom_constructors.adb",
+      "xml3_dom_store.ads", "xml3_dom_store.adb",
       "xml3_dom_allocation.ads", "xml3_dom_allocation.adb",
       "xml3_namespaces.ads", "xml3_namespaces.adb",
       "xml3_text.ads", "xml3_text.adb",

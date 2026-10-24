@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **4,309 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **4,741 discharged checks**, **0 unproved**,
 and **0 justified**. Non-failing warnings remain for unused outputs and
 assignments, trusted external subprogram termination, and representation
 generation for a trusted package spec; no proof checks remained unproved.
@@ -13,15 +13,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 105 |
-| Initialization | 140 |
-| Run-time checks | 2,195 |
-| Assertions / loop invariants | 614 |
-| Functional contracts | 1,123 |
-| Termination | 132 |
-| Total | 4,309 |
+| Data dependencies | 120 |
+| Initialization | 166 |
+| Run-time checks | 2,293 |
+| Assertions / loop invariants | 637 |
+| Functional contracts | 1,389 |
+| Termination | 136 |
+| Total | 4,741 |
 
-329 checks were discharged by flow analysis and 3,980 by proof. `Parse`, `Decode`,
+374 checks were discharged by flow analysis and 4,367 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -46,15 +46,15 @@ gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=10 -j4
 exit unsuccessfully if proof checks remain unproved. Earlier incomplete-proof
 runs did exit with code 1; no check suppressions or assumption pragmas were added.
 The final summary is generated at `obj/proof/gnatprove/gnatprove.out`.
-The focused `Attach` proof was also run successfully with `--timeout=30`;
-the final aggregate invocation above reused the proof session. A cold run may
-need that larger solver budget. This changes neither the contracts nor the
-proof obligations.
+The private `Attach` and its extracted helpers were proved separately with
+`--proof=progressive --timeout=10 --counterexamples=off`, followed by the whole
+DOM unit and the aggregate invocation above. The aggregate reused that proof
+session; this is not evidence of cold-cache proof timing or reproducibility.
 
-The proof project selects seven complete SPARK units (the original four plus
-`XML3_DOM`, `XML3_DOM_Bridge`, and `XML3_DOM_Constructors`) and the two trusted
+The proof project selects eight complete SPARK units (the original four plus
+`XML3_DOM`, `XML3_DOM_Bridge`, `XML3_DOM_Constructors`, and `XML3_DOM_Store`) and the two trusted
 boundary specs `XML3_Native_Memory` and `XML3_DOM_Allocation`; the analyzer
-reports nine units.
+reports ten units.
 The two native bodies remain explicitly outside SPARK. Native memory layout and
 allocation correctness are trusted, not replaced with a proved implementation.
 The full run reported that representation information could not be generated
@@ -107,6 +107,20 @@ exactly-once freeing. Native bytes, address freshness/non-overlap, and layout
 correspondence are still trusted, not proved by these contracts. The exported
 `xmlNewDoc`, `xmlNewNode`, and `xmlNewText` are not wired to this constructor yet.
 
+`XML3_DOM_Store` adds an opaque, limited owner of the internal state. It checks
+live IDs and exact facade identity before delegating construction, attachment,
+root replacement, unlinking and release, synchronizes effects, and reclaims an
+empty backing state. Its lifecycle tests cover real C facade fields, namespace
+rejection, allocation failure, detached lifetime and final reclamation. Native
+metadata reads still require valid library pointers; this is not arbitrary
+pointer validation, a protected shared runtime, or public C API integration.
+
+Attachment validation, topology mutation and document propagation now have
+separate proof boundaries. `Unlink_Tail_Lemma`, `Append_Child_Links`,
+`Relink_Marked_Subtree`, the complete private `Attach`, and
+`Set_Marked_Document` all passed. Explicit frame and result assertions are
+proved obligations, not assumptions; the original attachment contract remains.
+
 ## Source identity (SHA-256)
 
 ```text
@@ -118,17 +132,19 @@ correspondence are still trusted, not proved by these contracts. The exported
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-0543f81b4e1ad1a7ee9617ec6f7d13bdafcce8587ed02b3b92284f61975e4117  src/xml3_dom.ads
-5e89e794c05fb206fb56c332f0179f514ef58649e590b956e1c567dde569d5a1  src/xml3_dom.adb
+fe0f95305285e0fa11b6c9bb27bb85d2a859a259cecb9bc192b953b5e2b7ae40  src/xml3_dom.ads
+78b58dc29347cbfc5e9dd78044c4079418866fdeac37cdfc3ecf56de9256dd93  src/xml3_dom.adb
 a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
 6c5b0151f2d06bc264e23026480383e1ef4a10722785bf26575c50b628dd42c0  src/xml3_dom_bridge.adb
 5a434888dd9904ff0bebfd1ef6aa3711047cf97375d3e0d538f0dc4dbb8d9839  src/xml3_dom_constructors.ads
 e98d478d78ae0a0dae9496f7c44188e78aa3f90800b9ac18260963e65b59353f  src/xml3_dom_constructors.adb
+5885dd1d83afeca1a16e9ce6c148eb7c15f047eb108c36f4b20dad58f7d0fff9  src/xml3_dom_store.ads
+bc707afc11cbb6094d743b56759943bc7ab406237a2bc989fa8e50d379edcbf1  src/xml3_dom_store.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
 4f21092f60816af983662a55496e98ed8c5d74ad82a4e66bd131dfd6b6e14d27  src/xml3_native_memory.adb
 b87754dd3f575f8f64ad374aee2832ab60bff6eb9c2477900f743d7805865122  src/xml3_dom_allocation.ads
 42b3dd88e64ac8b1e6ccc43947ae926102ca80aa06de6c29ea77356f88e2b7a3  src/xml3_dom_allocation.adb
-e5f2db92eb726b08af031fe32c69348a032682f9abeee3ed5249952a6f3e3d35  proof.gpr
+159afdfcbdac3164db8d55188df17a9afe29d030f45af298ce26b8814ba03e27  proof.gpr
 ```
 
 A source or contract change invalidates the recorded result until proof is rerun.

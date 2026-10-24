@@ -1138,6 +1138,66 @@ package body XML3_DOM with SPARK_Mode is
       end loop;
    end Unlink_Lemma;
 
+   procedure Unlink_Tail_Lemma
+     (S : State; Parent, Child : Node_Ref; Property : Boolean)
+   with Ghost, Global => null,
+     Pre => Valid (S)
+       and then Parent in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Parent /= Child
+       and then Node (S, Parent).State = Live
+       and then Node (S, Child).State = Live
+       and then Property = (Node (S, Child).Kind = Attribute_Node)
+       and then (declare
+         Tail : constant Node_Ref :=
+           (if Property then Node (S, Parent).Last_Prop
+            else Node (S, Parent).Last_Child);
+        begin Tail = Null_Node or else
+          (Tail in 1 .. Node_Ref (Node_Count (S)) and then Tail /= Child)),
+     Post => (declare
+       Tail : constant Node_Ref :=
+         (if Property then Node (S, Parent).Last_Prop
+          else Node (S, Parent).Last_Child);
+      begin
+        (if Property then
+           Unlinked_View (S, Child, Parent).Last_Prop = Tail
+         else
+           Unlinked_View (S, Child, Parent).Last_Child = Tail)
+        and then (if Tail /= Null_Node then
+          Unlinked_View (S, Child, Tail).Sibling_Order =
+            Node (S, Tail).Sibling_Order));
+
+   procedure Unlink_Tail_Lemma
+     (S : State; Parent, Child : Node_Ref; Property : Boolean)
+   is
+      Item : constant Node_View := Node (S, Child);
+      Tail : constant Node_Ref :=
+        (if Property then Node (S, Parent).Last_Prop
+         else Node (S, Parent).Last_Child);
+   begin
+      pragma Assert (Node_Siblings_Valid (S.Graph, Positive (Child)));
+      pragma Assert
+        (if Item.Parent = Parent and then Item.Next = Null_Node then
+           (if Property then Node (S, Parent).Last_Prop = Child
+            else Node (S, Parent).Last_Child = Child));
+      pragma Assert
+        (if Item.Parent = Parent and then Item.Next = Null_Node then
+           Tail = Child);
+      pragma Assert
+        (not (Item.Parent = Parent and then Item.Next = Null_Node));
+      pragma Assert
+        (if Property then
+           Unlinked_View (S, Child, Parent).Last_Prop =
+             Node (S, Parent).Last_Prop
+         else
+           Unlinked_View (S, Child, Parent).Last_Child =
+             Node (S, Parent).Last_Child);
+      pragma Assert
+        (if Tail /= Null_Node then
+           Unlinked_View (S, Child, Tail).Sibling_Order =
+             Node (S, Tail).Sibling_Order);
+   end Unlink_Tail_Lemma;
+
    procedure Unlink (S : in out State; N : Node_Ref) is
       Before : constant State := S with Ghost;
       Item : Node_View := S.Graph.Nodes (Positive (N));
@@ -1257,6 +1317,8 @@ package body XML3_DOM with SPARK_Mode is
            Node_Links_Valid (After.Graph, I))
          and then (for all I in 1 .. After.Graph.Node_Used =>
            After.Graph.Nodes (I).State = Before.Graph.Nodes (I).State
+             and then After.Graph.Nodes (I).Facade =
+               Before.Graph.Nodes (I).Facade
              and then After.Graph.Nodes (I).Document =
                Before.Graph.Nodes (I).Document
              and then After.Graph.Nodes (I).Doc_Pin =
@@ -1280,6 +1342,99 @@ package body XML3_DOM with SPARK_Mode is
            (for all K in 1 .. I => Node_Links_Valid (After.Graph, K));
       end loop;
    end Append_Lemma;
+
+   procedure Append_Child_Links
+     (S : in out State; Parent, Child : Node_Ref; Position : Natural)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Parent in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Parent /= Child
+       and then Node (S, Parent).State = Live
+       and then Node (S, Child).State = Live
+       and then Node (S, Child).Parent = Null_Node
+       and then Node (S, Parent).Tree_Rank < Node (S, Child).Tree_Rank
+       and then (declare
+         Property : constant Boolean :=
+           Node (S, Child).Kind = Attribute_Node;
+         Last : constant Node_Ref :=
+           (if Property then Node (S, Parent).Last_Prop
+            else Node (S, Parent).Last_Child);
+        begin Last = Null_Node or else
+          (Last in 1 .. Node_Ref (Node_Count (S))
+           and then Node (S, Last).Sibling_Order < Position)),
+     Post => Valid (S) and then Can_Edit (S)
+       and then S.Capacity = S.Capacity'Old
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then S.Marks = S.Marks'Old
+       and then S.Effects = S.Effects'Old
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S)) =>
+           Namespace (S, I) = Namespace (S'Old, I))
+       and then (for all I in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S)) =>
+           Owner (S, I) = Owner (S'Old, I))
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I) = Appended_View (S'Old, Parent, Child, I, Position)
+             and then Same_Pins (Node (S, I), Node (S'Old, I))
+             and then Node (S, I).Kind = Node (S'Old, I).Kind
+             and then Node (S, I).Facade = Node (S'Old, I).Facade
+             and then Node (S, I).Document = Node (S'Old, I).Document)
+       and then Node (S, Child).Parent = Parent;
+
+   procedure Append_Child_Links
+     (S : in out State; Parent, Child : Node_Ref; Position : Natural)
+   is
+      Before : constant State := S with Ghost;
+      Parent_Item : Node_View := S.Graph.Nodes (Positive (Parent));
+      Child_Item : Node_View := S.Graph.Nodes (Positive (Child));
+      Property : constant Boolean := Child_Item.Kind = Attribute_Node;
+      Last : constant Node_Ref :=
+        (if Property then Parent_Item.Last_Prop else Parent_Item.Last_Child);
+   begin
+      pragma Assert (Node_Siblings_Valid (Before.Graph, Positive (Child)));
+      pragma Assert (Node_Children_Valid (Before.Graph, Positive (Parent)));
+      pragma Assert
+        ((Parent_Item.First_Child = Null_Node) =
+           (Parent_Item.Last_Child = Null_Node));
+      pragma Assert
+        ((Parent_Item.First_Prop = Null_Node) =
+           (Parent_Item.Last_Prop = Null_Node));
+      pragma Assert
+        (Last = Null_Node or else
+          (Last in 1 .. Node_Ref (Node_Count (S))
+           and then Node (S, Last).Sibling_Order < Position));
+      Child_Item.Parent := Parent;
+      Child_Item.Previous := Last;
+      Child_Item.Next := Null_Node;
+      Child_Item.Sibling_Order := Position;
+      if Last = Null_Node then
+         if Property then Parent_Item.First_Prop := Child;
+         else Parent_Item.First_Child := Child;
+         end if;
+      else
+         S.Graph.Nodes (Positive (Last)).Next := Child;
+      end if;
+      if Property then Parent_Item.Last_Prop := Child;
+      else Parent_Item.Last_Child := Child;
+      end if;
+      S.Graph.Nodes (Positive (Parent)) := Parent_Item;
+      S.Graph.Nodes (Positive (Child)) := Child_Item;
+      pragma Assert (for all I in 1 .. S.Graph.Ns_Used =>
+        S.Graph.Namespaces (I) = Before.Graph.Namespaces (I));
+      pragma Assert (for all I in 1 .. S.Graph.Owner_Used =>
+        S.Graph.Owners (I) = Before.Graph.Owners (I));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+          Same_Pins (Node (S, I), Node (Before, I)));
+      pragma Assert (Pins_In_Range (S));
+      Append_Lemma (Before, S, Parent, Child, Position);
+      Preserve_Pin_Equation (Before, S);
+      Preserve_Namespace_Links (Before.Graph, S.Graph);
+   end Append_Child_Links;
 
    function Replaced_View
      (S : State; Parent, New_Child, Old_Child, I : Node_Ref) return Node_View
@@ -1414,9 +1569,13 @@ package body XML3_DOM with SPARK_Mode is
          and then (for all I in 1 .. S.Capacity =>
            S.Graph.Namespaces (I) = Before_Namespaces (I)
            and then S.Graph.Owners (I) = Before_Owners (I))
+         and then (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (S'Old, I))
          and then (for all I in Node_Ref range
            1 .. Node_Ref (Node_Count (S)) =>
              Node (S, I).State = Node (S'Old, I).State
+             and then Node (S, I).Facade = Node (S'Old, I).Facade
              and then Node (S, I).Document = Node (S'Old, I).Document
              and then Node (S, I).Doc_Pin = Node (S'Old, I).Doc_Pin)
          and then Node (S, New_Child).Parent = Parent
@@ -1716,6 +1875,9 @@ package body XML3_DOM with SPARK_Mode is
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
        and then S.Marks = S.Marks'Old
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S)) =>
+           Namespace (S, I) = Namespace (S'Old, I))
        and then (for all I in 1 .. Node_Count (S) =>
          (if S.Marks (I) then
             S.Graph.Nodes (I).Document = Target_Doc
@@ -1744,6 +1906,10 @@ package body XML3_DOM with SPARK_Mode is
             and then S.Graph.Ns_Used = Before.Graph.Ns_Used
             and then S.Graph.Owner_Used = Before.Graph.Owner_Used
             and then S.Marks = Before.Marks);
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range
+             1 .. Namespace_Ref (Namespace_Count (S)) =>
+               Namespace (S, J) = Namespace (Before, J));
          pragma Loop_Invariant
            (for all J in 1 .. S.Graph.Node_Used =>
              S.Graph.Nodes (J) =
@@ -1830,6 +1996,402 @@ package body XML3_DOM with SPARK_Mode is
       end loop;
    end Set_Marked_Document;
 
+   procedure Relink_Marked_Subtree
+     (S : in out State; Parent, Child : Node_Ref; Property : Boolean;
+      Append_Order, Rank_Lift : Natural; Replaced : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Parent in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Parent /= Child
+       and then Node (S, Parent).State = Live
+       and then Node (S, Child).State = Live
+       and then Property = (Node (S, Child).Kind = Attribute_Node)
+       and then not S.Marks (Positive (Parent))
+       and then S.Marks (Positive (Child))
+       and then Rank_Lift <= Natural'Last - Node (S, Child).Tree_Rank
+       and then Node (S, Parent).Tree_Rank <
+         Node (S, Child).Tree_Rank + Rank_Lift
+       and then (for all I in 1 .. S.Graph.Node_Used =>
+         (if S.Marks (I) then
+            S.Graph.Nodes (I).State = Live
+              and then S.Graph.Nodes (I).Tree_Rank <=
+                Natural'Last - Rank_Lift))
+       and then (for all I in 1 .. S.Graph.Node_Used =>
+         (if S.Graph.Nodes (I).State = Live
+           and then S.Graph.Nodes (I).Parent /= Null_Node
+           and then Node_Ref (I) /= Child
+          then S.Graph.Nodes (I).Parent <= Node_Ref (S.Graph.Node_Used)
+            and then S.Marks (I) =
+              S.Marks (Positive (S.Graph.Nodes (I).Parent))))
+       and then (if Replaced = Null_Node then
+         (declare
+            Last : constant Node_Ref :=
+              (if Property then Node (S, Parent).Last_Prop
+               else Node (S, Parent).Last_Child);
+          begin Last = Null_Node or else
+            (Last in 1 .. Node_Ref (Node_Count (S))
+             and then Last /= Child
+             and then Node (S, Last).Sibling_Order < Append_Order)))
+       and then (if Replaced /= Null_Node then
+         Node (S, Parent).Kind = Document_Node
+           and then Node (S, Child).Kind = Element_Node
+           and then Replaced in 1 .. Node_Ref (Node_Count (S))
+           and then Replaced /= Parent and then Replaced /= Child
+           and then Node (S, Replaced).State = Live
+           and then Node (S, Replaced).Kind = Element_Node
+           and then Node (S, Replaced).Parent = Parent),
+     Post => Valid (S) and then Can_Edit (S)
+       and then S.Capacity = S.Capacity'Old
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then S.Marks = S.Marks'Old
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S)) =>
+           Same_Pins (Node (S, I), Node (S'Old, I))
+             and then Node (S, I).Kind = Node (S'Old, I).Kind
+             and then Node (S, I).Facade = Node (S'Old, I).Facade
+             and then Node (S, I).Document = Node (S'Old, I).Document)
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S)) =>
+           Namespace (S, I) = Namespace (S'Old, I))
+       and then (for all I in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S)) =>
+           Owner (S, I) = Owner (S'Old, I))
+       and then Node (S, Child).Parent = Parent
+       and then (if Replaced /= Null_Node then
+         Replaced in 1 .. Node_Ref (Node_Count (S))
+           and then Node (S, Replaced).State = Live
+           and then Node (S, Replaced).Parent = Null_Node
+           and then Node (S, Replaced).Previous = Null_Node
+           and then Node (S, Replaced).Next = Null_Node
+           and then Node (S, Child).Previous =
+             Unlinked_View (S'Old, Child, Replaced).Previous
+           and then Node (S, Child).Next =
+             Unlinked_View (S'Old, Child, Replaced).Next
+           and then Node (S, Child).Sibling_Order =
+             Unlinked_View (S'Old, Child, Replaced).Sibling_Order);
+
+   procedure Relink_Marked_Subtree
+     (S : in out State; Parent, Child : Node_Ref; Property : Boolean;
+      Append_Order, Rank_Lift : Natural; Replaced : Node_Ref)
+   is
+      Before : constant State := S with Ghost;
+      Detached : State (Before.Capacity) with Ghost;
+      Parent_Item : Node_View := S.Graph.Nodes (Positive (Parent));
+      Child_Item : Node_View := S.Graph.Nodes (Positive (Child));
+      Original_Last : constant Node_Ref :=
+        (if Property then Node (S, Parent).Last_Prop
+         else Node (S, Parent).Last_Child) with Ghost;
+      Original_Last_Order : constant Natural :=
+        (if Original_Last = Null_Node then 0
+         else Node (S, Original_Last).Sibling_Order) with Ghost;
+   begin
+      pragma Assert (not S.Marks (Positive (Parent)));
+      pragma Assert (S.Marks (Positive (Child)));
+      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
+      pragma Assert (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank);
+      if Replaced = Null_Node then
+         Unlink_Tail_Lemma (Before, Parent, Child, Property);
+         pragma Assert
+           (if Property then
+              Unlinked_View (Before, Child, Parent).Last_Prop = Original_Last
+            else
+              Unlinked_View (Before, Child, Parent).Last_Child = Original_Last);
+         pragma Assert
+           (if Original_Last /= Null_Node then
+              Unlinked_View (Before, Child, Original_Last).Sibling_Order =
+                Original_Last_Order);
+      end if;
+      S.Effects.Dirty := True;
+      Unlink (S, Child);
+      if Replaced = Null_Node then
+         pragma Assert
+           ((if Property then Node (S, Parent).Last_Prop
+             else Node (S, Parent).Last_Child) = Original_Last);
+         pragma Assert
+           (if Original_Last /= Null_Node then
+              Node (S, Original_Last).Sibling_Order = Original_Last_Order);
+      end if;
+      pragma Assert
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (for all I in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+           Owner (S, I) = Owner (Before, I));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Same_Pins (Node (S, I), Node (Before, I))
+             and then Node (S, I).Kind = Node (Before, I).Kind
+             and then Node (S, I).Facade = Node (Before, I).Facade
+             and then Node (S, I).Document = Node (Before, I).Document);
+      pragma Assert (Node_Count (S) = Node_Count (Before));
+      pragma Assert
+        (for all I in 1 .. S.Graph.Node_Used =>
+          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
+      pragma Assert (not S.Marks (Positive (Parent)));
+      pragma Assert (S.Marks (Positive (Child)));
+      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
+      pragma Assert (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank);
+      Lift_Marked (S, Rank_Lift);
+      pragma Assert
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (for all I in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+           Owner (S, I) = Owner (Before, I));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Same_Pins (Node (S, I), Node (Before, I))
+             and then Node (S, I).Kind = Node (Before, I).Kind
+             and then Node (S, I).Facade = Node (Before, I).Facade
+             and then Node (S, I).Document = Node (Before, I).Document);
+      pragma Assert (Node_Count (S) = Node_Count (Before));
+      pragma Assert
+        (for all I in 1 .. S.Graph.Node_Used =>
+          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
+      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
+      pragma Assert
+        (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank + Rank_Lift);
+      if Replaced = Null_Node then
+         pragma Assert
+           ((if Property then Node (S, Parent).Last_Prop
+             else Node (S, Parent).Last_Child) = Original_Last);
+         pragma Assert
+           (if Original_Last /= Null_Node then
+              Node (S, Original_Last).Sibling_Order = Original_Last_Order);
+      end if;
+      pragma Assert
+        (S.Capacity = Before.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           S.Marks (I) = Before.Marks (I)));
+      pragma Assert
+        (for all I in 1 .. S.Graph.Node_Used =>
+          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
+      pragma Assert (Node (S, Parent).Tree_Rank < Node (S, Child).Tree_Rank);
+      if Replaced = Null_Node then
+         pragma Assert
+           (Original_Last = Null_Node or else
+             (Original_Last in 1 .. Node_Ref (Node_Count (Before))
+              and then Original_Last /= Child
+              and then Node (Before, Original_Last).Sibling_Order <
+                Append_Order));
+         Append_Child_Links (S, Parent, Child, Append_Order);
+      else
+         Detached := S;
+         pragma Assert (Valid (S));
+         pragma Assert (Can_Edit (S));
+         pragma Assert (Parent in 1 .. Node_Ref (Node_Count (S)));
+         pragma Assert (Child in 1 .. Node_Ref (Node_Count (S)));
+         pragma Assert (Replaced in 1 .. Node_Ref (Node_Count (S)));
+         pragma Assert (Parent /= Child and then Parent /= Replaced);
+         pragma Assert (Child /= Replaced);
+         pragma Assert (Node (S, Parent).State = Live);
+         pragma Assert (Node (S, Parent).Kind = Document_Node);
+         pragma Assert (Node (S, Child).State = Live);
+         pragma Assert (Node (S, Child).Kind = Element_Node);
+         pragma Assert (Node (S, Child).Parent = Null_Node);
+         pragma Assert (Node (S, Replaced).State = Live);
+         pragma Assert (Node (S, Replaced).Kind = Element_Node);
+         pragma Assert (Node (S, Replaced).Parent = Parent);
+         pragma Assert
+           (Node (S, Parent).Tree_Rank < Node (S, Child).Tree_Rank);
+         pragma Assert
+           (for all I in 1 .. Node_Count (S) =>
+             Node_Links_Valid (S.Graph, I));
+         Replace_Child_Links (S, Parent, Child, Replaced);
+         Preserve_Pin_Equation (Detached, S);
+         Preserve_Namespace_Links (Detached.Graph, S.Graph);
+      end if;
+      pragma Assert (Node (S, Child).Parent = Parent);
+      pragma Assert
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (for all I in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+           Owner (S, I) = Owner (Before, I));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Same_Pins (Node (S, I), Node (Before, I))
+             and then Node (S, I).Kind = Node (Before, I).Kind
+             and then Node (S, I).Facade = Node (Before, I).Facade
+             and then Node (S, I).Document = Node (Before, I).Document);
+   end Relink_Marked_Subtree;
+
+   procedure Check_Attachment
+     (S : State; Parent, Child : Node_Ref; Property : Boolean;
+      Replaced : Node_Ref; Already_Attached : out Boolean;
+      Append_Order, Rank_Lift : out Natural;
+      Target_Doc : out Node_Ref; Target_B : out Owner_Ref;
+      Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Parent in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Parent).State = Live
+       and then Node (S, Child).State = Live,
+     Post => (if Success then
+       Target_Doc = (if Node (S, Parent).Kind = Document_Node
+         then Parent else Node (S, Parent).Document)
+       and then (if Target_Doc /= Null_Node then
+         Target_Doc in 1 .. Node_Ref (Node_Count (S))
+         and then Target_B = Node (S, Target_Doc).Owner
+         and then Target_B in 1 .. Owner_Ref (Owner_Count (S))
+         and then Owner (S, Target_B).State = Live)
+       and then Parent /= Child
+       and then not Ancestor (S, Child, Parent)
+       and then Property = (Node (S, Child).Kind = Attribute_Node)
+       and then Node (S, Child).Kind /= Document_Node
+       and then (if Property then Node (S, Parent).Kind = Element_Node
+         else Node (S, Parent).Kind in
+           Document_Node | Element_Node | Attribute_Node)
+       and then (if Node (S, Parent).Kind = Attribute_Node then
+         Node (S, Child).Kind = Text_Node)
+       and then (if Node (S, Parent).Kind = Document_Node then
+         Node (S, Child).Kind in
+           Element_Node | Comment_Node | Processing_Instruction_Node)
+       and then (if Replaced /= Null_Node then
+         Node (S, Parent).Kind = Document_Node
+         and then Node (S, Child).Kind = Element_Node
+         and then Replaced in 1 .. Node_Ref (Node_Count (S))
+         and then Replaced /= Parent and then Replaced /= Child
+         and then Node (S, Replaced).State = Live
+         and then Node (S, Replaced).Kind = Element_Node
+         and then Node (S, Replaced).Parent = Parent)
+       and then Already_Attached =
+         (Replaced = Null_Node and then Node (S, Child).Parent = Parent
+          and then (if Property then Node (S, Parent).Last_Prop
+                    else Node (S, Parent).Last_Child) = Child)
+       and then (if not Already_Attached then
+         Rank_Lift <= Natural'Last - Node (S, Child).Tree_Rank
+         and then Node (S, Parent).Tree_Rank <
+           Node (S, Child).Tree_Rank + Rank_Lift
+         and then (if Replaced = Null_Node then
+           (declare
+              Last : constant Node_Ref :=
+                (if Property then Node (S, Parent).Last_Prop
+                 else Node (S, Parent).Last_Child);
+            begin Last = Null_Node or else
+              (Last in 1 .. Node_Ref (Node_Count (S))
+               and then Node (S, Last).Sibling_Order < Append_Order)))));
+
+   procedure Check_Attachment
+     (S : State; Parent, Child : Node_Ref; Property : Boolean;
+      Replaced : Node_Ref; Already_Attached : out Boolean;
+      Append_Order, Rank_Lift : out Natural;
+      Target_Doc : out Node_Ref; Target_B : out Owner_Ref;
+      Success : out Boolean)
+   is
+      Parent_Item : constant Node_View := S.Graph.Nodes (Positive (Parent));
+      Child_Item : constant Node_View := S.Graph.Nodes (Positive (Child));
+      Last : Node_Ref;
+      Remaining : Natural := S.Capacity;
+   begin
+      Already_Attached := False;
+      Append_Order := 0;
+      Rank_Lift := 0;
+      Target_Doc :=
+        (if Parent_Item.Kind = Document_Node
+         then Parent else Parent_Item.Document);
+      Target_B := Null_Owner;
+      Success := False;
+
+      if Target_Doc /= Null_Node then
+         pragma Assert (Target_Doc <= Node_Ref (S.Graph.Node_Used));
+         pragma Assert (Node_Pins_Valid (S.Graph, Positive (Parent)));
+         Target_B := S.Graph.Nodes (Positive (Target_Doc)).Owner;
+         pragma Assert
+           (Target_B =
+              (if Parent_Item.Kind = Document_Node
+               then Parent_Item.Owner else Parent_Item.Doc_Pin));
+         if Target_B = Null_Owner
+           or else Target_B > Owner_Ref (S.Graph.Owner_Used)
+           or else S.Graph.Owners (Positive (Target_B)).State /= Live
+         then
+            return;
+         end if;
+      end if;
+
+      if Replaced /= Null_Node
+        and then
+          (Parent_Item.Kind /= Document_Node
+           or else Child_Item.Kind /= Element_Node
+           or else Replaced > Node_Ref (S.Graph.Node_Used)
+           or else Replaced = Parent
+           or else Replaced = Child
+           or else S.Graph.Nodes (Positive (Replaced)).State /= Live
+           or else S.Graph.Nodes (Positive (Replaced)).Kind /= Element_Node
+           or else S.Graph.Nodes (Positive (Replaced)).Parent /= Parent)
+      then
+         return;
+      end if;
+
+      if Parent = Child or else Is_Ancestor (S, Child, Parent)
+        or else (Property /= (Child_Item.Kind = Attribute_Node))
+        or else Child_Item.Kind = Document_Node
+        or else (Property and then Parent_Item.Kind /= Element_Node)
+        or else (not Property and then
+          Parent_Item.Kind not in Document_Node | Element_Node | Attribute_Node)
+        or else (Parent_Item.Kind = Attribute_Node
+          and then Child_Item.Kind /= Text_Node)
+        or else (Parent_Item.Kind = Document_Node
+          and then Child_Item.Kind not in Element_Node | Comment_Node
+            | Processing_Instruction_Node)
+      then
+         return;
+      end if;
+
+      Last := (if Property then Parent_Item.Last_Prop else Parent_Item.Last_Child);
+      Already_Attached := Replaced = Null_Node
+        and then Child_Item.Parent = Parent and then Last = Child;
+      if not Already_Attached then
+         if Replaced = Null_Node and then Last /= Null_Node
+           and then S.Graph.Nodes (Positive (Last)).Sibling_Order = Natural'Last
+         then
+            return;
+         end if;
+
+         Append_Order := (if Replaced /= Null_Node then
+            S.Graph.Nodes (Positive (Replaced)).Sibling_Order
+           elsif Last = Null_Node then 0
+           else S.Graph.Nodes (Positive (Last)).Sibling_Order + 1);
+         if Child_Item.Tree_Rank <= Parent_Item.Tree_Rank then
+            if Parent_Item.Tree_Rank = Natural'Last then
+               return;
+            end if;
+            Rank_Lift := Parent_Item.Tree_Rank + 1 - Child_Item.Tree_Rank;
+         end if;
+         pragma Assert (Parent_Item.Tree_Rank < Child_Item.Tree_Rank + Rank_Lift);
+
+         if Parent_Item.Kind = Document_Node and then Child_Item.Kind = Element_Node then
+            Last := Parent_Item.First_Child;
+            while Last /= Null_Node and then Remaining > 0 loop
+               pragma Loop_Variant (Decreases => Remaining);
+               if Last > Node_Ref (S.Graph.Node_Used) then
+                  return;
+               end if;
+               if S.Graph.Nodes (Positive (Last)).Kind = Element_Node
+                 and then Last /= Child and then Last /= Replaced
+               then
+                  return;
+               end if;
+               Last := S.Graph.Nodes (Positive (Last)).Next;
+               Remaining := Remaining - 1;
+            end loop;
+            if Last /= Null_Node then
+               return;
+            end if;
+         end if;
+      end if;
+
+      pragma Assert (not Ancestor (S, Child, Parent));
+      Success := True;
+   end Check_Attachment;
+
    procedure Attach
      (S : in out State; Parent, Child : Node_Ref;
       Property : Boolean; Success : out Boolean;
@@ -1840,16 +2402,18 @@ package body XML3_DOM with SPARK_Mode is
        and then Child in 1 .. Node_Ref (S.Graph.Node_Used)
        and then Node (S, Parent).State = Live
        and then Node (S, Child).State = Live,
-     Post => (declare
-       Target_Doc : constant Node_Ref :=
-         (if Node (S'Old, Parent).Kind = Document_Node
-          then Parent else Node (S'Old, Parent).Document);
-     begin (if not Success then Same_Graph (S, S'Old))
+     Post => (if not Success then Same_Graph (S, S'Old))
        and then Valid (S) and then Can_Edit (S)
          and then S.Capacity = S'Old.Capacity
          and then Node_Count (S) = Node_Count (S'Old)
          and then Namespace_Count (S) = Namespace_Count (S'Old)
          and then Owner_Count (S) = Owner_Count (S'Old)
+         and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I).State = Node (S'Old, I).State
+             and then Node (S, I).Facade = Node (S'Old, I).Facade)
+         and then (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (S'Old, I))
          and then (if Success then Node (S, Child).Parent = Parent
            and then (if Replaced /= Null_Node then
              Replaced in 1 .. Node_Ref (Node_Count (S))
@@ -1865,146 +2429,44 @@ package body XML3_DOM with SPARK_Mode is
                Unlinked_View (S'Old, Child, Replaced).Sibling_Order)
          and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
            (if Snapshot_Marks (S) (Positive (I)) then
-              Node (S, I).Document = Target_Doc
-              and then (Target_Doc = Null_Node
+              Node (S, I).Document =
+                (if Node (S'Old, Parent).Kind = Document_Node
+                 then Parent else Node (S'Old, Parent).Document)
+              and then ((if Node (S'Old, Parent).Kind = Document_Node
+                         then Parent else Node (S'Old, Parent).Document) = Null_Node
                 or else Node (S, I).Doc_Pin =
                   Node (S'Old,
                     (if Node (S'Old, Parent).Kind = Document_Node
                      then Parent else Node (S'Old, Parent).Document)).Owner)))
-       ));
+       );
 
    procedure Attach
      (S : in out State; Parent, Child : Node_Ref;
       Property : Boolean; Success : out Boolean;
       Replaced : Node_Ref := Null_Node)
    is
-      Parent_Item : Node_View := S.Graph.Nodes (Positive (Parent));
-      Child_Item : Node_View := S.Graph.Nodes (Positive (Child));
-      Last : Node_Ref;
-      Remaining : Natural := S.Capacity;
       Append_Order : Natural := 0;
       Rank_Lift : Natural := 0;
       Already_Attached : Boolean;
-      Target_Doc : constant Node_Ref :=
-        (if Parent_Item.Kind = Document_Node
-         then Parent else Parent_Item.Document);
+      Target_Doc : Node_Ref;
       Target_B : Owner_Ref := Null_Owner;
       Before : constant State := S with Ghost;
       Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S) with Ghost;
-      Original_Target_References : Natural := 0 with Ghost;
-      Detached : State (Before.Capacity) with Ghost;
    begin
       pragma Assert (Original_Nodes = Snapshot_Nodes (Before));
       pragma Assert (Node_Links_Valid (S.Graph, Positive (Parent)));
       pragma Assert (Node_Links_Valid (S.Graph, Positive (Child)));
-      if Target_Doc /= Null_Node then
-         pragma Assert (Target_Doc <= Node_Ref (S.Graph.Node_Used));
-         pragma Assert (Node_Pins_Valid (S.Graph, Positive (Parent)));
-         Target_B := S.Graph.Nodes (Positive (Target_Doc)).Owner;
-         pragma Assert
-           (Target_B =
-              (if Parent_Item.Kind = Document_Node
-               then Parent_Item.Owner else Parent_Item.Doc_Pin));
-         if Target_B = Null_Owner
-           or else Target_B > Owner_Ref (S.Graph.Owner_Used)
-           or else S.Graph.Owners (Positive (Target_B)).State /= Live
-         then
-            Success := False;
-            pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-            return;
-         end if;
-      end if;
-      if Replaced /= Null_Node
-        and then
-          (Parent_Item.Kind /= Document_Node
-           or else Child_Item.Kind /= Element_Node
-           or else Replaced > Node_Ref (S.Graph.Node_Used)
-           or else Replaced = Parent
-           or else Replaced = Child
-           or else S.Graph.Nodes (Positive (Replaced)).State /= Live
-           or else S.Graph.Nodes (Positive (Replaced)).Kind /= Element_Node
-           or else S.Graph.Nodes (Positive (Replaced)).Parent /= Parent)
-      then
-         Success := False;
-         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-         return;
-      end if;
-      if Parent = Child or else Is_Ancestor (S, Child, Parent)
-        or else (Property /= (Child_Item.Kind = Attribute_Node))
-        or else Child_Item.Kind = Document_Node
-        or else (Property and then Parent_Item.Kind /= Element_Node)
-        or else (not Property and then
-          Parent_Item.Kind not in Document_Node | Element_Node | Attribute_Node)
-        or else (Parent_Item.Kind = Attribute_Node
-          and then Child_Item.Kind /= Text_Node)
-        or else (Parent_Item.Kind = Document_Node
-          and then Child_Item.Kind not in Element_Node | Comment_Node
-            | Processing_Instruction_Node)
-      then
-         Success := False;
-         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-         return;
-      end if;
-      Last := (if Property then Parent_Item.Last_Prop else Parent_Item.Last_Child);
-      Already_Attached := Replaced = Null_Node
-        and then Child_Item.Parent = Parent and then Last = Child;
-      if not Already_Attached then
-      if Replaced = Null_Node and then Last /= 0
-        and then S.Graph.Nodes (Positive (Last)).Sibling_Order = Natural'Last
-      then
-         Success := False;
-         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-         return;
-      end if;
-      Append_Order := (if Replaced /= Null_Node then
-         S.Graph.Nodes (Positive (Replaced)).Sibling_Order
-        elsif Last = 0 then 0
-        else S.Graph.Nodes (Positive (Last)).Sibling_Order + 1);
-      if Child_Item.Tree_Rank <= Parent_Item.Tree_Rank then
-         if Parent_Item.Tree_Rank = Natural'Last then
-            Success := False;
-            pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-            return;
-         end if;
-         Rank_Lift := Parent_Item.Tree_Rank + 1 - Child_Item.Tree_Rank;
-      end if;
-      pragma Assert (Parent_Item.Tree_Rank < Child_Item.Tree_Rank + Rank_Lift);
-      if Parent_Item.Kind = Document_Node and then Child_Item.Kind = Element_Node then
-         Last := Parent_Item.First_Child;
-         while Last /= Null_Node and then Remaining > 0 loop
-            pragma Loop_Variant (Decreases => Remaining);
-            if Last > Node_Ref (S.Graph.Node_Used) then
-               Success := False;
-               pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-               return;
-            end if;
-            if S.Graph.Nodes (Positive (Last)).Kind = Element_Node
-              and then Last /= Child and then Last /= Replaced
-            then
-               Success := False;
-               pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-               return;
-            end if;
-            Last := S.Graph.Nodes (Positive (Last)).Next;
-            Remaining := Remaining - 1;
-         end loop;
-         if Last /= Null_Node then
-            Success := False;
-            pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-            return;
-         end if;
-      end if;
-      pragma Assert (not Ancestor (S, Child, Parent));
-      pragma Assert (not Ancestor_In_Nodes
-        (Snapshot_Nodes (S), Node_Count (S), Child, Parent));
-      Same_Ancestor
-        (Snapshot_Nodes (S), Snapshot_Nodes (Before), Node_Count (S), Child, Parent);
-      pragma Assert (not Ancestor_In_Nodes
-        (Snapshot_Nodes (Before), Node_Count (Before), Child, Parent));
+      Check_Attachment
+        (S, Parent, Child, Property, Replaced, Already_Attached,
+         Append_Order, Rank_Lift, Target_Doc, Target_B, Success);
+      pragma Assert (Same_Graph (S, Before));
       pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
+      pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+      if not Success then
+         return;
       end if;
-      pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
       Prepare_Subtree (S, Child, Rank_Lift, Success);
+      pragma Assert (Same_Graph (S, Before));
       pragma Assert (S.Graph.Nodes'First = Before.Graph.Nodes'First);
       pragma Assert (S.Graph.Nodes'Last = Before.Graph.Nodes'Last);
       pragma Assert (for all I in S.Graph.Nodes'Range =>
@@ -2049,7 +2511,6 @@ package body XML3_DOM with SPARK_Mode is
          return;
       end if;
       if Target_Doc /= Null_Node then
-         Original_Target_References := S.Graph.Owners (Positive (Target_B)).References;
          pragma Assert
            (S.Graph.Owners (Positive (Target_B)).References <=
               Natural'Last - S.Graph.Node_Used);
@@ -2060,147 +2521,33 @@ package body XML3_DOM with SPARK_Mode is
              S.Graph.Nodes (I).Document = Null_Node
                or else S.Graph.Nodes (I).Document = Target_Doc));
       if not Already_Attached then
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then
-             S.Graph.Nodes (I).Document = Null_Node
-               or else S.Graph.Nodes (I).Document = Target_Doc));
-      Same_Ancestor
-        (Snapshot_Nodes (Before), Snapshot_Nodes (S), Node_Count (S), Child, Parent);
-      pragma Assert (not Ancestor_In_Nodes
-        (Snapshot_Nodes (S), Node_Count (S), Child, Parent));
-      pragma Assert (not Ancestor (S, Child, Parent));
-      pragma Assert (not S.Marks (Positive (Parent)));
-      pragma Assert (S.Marks (Positive (Child)));
-      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
-      pragma Assert (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank);
-      S.Effects.Dirty := True;
-      Unlink (S, Child);
-      pragma Assert (Node_Count (S) = Node_Count (Before));
-      pragma Assert
-        (if Target_Doc /= Null_Node then
-           Owner (S, Target_B).References = Original_Target_References);
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then
-             S.Graph.Nodes (I).Document = Null_Node
-               or else S.Graph.Nodes (I).Document = Target_Doc));
-      if Target_Doc /= Null_Node then
          pragma Assert
-           (S.Graph.Owners (Positive (Target_B)).State = Live);
-      end if;
-      pragma Assert (not S.Marks (Positive (Parent)));
-      pragma Assert (S.Marks (Positive (Child)));
-      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
-      pragma Assert (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank);
-      Lift_Marked (S, Rank_Lift);
-      pragma Assert (Node_Count (S) = Node_Count (Before));
-      pragma Assert
-        (if Target_Doc /= Null_Node then
-           Owner (S, Target_B).References = Original_Target_References);
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then
-             S.Graph.Nodes (I).Document = Null_Node
-               or else S.Graph.Nodes (I).Document = Target_Doc));
-      if Target_Doc /= Null_Node then
+           (for all I in 1 .. S.Graph.Node_Used =>
+             (if S.Marks (I) then
+                S.Graph.Nodes (I).Document = Null_Node
+                  or else S.Graph.Nodes (I).Document = Target_Doc));
+         Same_Ancestor
+           (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+            Node_Count (S), Child, Parent);
          pragma Assert
-           (S.Graph.Owners (Positive (Target_B)).State = Live);
-      end if;
-      pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
-      pragma Assert
-        (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank + Rank_Lift);
-      Detached := S;
-      pragma Assert
-        (S.Capacity = Detached.Capacity
-         and then (for all I in 1 .. S.Capacity =>
-           S.Marks (I) = Detached.Marks (I)));
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
-      if Target_Doc /= Null_Node then
-         pragma Assert
-           (Detached.Graph.Owners (Positive (Target_B)).State = Live);
-      end if;
-      pragma Assert (Node (S, Parent).Tree_Rank < Node (S, Child).Tree_Rank);
-      pragma Assert
-        ((if Property then Node (S, Parent).Last_Prop
-          else Node (S, Parent).Last_Child) =
-         (if Property then Unlinked_View (Before, Child, Parent).Last_Prop
-          else Unlinked_View (Before, Child, Parent).Last_Child));
-      Parent_Item := S.Graph.Nodes (Positive (Parent));
-      Child_Item := S.Graph.Nodes (Positive (Child));
-      Last := (if Property then Parent_Item.Last_Prop else Parent_Item.Last_Child);
-      if Replaced = Null_Node then
-         pragma Assert (Property = (Child_Item.Kind = Attribute_Node));
-         pragma Assert (Last /= Parent and then Last /= Child);
-         Child_Item.Parent := Parent;
-         Child_Item.Previous := Last;
-         Child_Item.Next := Null_Node;
-         Child_Item.Sibling_Order := Append_Order;
-         if Last = Null_Node then
-            if Property then Parent_Item.First_Prop := Child;
-            else Parent_Item.First_Child := Child;
-            end if;
-         else
-            S.Graph.Nodes (Positive (Last)).Next := Child;
-         end if;
-         if Property then Parent_Item.Last_Prop := Child;
-         else Parent_Item.Last_Child := Child;
-         end if;
-         S.Graph.Nodes (Positive (Parent)) := Parent_Item;
-         S.Graph.Nodes (Positive (Child)) := Child_Item;
-         pragma Assert (for all I in 1 .. S.Graph.Ns_Used =>
-           S.Graph.Namespaces (I) = Detached.Graph.Namespaces (I));
-         pragma Assert (for all I in 1 .. S.Graph.Owner_Used =>
-           S.Graph.Owners (I) = Detached.Graph.Owners (I));
-         pragma Assert
-           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-             Same_Pins (Node (S, I), Node (Detached, I)));
-         pragma Assert (Pins_In_Range (S));
-         Append_Lemma (Detached, S, Parent, Child, Append_Order);
-         Preserve_Pin_Equation (Detached, S);
-         Preserve_Namespace_Links (Detached.Graph, S.Graph);
-      else
-         pragma Assert (Valid (S));
-         pragma Assert (Can_Edit (S));
-         pragma Assert (Parent in 1 .. Node_Ref (Node_Count (S)));
-         pragma Assert (Child in 1 .. Node_Ref (Node_Count (S)));
-         pragma Assert (Replaced in 1 .. Node_Ref (Node_Count (S)));
-         pragma Assert (Parent /= Child and then Parent /= Replaced);
-         pragma Assert (Child /= Replaced);
-         pragma Assert (Node (S, Parent).State = Live);
-         pragma Assert (Node (S, Parent).Kind = Document_Node);
-         pragma Assert (Node (S, Child).State = Live);
-         pragma Assert (Node (S, Child).Kind = Element_Node);
-         pragma Assert (Node (S, Child).Parent = Null_Node);
-         pragma Assert (Node (S, Replaced).State = Live);
-         pragma Assert (Node (S, Replaced).Kind = Element_Node);
-         pragma Assert (Node (S, Replaced).Parent = Parent);
-         pragma Assert
-           (Node (S, Parent).Tree_Rank < Node (S, Child).Tree_Rank);
-         pragma Assert
-           (for all I in 1 .. Node_Count (S) =>
-             Node_Links_Valid (S.Graph, I));
-         Replace_Child_Links (S, Parent, Child, Replaced);
-         Preserve_Pin_Equation (Detached, S);
-         Preserve_Namespace_Links (Detached.Graph, S.Graph);
-      end if;
-      else
-         Detached := S;
+           (not Ancestor_In_Nodes
+              (Snapshot_Nodes (S), Node_Count (S), Child, Parent));
+         pragma Assert (not Ancestor (S, Child, Parent));
+         pragma Assert (not S.Marks (Positive (Parent)));
+         pragma Assert (S.Marks (Positive (Child)));
+         Relink_Marked_Subtree
+           (S, Parent, Child, Property, Append_Order, Rank_Lift, Replaced);
       end if;
       pragma Assert (Node (S, Child).Parent = Parent);
       pragma Assert (Valid (S) and then Can_Edit (S));
       pragma Assert
-        (S.Capacity = Detached.Capacity
-         and then (for all I in 1 .. S.Capacity =>
-           S.Marks (I) = Detached.Marks (I)));
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I).State = Node (Before, I).State
+             and then Node (S, I).Facade = Node (Before, I).Facade);
       if Target_Doc /= Null_Node then
          pragma Assert (Target_Doc <= Node_Ref (Node_Count (S)));
          pragma Assert (Node (S, Target_Doc).Kind = Document_Node);
@@ -2208,10 +2555,7 @@ package body XML3_DOM with SPARK_Mode is
          pragma Assert (Node (S, Target_Doc).Owner = Target_B);
          pragma Assert (Target_B <= Owner_Ref (Owner_Count (S)));
          pragma Assert
-           (S.Graph.Owners (Positive (Target_B)) =
-              Detached.Graph.Owners (Positive (Target_B)));
-         pragma Assert
-           (Detached.Graph.Owners (Positive (Target_B)).References <=
+           (S.Graph.Owners (Positive (Target_B)).References <=
               Natural'Last - S.Graph.Node_Used);
          pragma Assert (Owner (S, Target_B).State = Live);
          pragma Assert
@@ -2237,6 +2581,47 @@ package body XML3_DOM with SPARK_Mode is
       pragma Assert (Node (S, Child).Parent = Parent);
       Success := True;
       pragma Assert (Valid (S));
+      pragma Assert (Can_Edit (S));
+      pragma Assert
+        (S.Capacity = Before.Capacity
+         and then Node_Count (S) = Node_Count (Before)
+         and then Namespace_Count (S) = Namespace_Count (Before)
+         and then Owner_Count (S) = Owner_Count (Before));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I).State = Node (Before, I).State);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I).Facade = Node (Before, I).Facade);
+      pragma Assert
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (if Replaced /= Null_Node then
+           Replaced in 1 .. Node_Ref (Node_Count (S))
+             and then Node (S, Replaced).State = Live
+             and then Node (S, Replaced).Parent = Null_Node
+             and then Node (S, Replaced).Previous = Null_Node
+             and then Node (S, Replaced).Next = Null_Node
+             and then Node (S, Child).Previous =
+               Unlinked_View (Before, Child, Replaced).Previous
+             and then Node (S, Child).Next =
+               Unlinked_View (Before, Child, Replaced).Next
+             and then Node (S, Child).Sibling_Order =
+               Unlinked_View (Before, Child, Replaced).Sibling_Order);
+      pragma Assert
+        (Target_Doc = (if Node (Before, Parent).Kind = Document_Node
+                       then Parent else Node (Before, Parent).Document));
+      pragma Assert
+        (if Target_Doc /= Null_Node then
+           Target_B = Node (Before, Target_Doc).Owner);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           (if Snapshot_Marks (S) (Positive (I)) then
+              Node (S, I).Document = Target_Doc
+                and then (Target_Doc = Null_Node
+                  or else Node (S, I).Doc_Pin = Target_B)));
    end Attach;
 
    procedure Attach_Child
