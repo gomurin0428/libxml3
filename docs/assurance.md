@@ -60,7 +60,13 @@ subtree document propagation, and owner reference counts equal to distinct live
 node holds plus explicit reservations. Rejected attachments preserve graph data.
 Unlinked nodes can pin a retired document's allocation; IDs are not reused before
 release acknowledgement. Allocation failure handling and copying the backing
-state are separated from the trusted state allocator.
+state are separated from the trusted state allocator. Atomic `Replace_Root`
+preserves the old root's sibling position, propagates the incoming subtree's
+document holds, and leaves the replaced root detached but live. Its fallible
+checks run before topology changes; failure preserves the logical graph.
+Public projection setters reject document changes inconsistent with the target's
+parent or direct children/properties. The private pin-only setter is used during
+the core's controlled subtree propagation, not exposed to callers.
 
 `XML3_DOM_Bridge.Synchronize` consumes the core's projection/release protocol.
 Its proved control flow projects nodes and namespaces before issuing a release,
@@ -97,7 +103,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 3,358-check result.
+  are trusted, not discharged by the 3,744-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

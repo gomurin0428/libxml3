@@ -39,6 +39,8 @@ make check
 所有権、外部ポインター、ネイティブ allocator は保証範囲外です。保証範囲の詳細は
 [docs/assurance.md](docs/assurance.md) と、コアの実行結果を記録した
 [docs/proof-report.md](docs/proof-report.md) を参照してください。
+新基盤には位置を保つ atomic なルート置換と、所属文書の不整合な単独更新の
+拒否も含みます。`make check` は DOM コアと実 C 構造体への反映テストを実行します。
 
 ## C の例
 
