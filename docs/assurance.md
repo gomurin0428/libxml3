@@ -67,6 +67,11 @@ checks run before topology changes; failure preserves the logical graph.
 Public projection setters reject document changes inconsistent with the target's
 parent or direct children/properties. The private pin-only setter is used during
 the core's controlled subtree propagation, not exposed to callers.
+`Merge_Text` validates a prepared content buffer's metadata and reserved owner,
+rebinds the target's content hold, and retires the source atomically in the logical
+graph. Failure leaves the graph unchanged. Actual concatenated bytes and their
+allocation bounds are not modeled by this operation; the caller must prepare the
+buffer and retain its reservation through the commit.
 
 `XML3_DOM_Bridge.Synchronize` consumes the core's projection/release protocol.
 Its proved control flow projects nodes and namespaces before issuing a release,
@@ -103,7 +108,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 3,744-check result.
+  are trusted, not discharged by the 3,790-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

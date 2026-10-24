@@ -2,7 +2,7 @@
 
 ## Result
 
-GNATprove completed with exit code **0**, **3,744 discharged checks**, **0 unproved**,
+GNATprove completed with exit code **0**, **3,790 discharged checks**, **0 unproved**,
 and **0 justified**. The run emitted non-failing warnings about unused outputs and
 assignments; no proof checks remained unproved.
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
@@ -12,15 +12,15 @@ DOM implementation.** See [assurance.md](assurance.md).
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 96 |
-| Initialization | 121 |
-| Run-time checks | 1,971 |
-| Assertions / loop invariants | 571 |
-| Functional contracts | 858 |
+| Data dependencies | 98 |
+| Initialization | 123 |
+| Run-time checks | 1,987 |
+| Assertions / loop invariants | 573 |
+| Functional contracts | 882 |
 | Termination | 127 |
-| Total | 3,744 |
+| Total | 3,790 |
 
-298 checks were discharged by flow analysis and 3,446 by proof. `Parse`, `Decode`,
+302 checks were discharged by flow analysis and 3,488 by proof. `Parse`, `Decode`,
 namespace `Resolve`, and UTF-16 `Decode_UTF16` have explicit
 `Always_Terminates` aspects.
 Termination does not mean constant time
@@ -67,6 +67,12 @@ The full run also covers the public/internal projection setters. The new tests
 exercise position-preserving root replacement, descendant replacement, document
 propagation, unchanged graphs on rejection, and public projection mismatch
 rejection. These are foundation tests, not exported root-replacement API tests.
+`Merge_Text` (24 focused checks), `Free_Marked_Subtree` (64), and its public
+`Free_Subtree` wrapper (6) also passed. Merge tests check unchanged graphs for
+invalid lengths, null buffers, self-merges and foreign documents, plus sibling
+unlinking, target retention and content-owner transitions on success. This is the
+logical commit of a prepared merged buffer; buffer allocation, copying and the
+public `xmlAddChild` integration are not implemented by this operation.
 The bridge
 test uses real allocated facades read through the public C headers and wraps
 `free` to check projection ordering and tracked-allocation lifetimes. It is not
@@ -83,8 +89,8 @@ a test of the exported C APIs using the new state store: they are not connected.
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
-70c13abaccca85e09c6b970dd5b4e322972839fac1e79f707d5195631c27680f  src/xml3_dom.ads
-615aea4846ae5ad5747c3407bfcad51a9e9ff714255b20fa0fd5ffa23aaf2ced  src/xml3_dom.adb
+9a6acbba5575591075eba8199fbcc4dc468b9569b7f2b270d11f7a77769dde7d  src/xml3_dom.ads
+260b45392f6f57c001ae21045cbe36ccafb14b8117e2d300e1e1e7b519daf070  src/xml3_dom.adb
 c8330e5907f2b6f3be23757a20b3a02e37b5a282e1d8ed8b3ddd6d139d41dd40  src/xml3_dom_bridge.ads
 db96daf269750c2bdfc57ac56a3353c34cb445f591454d86a53829645e7737de  src/xml3_dom_bridge.adb
 414c2f0326017f5e816a3c3172ba31d9993e4fcd21ba8b0600c539ef29411991  src/xml3_native_memory.ads
