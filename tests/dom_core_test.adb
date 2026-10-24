@@ -59,6 +59,92 @@ procedure DOM_Core_Test is
       pragma Assert (Can_Edit (S.all) and then not Projection_Required (S.all));
    end Project;
 
+   procedure Text_Merging is
+      T : State_Access;
+      A, B, Old_Content, New_Content, F : Owner_Ref;
+      Parent, Target, Source, Foreign_Doc : Node_Ref;
+      Local_OK : Boolean;
+
+      procedure Set_Content
+        (N : Node_Ref; Length : Natural; Pin : Owner_Ref := 0;
+         Document : Node_Ref := 0; Doc_Pin : Owner_Ref := 0) is
+      begin
+         Set_Node_Projection
+           (T.all, N, System.Null_Address, 0, Token (80), Length,
+            Document, 0, 0, Doc_Pin, Pin, Local_OK);
+         pragma Assert (Local_OK);
+      end Set_Content;
+   begin
+      Initialize (T, 16, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (71), A, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (72), B, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (73), Old_Content, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (74), New_Content, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (75), F, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (76), A, 0, Parent, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Text_Node, Token (77), A, 0, Target, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Text_Node, Token (78), B, 0, Source, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Document_Node, Token (79), F, 0, Foreign_Doc, Local_OK);
+      pragma Assert (Local_OK);
+      Set_Content (Foreign_Doc, 0, Document => Foreign_Doc);
+      Set_Content (Target, 2, Old_Content);
+      Set_Content (Source, 3, Document => Foreign_Doc, Doc_Pin => F);
+      declare
+         Before : constant State := T.all with Ghost;
+      begin
+         Merge_Text (T.all, Target, Source, Token (81), 5, New_Content, Local_OK);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+      end;
+      Set_Content (Source, 3);
+      Attach_Child (T.all, Parent, Source, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Parent, Target, Local_OK);
+      pragma Assert (Local_OK);
+      Release_Reservation (T.all, A);
+      Release_Reservation (T.all, B);
+      Release_Reservation (T.all, Old_Content);
+      declare
+         Before : constant State := T.all with Ghost;
+      begin
+         Merge_Text (T.all, Target, Source, Token (81), 4, New_Content, Local_OK);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+         Merge_Text
+           (T.all, Target, Source, System.Null_Address, 5, New_Content, Local_OK);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+         Merge_Text (T.all, Target, Target, Token (81), 4, New_Content, Local_OK);
+         pragma Assert (not Local_OK and then Same_Graph (T.all, Before));
+      end;
+      Merge_Text (T.all, Target, Source, Token (81), 5, New_Content, Local_OK);
+      pragma Assert (Local_OK and then Valid (T.all));
+      pragma Assert
+        (Node (T.all, Target).Content = Token (81)
+         and then Node (T.all, Target).Content_Length = 5
+         and then Node (T.all, Target).Content_Pin = New_Content
+         and then Node (T.all, Target).Parent = Parent
+         and then Node (T.all, Target).Previous = 0
+         and then Node (T.all, Target).Next = 0
+         and then Node (T.all, Parent).First_Child = Target
+         and then Node (T.all, Parent).Last_Child = Target
+         and then Node (T.all, Source).State = Tombstone);
+      pragma Assert
+        (Owner (T.all, Old_Content).State = Releasing
+         and then Owner (T.all, B).State = Releasing
+         and then Owner (T.all, New_Content).References = 2
+         and then Projection_Required (T.all));
+      Release_Reservation (T.all, New_Content);
+      pragma Assert (Owner (T.all, New_Content).References = 1);
+      XML3_DOM_Allocation.Free_State (T);
+   end Text_Merging;
+
    procedure Document_Propagation is
       T : State_Access;
       A, B, F : Owner_Ref;
@@ -295,6 +381,7 @@ procedure DOM_Core_Test is
    end Root_Replacement;
 
 begin
+   Text_Merging;
    Document_Propagation;
    Root_Replacement;
    Initialize (S, 16, OK);

@@ -618,6 +618,31 @@ package XML3_DOM with SPARK_Mode is
                      then Element else Node (S'Old, Element).Document)).Owner))))
        );
 
+   procedure Merge_Text
+     (S : in out State; Target, Source : Node_Ref;
+      Content : System.Address; Length : Natural; Content_Owner : Owner_Ref;
+      Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Target in 1 .. Node_Ref (Node_Count (S))
+       and then Source in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Target).State = Live
+       and then Node (S, Source).State = Live,
+     Post => Valid (S) and then Can_Edit (S)
+       and then Capacity_Of (S) = Capacity_Of (S)'Old
+       and then Node_Count (S) = Node_Count (S)'Old
+       and then Namespace_Count (S) = Namespace_Count (S)'Old
+       and then Owner_Count (S) = Owner_Count (S)'Old
+       and then (if Success then
+         Node (S, Target).State = Live
+         and then Node (S, Target).Content = Content
+         and then Node (S, Target).Content_Length = Length
+         and then Node (S, Target).Content_Pin = Content_Owner
+         and then Node (S, Target).Parent = Node (S'Old, Target).Parent
+         and then Node (S, Source).State = Tombstone
+         and then Projection_Required (S)
+         else Same_Graph (S, S'Old));
+
    procedure Free_Subtree
      (S : in out State; Root : Node_Ref)
    with Global => null,

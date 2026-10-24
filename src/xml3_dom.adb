@@ -2373,11 +2373,32 @@ package body XML3_DOM with SPARK_Mode is
       end loop;
    end Retired_Links_Lemma;
 
-   procedure Free_Subtree (S : in out State; Root : Node_Ref) is
-      Prepared : Boolean;
+   procedure Free_Marked_Subtree (S : in out State; Root : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Root in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Root).State = Live
+       and then S.Marks (Positive (Root))
+       and then (for all I in 1 .. S.Graph.Node_Used =>
+         (if S.Marks (I) then S.Graph.Nodes (I).State = Live)
+         and then (if S.Graph.Nodes (I).State = Live
+           and then S.Graph.Nodes (I).Parent /= Null_Node
+           and then Node_Ref (I) /= Root then
+             S.Marks (I) = S.Marks (Positive (S.Graph.Nodes (I).Parent)))),
+     Post => Valid (S) and then Can_Edit (S)
+       and then S.Capacity = S'Old.Capacity
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then Same_Marks (S, S'Old)
+       and then Node (S, Root).State = Tombstone
+       and then Projection_Required (S)
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+         (if not S.Marks (Positive (I)) then
+           Node (S, I) = Unlinked_View (S'Old, Root, I)));
+
+   procedure Free_Marked_Subtree (S : in out State; Root : Node_Ref) is
    begin
-      Prepare_Subtree (S, Root, 0, Prepared);
-      pragma Assert (Prepared);
       Unlink (S, Root);
       S.Effects.Dirty := True;
       declare
@@ -2415,6 +2436,58 @@ package body XML3_DOM with SPARK_Mode is
          Retired_Links_Lemma (Before.Graph, S.Graph, Before.Marks);
          Preserve_Namespace_Links (Before.Graph, S.Graph);
       end;
+   end Free_Marked_Subtree;
+
+   procedure Free_Subtree (S : in out State; Root : Node_Ref) is
+      Prepared : Boolean;
+   begin
+      Prepare_Subtree (S, Root, 0, Prepared);
+      pragma Assert (Prepared);
+      Free_Marked_Subtree (S, Root);
    end Free_Subtree;
+
+   procedure Merge_Text
+     (S : in out State; Target, Source : Node_Ref;
+      Content : System.Address; Length : Natural; Content_Owner : Owner_Ref;
+      Success : out Boolean)
+   is
+      T : constant Node_View := Node (S, Target);
+      C : constant Node_View := Node (S, Source);
+      Proposed : constant Node_View := Projected_View
+        (T, T.Name, T.Name_Length, Content, Length, T.Document, T.Namespace,
+         T.Ns_Pin, T.Doc_Pin, Content_Owner);
+      Prepared : Boolean;
+   begin
+      Success := False;
+      if Target = Source or else T.Kind /= Text_Node or else C.Kind /= Text_Node
+        or else T.First_Child /= Null_Node or else T.First_Prop /= Null_Node
+        or else C.First_Child /= Null_Node or else C.First_Prop /= Null_Node
+        or else T.First_Namespace /= Null_Namespace
+        or else C.First_Namespace /= Null_Namespace
+        or else (C.Document /= Null_Node and then C.Document /= T.Document)
+        or else Content = System.Null_Address
+        or else Content_Owner = Null_Owner
+        or else Content_Owner > Owner_Ref (Owner_Count (S))
+        or else Owner (S, Content_Owner).State /= Live
+        or else Owner (S, Content_Owner).Reservations = 0
+        or else C.Content_Length > Natural'Last - T.Content_Length
+        or else Length /= T.Content_Length + C.Content_Length
+        or else Length = Natural'Last
+        or else not Projection_Allowed (S, Target, Proposed)
+      then
+         return;
+      end if;
+      Prepare_Subtree (S, Source, 0, Prepared);
+      pragma Assert (Prepared);
+      if S.Marks (Positive (Target)) then
+         return;
+      end if;
+
+      Set_Node_Projection_Internal
+        (S, Target, T.Name, T.Name_Length, Content, Length,
+         T.Document, T.Namespace, T.Ns_Pin, T.Doc_Pin, Content_Owner, Success);
+      pragma Assert (Success);
+      Free_Marked_Subtree (S, Source);
+   end Merge_Text;
 
 end XML3_DOM;
