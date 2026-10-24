@@ -255,5 +255,6 @@ begin
       and then Merge_Free_Count (2) = 1
       and then Merge_Free_Count (3) = 1
       and then Merge_Free_Count (4) = 1);
+   XML3_DOM_Allocation.Free_State (S);
    Ada.Text_IO.Put_Line ("Native DOM projection, pin lifetime, and release ordering tests passed");
 end DOM_Bridge_Test;
