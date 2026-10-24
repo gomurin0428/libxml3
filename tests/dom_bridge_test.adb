@@ -8,6 +8,7 @@ with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
 with XML3_DOM_Store;
 with XML3_DOM_Store.Queries;
+with XML3_DOM_Store.Properties;
 with XML3_DOM.Materialize;
 with XML3_Native_Memory;
 with XML3_Namespaces;
@@ -25,6 +26,30 @@ procedure DOM_Bridge_Test is
      with Import, Convention => C, External_Name => "bridge_store_merge_check";
    procedure Store_Merge_Reset
      with Import, Convention => C, External_Name => "bridge_store_merge_reset";
+   procedure Store_Property_Check
+     (Doc, Root, First, First_Value, First_Content,
+      Second, Second_Value, Second_Content : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_store_property_check";
+   function Store_Property_Child (Attribute : System.Address)
+      return System.Address
+     with Import, Convention => C,
+       External_Name => "bridge_store_property_child";
+   procedure Store_Standalone_Property_Check
+     (Attribute, Value, Content : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_store_standalone_property_check";
+   procedure Store_Property_Track_Retired
+     (Attribute, Value : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_store_property_track_retired";
+   procedure Store_Property_Check_Retired
+     with Import, Convention => C,
+       External_Name => "bridge_store_property_check_retired";
+   procedure Store_No_Namespace_Check
+     (Root, Namespaced, Lang, Added : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_store_no_namespace_check";
 
    procedure Track
      (Doc_Block, Root_Block, Child_Block, Doc, Root, Child : System.Address)
@@ -528,6 +553,187 @@ begin
       pragma Assert (Status = Created and then Stores.Is_Empty (Managed));
    end;
    Ada.Text_IO.Put_Line ("Opaque DOM store text merge and rollback tests passed");
+   declare
+      package Stores renames XML3_DOM_Store;
+      package Properties renames XML3_DOM_Store.Properties;
+      use type XML3_DOM_Constructors.Construction_Status;
+      Managed : Stores.Store;
+      Doc, Root, Ignored, First, Duplicate, Returned, Standalone :
+        System.Address := System.Null_Address;
+      First_Value, Duplicate_Value, New_Value, Empty_Value :
+        System.Address := System.Null_Address;
+      Status : Stores.Operation_Status;
+      First_View, First_Value_View, Duplicate_View, Duplicate_Value_View,
+        Item : Node_View;
+      Found : Boolean;
+      Original_Content : aliased constant String :=
+        "original&amp;<" & Character'Val (0);
+      Duplicate_Content : aliased constant String :=
+        "duplicate" & Character'Val (0);
+      Updated_Content : aliased constant String :=
+        "updated" & Character'Val (0);
+      Empty_Content : aliased constant String := Character'Val (0) & "";
+      Standalone_Content : aliased constant String :=
+        "standalone" & Character'Val (0);
+      procedure Fail_Malloc_Nth (Nth : Interfaces.C.unsigned)
+        with Import, Convention => C,
+          External_Name => "bridge_fail_malloc_nth";
+      procedure Check_Malloc_Failure
+        with Import, Convention => C,
+          External_Name => "bridge_check_malloc_failure";
+   begin
+      Stores.Construct
+        (Managed, Document_Node, "", "1.0", True, System.Null_Address,
+         Doc, Ignored, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      Stores.Construct
+        (Managed, Element_Node, "r", "", False, System.Null_Address,
+         Root, Ignored, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      Stores.Attach (Managed, Doc, Root, False, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+
+      Properties.Create_Property
+        (Managed, Root, "item", "original&amp;<", True, First, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then First /= System.Null_Address);
+      Properties.Create_Property
+        (Managed, Root, "item", "duplicate", True, Duplicate, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Duplicate /= System.Null_Address
+         and then Duplicate /= First);
+      First_Value := Store_Property_Child (First);
+      Duplicate_Value := Store_Property_Child (Duplicate);
+      pragma Assert
+        (First_Value /= System.Null_Address
+         and then Duplicate_Value /= System.Null_Address);
+      Store_Property_Check
+        (Doc, Root, First, First_Value, Original_Content'Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Fail_Malloc_Nth (Interfaces.C.unsigned'(2));
+      Properties.Create_Property
+        (Managed, Root, "unpublished", "failure", True, Returned, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.No_Memory
+         and then Returned = System.Null_Address);
+      Check_Malloc_Failure;
+      Store_Property_Check
+        (Doc, Root, First, First_Value, Original_Content'Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Stores.Inspect (Managed, First, First_View, Found);
+      pragma Assert (Found);
+      Stores.Inspect (Managed, First_Value, First_Value_View, Found);
+      pragma Assert (Found);
+      Stores.Inspect (Managed, Duplicate, Duplicate_View, Found);
+      pragma Assert (Found);
+      Stores.Inspect (Managed, Duplicate_Value, Duplicate_Value_View, Found);
+      pragma Assert (Found);
+
+      Fail_Next_Malloc;
+      Properties.Set_Property
+        (Managed, Root, "item", "blocked", True, Returned, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.No_Memory
+         and then Returned = System.Null_Address);
+      Stores.Inspect (Managed, First, Item, Found);
+      pragma Assert (Found and then Item = First_View);
+      Stores.Inspect (Managed, First_Value, Item, Found);
+      pragma Assert (Found and then Item = First_Value_View);
+      Stores.Inspect (Managed, Duplicate, Item, Found);
+      pragma Assert (Found and then Item = Duplicate_View);
+      Stores.Inspect (Managed, Duplicate_Value, Item, Found);
+      pragma Assert (Found and then Item = Duplicate_Value_View);
+      Store_Property_Check
+        (Doc, Root, First, First_Value, Original_Content'Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Store_Property_Track_Retired (First, First_Value);
+      Properties.Set_Property
+        (Managed, Root, "item", "updated", True, Returned, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created and then Returned = First);
+      Store_Property_Check_Retired;
+      New_Value := Store_Property_Child (First);
+      pragma Assert
+        (New_Value /= System.Null_Address and then New_Value /= First_Value);
+      Stores.Inspect (Managed, First, Item, Found);
+      pragma Assert
+        (Found and then Item.Facade = First_View.Facade
+         and then Item.Parent = First_View.Parent
+         and then Item.Previous = First_View.Previous
+         and then Item.Next = First_View.Next);
+      Stores.Inspect (Managed, New_Value, Item, Found);
+      pragma Assert
+        (Found and then Item.Kind = Text_Node and then Item.Content_Length = 7);
+      Stores.Inspect (Managed, Duplicate, Item, Found);
+      pragma Assert (Found and then Item = Duplicate_View);
+      Stores.Inspect (Managed, Duplicate_Value, Item, Found);
+      pragma Assert (Found and then Item = Duplicate_Value_View);
+      Store_Property_Check
+        (Doc, Root, First, New_Value, Updated_Content'Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Properties.Set_Property
+        (Managed, Root, "item", "", False, Returned, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created and then Returned = First);
+      Store_Property_Check
+        (Doc, Root, First, System.Null_Address, System.Null_Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Properties.Set_Property
+        (Managed, Root, "item", "", True, Returned, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created and then Returned = First);
+      Empty_Value := Store_Property_Child (First);
+      pragma Assert (Empty_Value /= System.Null_Address);
+      Stores.Inspect (Managed, Empty_Value, Item, Found);
+      pragma Assert
+        (Found and then Item.Kind = Text_Node
+         and then Item.Content_Length = 0
+         and then Item.Content /= System.Null_Address);
+      Store_Property_Check
+        (Doc, Root, First, Empty_Value, Empty_Content'Address,
+         Duplicate, Duplicate_Value, Duplicate_Content'Address);
+
+      Stores.Release
+        (Managed, First, Stores.Plain_Attribute, True, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      Store_Property_Check
+        (Doc, Root, Duplicate, Duplicate_Value, Duplicate_Content'Address,
+         System.Null_Address, System.Null_Address, System.Null_Address);
+      Stores.Release
+        (Managed, Duplicate, Stores.Plain_Attribute, True, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      Store_Property_Check
+        (Doc, Root, System.Null_Address, System.Null_Address,
+         System.Null_Address, System.Null_Address, System.Null_Address,
+         System.Null_Address);
+
+      Properties.Create_Property
+        (Managed, System.Null_Address, "standalone", "standalone", True,
+         Standalone, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Standalone /= System.Null_Address);
+      New_Value := Store_Property_Child (Standalone);
+      pragma Assert (New_Value /= System.Null_Address);
+      Store_Standalone_Property_Check
+        (Standalone, New_Value, Standalone_Content'Address);
+      Stores.Release
+        (Managed, Standalone, Stores.Plain_Attribute, False, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      Stores.Release
+        (Managed, Doc, Stores.Document_Only, False, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Stores.Is_Empty (Managed));
+   end;
+   Ada.Text_IO.Put_Line ("Store property creation, replacement, and rollback tests passed");
    declare
       package Importer renames XML3_DOM.Import;
       use type Importer.Import_Status;
@@ -1202,6 +1408,15 @@ begin
            (Build_Status = XML3_DOM_Constructors.Created and then Source = null);
          Store_Arena_Check (Imported);
          Store_Arena_Check (Second);
+         XML3_DOM_Store.Properties.Set_Property
+           (Managed, Source_Root, "a", "plain", True,
+            Query_Result, Query_Status);
+         pragma Assert
+           (Query_Status = XML3_DOM_Constructors.Created
+            and then Query_Result /= System.Null_Address
+            and then Query_Result /= Source_Attr);
+         Store_No_Namespace_Check
+           (Source_Root, Source_Attr, Source_Lang, Query_Result);
          XML3_DOM_Store.Unlink (Managed, Source_Attr, Build_Status);
          pragma Assert (Build_Status = XML3_DOM_Constructors.Created);
          XML3_DOM_Store.Queries.Search_Namespace

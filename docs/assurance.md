@@ -135,6 +135,18 @@ copying, allocation/free and address correspondence remain trusted boundary
 operations. The public C getters are not routed through these queries, and
 `XML3_C` remains on the legacy implementation.
 
+`XML3_DOM_Store.Properties` adds internal namespace-free property creation and
+replacement. Creation appends attributes, including duplicates; replacement
+updates the first matching no-namespace attribute or creates one when absent.
+Values are copied literally, with null values distinct from present empty
+values. The implementation uses Store allocation, attachment, retirement and
+synchronization operations; it does not traverse or mutate native DOM links.
+Connected native tests cover literal bytes, duplicate attributes, allocation
+rollback, null-versus-empty value children, and clearing the old value links
+before its exactly-once native free. These routines are not wired to exported
+public APIs: `XML3_C` remains on the legacy implementation, and this proof does
+not establish public C API safety.
+
 The ghost `Count_Holders` helper retains the recursive holder-count definition
 with a bounded-result postcondition and decreasing variant. `Holder_Count`
 delegates to it while stating the same recurrence through the helper, avoiding
@@ -205,7 +217,7 @@ exercise this correspondence without proving it for every layout or execution.
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 6,681-check result.
+  are trusted, not discharged by the 6,935-check result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

@@ -59,6 +59,57 @@ procedure DOM_Core_Test is
       pragma Assert (Can_Edit (S.all) and then not Projection_Required (S.all));
    end Project;
 
+   procedure Attribute_Children is
+      T : State_Access;
+      Own : Owner_Ref;
+      Parent, Attr, First, Last, Kept : Node_Ref;
+      Local_OK : Boolean;
+   begin
+      Initialize (T, 8, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (500), Own, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (501), Own, 0, Parent, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Attribute_Node, Token (502), Own, 0, Attr, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Text_Node, Token (503), Own, 0, First, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Text_Node, Token (504), Own, 0, Last, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Text_Node, Token (505), Own, 0, Kept, Local_OK);
+      pragma Assert (Local_OK);
+      Release_Reservation (T.all, Own);
+      Attach_Property (T.all, Parent, Attr, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Attr, First, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Attr, Kept, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Attr, Last, Local_OK);
+      pragma Assert (Local_OK);
+      Retire_Attribute_Children (T.all, Attr, Kept);
+      pragma Assert
+        (Node (T.all, First).State = Tombstone
+         and then Node (T.all, Last).State = Tombstone
+         and then Node (T.all, Attr).First_Child = Kept
+         and then Node (T.all, Attr).Last_Child = Kept
+         and then Node (T.all, Kept).Next = Null_Node
+         and then Node (T.all, Kept).Previous = Null_Node
+         and then Node (T.all, Parent).First_Prop = Attr
+         and then Node (T.all, Attr).Parent = Parent
+         and then Owner (T.all, Own).References = 3);
+      Retire_Attribute_Children (T.all, Attr, Null_Node);
+      pragma Assert
+        (Node (T.all, Kept).State = Tombstone
+         and then Node (T.all, Attr).First_Child = Null_Node
+         and then Node (T.all, Attr).Last_Child = Null_Node
+         and then Owner (T.all, Own).References = 2);
+      Free_Subtree (T.all, Parent);
+      pragma Assert (Owner (T.all, Own).References = 0);
+      XML3_DOM_Allocation.Free_State (T);
+   end Attribute_Children;
+
    procedure Text_Merging is
       T : State_Access;
       A, B, Old_Content, New_Content, F : Owner_Ref;
@@ -381,6 +432,7 @@ procedure DOM_Core_Test is
    end Root_Replacement;
 
 begin
+   Attribute_Children;
    Text_Merging;
    Document_Propagation;
    Root_Replacement;

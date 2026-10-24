@@ -56,14 +56,6 @@ package body XML3_DOM_Store with SPARK_Mode is
    end Find_Namespace;
 
    procedure Reclaim_Empty (S : in out Store)
-     with Global => null,
-       Pre => S.Current = null
-         or else
-           (Valid (S.Current.all)
-            and then Can_Edit (S.Current.all)
-            and then not Projection_Required (S.Current.all)
-            and then Facades_Present (S.Current.all)),
-       Post => Ready (S)
    is
    begin
       if S.Current = null then

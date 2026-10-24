@@ -103,6 +103,16 @@ private
    function Is_Empty (S : Store) return Boolean is (S.Current = null);
 
    use type XML3_DOM.Node_Ref;
+   procedure Reclaim_Empty (S : in out Store)
+     with Global => null,
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all)),
+       Post => Ready (S);
+
    function Find_Node
      (S : Store; Facade : System.Address) return XML3_DOM.Node_Ref
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),

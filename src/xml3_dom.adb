@@ -2058,6 +2058,8 @@ package body XML3_DOM with SPARK_Mode is
            Same_Pins (Node (S, I), Node (S'Old, I))
              and then Node (S, I).Kind = Node (S'Old, I).Kind
              and then Node (S, I).Facade = Node (S'Old, I).Facade
+             and then (if I /= Child and then I /= Replaced then
+               Node (S, I).Parent = Node (S'Old, I).Parent)
              and then Node (S, I).Document = Node (S'Old, I).Document)
        and then (for all I in Namespace_Ref range
          1 .. Namespace_Ref (Namespace_Count (S)) =>
@@ -2408,7 +2410,10 @@ package body XML3_DOM with SPARK_Mode is
        and then Child in 1 .. Node_Ref (S.Graph.Node_Used)
        and then Node (S, Parent).State = Live
        and then Node (S, Child).State = Live,
-     Post => (if not Success then Same_Graph (S, S'Old))
+     Post => (declare
+       Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S)'Old;
+     begin
+       (if not Success then Same_Graph (S, S'Old))
        and then Valid (S) and then Can_Edit (S)
          and then S.Capacity = S'Old.Capacity
          and then Node_Count (S) = Node_Count (S'Old)
@@ -2416,6 +2421,9 @@ package body XML3_DOM with SPARK_Mode is
          and then Owner_Count (S) = Owner_Count (S'Old)
          and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
            Node (S, I).State = Node (S'Old, I).State
+             and then Node (S, I).Kind = Original_Nodes (Positive (I)).Kind
+             and then (if I /= Child and then I /= Replaced then
+               Node (S, I).Parent = Node (S'Old, I).Parent)
              and then Node (S, I).Facade = Node (S'Old, I).Facade)
          and then (for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>
@@ -2438,13 +2446,13 @@ package body XML3_DOM with SPARK_Mode is
               Node (S, I).Document =
                 (if Node (S'Old, Parent).Kind = Document_Node
                  then Parent else Node (S'Old, Parent).Document)
-              and then ((if Node (S'Old, Parent).Kind = Document_Node
+             and then ((if Node (S'Old, Parent).Kind = Document_Node
                          then Parent else Node (S'Old, Parent).Document) = Null_Node
                 or else Node (S, I).Doc_Pin =
                   Node (S'Old,
                     (if Node (S'Old, Parent).Kind = Document_Node
                      then Parent else Node (S'Old, Parent).Document)).Owner)))
-       );
+       ));
 
    procedure Attach
      (S : in out State; Parent, Child : Node_Ref;
@@ -2598,7 +2606,11 @@ package body XML3_DOM with SPARK_Mode is
            Node (S, I).State = Node (Before, I).State);
       pragma Assert
         (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           Node (S, I).Facade = Node (Before, I).Facade);
+           Node (S, I).Facade = Node (Before, I).Facade
+             and then Node (S, I).Kind = Node (Before, I).Kind);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Node (S, I).Kind = Original_Nodes (Positive (I)).Kind);
       pragma Assert
         (for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>
@@ -2908,8 +2920,8 @@ package body XML3_DOM with SPARK_Mode is
        and then Node (S, Root).State = Tombstone
        and then Projection_Required (S)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-         (if not S.Marks (Positive (I)) then
-           Node (S, I) = Unlinked_View (S'Old, Root, I)))
+         (if S.Marks (Positive (I)) then Node (S, I).State = Tombstone
+          else Node (S, I) = Unlinked_View (S'Old, Root, I)))
        and then Facades_Preserved (S'Old, S)
        and then (if Facades_Present (S'Old) then Facades_Present (S))
        and then (if Node (S'Old, Root).Parent = Null_Node
@@ -2985,6 +2997,26 @@ package body XML3_DOM with SPARK_Mode is
       Prepare_Subtree (S, Root, 0, Prepared);
       pragma Assert (Prepared);
       pragma Assert (Same_Used_Entries (Before, S));
+      for I in 1 .. S.Graph.Node_Used loop
+         if Node (S, Node_Ref (I)).State = Live then
+            Same_Ancestor
+              (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+               Node_Count (S), Root, Node_Ref (I));
+            pragma Assert
+              (Ancestor (Before, Root, Node_Ref (I)) =
+                 Ancestor (S, Root, Node_Ref (I)));
+         end if;
+         pragma Assert
+           (S.Marks (I) =
+              (Node (Before, Node_Ref (I)).State = Live
+               and then Ancestor (Before, Root, Node_Ref (I))));
+         pragma Loop_Invariant (Same_Used_Entries (Before, S));
+         pragma Loop_Invariant
+           (for all J in 1 .. I =>
+              S.Marks (J) =
+                (Node (Before, Node_Ref (J)).State = Live
+                 and then Ancestor (Before, Root, Node_Ref (J))));
+      end loop;
       if Node (S, Root).Parent = Null_Node
         and then Node (S, Root).First_Child = Null_Node
         and then Node (S, Root).First_Prop = Null_Node
@@ -3003,6 +3035,70 @@ package body XML3_DOM with SPARK_Mode is
       Free_Marked_Subtree (S, Root);
       pragma Assert (Facades_Preserved (Before, S));
    end Free_Subtree;
+
+   procedure Retire_Attribute_Children
+     (S : in out State; Attribute, Keep : Node_Ref)
+   is
+      Before : constant State := S with Ghost;
+      Before_Attribute : Node_View := Node (S, Attribute) with Ghost;
+   begin
+      for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+         if Node (S, I).State = Live
+           and then Node (S, I).Kind /= Attribute_Node
+           and then Node (S, I).Parent = Attribute
+           and then I /= Keep
+         then
+            pragma Assert (Node_Siblings_Valid (S.Graph, Positive (I)));
+            pragma Assert
+              (Node (S, Attribute).Tree_Rank < Node (S, I).Tree_Rank);
+            pragma Assert (not Ancestor (S, I, Attribute));
+            pragma Assert
+              (if Keep /= Null_Node then not Ancestor (S, I, Keep));
+            Before_Attribute := Node (S, Attribute);
+            Free_Subtree (S, I);
+            pragma Assert
+              (Node (S, Attribute) =
+                 (Before_Attribute with delta
+                    First_Child => Node (S, Attribute).First_Child,
+                    Last_Child => Node (S, Attribute).Last_Child));
+         end if;
+         pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
+         pragma Loop_Invariant (Node_Count (S) = Node_Count (Before));
+         pragma Loop_Invariant
+           (Namespace_Count (S) = Namespace_Count (Before));
+         pragma Loop_Invariant (Owner_Count (S) = Owner_Count (Before));
+         pragma Loop_Invariant (Facades_Preserved (Before, S));
+         pragma Loop_Invariant
+           (if Facades_Present (Before) then Facades_Present (S));
+         pragma Loop_Invariant
+           (Node (S, Attribute) = (Node (Before, Attribute) with delta
+             First_Child => Node (S, Attribute).First_Child,
+             Last_Child => Node (S, Attribute).Last_Child));
+         pragma Loop_Invariant
+           (if Keep /= Null_Node then
+             Node (S, Keep) = (Node (Before, Keep) with delta
+               Previous => Node (S, Keep).Previous,
+               Next => Node (S, Keep).Next));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range 1 .. I =>
+             (if Node (S, J).State = Live
+               and then Node (S, J).Kind /= Attribute_Node
+               and then Node (S, J).Parent = Attribute then J = Keep));
+      end loop;
+      pragma Assert (Node_Children_Valid
+        (S.Graph, Positive (Attribute)));
+      if Keep = Null_Node then
+         pragma Assert (Node (S, Attribute).First_Child = Null_Node);
+         pragma Assert (Node (S, Attribute).Last_Child = Null_Node);
+      else
+         pragma Assert
+           (Node_Siblings_Valid (S.Graph, Positive (Keep)));
+         pragma Assert (Node (S, Keep).Previous = Null_Node);
+         pragma Assert (Node (S, Keep).Next = Null_Node);
+         pragma Assert (Node (S, Attribute).First_Child = Keep);
+         pragma Assert (Node (S, Attribute).Last_Child = Keep);
+      end if;
+   end Retire_Attribute_Children;
 
    procedure Merge_Text
      (S : in out State; Target, Source : Node_Ref;

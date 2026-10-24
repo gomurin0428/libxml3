@@ -686,7 +686,9 @@ package XML3_DOM with SPARK_Mode is
    function Unlinked_View (S : State; N, I : Node_Ref) return Node_View
      with Ghost, Global => null,
        Pre => Well_Sized (S) and then N in 1 .. Node_Ref (Node_Count (S))
-         and then I in 1 .. Node_Ref (Node_Count (S));
+         and then I in 1 .. Node_Ref (Node_Count (S)),
+       Post => (if Node (S, N).Parent = Null_Node then
+         Unlinked_View'Result = Node (S, I));
 
    procedure Unlink (S : in out State; N : Node_Ref)
    with Global => null,
@@ -741,6 +743,17 @@ package XML3_DOM with SPARK_Mode is
           then Parent else Node (S'Old, Parent).Document);
      begin Valid (S) and then Can_Edit (S)
        and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+         Node (S, I).State = Node (S'Old, I).State
+         and then Node (S, I).Kind = Node (S'Old, I).Kind
+         and then (if I /= Child then
+           Node (S, I).Parent = Node (S'Old, I).Parent)
+         and then Node (S, I).Facade = Node (S'Old, I).Facade)
+       and then (if not Success then Same_Graph (S, S'Old))
        and then (if Success then Node (S, Child).Parent = Parent)
        and then (if not Success then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old)
        and then (if Success then
@@ -809,6 +822,17 @@ package XML3_DOM with SPARK_Mode is
           then Element else Node (S'Old, Element).Document);
      begin Valid (S) and then Can_Edit (S)
        and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+         Node (S, I).State = Node (S'Old, I).State
+         and then Node (S, I).Kind = Node (S'Old, I).Kind
+         and then (if I /= Attribute then
+           Node (S, I).Parent = Node (S'Old, I).Parent)
+         and then Node (S, I).Facade = Node (S'Old, I).Facade)
+       and then (if not Success then Same_Graph (S, S'Old))
        and then (if Success then Node (S, Attribute).Parent = Element)
        and then (if not Success then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old)
        and then (if Success then
@@ -868,6 +892,11 @@ package XML3_DOM with SPARK_Mode is
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S'Old)) =>
+         (if Node (S'Old, I).State = Live
+           and then Ancestor (S'Old, Root, I)
+          then Node (S, I).State = Tombstone
+          else Node (S, I) = Unlinked_View (S'Old, Root, I)))
        and then (for all B in Owner_Ref range
          1 .. Owner_Ref (Owner_Count (S'Old)) =>
            Owner (S, B).Reservations = Owner (S'Old, B).Reservations
@@ -879,6 +908,35 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S'Old, Root).First_Prop = Null_Node then
            (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S'Old)) =>
              (if I /= Root then Node (S, I) = Node (S'Old, I))));
+
+   procedure Retire_Attribute_Children
+     (S : in out State; Attribute, Keep : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Attribute in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Attribute).State = Live
+       and then Node (S, Attribute).Kind = Attribute_Node
+       and then (Keep = Null_Node or else
+         (Keep in 1 .. Node_Ref (Node_Count (S))
+          and then Node (S, Keep).State = Live
+          and then Node (S, Keep).Kind /= Attribute_Node
+          and then Node (S, Keep).Parent = Attribute)),
+     Post => Valid (S) and then Can_Edit (S)
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then Node (S, Attribute) =
+         (Node (S'Old, Attribute) with delta First_Child => Keep,
+           Last_Child => Keep)
+       and then (if Keep /= Null_Node then Node (S, Keep) =
+         (Node (S'Old, Keep) with delta Previous => Null_Node,
+           Next => Null_Node))
+       and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+         (if Node (S, I).State = Live
+           and then Node (S, I).Kind /= Attribute_Node
+           and then Node (S, I).Parent = Attribute then I = Keep));
 
    procedure Begin_Projection (S : in out State)
    with Global => null,

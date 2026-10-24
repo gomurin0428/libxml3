@@ -29,6 +29,10 @@ static int fail_next_malloc;
 static xmlNode *store_merge_root, *store_merge_target, *store_merge_source;
 static void *store_merge_source_block;
 static unsigned store_merge_source_frees;
+static xmlAttr *store_property_retired_attribute;
+static xmlNode *store_property_retired_value;
+static void *store_property_retired_block;
+static unsigned store_property_retired_frees;
 
 void bridge_store_merge_track(xmlNode *root, xmlNode *target, xmlNode *source) {
     store_merge_root = root;
@@ -56,6 +60,24 @@ void bridge_store_merge_reset(void) {
     assert(store_merge_source_frees == 1);
     store_merge_root = store_merge_target = store_merge_source = NULL;
     store_merge_source_block = NULL;
+}
+
+void bridge_store_property_track_retired(void *attribute_pointer,
+                                         void *value_pointer) {
+    assert(store_property_retired_attribute == NULL);
+    assert(attribute_pointer != NULL && value_pointer != NULL);
+    store_property_retired_attribute = attribute_pointer;
+    store_property_retired_value = value_pointer;
+    store_property_retired_block = (size_t *)value_pointer - 1;
+    store_property_retired_frees = 0;
+}
+
+void bridge_store_property_check_retired(void) {
+    assert(store_property_retired_frees == 1);
+    store_property_retired_attribute = NULL;
+    store_property_retired_value = NULL;
+    store_property_retired_block = NULL;
+    store_property_retired_frees = 0;
 }
 
 void * __real_malloc(size_t);
@@ -456,6 +478,99 @@ void bridge_materialize_check_retained(xmlNode *root, xmlNode *attr,
     assert(empty->href != NULL && ((const char *)empty->href)[0] == '\0');
 }
 
+static void bridge_store_property_value_check
+  (xmlDoc *doc, xmlNode *root, xmlAttr *attribute, xmlAttr *previous,
+   xmlAttr *next, xmlNode *value, const char *content) {
+    assert(attribute->type == XML_ATTRIBUTE_NODE);
+    assert(attribute->parent == root && attribute->doc == doc);
+    assert(attribute->prev == previous && attribute->next == next);
+    assert(attribute->ns == NULL);
+    assert(strcmp((const char *)attribute->name, "item") == 0);
+    if (content == NULL) {
+        assert(value == NULL);
+        assert(attribute->children == NULL && attribute->last == NULL);
+    } else {
+        assert(value != NULL);
+        assert(attribute->children == value && attribute->last == value);
+        assert(value->type == XML_TEXT_NODE);
+        assert(value->parent == (xmlNode *)attribute && value->doc == doc);
+        assert(value->prev == NULL && value->next == NULL);
+        assert(strcmp((const char *)value->name, "text") == 0);
+        assert(value->content != NULL);
+        assert(strcmp((const char *)value->content, content) == 0);
+    }
+}
+
+void bridge_store_property_check
+  (void *doc_pointer, void *root_pointer,
+   void *first_pointer, void *first_value_pointer, const char *first_content,
+   void *second_pointer, void *second_value_pointer,
+   const char *second_content) {
+    xmlDoc *doc = doc_pointer;
+    xmlNode *root = root_pointer;
+    xmlAttr *first = first_pointer;
+    xmlAttr *second = second_pointer;
+    assert(doc->type == XML_DOCUMENT_NODE && doc->doc == doc);
+    assert(doc->children == root && doc->last == root);
+    assert(root->type == XML_ELEMENT_NODE && root->parent == (xmlNode *)doc);
+    assert(root->doc == doc && root->properties == first);
+    if (first == NULL) {
+        assert(second == NULL);
+        return;
+    }
+    bridge_store_property_value_check
+      (doc, root, first, NULL, second, first_value_pointer, first_content);
+    if (second != NULL)
+        bridge_store_property_value_check
+          (doc, root, second, first, NULL, second_value_pointer, second_content);
+}
+
+void *bridge_store_property_child(void *attribute_pointer) {
+    const xmlAttr *attribute = attribute_pointer;
+    assert(attribute != NULL);
+    return attribute->children;
+}
+
+void bridge_store_standalone_property_check
+  (void *attribute_pointer, void *value_pointer, const char *content) {
+    const xmlAttr *attribute = attribute_pointer;
+    const xmlNode *value = value_pointer;
+    assert(attribute != NULL && attribute->type == XML_ATTRIBUTE_NODE);
+    assert(attribute->parent == NULL && attribute->prev == NULL
+           && attribute->next == NULL && attribute->doc == NULL);
+    assert(attribute->ns == NULL);
+    assert(strcmp((const char *)attribute->name, "standalone") == 0);
+    assert(attribute->children == value && attribute->last == value);
+    assert(value != NULL && value->type == XML_TEXT_NODE);
+    assert(value->parent == (const xmlNode *)attribute && value->doc == NULL);
+    assert(strcmp((const char *)value->content, content) == 0);
+}
+
+void bridge_store_no_namespace_check
+  (void *root_pointer, void *namespaced_pointer, void *lang_pointer,
+   void *added_pointer) {
+    const xmlNode *root = root_pointer;
+    const xmlAttr *namespaced = namespaced_pointer;
+    const xmlAttr *lang = lang_pointer;
+    const xmlAttr *added = added_pointer;
+    assert(root->properties == namespaced);
+    assert(namespaced->parent == root && namespaced->next == lang);
+    assert(namespaced->prev == NULL && namespaced->ns != NULL);
+    assert(strcmp((const char *)namespaced->name, "a") == 0);
+    assert(strcmp((const char *)namespaced->ns->prefix, "p") == 0);
+    assert(strcmp((const char *)namespaced->ns->href, "urn:p") == 0);
+    assert(namespaced->children != NULL);
+    assert(strcmp((const char *)namespaced->children->content, "A&B") == 0);
+    assert(lang->parent == root && lang->prev == namespaced);
+    assert(lang->next == added && lang->ns != NULL);
+    assert(strcmp((const char *)lang->name, "lang") == 0);
+    assert(added->parent == root && added->prev == lang && added->next == NULL);
+    assert(added->doc == root->doc && added->ns == NULL);
+    assert(strcmp((const char *)added->name, "a") == 0);
+    assert(added->children != NULL && added->children->content != NULL);
+    assert(strcmp((const char *)added->children->content, "plain") == 0);
+}
+
 void bridge_store_arena_check(xmlDoc *doc) {
     xmlNode *before = doc->children;
     assert(before != NULL && before->next != NULL);
@@ -532,6 +647,14 @@ void __wrap_free(void *pointer) {
         assert(store_merge_source->content == NULL);
         ++store_merge_source_frees;
         bridge_store_merge_check(1);
+    }
+    if (pointer != NULL && pointer == store_property_retired_block) {
+        assert(store_property_retired_frees == 0);
+        assert(store_property_retired_attribute->children
+               != store_property_retired_value);
+        assert(store_property_retired_attribute->last
+               != store_property_retired_value);
+        ++store_property_retired_frees;
     }
     for (unsigned i = 0; i < 3; ++i) {
         if (pointer != blocks[i] || pointer == NULL)
