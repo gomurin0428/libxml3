@@ -29,13 +29,30 @@ make check
 現在の評価範囲は [API台帳](docs/api-coverage.md) を参照してください。
 `make compare-system` はOS付属版での補助比較です。
 
+`make build` は通常実行用の `lib/libxml3.so` を生成します。証明用の
+アサーション・事前／事後条件・ghost 処理は実行時に評価せず、入力検査、
+Ada の範囲チェックと整数オーバーフロー検査は維持します（`-gnatp` は使用しません）。
+`make build-development` は全アサーションを有効にした開発用ライブラリを
+`lib/development/libxml3.so` に生成し、オブジェクトも通常実行用と分離します。
+`make test-development` はこのライブラリで公開 API の小規模回帰を実行します。
+開発用では全体整合性の再計算が非常に重く、深いツリーの性能測定には適しません。
+`make prove` と Ada のコア／接続層テストは引き続き全アサーションを有効にし、
+通常実行用プロファイルによって証明条件を省略しません。
+
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
-`src/xml3_namespaces.*`、`src/xml3_encoding.*`）を GNATprove で検査します。
+`src/xml3_namespaces.*`、`src/xml3_encoding.*`）と、DOM 状態・反映・Store・
+parser materialization・Runtime（`src/xml3_dom*.{ads,adb}`）を GNATprove で検査します。
 名前空間は読み取りと
 参照 API のみをサポートし、完全な XML/namespace conformance は主張しません。
-C 境界やヒープ所有権は SPARK の保証範囲外です。保証範囲の詳細は
-[docs/assurance.md](docs/assurance.md) と、コアの実行結果を記録した
+公開 DOM API は共通の SPARK Store/Runtime に委譲され、pthread mutex の
+trusted Ada/C Guard で直列化されます。Runtime の DOM 操作は証明対象ですが、
+C ABI 変換、外部ポインターとネイティブレイアウト、allocator、mutex 自体は
+形式証明の対象外です。保証範囲の詳細は [docs/assurance.md](docs/assurance.md) と
 [docs/proof-report.md](docs/proof-report.md) を参照してください。
+これらの資料には
+mutex 同期、allocator の非再入、非同期 cancellation を行わないこと、および
+借用 facade の並行使用・解放を呼び出し側が同期することを前提として記録しています。
+`make check` は DOM コア、C facade 投影、公開 API の並列回帰を実行します。
 
 ## C の例
 

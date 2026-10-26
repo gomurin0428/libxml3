@@ -8,18 +8,54 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
-	$(ADA_BIN)/gprbuild -p -P libxml3.gpr
+	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
+
+.PHONY: build-development test-development
+
+build-development:
+	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=development
+
+test-development: build-development tests/runtime-test tests/string-exception-test \
+		tests/namespace-test tests/attribute-test
+	LD_LIBRARY_PATH=lib/development ./tests/runtime-test
+	LD_LIBRARY_PATH=lib/development ./tests/string-exception-test
+	LD_LIBRARY_PATH=lib/development ./tests/namespace-test
+	LD_LIBRARY_PATH=lib/development ./tests/attribute-test
+
+tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
+		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_core_test.gpr -o dom-core-test
+
+test-dom-core: tests/dom-core-test
+	./tests/dom-core-test
+
+tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
+		src/xml3_dom_store.ads src/xml3_dom_store.adb \
+		src/xml3_dom_store-queries.ads src/xml3_dom_store-queries.adb \
+		src/xml3_dom_store-properties.ads src/xml3_dom_store-properties.adb \
+		src/xml3_dom_store-documents.ads src/xml3_dom_store-documents.adb \
+		src/xml3_dom-materialize.ads src/xml3_dom-materialize.adb \
+		src/xml3_dom-import.ads src/xml3_dom-import.adb \
+		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
+		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
+		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
+		src/xml3_text.ads src/xml3_text.adb src/xml3_parser.ads src/xml3_parser.adb \
+		src/xml3_encoding.ads src/xml3_encoding.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_bridge_test.gpr -o dom-bridge-test
+
+test-dom-bridge: tests/dom-bridge-test
+	./tests/dom-bridge-test
 
 tests/api-test tests/differential-libxml3: | build
 
 tests/api-test: tests/api-test.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
-tests/namespace-test: tests/namespace-test.c $(PUBLIC_HEADERS) | build
-	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+tests/namespace-test: tests/namespace-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
 tests/namespace-test-sanitize: tests/namespace-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
@@ -118,8 +154,8 @@ tests/dom-test-reference: tests/dom-test.c compat/baseline.json build/reference/
 tests/dom-test-sanitize: tests/dom-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
-tests/attribute-test: tests/attribute-test.c $(PUBLIC_HEADERS) | build
-	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+tests/attribute-test: tests/attribute-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
 tests/attribute-test-reference: tests/attribute-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
 	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
@@ -129,6 +165,30 @@ tests/attribute-test-reference: tests/attribute-test.c compat/baseline.json buil
 
 tests/attribute-test-sanitize: tests/attribute-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/runtime-test: tests/runtime-test.c tests/oom-shim.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror -pthread $< tests/oom-shim.c -Llib \
+		-Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/runtime-test-sanitize: tests/runtime-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -pthread -DXML3_RUNTIME_NO_OOM \
+		-fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/dom-lock-test: tests/dom_lock_test.gpr tests/dom_lock_test.adb \
+		tests/dom_lock_test_mutex.c src/xml3_dom_lock.ads src/xml3_dom_lock.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_lock_test.gpr -o dom-lock-test
+
+tests/dom-projection-test: tests/dom_projection_test.gpr tests/dom_projection_test.adb \
+		tests/dom_projection_probe.c src/xml3_native_memory.ads src/xml3_native_memory.adb
+	$(ADA_BIN)/gprbuild -p -P tests/dom_projection_test.gpr -o dom-projection-test
+
+tests/string-exception-test: tests/string-exception-test.c tests/oom-shim.c \
+		$(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< tests/oom-shim.c -Llib \
+		-Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+test-string-exception: tests/string-exception-test
+	LD_LIBRARY_PATH=lib ./tests/string-exception-test
 
 tests/error-test-sanitize: tests/error-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -pthread -fsanitize=address,undefined $< -Llib -lxml3 -o $@
@@ -160,6 +220,14 @@ test-dom: tests/dom-test tests/dom-test-reference
 test-attributes: tests/attribute-test tests/attribute-test-reference
 	LD_LIBRARY_PATH=lib ./tests/attribute-test
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/attribute-test-reference
+
+test-runtime: tests/runtime-test tests/dom-lock-test tests/string-exception-test
+	LD_LIBRARY_PATH=lib ./tests/runtime-test
+	./tests/dom-lock-test
+	LD_LIBRARY_PATH=lib ./tests/string-exception-test
+
+test-dom-projection: tests/dom-projection-test
+	./tests/dom-projection-test
 
 test-resources: tests/resource-test tests/resource-test-reference \
 		tests/error-snapshot tests/error-snapshot-reference \
@@ -235,7 +303,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 	./tests/differential-system > tests/differential-system.out
 	diff -u tests/differential-system.out tests/differential-libxml3.out
 
-check: build tests/header-smoke.o
+check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
 		xmlNewDoc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
@@ -262,7 +330,7 @@ install: build
 test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/error-test-sanitize tests/fuzz-test-sanitize tests/dom-test-sanitize \
-		tests/attribute-test-sanitize
+		tests/attribute-test-sanitize tests/runtime-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
@@ -275,6 +343,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/fuzz-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/dom-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/attribute-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/runtime-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
@@ -289,5 +358,9 @@ clean:
 		tests/encoding-resource-test tests/encoding-resource-test-reference \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/fuzz-test tests/fuzz-test-sanitize tests/dom-test \
-		tests/dom-test-reference tests/dom-test-sanitize tests/attribute-test \
-		tests/attribute-test-reference tests/attribute-test-sanitize tests/*.out
+		tests/dom-test-reference tests/dom-test-sanitize tests/dom-core-test \
+		tests/dom-bridge-test tests/attribute-test \
+		tests/attribute-test-reference tests/attribute-test-sanitize \
+		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
+		tests/dom-projection-test tests/dom-lock-test \
+		dom-lock-test runtime-test tests/*.out
