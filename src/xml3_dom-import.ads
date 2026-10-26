@@ -59,6 +59,8 @@ package XML3_DOM.Import with SPARK_Mode is
            and then Node (Destination, Root).Facade = Node (Source.all'Old, 1).Facade
            and then Projection_Required (Destination)
          else Root = Null_Node and then Source /= null
+           and then Valid (Source.all) and then Can_Edit (Source.all)
+           and then Is_Arena (Source.all)
            and then Destination = Destination'Old
            and then Source.all = Source.all'Old
            and then Same_Graph (Destination, Destination'Old)

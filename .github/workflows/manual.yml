@@ -20,6 +20,7 @@ jobs:
           make compare
           make compare-system
           make check
+          make test-development
       - name: Prove core
         id: prove
         run: make prove

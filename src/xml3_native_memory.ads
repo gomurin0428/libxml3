@@ -76,24 +76,24 @@ private
       Name, Children, Last, Parent, Next, Previous, Document,
         Namespace, Content, Properties, Namespace_Definitions : System.Address :=
           System.Null_Address;
-   end record with Convention => C;
+   end record with Convention => C, Volatile;
 
    type C_Document is record
       Private_Data : System.Address := System.Null_Address;
       Node_Type : Interfaces.C.int := 0;
       Name, Children, Last, Parent, Next, Previous, Document, Version : System.Address :=
         System.Null_Address;
-   end record with Convention => C;
+   end record with Convention => C, Volatile;
 
    type C_Namespace is record
       Next : System.Address := System.Null_Address;
       Node_Type : Interfaces.C.int := 0;
       Href, Prefix, Private_Data, Context : System.Address := System.Null_Address;
-   end record with Convention => C;
+   end record with Convention => C, Volatile;
 
    type Metadata is record
       Id : Interfaces.C.size_t := 0;
-   end record with Convention => C;
+   end record with Convention => C, Volatile;
 
    Node_Bytes : constant Byte_Count := C_Node'Max_Size_In_Storage_Elements;
    Metadata_Bytes : constant Byte_Count := Metadata'Max_Size_In_Storage_Elements;

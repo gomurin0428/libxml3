@@ -285,7 +285,7 @@ package XML3_DOM with SPARK_Mode is
        Pre => Well_Sized (Before) and then Well_Sized (After),
        Annotate => (GNATprove, Inline_For_Proof);
 
-   function Ancestor_In_Nodes
+   function Ancestor_Descent
      (Nodes : Node_View_Array; Used : Natural; Candidate, N : Node_Ref)
       return Boolean
    is
@@ -295,19 +295,34 @@ package XML3_DOM with SPARK_Mode is
           Nodes (Positive (Nodes (Positive (N)).Parent)).State = Live and then
           Nodes (Positive (Nodes (Positive (N)).Parent)).Tree_Rank
             < Nodes (Positive (N)).Tree_Rank and then
-          Ancestor_In_Nodes (Nodes, Used, Candidate, Nodes (Positive (N)).Parent))))
+          Ancestor_Descent (Nodes, Used, Candidate, Nodes (Positive (N)).Parent))))
+   with Ghost, Global => null,
+     Pre => Nodes'First = 1 and then Used <= Nodes'Last
+       and then Candidate in 1 .. Node_Ref (Used)
+       and then N in 1 .. Node_Ref (Used),
+     Post => (if Ancestor_Descent'Result then
+       Nodes (Positive (Candidate)).State = Live and then
+       Nodes (Positive (Candidate)).Tree_Rank <= Nodes (Positive (N)).Tree_Rank),
+     Subprogram_Variant => (Decreases => Nodes (Positive (N)).Tree_Rank);
+
+   function Ancestor_In_Nodes
+     (Nodes : Node_View_Array; Used : Natural; Candidate, N : Node_Ref)
+      return Boolean
+   is (Ancestor_Descent (Nodes, Used, Candidate, N))
    with Ghost, Global => null,
      Pre => Nodes'First = 1 and then Used <= Nodes'Last
        and then Candidate in 1 .. Node_Ref (Used)
        and then N in 1 .. Node_Ref (Used),
      Post => Ancestor_In_Nodes'Result =
+       Ancestor_Descent (Nodes, Used, Candidate, N)
+       and then Ancestor_In_Nodes'Result =
        (Nodes (Positive (N)).State = Live and then
          (Candidate = N or else
            (Nodes (Positive (N)).Parent in 1 .. Node_Ref (Used) and then
             Nodes (Positive (Nodes (Positive (N)).Parent)).State = Live and then
             Nodes (Positive (Nodes (Positive (N)).Parent)).Tree_Rank
               < Nodes (Positive (N)).Tree_Rank and then
-            Ancestor_In_Nodes
+            Ancestor_Descent
               (Nodes, Used, Candidate, Nodes (Positive (N)).Parent))))
        and then (if Ancestor_In_Nodes'Result then
        Nodes (Positive (Candidate)).State = Live and then
@@ -325,7 +340,9 @@ package XML3_DOM with SPARK_Mode is
          and then Ancestor'Result =
          (Candidate = N or else
            (Node (S, N).Parent /= Null_Node and then
-             Ancestor (S, Candidate, Node (S, N).Parent)))
+             Ancestor_In_Nodes
+               (Snapshot_Nodes (S), Node_Count (S), Candidate,
+                Node (S, N).Parent)))
          and then (if Ancestor'Result then
            Node (S, Candidate).State = Live and then
            Node (S, Candidate).Tree_Rank <= Node (S, N).Tree_Rank),
@@ -687,7 +704,8 @@ package XML3_DOM with SPARK_Mode is
      with Ghost, Global => null,
        Pre => Well_Sized (S) and then N in 1 .. Node_Ref (Node_Count (S))
          and then I in 1 .. Node_Ref (Node_Count (S)),
-       Post => (if Node (S, N).Parent = Null_Node then
+       Post => Unlinked_View'Result.State = Node (S, I).State
+         and then (if Node (S, N).Parent = Null_Node then
          Unlinked_View'Result = Node (S, I));
 
    procedure Unlink (S : in out State; N : Node_Ref)

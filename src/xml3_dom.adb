@@ -214,14 +214,9 @@ package body XML3_DOM with SPARK_Mode is
 
    function Ancestor (S : State; Candidate, N : Node_Ref) return Boolean is
    begin
-      if Candidate = N then
-         return True;
-      end if;
-      if Node (S, N).Parent = Null_Node then
-         return False;
-      end if;
       pragma Assert (Node_Siblings_Valid (S.Graph, Positive (N)));
-      return Ancestor (S, Candidate, Node (S, N).Parent);
+      return Ancestor_In_Nodes
+        (Snapshot_Nodes (S), Node_Count (S), Candidate, N);
    end Ancestor;
 
    function Is_Ancestor
@@ -1781,10 +1776,19 @@ package body XML3_DOM with SPARK_Mode is
      (S : in out State; Root : Node_Ref; Lift : Natural;
       Success : out Boolean)
    is
+      Is_Leaf : constant Boolean :=
+        S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+        and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node;
    begin
       for I in 1 .. S.Graph.Node_Used loop
-         S.Marks (I) := S.Graph.Nodes (I).State = Live
-           and then Is_Ancestor (S, Root, Node_Ref (I));
+         if S.Graph.Nodes (I).State /= Live then
+            S.Marks (I) := False;
+         elsif Is_Leaf then
+            Leaf_Ancestor_Lemma (S, Root, Node_Ref (I));
+            S.Marks (I) := Node_Ref (I) = Root;
+         else
+            S.Marks (I) := Is_Ancestor (S, Root, Node_Ref (I));
+         end if;
          if S.Marks (I) and then S.Graph.Nodes (I).Tree_Rank > Natural'Last - Lift then
             Success := False;
             return;
@@ -2562,6 +2566,10 @@ package body XML3_DOM with SPARK_Mode is
         (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
            Node (S, I).State = Node (Before, I).State
              and then Node (S, I).Facade = Node (Before, I).Facade);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           (if I /= Child and then I /= Replaced then
+              Node (S, I).Parent = Node (Before, I).Parent));
       if Target_Doc /= Null_Node then
          pragma Assert (Target_Doc <= Node_Ref (Node_Count (S)));
          pragma Assert (Node (S, Target_Doc).Kind = Document_Node);
@@ -2611,6 +2619,10 @@ package body XML3_DOM with SPARK_Mode is
       pragma Assert
         (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
            Node (S, I).Kind = Original_Nodes (Positive (I)).Kind);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           (if I /= Child and then I /= Replaced then
+              Node (S, I).Parent = Node (Before, I).Parent));
       pragma Assert
         (for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>

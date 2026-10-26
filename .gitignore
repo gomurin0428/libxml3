@@ -40,6 +40,14 @@ tests/dom-test-sanitize
 tests/attribute-test
 tests/attribute-test-reference
 tests/attribute-test-sanitize
+tests/runtime-test
+tests/runtime-test-sanitize
+tests/dom-lock-test
+tests/dom-projection-test
+tests/string-exception-test
+dom-lock-test
+runtime-test
+tests/*-sanitize
 tests/limit-error-test
 tests/differential-libxml3
 tests/differential-system

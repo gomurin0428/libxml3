@@ -7,12 +7,14 @@ with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
 with XML3_DOM_Store;
+with XML3_DOM_Store.Documents;
 with XML3_DOM_Store.Queries;
 with XML3_DOM_Store.Properties;
 with XML3_DOM.Materialize;
 with XML3_Native_Memory;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Encoding;
 
 procedure DOM_Bridge_Test is
    package Native renames XML3_Native_Memory;
@@ -1468,4 +1470,46 @@ begin
       end;
    end;
    Ada.Text_IO.Put_Line ("DOM arena adoption, rollback, and release tests passed");
+
+   declare
+      package Documents renames XML3_DOM_Store.Documents;
+      use type Documents.Read_Status;
+      use type XML3_DOM_Constructors.Construction_Status;
+      Input : constant String := "<r><x/></r>";
+      Nodes : XML3_Parser.Node_Array (1 .. 16);
+      Names : XML3_Namespaces.Name_Array (1 .. 16);
+      Scratch_A, Scratch_B : String (Input'Range);
+      Managed : XML3_DOM_Store.Store;
+      Doc : System.Address;
+      Read_Status : Documents.Read_Status;
+      Release_Status : XML3_DOM_Store.Operation_Status;
+      Diagnostic : XML3_Parser.Diagnostic_Info;
+      procedure Fail_Malloc_Nth (Nth : Interfaces.C.unsigned)
+        with Import, Convention => C,
+          External_Name => "bridge_fail_malloc_nth";
+      procedure Check_Malloc_Failure
+        with Import, Convention => C,
+          External_Name => "bridge_check_malloc_failure";
+   begin
+      --  Materialization allocates three blocks; fail the Store allocation.
+      Fail_Malloc_Nth (4);
+      Documents.Read
+        (Managed, Input, False, XML3_Encoding.Encoding_Info'(others => <>),
+         Nodes, Names, Scratch_A, Scratch_B, Doc, Read_Status, Diagnostic);
+      Check_Malloc_Failure;
+      pragma Assert
+        (Read_Status = Documents.No_Memory
+         and then Doc = System.Null_Address
+         and then XML3_DOM_Store.Is_Empty (Managed));
+      Documents.Read
+        (Managed, Input, False, XML3_Encoding.Encoding_Info'(others => <>),
+         Nodes, Names, Scratch_A, Scratch_B, Doc, Read_Status, Diagnostic);
+      pragma Assert (Read_Status = Documents.Parsed);
+      XML3_DOM_Store.Release
+        (Managed, Doc, XML3_DOM_Store.Document_Only, False, Release_Status);
+      pragma Assert
+        (Release_Status = XML3_DOM_Constructors.Created
+         and then XML3_DOM_Store.Is_Empty (Managed));
+   end;
+   Ada.Text_IO.Put_Line ("Unpublished document rollback and Store reuse passed");
 end DOM_Bridge_Test;

@@ -60,8 +60,33 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
 
    procedure Write_Node (Facade : System.Address; Value : Node_Projection) is
       Item : constant Node_Access := To_Node (Facade);
+      Id : constant Metadata_Access :=
+        To_Metadata (Facade - Storage_Offset (Metadata_Bytes));
    begin
-      To_Metadata (Facade - Storage_Offset (Metadata_Bytes)).Id := size_t (Value.Id);
+      if Id.Id = size_t (Value.Id)
+        and then Item.Node_Type = Value.Node_Type
+        and then Item.Name = Value.Name
+        and then Item.Children = Value.Children
+        and then Item.Last = Value.Last
+        and then Item.Parent = Value.Parent
+        and then Item.Next = Value.Next
+        and then Item.Previous = Value.Previous
+        and then Item.Document = Value.Document
+      then
+         if Value.Is_Document then
+            if To_Document (Facade).Version = Value.Content then
+               return;
+            end if;
+         elsif Item.Namespace = Value.Namespace
+           and then Item.Content = Value.Content
+           and then Item.Properties = Value.Properties
+           and then Item.Namespace_Definitions = Value.Namespace_Definitions
+         then
+            return;
+         end if;
+      end if;
+
+      Id.Id := size_t (Value.Id);
       Item.Node_Type := Value.Node_Type;
       Item.Name := Value.Name;
       Item.Children := Value.Children;
@@ -82,8 +107,20 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
 
    procedure Write_Namespace (Facade : System.Address; Value : Namespace_Projection) is
       Item : constant Namespace_Access := To_Namespace (Facade);
+      Id : constant Metadata_Access :=
+        To_Metadata (Facade - Storage_Offset (Metadata_Bytes));
    begin
-      To_Metadata (Facade - Storage_Offset (Metadata_Bytes)).Id := size_t (Value.Id);
+      if Id.Id = size_t (Value.Id)
+        and then Item.Node_Type = 18
+        and then Item.Next = Value.Next
+        and then Item.Href = Value.Href
+        and then Item.Prefix = Value.Prefix
+        and then Item.Context = System.Null_Address
+      then
+         return;
+      end if;
+
+      Id.Id := size_t (Value.Id);
       Item.Node_Type := 18;
       Item.Next := Value.Next;
       Item.Href := Value.Href;

@@ -8,6 +8,8 @@ project Proof is
                         "xml3_dom_store.ads", "xml3_dom_store.adb",
                         "xml3_dom_store-queries.ads", "xml3_dom_store-queries.adb",
                         "xml3_dom_store-properties.ads", "xml3_dom_store-properties.adb",
+                        "xml3_dom_store-documents.ads", "xml3_dom_store-documents.adb",
+                        "xml3_dom_runtime.ads", "xml3_dom_runtime.adb",
                         "xml3_dom-materialize.ads", "xml3_dom-materialize.adb",
                         "xml3_dom-import.ads", "xml3_dom-import.adb",
                         "xml3_dom_bridge.ads", "xml3_dom_bridge.adb",

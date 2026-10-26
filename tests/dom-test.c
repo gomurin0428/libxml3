@@ -230,6 +230,95 @@ static void test_parsed_unlink_and_reinsert(void) {
 }
 
 #ifndef XML3_REFERENCE_TEST
+static void test_cross_document_detached_lifetime(void) {
+    static const char input[] =
+        "<r><sub xmlns:p='urn:retained'><p:leaf>retained</p:leaf></sub></r>";
+    static const char second_input[] = "<target/>";
+    xmlDocPtr first = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlDocPtr second = xmlReadMemory(second_input,
+                                    (int)strlen(second_input), NULL, NULL, 0);
+    xmlNodePtr first_root;
+    xmlNodePtr subtree;
+    xmlNodePtr leaf;
+    xmlNsPtr ns;
+    xmlAttrPtr literal_attr;
+    xmlAttrPtr duplicate_attr;
+    xmlAttrPtr null_attr;
+    xmlAttrPtr empty_attr;
+    xmlChar *value;
+    char literal[] = "original&amp;<";
+    xmlDocPtr fresh;
+
+    assert(first != NULL && second != NULL);
+    first_root = xmlDocGetRootElement(first);
+    subtree = first_root->children;
+    leaf = subtree->children;
+    assert(first_root->children == subtree && first_root->last == subtree);
+    assert(subtree->parent == first_root && subtree->doc == first);
+    assert(subtree->prev == NULL && subtree->next == NULL);
+    assert(leaf->parent == subtree && leaf->doc == first);
+    ns = xmlSearchNs(first, subtree, BAD_CAST "p");
+    assert(ns != NULL && subtree->nsDef == ns);
+
+    literal_attr = xmlNewProp(subtree, BAD_CAST "duplicate", BAD_CAST literal);
+    duplicate_attr = xmlNewProp(subtree, BAD_CAST "duplicate", BAD_CAST "second");
+    null_attr = xmlNewProp(subtree, BAD_CAST "null-value", NULL);
+    empty_attr = xmlNewProp(subtree, BAD_CAST "empty-value", BAD_CAST "");
+    assert(literal_attr != NULL && duplicate_attr != NULL);
+    assert(null_attr != NULL && empty_attr != NULL);
+    literal[0] = 'X';
+    assert(subtree->properties == literal_attr);
+    assert(literal_attr->next == duplicate_attr &&
+           duplicate_attr->prev == literal_attr);
+    assert(duplicate_attr->next == null_attr &&
+           null_attr->prev == duplicate_attr);
+    assert(null_attr->next == empty_attr && empty_attr->prev == null_attr);
+    assert(null_attr->children == NULL && null_attr->last == NULL);
+    assert(empty_attr->children != NULL && empty_attr->last == empty_attr->children);
+    assert(empty_attr->children->type == XML_TEXT_NODE);
+    assert(empty_attr->children->content != NULL &&
+           empty_attr->children->content[0] == 0);
+    value = xmlGetProp(subtree, BAD_CAST "duplicate");
+    assert(value != NULL && strcmp((const char *)value, "original&amp;<") == 0);
+    xmlFree(value);
+
+    xmlUnlinkNode(subtree);
+    assert(first_root->children == NULL && first_root->last == NULL);
+    assert(subtree->parent == NULL && subtree->prev == NULL && subtree->next == NULL);
+    assert(subtree->doc == first);
+    xmlFreeDoc(first);
+
+    assert(subtree->parent == NULL && subtree->children == leaf);
+    assert(subtree->properties == literal_attr && literal_attr->next == duplicate_attr);
+    assert(xmlSearchNs(NULL, subtree, BAD_CAST "p") == ns);
+    value = xmlNodeGetContent(subtree);
+    assert(value != NULL && strcmp((const char *)value, "retained") == 0);
+    xmlFree(value);
+    value = xmlGetProp(subtree, BAD_CAST "duplicate");
+    assert(value != NULL && strcmp((const char *)value, "original&amp;<") == 0);
+    xmlFree(value);
+    assert(xmlSetProp(subtree, BAD_CAST "duplicate", BAD_CAST "updated") ==
+           literal_attr);
+    value = xmlGetProp(subtree, BAD_CAST "duplicate");
+    assert(value != NULL && strcmp((const char *)value, "updated") == 0);
+    xmlFree(value);
+    value = xmlGetProp(subtree, BAD_CAST "null-value");
+    assert(value != NULL && value[0] == 0);
+    xmlFree(value);
+    value = xmlGetProp(subtree, BAD_CAST "empty-value");
+    assert(value != NULL && value[0] == 0);
+    xmlFree(value);
+
+    xmlFreeNode(subtree);
+    xmlFreeDoc(second);
+
+    fresh = xmlNewDoc(NULL);
+    assert(fresh != NULL);
+    xmlFreeDoc(fresh);
+}
+#endif
+
+#ifndef XML3_REFERENCE_TEST
 static void test_sticky_mutator_errors(void) {
     xmlDocPtr doc;
     xmlNodePtr root;
@@ -376,6 +465,7 @@ int main(void) {
     test_text_merge_and_edit_flow();
     test_parsed_unlink_and_reinsert();
 #ifndef XML3_REFERENCE_TEST
+    test_cross_document_detached_lifetime();
     test_sticky_mutator_errors();
     test_safe_ownership();
     test_free_rejects_unsupported_types();

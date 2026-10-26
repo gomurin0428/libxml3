@@ -55,7 +55,7 @@ not constitute a completed proof. No `Assume`, suppressed run-time checks,
 false-positive annotations, or excluded parser bodies may be used to make the
 proof gate pass.
 
-## DOM foundation: not yet the public C implementation
+## SPARK-backed DOM and public C routing
 
 `XML3_DOM` stores the actual logical node, namespace, and owner slots used by
 its operations. Contracts cover bidirectional links, rank-based cycle prevention,
@@ -106,8 +106,10 @@ adjacent text using a prepared NUL-terminated buffer whose owner reservation is
 released before synchronization; a rejected merge buffer therefore follows the
 existing release protocol. Tests cover allocation failure with unchanged views,
 real facade/content updates, source-clear-before-free ordering, repeated-tail
-no-op, and final Store reclamation. The public C API remains on the legacy DOM;
-this is not yet a protected shared runtime.
+no-op, and final Store reclamation. `XML3_DOM_Runtime` owns the one private
+Store as SPARK abstract state. Public DOM wrappers serialize complete Runtime
+calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
+parallel DOM graph.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
 nodes, namespaces and one owner before calling `Import.Adopt` exactly once.
@@ -132,8 +134,7 @@ content ordering after a text move, and allocation failure followed by retry.
 The internal Store unlink operation now supports detaching an attribute for this
 topology case; the test reattaches it before release. Native byte comparison,
 copying, allocation/free and address correspondence remain trusted boundary
-operations. The public C getters are not routed through these queries, and
-`XML3_C` remains on the legacy implementation.
+operations. Public C getters route through these queries.
 
 `XML3_DOM_Store.Properties` adds internal namespace-free property creation and
 replacement. Creation appends attributes, including duplicates; replacement
@@ -143,9 +144,8 @@ values. The implementation uses Store allocation, attachment, retirement and
 synchronization operations; it does not traverse or mutate native DOM links.
 Connected native tests cover literal bytes, duplicate attributes, allocation
 rollback, null-versus-empty value children, and clearing the old value links
-before its exactly-once native free. These routines are not wired to exported
-public APIs: `XML3_C` remains on the legacy implementation, and this proof does
-not establish public C API safety.
+before its exactly-once native free. Public property APIs route through these
+operations; C ABI conversion and facade projection remain trusted boundaries.
 
 The ghost `Count_Holders` helper retains the recursive holder-count definition
 with a bounded-result postcondition and decreasing variant. `Holder_Count`
@@ -189,11 +189,19 @@ trusted primitives. The native layout/address correspondence is tested but not
 proved. Ownership, graph topology, validation, release decisions, and policy
 remain in SPARK.
 
-**`XML3_C` has not been connected to this foundation.** Its parser materialization,
-DOM editing/ownership, root replacement and text merging remain the old unproved
-implementation. The new kernel and integration test are not a substitute for
-migrating those exported entry points. No public C API is newly classified as
-proved by this change.
+`XML3_C` is an ABI adapter over `XML3_DOM_Runtime`. Parsing calls
+`Documents.Read` with bounded C-allocated workspaces; constructors, queries,
+mutation and release call typed Runtime operations. The adapter still performs
+foreign pointer/string conversion and error translation and is not itself
+formally proved. The Runtime delegates to proved Store operations; the public
+API as a whole is not thereby claimed to be formally verified.
+
+The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
+though the library creates no Ada tasks. On the supported Linux runtime,
+foreign pthreads are registered automatically, giving each thread its own
+secondary stack and exception state. A DOM mutex alone does not protect Ada
+string conversions outside the locked Store operation. Foreign-thread
+registration and runtime thread-local storage are trusted runtime services.
 
 Native bodies remain trusted for pointer conversion, layout, allocation/free,
 byte operations, metadata IDs and field writes. The caller of the foundation must
@@ -205,19 +213,45 @@ not model every C field or byte, so the bridge proof does not prove the native
 body implements its projection command correctly. The C integration tests
 exercise this correspondence without proving it for every layout or execution.
 
+## Build profiles and executable contracts
+
+The production library (`make build`, `lib/libxml3.so`) does not enable
+`-gnata`: proof assertions, pre/postconditions, loop invariants, and ghost
+computations are not dynamically evaluated. Explicit input/status checks and
+Ada range checks remain enabled, with `-gnato` for integer overflow checks;
+`-gnatp` is not used. Production uses `-O2`.
+
+The development library (`make build-development`,
+`lib/development/libxml3.so`) retains `-gnata` and `-gnato`. Its objects and
+library are separate from production, so switching profiles cannot reuse
+objects compiled under a different assertion policy. `make test-development`
+runs focused public API regressions against this library. Global ghost
+invariants can be extremely expensive; this profile is not a performance build.
+
+`proof.gpr` and the Ada core/bridge test projects remain assertion-enabled and
+independent of the library profile. No proof condition is removed or justified
+by the production profile. A production test pass does not replace GNATprove
+or development-profile testing, and neither profile proves the trusted boundary.
+
 ## Trusted / unproved boundary
 
-* The Ada C-ABI adapter, C-compatible DOM objects, allocations, deallocations,
-  reference ownership, and foreign pointer conversions are outside SPARK.
-  This includes the exported C DOM constructors, child and attribute mutation/free operations;
-  their ownership and structural behavior is tested in C but is not formally proved.
+* The Ada C-ABI adapter, C-compatible DOM object layout, allocations,
+  deallocations, and foreign pointer/string conversions are outside SPARK.
+  DOM topology, logical ownership, rollback and release decisions for exported
+  wrappers are performed by proved Store/Runtime operations, not by the adapter.
   Callers must use these APIs rather than directly changing public tree links,
   and must not use a document handle after `xmlFreeDoc`.
+* The pthread mutex and controlled Guard are trusted synchronization adapters;
+  mutex correctness is not formally proved. Runtime calls are serialized, but
+  asynchronous pthread cancellation and allocator callbacks that reenter the
+  Runtime are unsupported. The libc allocator may itself use OS locks; no
+  wait-free or deadline guarantee is made. Callers must synchronize concurrent
+  access or release of borrowed facade pointers.
 * `XML3_Native_Memory` and `XML3_DOM_Allocation` specs are analyzed, but their
   bodies are explicitly outside SPARK. The former performs no DOM traversal,
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
-  are trusted, not discharged by the 6,935-check result.
+  are trusted, not discharged by the recorded proof result.
 * `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
   strings; the C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do

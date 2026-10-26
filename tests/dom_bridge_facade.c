@@ -218,7 +218,8 @@ void * __wrap_malloc(size_t size) {
         return NULL;
     }
     void *result = __real_malloc(size);
-    if (track_failure_allocations && result != NULL) {
+    if (track_failure_allocations && injected_malloc_failures == 0 &&
+        result != NULL) {
         assert(failure_allocation_count < 3);
         failure_allocations[failure_allocation_count++] = result;
     }

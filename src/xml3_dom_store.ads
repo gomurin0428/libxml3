@@ -31,6 +31,9 @@ package XML3_DOM_Store with SPARK_Mode is
        Post => (if Status = XML3_DOM_Constructors.Created then
          Source = null and then Result /= System.Null_Address
        else Result = System.Null_Address and then Source /= null
+         and then XML3_DOM.Valid (Source.all)
+         and then XML3_DOM.Can_Edit (Source.all)
+         and then XML3_DOM.Import.Is_Arena (Source.all)
          and then Source.all = Source.all'Old);
 
    procedure Construct
