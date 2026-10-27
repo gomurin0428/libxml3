@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -19,12 +19,14 @@ build-development:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=development
 
 test-development: build-development tests/runtime-test tests/string-exception-test \
-		tests/namespace-test tests/attribute-test tests/namespace-edit-test
+		tests/namespace-test tests/attribute-test tests/namespace-edit-test \
+		tests/serialization-test-development
 	LD_LIBRARY_PATH=lib/development ./tests/runtime-test
 	LD_LIBRARY_PATH=lib/development ./tests/string-exception-test
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-test
 	LD_LIBRARY_PATH=lib/development ./tests/attribute-test
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-edit-test
+	LD_LIBRARY_PATH=lib/development ./tests/serialization-test-development
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
 		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
@@ -72,6 +74,27 @@ tests/namespace-edit-test-reference: tests/namespace-edit-test.c compat/baseline
 
 tests/namespace-edit-test-sanitize: tests/namespace-edit-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/serialization-test: tests/serialization-test.c tests/oom-shim.c \
+		$(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror -pthread $< tests/oom-shim.c -Llib \
+		-Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/serialization-test-reference: tests/serialization-test.c \
+		compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h \
+		build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/serialization-test-development: tests/serialization-test.c \
+		$(PUBLIC_HEADERS) Makefile | build-development
+	$(CC) $(CFLAGS) -Werror -DXML3_DEVELOPMENT_TEST $< \
+		-Llib/development -Wl,-rpath,'$$ORIGIN/../lib/development' -lxml3 -o $@
+
+test-serialization: tests/serialization-test tests/serialization-test-reference
+	LD_LIBRARY_PATH=lib ./tests/serialization-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/serialization-test-reference
 
 tests/differential-libxml3: tests/differential.c $(PUBLIC_HEADERS)
 	$(CC) $(CFLAGS) $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
@@ -258,7 +281,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname serialization; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -324,7 +347,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlNewDoc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
+		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
@@ -346,11 +369,16 @@ install: build
 	sed 's|@prefix@|$(PREFIX)|g' libxml3.pc.in > \
 		$(DESTDIR)$(PREFIX)/lib/pkgconfig/libxml3.pc
 
+tests/serialization-test-sanitize: tests/serialization-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -DXML3_NO_OOM_TEST -fsanitize=address,undefined \
+		$< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
 test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/error-test-sanitize tests/fuzz-test-sanitize tests/dom-test-sanitize \
 		tests/namespace-edit-test-sanitize \
-		tests/attribute-test-sanitize tests/runtime-test-sanitize
+		tests/attribute-test-sanitize tests/runtime-test-sanitize \
+		tests/serialization-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
@@ -365,6 +393,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/attribute-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-edit-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/runtime-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/serialization-test-sanitize
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
@@ -384,6 +413,8 @@ clean:
 		tests/attribute-test-reference tests/attribute-test-sanitize \
 		tests/namespace-edit-test tests/namespace-edit-test-reference \
 		tests/namespace-edit-test-sanitize \
+		tests/serialization-test tests/serialization-test-reference \
+		tests/serialization-test-development tests/serialization-test-sanitize \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out

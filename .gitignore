@@ -9,6 +9,10 @@ tests/api-test
 tests/api-test-sanitize
 tests/namespace-edit-test
 tests/namespace-edit-test-reference
+tests/serialization-test
+tests/serialization-test-reference
+tests/serialization-test-development
+tests/serialization-test-sanitize
 tests/namespace-test
 tests/namespace-test-sanitize
 tests/unicode-test

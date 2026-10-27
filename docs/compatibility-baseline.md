@@ -70,7 +70,8 @@ make compare-system   # OSのlibxml2による補助比較
 
 1. **基盤（今回）**: バージョン・構成の固定、宣言台帳、主/補助比較の分離。
 2. **XML読み込み**: 名前空間→Unicode名→文字コード/宣言/エラー→設定可能な資源制限。
-3. **DOM変更と保存**: 作成・移動・削除・コピー・シリアライズ、所有権の契約。
+3. **DOM変更と保存**: 作成・移動・削除・コピー・限定的な明示UTF-8メモリ出力、
+   所有権の契約。
 4. **I/Oとストリーミング**: コールバック/ファイル、push、SAX、reader/writer。
 5. **上位機能**: DTD/エンティティ、XPath、HTML、XInclude、Schema/Relax NG、C14N等。
 6. **実アプリ置換**: 再コンパイル、適合性テスト、比較ファジング、継続証明。
@@ -79,3 +80,11 @@ make compare-system   # OSのlibxml2による補助比較
 揃えて完了とします。未実装動作のstubで成功を返して実装数を増やしません。
 将来の互換動作と安全プロファイル（外部アクセス/資源制限）は明示的に区別し、
 安全制限による差を互換だと呼ばない方針です。現時点ではどちらの完全実装もありません。
+
+シリアライズは `xmlDocDumpMemoryEnc` の明示的な UTF-8 指定だけを実装範囲とします。
+encoding名は ASCII case-insensitive で照合し、XML宣言には呼び出し側の表記を保持します。
+XML 1.0以外、未知・空のencoding、XML名/文字/namespaceの不正状態は安全側で拒否します。
+これはlibxml2の全シリアライズ動作との等価性を意味しません。暗黙encoding、
+`xmlDocDumpMemory`、formatting、ファイル保存、DTD、namespace修復は対象外です。
+Documentに保持されないsource encodingとstandalone metadataは出力宣言に含めません。
+要素のないDocumentはXML宣言だけを出力する場合があります。

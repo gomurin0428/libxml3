@@ -676,6 +676,30 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)created->children->content, "ja") == 0);
         }
         xmlFreeNode(root);
+    } else if (strcmp(operation, "serialization") == 0) {
+        static const char input[] = "<r a='v'>text</r>";
+        xmlNodePtr root;
+        xmlChar *memory = (xmlChar *)1;
+        int size = 77;
+
+        doc = xmlReadMemory(input, (int)sizeof(input) - 1, NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        assert(root != NULL && root->properties != NULL);
+        xml3_oom_enable(fail_index);
+        xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(memory == NULL && size == 0);
+            require_oom_error();
+        } else {
+            assert(memory != NULL && size > 0);
+            xmlFree(memory);
+        }
+        assert(strcmp((const char *)root->properties->children->content, "v") == 0);
+        assert(strcmp((const char *)root->children->content, "text") == 0);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");

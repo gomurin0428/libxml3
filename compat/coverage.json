@@ -73,6 +73,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlDocDumpMemoryEnc": {
+    "implementation": "partial",
+    "scope": "明示encodingのUTF-8のみ（ASCII case-insensitive、宣言では入力表記を保持）、XML 1.0のみ。全DOMを不変状態からSPARKで検査・二段階出力し、成功バッファはxmlFree所有。invalid XML/name/namespaceはfail-closed。default encoding、formatting、DTD、I/O APIは未対応。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "tests": [
+      "tests/serialization-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
     "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",

@@ -85,6 +85,8 @@ struct _xmlDoc {
 
 xmlNodePtr xmlDocGetRootElement(const xmlDoc *doc);
 xmlDocPtr xmlNewDoc(const xmlChar *version);
+void xmlDocDumpMemoryEnc(xmlDocPtr cur, xmlChar **mem, int *size,
+                         const char *encoding);
 xmlNodePtr xmlNewNode(xmlNsPtr ns, const xmlChar *name);
 xmlNodePtr xmlNewText(const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
