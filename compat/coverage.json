@@ -82,6 +82,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeAddContent": {
+    "implementation": "partial",
+    "scope": "要素・属性は末尾Textを再利用し、なければText childを追加。Text/CDATA/comment/PIはraw UTF-8を連結し、entity展開はしない。NULL/emptyはno-op、文書等の他のlive kindもno-op。invalid facadeは拒否。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
     "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",

@@ -932,6 +932,40 @@ package body XML3_C is
          return System.Null_Address;
    end Add_Child;
 
+   function Node_Add_Content
+     (Node, Content : System.Address) return Interfaces.C.int
+   is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Suffix : constant String := C_String_Value (Content);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Add_Content (Node, Suffix, Status);
+      end;
+      if Status /= XML3_DOM_Constructors.Created then
+         Report_Operation_Status (Status);
+      end if;
+      return (if Status = XML3_DOM_Constructors.Created then 0
+              elsif Status = XML3_DOM_Constructors.No_Memory then -1
+              else 1);
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return 1;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return 1;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return -1;
+      when others =>
+         Report_Dom_Error (1);
+         return 1;
+   end Node_Add_Content;
+
    procedure Unlink_Node (Node : System.Address) is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;

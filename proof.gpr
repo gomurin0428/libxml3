@@ -9,6 +9,7 @@ project Proof is
                         "xml3_dom_store-queries.ads", "xml3_dom_store-queries.adb",
                         "xml3_dom_store-properties.ads", "xml3_dom_store-properties.adb",
                         "xml3_dom_store-documents.ads", "xml3_dom_store-documents.adb",
+                        "xml3_dom_store-content.ads", "xml3_dom_store-content.adb",
                         "xml3_dom_store-serialization.ads", "xml3_dom_store-serialization.adb",
                         "xml3_serialization.ads", "xml3_serialization.adb",
                         "xml3_dom_runtime.ads", "xml3_dom_runtime.adb",

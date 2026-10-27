@@ -15,6 +15,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlNodeAddContent`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
@@ -64,7 +65,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlNodeAddContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
@@ -79,6 +80,12 @@ XML name/UTF-8 の妥当性検証は行いません。`xmlNewText(NULL)` は con
 隣接 text は入力内容を先に確保してから既存末尾に結合し、既存末尾のポインターを
 返します。`xmlAddChild` による属性追加、`xmlUnlinkNode` による attribute unlink、
 未対応 node type の編集は拒否します。
+
+`xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
+element/attribute の末尾に text child があればその content を置換して同じ facade を
+保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を
+連結します。NULL/empty content と document node は no-op、NULL node と未登録 facade
+は失敗します。無効な XML 文字列は保持し、serializer 側で検査します。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

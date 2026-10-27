@@ -690,6 +690,62 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)created->children->content, "ja") == 0);
         }
         xmlFreeNode(root);
+    } else if (strcmp(operation, "dom-content-replace") == 0) {
+        xmlNodePtr text = xmlNewText(BAD_CAST "old");
+        xmlChar *original_content;
+        assert(text != NULL);
+        original_content = text->content;
+        xml3_oom_enable(fail_index);
+        result = xmlNodeAddContent(text, BAD_CAST "-new");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(text->content == original_content);
+            assert(strcmp((const char *)text->content, "old") == 0);
+            require_oom_error();
+            assert(xmlNodeAddContent(text, BAD_CAST "-new") == 0);
+            assert(strcmp((const char *)text->content, "old-new") == 0);
+        } else {
+            assert(result == 0);
+            assert(strcmp((const char *)text->content, "old-new") == 0);
+        }
+        xmlFreeNode(text);
+    } else if (strcmp(operation, "dom-content-child") == 0) {
+        xmlDocPtr content_doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlNodePtr comment = xmlNewComment(BAD_CAST "before");
+        xmlChar *original_comment_content;
+        assert(content_doc != NULL && root != NULL && comment != NULL);
+        original_comment_content = comment->content;
+        assert(xmlDocSetRootElement(content_doc, root) == NULL);
+        assert(xmlAddChild(root, comment) == comment);
+        xml3_oom_enable(fail_index);
+        result = xmlNodeAddContent(root, BAD_CAST "after");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->children == comment && root->last == comment);
+            assert(comment->parent == root && comment->next == NULL);
+            assert(comment->content == original_comment_content);
+            assert(strcmp((const char *)comment->content, "before") == 0);
+            require_oom_error();
+            assert(xmlNodeAddContent(root, BAD_CAST "after") == 0);
+            assert(root->children == comment && root->last != comment);
+            assert(comment->next == root->last && comment->next->prev == comment);
+            assert(root->last->type == XML_TEXT_NODE);
+            assert(strcmp((const char *)root->last->content, "after") == 0);
+        } else {
+            assert(result == 0);
+            assert(root->children == comment && root->last != comment);
+            assert(comment->next == root->last);
+            assert(root->last->type == XML_TEXT_NODE);
+            assert(strcmp((const char *)root->last->content, "after") == 0);
+        }
+        xmlFreeDoc(content_doc);
     } else if (strcmp(operation, "serialization") == 0) {
         static const char input[] = "<r a='v'>text</r>";
         xmlNodePtr root;
