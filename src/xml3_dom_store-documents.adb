@@ -18,7 +18,7 @@ package body XML3_DOM_Store.Documents with SPARK_Mode is
    begin
       for I in Node_Ref range 1 .. Node_Ref (Count) loop
          if Node (Source.all, I).State = Live then
-            Free_Subtree (Source.all, I);
+            Free_Subtree_With_Namespaces (Source.all, I);
          end if;
          pragma Loop_Invariant
            (Valid (Source.all) and then Can_Edit (Source.all)

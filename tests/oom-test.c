@@ -468,6 +468,255 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)target->children->content,
                           "replacement") == 0);
         }
+    } else if (strcmp(operation, "ns-new") == 0) {
+        xmlNodePtr root;
+        xmlNsPtr first, second, created;
+
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        first = xmlNewNs(root, BAD_CAST "urn:first", BAD_CAST "p");
+        second = xmlNewNs(root, BAD_CAST "urn:second", BAD_CAST "q");
+        assert(first != NULL && second != NULL);
+        xml3_oom_enable(fail_index);
+        created = xmlNewNs(root, BAD_CAST "urn:third", BAD_CAST "r");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            assert(root->nsDef == first && first->next == second);
+            assert(second->next == NULL);
+            assert(strcmp((const char *)first->href, "urn:first") == 0);
+            assert(strcmp((const char *)second->href, "urn:second") == 0);
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->nsDef == first);
+            assert(first->next == second && second->next == created);
+            assert(created->next == NULL);
+            assert(strcmp((const char *)created->href, "urn:third") == 0);
+            assert(strcmp((const char *)created->prefix, "r") == 0);
+        }
+    } else if (strcmp(operation, "ns-detached") == 0) {
+        xmlNsPtr created;
+
+        xml3_oom_enable(fail_index);
+        created = xmlNewNs(NULL, BAD_CAST "urn:detached", BAD_CAST "d");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            require_oom_error();
+        } else {
+            assert(created != NULL && created->context == NULL);
+            assert(strcmp((const char *)created->href, "urn:detached") == 0);
+            assert(strcmp((const char *)created->prefix, "d") == 0);
+            xmlFreeNs(created);
+        }
+    } else if (strcmp(operation, "ns-prop-new") == 0) {
+        xmlNodePtr root;
+        xmlNsPtr ns;
+        xmlAttrPtr before, after, created;
+        xmlNodePtr before_child, after_child;
+
+        doc = xmlNewDoc(NULL);
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        ns = xmlNewNs(root, BAD_CAST "urn:qualified", BAD_CAST "p");
+        before = xmlNewProp(root, BAD_CAST "before", BAD_CAST "left");
+        after = xmlNewProp(root, BAD_CAST "after", BAD_CAST "right");
+        assert(ns != NULL && before != NULL && after != NULL);
+        before_child = before->children;
+        after_child = after->children;
+        xml3_oom_enable(fail_index);
+        created = xmlNewNsProp(root, ns, BAD_CAST "middle", BAD_CAST "value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == NULL && before->children == before_child);
+            assert(after->children == after_child);
+            assert(root->nsDef == ns && ns->next == NULL);
+            assert(strcmp((const char *)ns->href, "urn:qualified") == 0);
+            assert(strcmp((const char *)before_child->content, "left") == 0);
+            assert(strcmp((const char *)after_child->content, "right") == 0);
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->properties == before);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == created && created->prev == after);
+            assert(created->next == NULL && created->ns == ns);
+            assert(strcmp((const char *)created->children->content, "value") == 0);
+            xmlFreeProp(created);
+        }
+    } else if (strcmp(operation, "ns-prop-set") == 0) {
+        static const char input[] =
+            "<root xmlns:p='urn:same' xmlns:q='urn:same' "
+            "before='left' p:a='old' after='right'/>";
+        xmlNodePtr root;
+        xmlNsPtr old_ns, alias;
+        xmlAttrPtr before, target, after, result_attr;
+        xmlNodePtr old_children;
+        xmlChar *old_content;
+        int private_marker;
+
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        old_ns = root->nsDef;
+        assert(old_ns != NULL);
+        alias = old_ns->next;
+        before = root->properties;
+        assert(before != NULL);
+        target = before->next;
+        assert(target != NULL);
+        after = target->next;
+        assert(after != NULL);
+        assert(alias != NULL && alias != old_ns);
+        assert(target->ns == old_ns && target->children != NULL);
+        old_children = target->children;
+        old_content = old_children->content;
+        target->_private = &private_marker;
+        xml3_oom_enable(fail_index);
+        result_attr = xmlSetNsProp(root, alias, BAD_CAST "a",
+                                   BAD_CAST "replacement");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result_attr == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == target && target->prev == before);
+            assert(target->next == after && after->prev == target);
+            assert(after->next == NULL && target->ns == old_ns);
+            assert(target->_private == &private_marker);
+            assert(target->children == old_children);
+            assert(old_children->content == old_content);
+            assert(strcmp((const char *)old_content, "old") == 0);
+            require_oom_error();
+        } else {
+            assert(result_attr == target && target->ns == alias);
+            assert(root->properties == before && before->next == target);
+            assert(target->prev == before && target->next == after);
+            assert(after->prev == target && after->next == NULL);
+            assert(target->_private == &private_marker);
+            assert(target->children != old_children);
+            assert(strcmp((const char *)target->children->content,
+                          "replacement") == 0);
+        }
+    } else if (strcmp(operation, "ns-qname-set") == 0) {
+        static const char input[] =
+            "<root xmlns:p='urn:qualified' before='left' after='right'/>";
+        xmlNodePtr root;
+        xmlNsPtr ns;
+        xmlAttrPtr before, after, created;
+        xmlNodePtr before_child, after_child;
+
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        ns = root->nsDef;
+        before = root->properties;
+        assert(ns != NULL && before != NULL);
+        after = before->next;
+        assert(after != NULL && after->next == NULL);
+        before_child = before->children;
+        after_child = after->children;
+        xml3_oom_enable(fail_index);
+        created = xmlSetProp(root, BAD_CAST "p:created", BAD_CAST "value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL);
+            assert(root->nsDef == ns && ns->next == NULL);
+            assert(root->properties == before && before->prev == NULL);
+            assert(before->next == after && after->prev == before);
+            assert(after->next == NULL && before->children == before_child);
+            assert(after->children == after_child);
+            assert(strcmp((const char *)before_child->content, "left") == 0);
+            assert(strcmp((const char *)after_child->content, "right") == 0);
+            assert(strcmp((const char *)ns->href, "urn:qualified") == 0);
+            require_oom_error();
+        } else {
+            assert(created != NULL && created->ns == ns);
+            assert(root->properties == before && before->next == after);
+            assert(after->next == created && created->prev == after);
+            assert(created->next == NULL);
+            assert(strcmp((const char *)created->children->content, "value") == 0);
+            xmlFreeProp(created);
+        }
+    } else if (strcmp(operation, "ns-xml-qname") == 0) {
+        xmlNodePtr root;
+        xmlNsPtr ns;
+        xmlAttrPtr created;
+
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(root != NULL && root->doc == NULL);
+        xml3_oom_enable(fail_index);
+        created = xmlSetProp(root, BAD_CAST "xml:lang", BAD_CAST "ja");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(created == NULL && root->properties == NULL);
+            assert(root->nsDef == NULL);
+            require_oom_error();
+        } else {
+            assert(created != NULL && root->properties == created);
+            ns = root->nsDef;
+            assert(ns != NULL && created->ns == ns);
+            assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == ns);
+            assert(strcmp((const char *)created->children->content, "ja") == 0);
+        }
+        xmlFreeNode(root);
+    } else if (strcmp(operation, "ns-noalloc") == 0) {
+        xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
+        xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");
+        xmlNsPtr second = xmlNewNs(NULL, BAD_CAST "urn:second", BAD_CAST "q");
+        assert(node != NULL && first != NULL && second != NULL);
+
+        xml3_oom_enable(0);
+        xmlSetNs(node, first);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0 && node->ns == first);
+
+        xml3_oom_enable(0);
+        xmlSetNs(node, second);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0 && node->ns == second);
+
+        xml3_oom_enable(0);
+        xmlSetNs(node, NULL);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0 && node->ns == NULL);
+
+        xml3_oom_enable(0);
+        xmlFreeNs(first);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+
+        xml3_oom_enable(0);
+        xmlFreeNs(second);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        xmlFreeNode(node);
     } else if (strcmp(operation, "attr-delete") == 0) {
         xmlNodePtr root;
         xmlAttrPtr first, second, third;
@@ -517,6 +766,10 @@ int main(int argc, char **argv) {
     assert(xmlGetLastError() == NULL);
     if (strcmp(operation, "attr-delete") == 0) {
         puts("attribute deletion used no allocations");
+        return 0;
+    }
+    if (strcmp(operation, "ns-noalloc") == 0) {
+        puts("namespace setters and standalone free used no allocations");
         return 0;
     }
     if (!injected)

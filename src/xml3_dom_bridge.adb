@@ -3,6 +3,64 @@ with Interfaces.C;
 package body XML3_DOM_Bridge with SPARK_Mode is
    package Native renames XML3_Native_Memory;
 
+   procedure Compose_Live_Frames (Initial, Before, After : State)
+     with Ghost, Global => null,
+       Pre => Well_Sized (Initial) and then Well_Sized (Before)
+         and then Well_Sized (After)
+         and then Live_Entries_Preserved (Initial, Before)
+         and then Live_Entries_Preserved (Before, After),
+       Post => Live_Entries_Preserved (Initial, After);
+
+   procedure Compose_Live_Frames (Initial, Before, After : State) is
+   begin
+      for N in Node_Ref range 1 .. Node_Ref (Node_Count (Initial)) loop
+         pragma Assert
+           (if Node (Initial, N).State = Live
+             or else Node (After, N).State = Live then
+               Node (Before, N) = Node (Initial, N)
+               and then Node (After, N) = Node (Before, N));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range 1 .. N =>
+             (if Node (Initial, J).State = Live
+               or else Node (After, J).State = Live then
+                 Node (After, J) = Node (Initial, J)));
+      end loop;
+      for B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (Initial)) loop
+         pragma Assert
+           (if Owner (Initial, B).State = Live
+             or else Owner (After, B).State = Live then
+               Owner (Before, B) = Owner (Initial, B)
+               and then Owner (After, B) = Owner (Before, B));
+         pragma Loop_Invariant
+           (for all J in Owner_Ref range 1 .. B =>
+             (if Owner (Initial, J).State = Live
+               or else Owner (After, J).State = Live then
+                 Owner (After, J) = Owner (Initial, J)));
+      end loop;
+      for N in Namespace_Ref range
+        1 .. Namespace_Ref (Namespace_Count (Initial))
+      loop
+         pragma Assert
+           (if Namespace (After, N).State = Live
+             or else (Namespace (Initial, N).State = Live
+               and then Namespace (Initial, N).Owner in
+                 1 .. Owner_Ref (Owner_Count (Initial))
+               and then Owner
+                 (Initial, Namespace (Initial, N).Owner).State = Live)
+            then Namespace (Before, N) = Namespace (Initial, N)
+              and then Namespace (After, N) = Namespace (Before, N));
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range 1 .. N =>
+             (if Namespace (After, J).State = Live
+               or else (Namespace (Initial, J).State = Live
+                 and then Namespace (Initial, J).Owner in
+                   1 .. Owner_Ref (Owner_Count (Initial))
+                 and then Owner
+                   (Initial, Namespace (Initial, J).Owner).State = Live)
+              then Namespace (After, J) = Namespace (Initial, J)));
+      end loop;
+   end Compose_Live_Frames;
+
    function Node_Address (S : State; N : Node_Ref) return System.Address is
      (if N = Null_Node then System.Null_Address else Node (S, N).Facade)
      with Global => null, Pre => N <= Node_Ref (Capacity_Of (S));
@@ -157,10 +215,20 @@ package body XML3_DOM_Bridge with SPARK_Mode is
          pragma Loop_Invariant (Facades_Present (S));
          pragma Loop_Invariant (Live_Entries_Preserved (Initial, S));
          pragma Loop_Variant (Increases => Release_Cursor (S));
-         Take_Release (S, B, Address);
+         declare
+            Before : constant State := S with Ghost;
+         begin
+            Take_Release (S, B, Address);
+            Compose_Live_Frames (Initial, Before, S);
+         end;
          exit when B = Null_Owner;
          Native.Free (Address);
-         Acknowledge_Release (S, B);
+         declare
+            Before : constant State := S with Ghost;
+         begin
+            Acknowledge_Release (S, B);
+            Compose_Live_Frames (Initial, Before, S);
+         end;
       end loop;
    end Synchronize;
 end XML3_DOM_Bridge;

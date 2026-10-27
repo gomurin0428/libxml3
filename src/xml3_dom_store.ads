@@ -10,6 +10,9 @@ package XML3_DOM_Store with SPARK_Mode is
    use type XML3_DOM_Constructors.Construction_Status;
    use type XML3_DOM.State_Access;
    use type XML3_DOM.State;
+   use type XML3_DOM.Namespace_Ref;
+   use type XML3_DOM.Namespace_View_Array;
+   use type XML3_DOM.Owner_View_Array;
    pragma Unevaluated_Use_Of_Old (Allow);
 
    type Store is limited private
@@ -18,7 +21,24 @@ package XML3_DOM_Store with SPARK_Mode is
    function Is_Empty (S : Store) return Boolean with Global => null;
 
    subtype Operation_Status is XML3_DOM_Constructors.Construction_Status;
-   type Release_Kind is (Document_Only, Content_Node, Plain_Attribute);
+   type Release_Kind is
+     (Document_Only, Content_Node, Plain_Attribute, Namespaced_Attribute);
+
+   procedure Create_Namespace
+     (S : in out Store; Element : System.Address;
+      Href, Prefix : String; Has_Href, Has_Prefix : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
+
+   procedure Set_Namespace
+     (S : in out Store; Node_Facade, Ns : System.Address;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
+
+   procedure Free_Namespace
+     (S : in out Store; Ns : System.Address;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
 
    procedure Adopt_Arena
      (S : in out Store; Source : in out XML3_DOM.State_Access;
@@ -106,6 +126,19 @@ private
    function Is_Empty (S : Store) return Boolean is (S.Current = null);
 
    use type XML3_DOM.Node_Ref;
+   function Reclaimable (S : Store) return Boolean is
+     (S.Current = null or else
+        (for all B in XML3_DOM.Owner_Ref range
+           1 .. XML3_DOM.Owner_Ref (XML3_DOM.Owner_Count (S.Current.all)) =>
+             XML3_DOM.Owner (S.Current.all, B).State = XML3_DOM.Unused))
+     with Global => null,
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all));
+
    procedure Reclaim_Empty (S : in out Store)
      with Global => null,
        Pre => S.Current = null
@@ -114,7 +147,34 @@ private
             and then XML3_DOM.Can_Edit (S.Current.all)
             and then not XML3_DOM.Projection_Required (S.Current.all)
             and then XML3_DOM.Facades_Present (S.Current.all)),
-       Post => Ready (S);
+       Post =>
+         (declare
+            Old_Owner_Count : constant Natural :=
+              Natural'(if S.Current = null then 0
+                       else XML3_DOM.Owner_Count (S.Current.all))'Old;
+            Old_Namespace_Count : constant Natural :=
+              Natural'(if S.Current = null then 0
+                       else XML3_DOM.Namespace_Count (S.Current.all))'Old;
+            Old_Owners : constant XML3_DOM.Owner_View_Array :=
+              XML3_DOM.Owner_View_Array'
+                (if S.Current = null then
+                   XML3_DOM.Owner_View_Array'(1 .. 0 => (others => <>))
+                 else XML3_DOM.Snapshot_Owners (S.Current.all))'Old;
+            Old_Namespaces : constant XML3_DOM.Namespace_View_Array :=
+              XML3_DOM.Namespace_View_Array'
+                (if S.Current = null then
+                   XML3_DOM.Namespace_View_Array'(1 .. 0 => (others => <>))
+                 else XML3_DOM.Snapshot_Namespaces (S.Current.all))'Old;
+          begin
+            Ready (S)
+            and then (if Reclaimable (S)'Old then S.Current = null
+            else S.Current /= null
+              and then XML3_DOM.Owner_Count (S.Current.all) = Old_Owner_Count
+              and then XML3_DOM.Namespace_Count (S.Current.all) =
+                Old_Namespace_Count
+              and then XML3_DOM.Snapshot_Owners (S.Current.all) = Old_Owners
+              and then XML3_DOM.Snapshot_Namespaces (S.Current.all) =
+                Old_Namespaces));
 
    function Find_Node
      (S : Store; Facade : System.Address) return XML3_DOM.Node_Ref
@@ -133,4 +193,24 @@ private
            XML3_DOM.Live
          and then XML3_DOM.Node (S.Current.all, Find_Node'Result).Facade =
            Facade);
+
+   function Find_Namespace
+     (S : Store; Facade : System.Address) return XML3_DOM.Namespace_Ref
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all)),
+       Post => (if Find_Namespace'Result /= XML3_DOM.Null_Namespace then
+         S.Current /= null
+         and then Find_Namespace'Result in
+           1 .. XML3_DOM.Namespace_Ref
+             (XML3_DOM.Namespace_Count (S.Current.all))
+         and then XML3_DOM.Namespace
+           (S.Current.all, Find_Namespace'Result).State = XML3_DOM.Live
+         and then XML3_DOM.Namespace
+           (S.Current.all, Find_Namespace'Result).Facade = Facade);
+
 end XML3_DOM_Store;

@@ -132,13 +132,13 @@ static void test_rejections_and_safe_free(void) {
     static const char input[] = "<r xmlns:p='urn:attrs' p:a='keep' a='remove'/>";
     xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
     xmlNodePtr root;
-    xmlAttrPtr namespaced, plain;
+    xmlAttrPtr namespaced, plain, freed_namespaced;
     assert(doc != NULL);
     root = xmlDocGetRootElement(doc);
     namespaced = root->properties;
     plain = namespaced->next;
-    assert(xmlSetProp(root, BAD_CAST "p:a", BAD_CAST "bad") == NULL);
-    assert_tree_error();
+    assert(xmlSetProp(root, BAD_CAST "p:a", BAD_CAST "bad") == namespaced);
+    assert_value(namespaced, "bad");
     assert(xmlNewProp(root, BAD_CAST "p:b", BAD_CAST "bad") == NULL);
     assert_tree_error();
     assert(xmlUnsetProp(root, BAD_CAST "p:a") == -1);
@@ -151,19 +151,21 @@ static void test_rejections_and_safe_free(void) {
     assert_tree_error();
     assert(xmlNewProp((xmlNodePtr)root->nsDef, BAD_CAST "a", NULL) == NULL);
     assert_tree_error();
-    assert(xmlRemoveProp(namespaced) == -1);
-    assert_tree_error();
-    xmlFreeProp(namespaced);
-    assert_tree_error();
+    assert(xmlRemoveProp(namespaced) == 0);
+    assert(root->properties == plain && plain->prev == NULL);
+    freed_namespaced =
+        xmlNewNsProp(root, root->nsDef, BAD_CAST "b", BAD_CAST "free");
+    assert(freed_namespaced != NULL && freed_namespaced->next == NULL);
+    xmlFreeProp(freed_namespaced);
+    assert(root->properties == plain && plain->next == NULL);
     xmlFreeProp((xmlAttrPtr)root->nsDef);
     assert_tree_error();
     xmlFreeProp((xmlAttrPtr)root);
     assert_tree_error();
-    assert(root->properties == namespaced && namespaced->next == plain);
-    assert_value(namespaced, "keep");
+    assert(root->properties == plain && plain->prev == NULL);
     assert_value(plain, "remove");
     xmlFreeProp(plain);
-    assert(namespaced->next == NULL && root->properties == namespaced);
+    assert(root->properties == NULL);
     xmlFreeDoc(doc);
 }
 

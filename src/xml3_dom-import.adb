@@ -420,7 +420,8 @@ package body XML3_DOM.Import with SPARK_Mode is
          and then Imported_Namespace'Result.Attached =
            Namespace (Source, Item).Attached
          and then Imported_Namespace'Result.Sibling_Order =
-           Namespace (Source, Item).Sibling_Order;
+           Namespace (Source, Item).Sibling_Order
+         and then not Imported_Namespace'Result.Owns_Reservation;
 
    function Imported_Namespace
      (Source : State;
@@ -462,7 +463,8 @@ package body XML3_DOM.Import with SPARK_Mode is
          Next => Mapped_Namespace (Maps, Original.Next),
          Previous => Mapped_Namespace (Maps, Original.Previous),
          Sibling_Order => Original.Sibling_Order,
-         Attached => Original.Attached);
+         Attached => Original.Attached,
+         Owns_Reservation => False);
    end Imported_Namespace;
 
    procedure Install_Nodes
@@ -518,9 +520,6 @@ package body XML3_DOM.Import with SPARK_Mode is
          and then (for all I in 1 .. Old_Owner_Used =>
            (if Destination.Graph.Owners'Old (I).State in Live | Releasing then
               Destination.Graph.Owners (I) = Destination.Graph.Owners'Old (I)))
-         and then (for all I in 1 .. Source_Count =>
-           Node (Destination, Maps.Nodes (I)) =
-             Imported_Node (Source, Maps, Node_Ref (I), Owner_Slot))
          and then (for all I in 1 .. Capacity_Of (Destination) =>
            (if not Node_Map_Contains
                (Maps, Source_Count, Node_Ref (I)) then
@@ -547,6 +546,11 @@ package body XML3_DOM.Import with SPARK_Mode is
          and then Destination.Effects.Released_Through =
            Destination'Old.Effects.Released_Through;
 
+   pragma Postcondition
+     (for all I in 1 .. Source_Count =>
+        Node (Destination, Maps.Nodes (I)) =
+          Imported_Node (Source, Maps, Node_Ref (I), Owner_Slot));
+
    procedure Install_Nodes
      (Destination : in out State;
       Source : State;
@@ -572,6 +576,10 @@ package body XML3_DOM.Import with SPARK_Mode is
       Destination.Effects.Dirty := True;
 
       for I in 1 .. Source_Count loop
+         Destination.Marks (Positive (Maps.Nodes (I))) := False;
+         Destination.Graph.Nodes (Positive (Maps.Nodes (I))) :=
+           Imported_Node
+             (Source, Maps, Node_Ref (I), Owner_Slot);
          pragma Loop_Invariant
            (for all J in 1 .. Old_Node_Used =>
              (if Before.Graph.Nodes (J).State in Live | Tombstone then
@@ -583,16 +591,64 @@ package body XML3_DOM.Import with SPARK_Mode is
                  Destination.Graph.Nodes (J) =
                    Before.Graph.Nodes (J)));
          pragma Loop_Invariant
-           (for all J in 1 .. I - 1 =>
+           (for all J in 1 .. I =>
               Node (Destination, Maps.Nodes (J)) =
                 Imported_Node
                   (Source, Maps, Node_Ref (J), Owner_Slot));
-         Destination.Marks (Positive (Maps.Nodes (I))) := False;
-         Destination.Graph.Nodes (Positive (Maps.Nodes (I))) :=
-           Imported_Node
-             (Source, Maps, Node_Ref (I), Owner_Slot);
       end loop;
    end Install_Nodes;
+
+   procedure Prove_Unretained_Suffix
+     (Current : State; Maps : XML3_DOM_Allocation.Import_Maps;
+      Source_Count : Positive; Old_Used : Natural)
+     with Ghost, Global => null,
+       Pre => Well_Sized (Current)
+         and then Old_Used <= Namespace_Count (Current)
+         and then Old_Used < Natural'Last
+         and then Namespace_Count (Current) - Old_Used <= Source_Count
+         and then Source_Count <= Maps.Capacity
+         and then (for all J in 1 .. Source_Count =>
+           Maps.Namespaces (J) in 1 .. Namespace_Ref (Capacity_Of (Current))
+           and then not Namespace
+             (Current, Maps.Namespaces (J)).Owns_Reservation)
+         and then (for all J in 1 .. Source_Count =>
+           (if J > Source_Count - (Namespace_Count (Current) - Old_Used) then
+              Maps.Namespaces (J) = Namespace_Ref
+                (Namespace_Count (Current) - (Source_Count - J)))),
+       Post => (for all I in Old_Used + 1 .. Namespace_Count (Current) =>
+         not Current.Graph.Namespaces (I).Owns_Reservation);
+
+   procedure Prove_Unretained_Suffix
+     (Current : State; Maps : XML3_DOM_Allocation.Import_Maps;
+      Source_Count : Positive; Old_Used : Natural)
+   is
+   begin
+      for I in Old_Used + 1 .. Namespace_Count (Current) loop
+         declare
+            Source_Index : constant Positive :=
+              Source_Count - (Namespace_Count (Current) - I);
+         begin
+            pragma Assert (Source_Index in 1 .. Source_Count);
+            pragma Assert
+              (Source_Index >
+                Source_Count - (Namespace_Count (Current) - Old_Used));
+            pragma Assert
+              (Maps.Namespaces (Source_Index) = Namespace_Ref
+                (Namespace_Count (Current) - (Source_Count - Source_Index)));
+            pragma Assert (Maps.Namespaces (Source_Index) = Namespace_Ref (I));
+            pragma Assert
+              (not Namespace
+                (Current, Maps.Namespaces (Source_Index)).Owns_Reservation);
+            pragma Assert
+              (Namespace (Current, Namespace_Ref (I)) =
+                Current.Graph.Namespaces (I));
+            pragma Assert (not Current.Graph.Namespaces (I).Owns_Reservation);
+         end;
+         pragma Loop_Invariant
+           (for all J in Old_Used + 1 .. I =>
+              not Current.Graph.Namespaces (J).Owns_Reservation);
+      end loop;
+   end Prove_Unretained_Suffix;
 
    procedure Install_Namespaces
      (Destination : in out State;
@@ -655,6 +711,14 @@ package body XML3_DOM.Import with SPARK_Mode is
            Destination.Graph.Owners (I) =
              Destination.Graph.Owners'Old (I));
 
+   pragma Postcondition
+     (for all I in 1 .. New_Namespace_Used =>
+        (if Destination.Graph.Namespaces (I).State = Live
+          and then Destination.Graph.Namespaces (I).Owns_Reservation then
+            I <= Old_Namespace_Used
+            and then Destination.Graph.Namespaces (I) =
+              Destination.Graph.Namespaces'Old (I)));
+
    procedure Install_Namespaces
      (Destination : in out State;
       Source : State;
@@ -689,6 +753,31 @@ package body XML3_DOM.Import with SPARK_Mode is
            Imported_Namespace
              (Source, Maps, Namespace_Ref (I), New_Owner);
       end loop;
+      pragma Assert
+        (for all I in 1 .. Source_Count =>
+           not Namespace (Destination, Maps.Namespaces (I)).Owns_Reservation);
+      pragma Assert
+        (for all I in Old_Namespace_Used + 1 .. New_Namespace_Used =>
+           Maps.Namespaces (Source_Count - (New_Namespace_Used - I)) =
+             Namespace_Ref (I));
+      pragma Assert
+        (for all I in Old_Namespace_Used + 1 .. New_Namespace_Used =>
+           not Namespace
+             (Destination,
+              Maps.Namespaces (Source_Count - (New_Namespace_Used - I)))
+                .Owns_Reservation);
+      Prove_Unretained_Suffix
+        (Destination, Maps, Source_Count, Old_Namespace_Used);
+      pragma Assert
+        (for all I in Old_Namespace_Used + 1 .. New_Namespace_Used =>
+           not Destination.Graph.Namespaces (I).Owns_Reservation);
+      pragma Assert
+        (for all I in 1 .. New_Namespace_Used =>
+           (if Destination.Graph.Namespaces (I).State = Live
+             and then Destination.Graph.Namespaces (I).Owns_Reservation then
+               I <= Old_Namespace_Used
+               and then Destination.Graph.Namespaces (I) =
+                 Before.Graph.Namespaces (I)));
    end Install_Namespaces;
 
    function Previous_Entries_Preserved (Before, After : State) return Boolean is
@@ -702,6 +791,11 @@ package body XML3_DOM.Import with SPARK_Mode is
       and then (for all I in 1 .. Namespace_Count (Before) =>
         (if Before.Graph.Namespaces (I).State = Live then
            After.Graph.Namespaces (I) = Before.Graph.Namespaces (I)))
+      and then (for all I in 1 .. Namespace_Count (After) =>
+        (if After.Graph.Namespaces (I).State = Live
+          and then After.Graph.Namespaces (I).Owns_Reservation then
+            I <= Namespace_Count (Before)
+            and then After.Graph.Namespaces (I) = Before.Graph.Namespaces (I)))
       and then (for all I in 1 .. Owner_Count (Before) =>
         (if Before.Graph.Owners (I).State in Live | Releasing then
            After.Graph.Owners (I) = Before.Graph.Owners (I))))

@@ -110,6 +110,166 @@ procedure DOM_Core_Test is
       XML3_DOM_Allocation.Free_State (T);
    end Attribute_Children;
 
+   procedure Text_Attribute_Retirement is
+      T : State_Access;
+      Attribute_Owner, Text_Owner, Element_Owner, Namespace_Owner : Owner_Ref;
+      Attribute, Text, Element, Rejected_Attribute, Non_Text : Node_Ref;
+      Declaration : Namespace_Ref;
+      Local_OK : Boolean;
+   begin
+      Initialize (T, 8, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (520), Attribute_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (521), Text_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (522), Element_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (523), Namespace_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Attribute_Node, Token (524), Attribute_Owner, 0,
+         Attribute, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Text_Node, Token (525), Text_Owner, 0, Text, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (526), Element_Owner, 0,
+         Element, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Attribute_Node, Token (527), Attribute_Owner, 0,
+         Rejected_Attribute, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (528), Element_Owner, 0,
+         Non_Text, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Namespace
+        (T.all, Token (529), Token (530), 1, Token (531), 1,
+         Namespace_Owner, Declaration, Local_OK, Owns_Reservation => True);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Attribute, Text, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Rejected_Attribute, Non_Text, Local_OK);
+      pragma Assert (not Local_OK);
+      Attach_Namespace (T.all, Element, Declaration, Local_OK);
+      pragma Assert (Local_OK);
+      Release_Reservation (T.all, Attribute_Owner);
+      Release_Reservation (T.all, Text_Owner);
+      Release_Reservation (T.all, Element_Owner);
+      pragma Assert (Text_Attribute_Content (T.all, Attribute));
+      pragma Assert (Text_Attribute_Content (T.all, Rejected_Attribute));
+      declare
+         Namespaces_Before : constant Namespace_View_Array :=
+           Snapshot_Namespaces (T.all) with Ghost;
+         Reservations_Before : constant Natural :=
+           Owner (T.all, Namespace_Owner).Reservations with Ghost;
+         Element_Before : constant Node_View :=
+           Node (T.all, Element) with Ghost;
+      begin
+         Retire_Attribute_Children (T.all, Attribute, Null_Node);
+         pragma Assert
+           (Node (T.all, Text).State = Tombstone
+            and then Snapshot_Namespaces (T.all) = Namespaces_Before
+            and then Owner (T.all, Namespace_Owner).Reservations =
+              Reservations_Before
+            and then Node (T.all, Element) = Element_Before);
+      end;
+      XML3_DOM_Allocation.Free_State (T);
+   end Text_Attribute_Retirement;
+
+   procedure Namespace_Reservation is
+      T : State_Access;
+      Root_Owner, Borrower_Owner, Ns_Owner : Owner_Ref;
+      Root, Borrower : Node_Ref;
+      Declaration : Namespace_Ref;
+      Local_OK : Boolean;
+      Released_Owner : Owner_Ref;
+      Released_Address : System.Address;
+      procedure Project_Local is
+         Projected_Node : Node_Ref;
+         Projected_Namespace : Namespace_Ref;
+      begin
+         Begin_Projection (T.all);
+         while Phase (T.all) = Projecting_Nodes loop
+            Next_Node_Projection (T.all, Projected_Node);
+            if Projected_Node /= Null_Node then
+               Acknowledge_Projection (T.all);
+            end if;
+         end loop;
+         while Phase (T.all) = Projecting_Namespaces loop
+            Next_Namespace_Projection (T.all, Projected_Namespace);
+            if Projected_Namespace /= Null_Namespace then
+               Acknowledge_Projection (T.all);
+            end if;
+         end loop;
+      end Project_Local;
+   begin
+      Initialize (T, 8, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (510), Root_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (511), Borrower_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (512), Ns_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (513), Root_Owner, 0, Root, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (514), Borrower_Owner, 0, Borrower,
+         Local_OK);
+      pragma Assert (Local_OK);
+      Register_Namespace
+        (T.all, Token (515), Token (516), 1, Token (517), 1, Ns_Owner,
+         Declaration, Local_OK, Owns_Reservation => True);
+      pragma Assert
+        (Local_OK and then Namespace_Reservation_Held (T.all, Ns_Owner));
+      Attach_Namespace (T.all, Root, Declaration, Local_OK);
+      pragma Assert (Local_OK);
+      Set_Node_Projection
+        (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
+         Null_Node, Declaration, Ns_Owner, 0, 0, Local_OK);
+      pragma Assert (Local_OK and then Namespace (T.all, Declaration).State = Live);
+
+      pragma Assert (not Retained_Declarations_Clear (T.all, Root));
+      Free_Subtree_With_Namespaces (T.all, Root);
+      pragma Assert
+        (Namespace (T.all, Declaration).State = Live
+         and then Namespace (T.all, Declaration).Parent = Null_Node
+         and then Namespace (T.all, Declaration).Next = Null_Namespace
+         and then Namespace (T.all, Declaration).Previous = Null_Namespace
+         and then not Namespace (T.all, Declaration).Attached
+         and then not Namespace (T.all, Declaration).Owns_Reservation
+         and then Owner (T.all, Ns_Owner).Reservations = 0
+         and then Owner (T.all, Ns_Owner).References = 1
+         and then Node (T.all, Borrower).Namespace = Declaration);
+
+      Set_Node_Projection
+        (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
+         Null_Node, Null_Namespace, 0, 0, 0, Local_OK);
+      pragma Assert
+        (Local_OK and then Owner (T.all, Ns_Owner).State = Releasing
+         and then Namespace_Release_Required (T.all, Declaration));
+      Free_Subtree (T.all, Borrower);
+      Release_Reservation (T.all, Root_Owner);
+      Release_Reservation (T.all, Borrower_Owner);
+      Project_Local;
+      loop
+         Take_Release (T.all, Released_Owner, Released_Address);
+         exit when Released_Owner = 0;
+         Acknowledge_Release (T.all, Released_Owner);
+      end loop;
+      pragma Assert
+        (Owner (T.all, Ns_Owner).State = Unused
+         and then Owner (T.all, Root_Owner).State = Unused
+         and then Owner (T.all, Borrower_Owner).State = Unused
+         and then Valid (T.all));
+      XML3_DOM_Allocation.Free_State (T);
+   end Namespace_Reservation;
+
    procedure Text_Merging is
       T : State_Access;
       A, B, Old_Content, New_Content, F : Owner_Ref;
@@ -433,6 +593,8 @@ procedure DOM_Core_Test is
 
 begin
    Attribute_Children;
+   Text_Attribute_Retirement;
+   Namespace_Reservation;
    Text_Merging;
    Document_Propagation;
    Root_Replacement;

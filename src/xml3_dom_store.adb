@@ -26,19 +26,6 @@ package body XML3_DOM_Store with SPARK_Mode is
 
    function Find_Namespace
      (S : Store; Facade : System.Address) return Namespace_Ref
-     with Global => (Input => Native.Foreign_Memory),
-       Pre => S.Current = null
-         or else
-           (Valid (S.Current.all)
-            and then Can_Edit (S.Current.all)
-            and then not Projection_Required (S.Current.all)
-            and then Facades_Present (S.Current.all)),
-       Post => (if Find_Namespace'Result /= Null_Namespace then
-         S.Current /= null
-         and then Find_Namespace'Result in
-           1 .. Namespace_Ref (Namespace_Count (S.Current.all))
-         and then Namespace (S.Current.all, Find_Namespace'Result).State = Live
-         and then Namespace (S.Current.all, Find_Namespace'Result).Facade = Facade)
    is
       Id : Natural;
    begin
@@ -58,15 +45,9 @@ package body XML3_DOM_Store with SPARK_Mode is
    procedure Reclaim_Empty (S : in out Store)
    is
    begin
-      if S.Current = null then
-         return;
+      if Reclaimable (S) and then S.Current /= null then
+         XML3_DOM_Allocation.Free_State (S.Current);
       end if;
-      for B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S.Current.all)) loop
-         if Owner (S.Current.all, B).State /= Unused then
-            return;
-         end if;
-      end loop;
-      XML3_DOM_Allocation.Free_State (S.Current);
    end Reclaim_Empty;
 
    procedure Adopt_Arena
@@ -118,6 +99,126 @@ package body XML3_DOM_Store with SPARK_Mode is
          Reclaim_Empty (S);
       end if;
    end Adopt_Arena;
+
+   procedure Create_Namespace
+     (S : in out Store; Element : System.Address;
+      Href, Prefix : String; Has_Href, Has_Prefix : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : Node_Ref := Null_Node;
+      N : Namespace_Ref := Null_Namespace;
+      Attached, Ok : Boolean;
+      Current : Namespace_Ref;
+      Existing : Namespace_View;
+      Existing_Prefix : String (1 .. Prefix'Length);
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Element /= System.Null_Address then
+         E := Find_Node (S, Element);
+         if E = Null_Node or else Node (S.Current.all, E).Kind /= Element_Node then
+            return;
+         end if;
+         Current := Node (S.Current.all, E).First_Namespace;
+         for Step in 1 .. Namespace_Count (S.Current.all) loop
+            exit when Current = Null_Namespace;
+            if Current > Namespace_Ref (Namespace_Count (S.Current.all))
+              or else Namespace (S.Current.all, Current).State /= Live
+            then
+               Status := Internal_Error;
+               return;
+            end if;
+            Existing := Namespace (S.Current.all, Current);
+            if Existing.Prefix_Length = Prefix'Length then
+               if Has_Prefix then
+                  if Existing.Prefix /= System.Null_Address then
+                     Native.Read_String (Existing.Prefix, Existing_Prefix);
+                     if Existing_Prefix = Prefix then
+                        return;
+                     end if;
+                  end if;
+               elsif Existing.Prefix = System.Null_Address then
+                  return;
+               end if;
+            end if;
+            Current := Existing.Next;
+         end loop;
+      end if;
+      if S.Current = null then
+         Initialize (S.Current, 16, Ok);
+         if not Ok then
+            Status := No_Memory;
+            return;
+         end if;
+      end if;
+      XML3_DOM_Constructors.Create_Namespace
+        (S.Current, Href, Prefix, Has_Href, Has_Prefix, N, Status);
+      if Status /= Created then
+         Reclaim_Empty (S);
+         return;
+      end if;
+      if E /= Null_Node then
+         Attach_Namespace (S.Current.all, E, N, Attached);
+         if not Attached then
+            Release_Namespace_Reservation (S.Current.all, N);
+            XML3_DOM_Bridge.Synchronize (S.Current.all);
+            Reclaim_Empty (S);
+            Status := Invalid_Argument;
+            return;
+         end if;
+      end if;
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      Result := Namespace (S.Current.all, N).Facade;
+      Status := Created;
+   end Create_Namespace;
+
+   procedure Set_Namespace
+     (S : in out Store; Node_Facade, Ns : System.Address;
+      Status : out Operation_Status)
+   is
+      N : constant Node_Ref := Find_Node (S, Node_Facade);
+      Q : constant Namespace_Ref := Find_Namespace (S, Ns);
+      Item : Node_View;
+      Changed : Boolean;
+   begin
+      Status := Invalid_Argument;
+      if N = Null_Node or else
+        Node (S.Current.all, N).Kind not in Element_Node | Attribute_Node
+        or else (Ns /= System.Null_Address and then Q = Null_Namespace)
+      then
+         return;
+      end if;
+      Item := Node (S.Current.all, N);
+      Set_Node_Projection
+        (S.Current.all, N, Item.Name, Item.Name_Length, Item.Content,
+         Item.Content_Length, Item.Document, Q,
+         (if Q = Null_Namespace then Null_Owner
+          else Namespace (S.Current.all, Q).Owner),
+         Item.Doc_Pin, Item.Content_Pin, Changed);
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      if Changed then
+         Status := Created;
+      end if;
+   end Set_Namespace;
+
+   procedure Free_Namespace
+     (S : in out Store; Ns : System.Address;
+      Status : out Operation_Status)
+   is
+      N : constant Namespace_Ref := Find_Namespace (S, Ns);
+   begin
+      Status := Invalid_Argument;
+      if N = Null_Namespace
+        or else not Namespace (S.Current.all, N).Owns_Reservation
+        or else Namespace (S.Current.all, N).Attached
+      then
+         return;
+      end if;
+      Release_Namespace_Reservation (S.Current.all, N);
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      Reclaim_Empty (S);
+      Status := Created;
+   end Free_Namespace;
 
    procedure Construct
      (S : in out Store; Kind : Node_Kind;
@@ -368,12 +469,12 @@ package body XML3_DOM_Store with SPARK_Mode is
         or else (case Kind is
           when Document_Only => Item.Kind /= Document_Node,
           when Content_Node => Item.Kind in Document_Node | Attribute_Node,
-          when Plain_Attribute => Item.Kind /= Attribute_Node
-            or else Item.Namespace /= Null_Namespace)
+          when Plain_Attribute | Namespaced_Attribute =>
+            Item.Kind /= Attribute_Node)
       then
          return;
       end if;
-      Free_Subtree (S.Current.all, N);
+      Free_Subtree_With_Namespaces (S.Current.all, N);
       XML3_DOM_Bridge.Synchronize (S.Current.all);
       Reclaim_Empty (S);
       Status := Created;
