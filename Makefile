@@ -281,7 +281,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname serialization; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-new-comment dom-new-pi dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname serialization; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -347,7 +347,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
+		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewComment xmlNewPI xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \

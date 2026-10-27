@@ -89,6 +89,8 @@ void xmlDocDumpMemoryEnc(xmlDocPtr cur, xmlChar **mem, int *size,
                          const char *encoding);
 xmlNodePtr xmlNewNode(xmlNsPtr ns, const xmlChar *name);
 xmlNodePtr xmlNewText(const xmlChar *content);
+xmlNodePtr xmlNewComment(const xmlChar *content);
+xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 void xmlUnlinkNode(xmlNodePtr cur);

@@ -873,7 +873,7 @@ package body XML3_Serialization with SPARK_Mode is
                          (Item.Content, Item.Content_Length - 1) = '-')
                then
                   Good := False;
-               else
+               elsif Item.Content /= System.Null_Address then
                   Put ("<!--");
                   Put_Source (Item.Content, Item.Content_Length);
                   Put ("-->");

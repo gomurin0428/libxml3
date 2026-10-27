@@ -87,8 +87,11 @@ native allocator/byte operations remain outside proof.
 
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
-mutation and read-only queries use the same Store. Constructed namespaces
-retain one owner reservation; parsed declarations use their document arena.
+mutation and read-only queries use the same Store. `xmlNewComment` and
+`xmlNewPI` reuse the existing `Runtime.Construct` / `Store.Construct` path;
+their C wrappers only select the node kind and convert input strings.
+Constructed namespaces retain one owner reservation; parsed declarations use
+their document arena.
 Subtree release detaches declarations before retiring their elements, while
 borrower pins keep the native storage alive. Qualified `xmlSetProp` resolves
 validated QNames in Store and rolls back implicit XML declarations on failure.
@@ -123,28 +126,34 @@ separate object/library directory. `proof.gpr` and core/bridge unit tests
 remain assertion-enabled. No `-gnatp` or assertion-policy suppression is used
 to discharge proof obligations.
 
-The following sequential regression command passed against the final source
-after the successful aggregate proof:
+The focused comment/PI construction tests passed:
 
 ```sh
-make -k test-dom-core test-dom-bridge test-namespace-edit test-development \
-  test-oom test-attributes test-dom test-namespace test-api test-sanitize check
-git diff --check
+make tests/serialization-test tests/serialization-test-reference
+LD_LIBRARY_PATH=lib ./tests/serialization-test --misc
+LD_LIBRARY_PATH=build/reference/lib ./tests/serialization-test-reference
 ```
 
-`test-namespace-edit` also passed against the pinned libxml2 2.15.4 reference.
-Namespace regressions cover URI/local-name matching, attribute identity and
-order, `_private`, NULL/empty values, malformed/unbound QNames, documentless
-XML attributes, parsed/constructed borrower lifetimes, declaration release,
-and allocation-failure rollback. Intentional safety differences are excluded
-from the reference run rather than imitating unsafe lifetime behavior.
+They cover constructed top-level and child comments/PIs, raw input copying,
+NULL and empty content, Unicode, reparsing, invalid comment/PI text and
+reserved PI targets, output failure followed by removal/retry, and detached
+node lifetime after freeing the document. The pinned libxml2 2.15.4 reference
+build runs the shared exact-output cases, including constructed comments/PIs.
 
-The previously recorded `make check-inventory` **failed** (not rerun for this
-namespace change): four declarations in the frozen inventory
-contain absolute header paths from `/home/ubuntu/repos/libxml3`, whereas this
-checkout is `/home/ubuntu/repos/libxml3-spark-dom`. The generated difference
-is limited to those paths, not API declaration changes. The inventory and
-generator were left unchanged. GitHub Actions is manual-only and was not run.
+The following final regression command passed before the aggregate proof:
+
+```sh
+make -k test-serialization test-development test-oom test-dom test-api \
+  test-sanitize check check-inventory
+```
+
+This includes production, development, and sanitizer serializer tests.
+`test-oom` walked two allocation sites each for `dom-new-comment` and
+`dom-new-pi`, with successful retries after injected failures. The inventory
+check passed; its Python inventory suite reported five passing tests. Clang
+printed its existing deprecation warnings for `SAX.h`, `nanoftp.h`, and
+`xmlunicode.h`. The final regression gate and aggregate proof were run on the
+same source revision.
 
 Regression coverage includes connected parse/edit/query/release and Store
 reuse, two-document preservation, detached subtree lifetime after source
@@ -181,8 +190,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-c6b0328bff547ae52b27ebdd07dd1b595c538ef0d97623ea18f965d7b77a1c44  src/xml3_c.adb
-774ef77903f80123248af6bed6db758db4ffa22743621081fb2ebbca39caa25d  src/xml3_c.ads
+88ae4756d2a972ed4a9cc77dd53d828665cc3ac26f9dbae5aa1a4db074a2f221  src/xml3_c.adb
+78f00f91308572591a8f248c7c02e34ea83df68b35f0273fa9e62154e7279996  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -220,14 +229,14 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 be25d8c69fe23913458e9a332740d1e2b500b4a86fb6efa58d374eac6d2652dc  src/xml3_native_memory.adb
 cd9bcad78d7dfd418e27a8237dd47b7e0c2aef4d9826324206b5fdcd93d8ba9e  src/xml3_native_memory.ads
 2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
-eb1437b6c5555203332a6f717d91acdd8381967a69845e7b50a3bf4c8c2ca10f  src/xml3_serialization.adb
+b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_serialization.adb
 4a3c84a0b7ee2b7b1a0129b63f37e36b1547c8e75152c7463e06d3f019d0f217  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 47f78aaebd907be02955b0d9b991eb47d7b2c344c3cae7b924a7ca575ba10c5b  src/xml3_text.adb
 7e1c81bf4f77e1e6d433710179b63f28bf00057aeef6f5cf07708a113dd4d809  src/xml3_text.ads
 087b0ba0054111ae75a9f293a9a7670956042efa3a93b2b3b7adc02b100276f2  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-ace30e9035f3173c4e55b94a335ce3dc352799b4f5267468c26cbecea6a34185  Makefile
+f1df254ef35684624e8ffc01aaa3f8d496ba12f20c0c3cb0e3a462a88c5f73da  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
