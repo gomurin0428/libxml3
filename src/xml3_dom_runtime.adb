@@ -1,5 +1,6 @@
 with XML3_DOM_Constructors;
 with XML3_DOM_Store.Properties;
+with XML3_DOM_Store.Serialization;
 
 package body XML3_DOM_Runtime
   with SPARK_Mode, Refined_State => (Managed => Current)
@@ -259,4 +260,14 @@ is
       begin
          XML3_DOM_Store.Queries.Get_Content (Current, Facade, Result, Status);
       end Get_Content;
+
+      procedure Dump_Memory_Encoding
+        (Document : System.Address; Encoding : String;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Serialization.Dump
+           (Current, Document, Encoding, Result, Length, Status);
+      end Dump_Memory_Encoding;
 end XML3_DOM_Runtime;

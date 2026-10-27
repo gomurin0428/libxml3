@@ -8,7 +8,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
 `XML3_DOM_Constructors`, `XML3_DOM_Store`, its `Queries`, `Properties`, and
-`Documents` children, `XML3_DOM_Runtime`, `XML3_DOM.Import`, and
+`Documents` and `Serialization` children, `XML3_Serialization`,
+`XML3_DOM_Runtime`, `XML3_DOM.Import`, and
 `XML3_DOM.Materialize`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
@@ -25,10 +26,11 @@ foreign-pointer validity remain trusted.
 
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
-operations used by public C APIs, including namespace editing. The C adapters
-and native ABI implementation are not proved. The recorded aggregate has
-10,188 checks, no unproved or justified conditions, and 110 flow warnings;
-the representation-generation diagnostic is recorded separately.
+operations used by public C APIs, including namespace editing and explicit
+UTF-8 memory serialization. The C adapters and native ABI implementation are
+not proved. The recorded aggregate has 10,394 checks, no unproved or justified
+conditions, and 125 flow warnings; the representation-generation diagnostic
+is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -114,6 +116,20 @@ no-op, and final Store reclamation. `XML3_DOM_Runtime` owns the one private
 Store as SPARK abstract state. Public DOM wrappers serialize complete Runtime
 calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
 parallel DOM graph.
+
+`XML3_Serialization.Render` reads an immutable Store state, validates and
+measures the supported XML 1.0 UTF-8 subset, then repeats the same iterative
+traversal into an exact-size caller-owned buffer. Store and Runtime only route
+the document facade and encoding; the C adapter initializes output slots,
+converts the C string, holds the existing lock, and publishes the result.
+Unsupported encodings, XML versions, malformed text, names, and namespace
+states are rejected rather than repaired. Native allocation and byte access
+remain trusted, and full libxml2 serializer equivalence is not claimed. These
+new units are included in the successful 10,394-check aggregate proof; see
+[proof-report.md](proof-report.md) for the exact result and source hashes.
+Source encoding and standalone metadata are not retained by the DOM and are
+omitted from the declaration; an empty document may produce only the
+declaration.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
 nodes, namespaces and one owner before calling `Import.Adopt` exactly once.
@@ -300,8 +316,10 @@ document are supported. The minimal DOM editor API includes `xmlNewDoc`,
 `xmlUnlinkNode`, `xmlFreeNode`, namespace APIs `xmlNewNs`, `xmlSetNs`,
 `xmlFreeNs`, `xmlNewNsProp`, `xmlSetNsProp`, `xmlUnsetNsProp`, and attribute
 APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and
-`xmlFreeProp`. Attribute/namespace copying, cross-document moves, and
-serialization are deferred. Unsupported
+`xmlFreeProp`. Attribute/namespace copying and cross-document moves remain
+deferred. The only supported serialization entry point is
+`xmlDocDumpMemoryEnc` with an explicit UTF-8 encoding; default encoding,
+formatting, DTD and file APIs are unsupported. Unsupported
 operations fail without silently creating invalid links. Unsupported parser
 options fail, not silently degrade.
 

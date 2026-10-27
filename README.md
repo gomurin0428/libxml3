@@ -79,8 +79,12 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlSetProp` は namespace-aware QName を
-解決し、malformed QName と未束縛 prefix を拒否します。namespace 宣言の copy、
-属性／namespace copy、文書間移動、serialization は未対応です。
+解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
+は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、
+宣言には指定表記を保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
+namespaceは拒否します。source encoding/standalone metadata は保持されず宣言には
+出力しません。暗黙encoding、formatting、ファイル出力、DTD等は未対応です。
+属性／namespace copy と文書間移動も未対応です。
 構造 fields の直接変更はサポートしません。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味

@@ -3,6 +3,7 @@ with XML3_DOM;
 with XML3_DOM_Store;
 with XML3_DOM_Store.Documents;
 with XML3_DOM_Store.Queries;
+with XML3_DOM_Store.Serialization;
 with XML3_Encoding;
 with XML3_Namespaces;
 with XML3_Native_Memory;
@@ -150,6 +151,13 @@ is
         (Facade : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
+      procedure Dump_Memory_Encoding
+        (Document : System.Address; Encoding : String;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global =>
+          (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
 
 private
    Current : XML3_DOM_Store.Store with Part_Of => Managed;

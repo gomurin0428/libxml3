@@ -58,6 +58,8 @@ package body XML3_C is
    function C_String_Value
      (Item : System.Address; Default : String := "") return String;
    procedure Set_Status (Target : System.Address; Value : int);
+   procedure Set_Address
+     (Target : System.Address; Value : System.Address);
    procedure Report_Dom_Error (Code : int);
    procedure Report_Operation_Status
      (Status : XML3_DOM_Store.Operation_Status;
@@ -142,6 +144,20 @@ package body XML3_C is
          Slot := Value;
       end;
    end Set_Status;
+
+   procedure Set_Address
+     (Target : System.Address; Value : System.Address)
+   is
+   begin
+      if Target = System.Null_Address then
+         return;
+      end if;
+      declare
+         Slot : System.Address with Import, Address => Target;
+      begin
+         Slot := Value;
+      end;
+   end Set_Address;
 
    procedure Report_Dom_Error (Code : int) is
    begin
@@ -699,6 +715,53 @@ package body XML3_C is
          Report_Dom_Error (1);
          return System.Null_Address;
    end New_Doc;
+
+   procedure Doc_Dump_Memory_Enc
+     (Document, Memory, Size, Encoding : System.Address)
+   is
+      Result : System.Address := System.Null_Address;
+      Length : Natural := 0;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      Set_Address (Memory, System.Null_Address);
+      Set_Status (Size, 0);
+      if Document = System.Null_Address
+        or else Memory = System.Null_Address
+         or else Encoding = System.Null_Address
+      then
+         Report_Dom_Error (115);
+         return;
+      end if;
+      declare
+         Encoding_Text : constant String := C_String_Value (Encoding);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Dump_Memory_Encoding
+           (Document, Encoding_Text, Result, Length, Status);
+      end;
+      if Status = XML3_DOM_Constructors.Created then
+         Set_Address (Memory, Result);
+         Set_Status (Size, int (Length));
+         return;
+      end if;
+      Report_Operation_Status (Status);
+      return;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return;
+      when others =>
+         Report_Dom_Error (1);
+         return;
+   end Doc_Dump_Memory_Enc;
 
    function New_Node
       (Ns, Name : System.Address) return System.Address

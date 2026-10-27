@@ -132,8 +132,11 @@ caller は有効な library pointer lifetime、直接の tree field 書き換え
 同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
 logical topology、owner/reservation accounting、namespace retention と mutation/release
 policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び出し、ABI/string
-変換、status 変換に限定されます。attribute/namespace copy、cross-document move、
-serialization は未対応です。
+変換、status 変換に限定されます。attribute/namespace copy と cross-document move は
+未対応です。`xmlDocDumpMemoryEnc` は明示 UTF-8 の XML 1.0 メモリ出力だけをサポートし、
+宣言には指定 encoding 表記を保持します。default encoding、formatting、DTD、file output
+は未対応です。source encoding/standalone metadata は保持されず、宣言に出力しません。
+要素のない document は宣言のみを出力する場合があります。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
