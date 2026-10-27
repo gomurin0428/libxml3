@@ -93,6 +93,7 @@ xmlNodePtr xmlNewComment(const xmlChar *content);
 xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
+int xmlNodeAddContent(xmlNodePtr cur, const xmlChar *content);
 void xmlUnlinkNode(xmlNodePtr cur);
 void xmlFreeNode(xmlNodePtr cur);
 void xmlFreeDoc(xmlDocPtr cur);

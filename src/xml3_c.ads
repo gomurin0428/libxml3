@@ -80,6 +80,10 @@ package XML3_C is
      (Parent, Child : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlAddChild";
 
+   function Node_Add_Content
+     (Node, Content : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeAddContent";
+
    procedure Unlink_Node (Node : System.Address)
      with Export, Convention => C, External_Name => "xmlUnlinkNode";
 

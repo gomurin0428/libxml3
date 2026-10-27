@@ -2,12 +2,12 @@
 
 ## Result
 
-`make prove` completed successfully on 2026-10-27 for this source revision:
-**10,394 checks, 835 by flow analysis and 9,559 by provers;
+`make prove` completed successfully for this source revision:
+**10,508 checks, 847 by flow analysis and 9,661 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
-Store/Runtime, retained namespace ownership, failure rollback, and explicit
-UTF-8 memory serialization through the SPARK serializer, Store, and Runtime.
-The entity summaries report 0 flow errors, 125 warnings, and 0 `pragma Assume`
+Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
+memory serialization, and `xmlNodeAddContent` through the SPARK Store/Runtime.
+The entity summaries report 0 flow errors, 128 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -24,13 +24,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 232 |
-| Initialization | 460 |
-| Runtime checks | 4,746 |
+| Data dependencies | 234 |
+| Initialization | 470 |
+| Runtime checks | 4,806 |
 | Assertions | 1,419 |
-| Functional contracts | 3,343 |
+| Functional contracts | 3,385 |
 | Termination | 194 |
-| **Total** | **10,394** |
+| **Total** | **10,508** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -57,13 +57,13 @@ new SPARK-off DOM logic were introduced. The aggregate uses the existing
 proof session; it is not a cold-cache performance claim. The output is
 `obj/proof/gnatprove/gnatprove.out`.
 
-The project contains sixteen complete SPARK units: text, parser, namespaces,
-encoding, DOM, bridge, constructors, Store, queries, properties, documents,
-serialization, Runtime, import, materialize, and the serialization core. Two
-trusted specs, native memory and DOM allocation, bring the analyzer's unit
-count to eighteen. Their bodies are not
+The project contains seventeen complete SPARK units: text, parser, namespaces,
+encoding, DOM, bridge, constructors, Store, Store.Content, queries, properties,
+documents, serialization, Runtime, import, materialize, and the serialization
+core. Two trusted specs, native memory and DOM allocation, bring the analyzer's
+unit count to nineteen. Their bodies are not
 proved: four allocation bodies and fifteen native-memory bodies are explicitly
-`SPARK_Mode => Off`. All sixteen SPARK units were fully analyzed. The C
+`SPARK_Mode => Off`. All seventeen SPARK units were fully analyzed. The C
 adapter, mutex/controlled guard, and error handling are not in
 the proof project. Native layout/freshness, pointer validity, allocator and
 thread-runtime correctness are assumptions, not consequences of ID equations.
@@ -84,6 +84,17 @@ exact-size native buffer. SPARK checks and written contracts for these units
 are included in this aggregate; XML conformance and full libxml2 lexical
 equivalence remain tested properties, not proof claims. The C adapter and
 native allocator/byte operations remain outside proof.
+
+`xmlNodeAddContent` routes through `Runtime` and `XML3_DOM_Store.Content.Append`;
+its public Store contract requires and restores `Ready (S)`. The private
+`Replace_Content` helper requires a non-pending projection and explicitly
+postconditions a non-null, valid, editable Store with projection complete and
+facades present. Its frame preserves node and namespace counts, unrelated live
+node views, and all target-node fields other than content address, length, and
+pin on success; a non-success status leaves the target node unchanged.
+Runtime tests additionally cover append semantics, aliasing, facade
+preservation, and allocation-failure rollback/retry; those are test evidence,
+not formal claims.
 
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
@@ -140,20 +151,23 @@ reserved PI targets, output failure followed by removal/retry, and detached
 node lifetime after freeing the document. The pinned libxml2 2.15.4 reference
 build runs the shared exact-output cases, including constructed comments/PIs.
 
+`make test-content-edit` passed for both the library and pinned libxml2 2.15.4
+reference builds.
+
 The following final regression command passed before the aggregate proof:
 
 ```sh
-make -k test-serialization test-development test-oom test-dom test-api \
+make -k test-development test-oom test-dom test-api test-serialization \
   test-sanitize check check-inventory
 ```
 
-This includes production, development, and sanitizer serializer tests.
-`test-oom` walked two allocation sites each for `dom-new-comment` and
-`dom-new-pi`, with successful retries after injected failures. The inventory
-check passed; its Python inventory suite reported five passing tests. Clang
-printed its existing deprecation warnings for `SAX.h`, `nanoftp.h`, and
-`xmlunicode.h`. The final regression gate and aggregate proof were run on the
-same source revision.
+This includes development and sanitizer content-edit tests; the serializer
+tests passed in both library and reference builds. `test-oom` walked one
+allocation site each for `dom-content-replace` and `dom-content-child`. The
+inventory check passed; its Python inventory suite reported five passing
+tests. Clang printed its existing deprecation warnings for `SAX.h`, `nanoftp.h`,
+and `xmlunicode.h`. The final regression gate and aggregate proof were run on
+the same source revision.
 
 Regression coverage includes connected parse/edit/query/release and Store
 reuse, two-document preservation, detached subtree lifetime after source
@@ -190,8 +204,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-88ae4756d2a972ed4a9cc77dd53d828665cc3ac26f9dbae5aa1a4db074a2f221  src/xml3_c.adb
-78f00f91308572591a8f248c7c02e34ea83df68b35f0273fa9e62154e7279996  src/xml3_c.ads
+821f43e5c36e77320aa2c418e1bfaa006ffb8c773cadc8d173c6ff5765db460d  src/xml3_c.adb
+98ebcbf45a91055f4a03c833cab012a85f2210dc0b3eaf840749ac4d1908b05f  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -207,8 +221,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-c2f4e142977120f9ae89aad17967f129addcde699006c269af5db4af3a33025e  src/xml3_dom_runtime.adb
-147f290550aced26ac5dce4e436b1fd5ecd24f6cfb565e58b26fdc5d3ac6a980  src/xml3_dom_runtime.ads
+4d87f96415303684b20850084bca0023b6fa4c1f296312e7eda84650b388a784  src/xml3_dom_runtime.adb
+44e2f313e4be2716124251d9d07b82052c1c0781f21192792ef52d06061a921a  src/xml3_dom_runtime.ads
+bfd1f5d706d448c4d021e7358abba5bf8b3c8bc3e245f461c1571a393f5f00bd  src/xml3_dom_store-content.adb
+7d385591c1f9185cb2023778090a8cf65525caba49e0671e31fe841c8cc2580e  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 1334154710f271040b55a309cd9b4ff93fb1d82988fbd85046dd7d05d3179944  src/xml3_dom_store-properties.adb
@@ -234,9 +250,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 47f78aaebd907be02955b0d9b991eb47d7b2c344c3cae7b924a7ca575ba10c5b  src/xml3_text.adb
 7e1c81bf4f77e1e6d433710179b63f28bf00057aeef6f5cf07708a113dd4d809  src/xml3_text.ads
-087b0ba0054111ae75a9f293a9a7670956042efa3a93b2b3b7adc02b100276f2  proof.gpr
+bb67b154b1733ef2e1aaf6eeb6fe55d48cf04ae3d0c97e13882c27266e4cd1bf  include/libxml/tree.h
+d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-f1df254ef35684624e8ffc01aaa3f8d496ba12f20c0c3cb0e3a462a88c5f73da  Makefile
+88a94782c24c3fcb50ca10f7900a71d62e335d4422f5c66c590359561adea2f0  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

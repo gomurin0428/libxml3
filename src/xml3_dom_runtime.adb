@@ -1,4 +1,5 @@
 with XML3_DOM_Constructors;
+with XML3_DOM_Store.Content;
 with XML3_DOM_Store.Properties;
 with XML3_DOM_Store.Serialization;
 
@@ -80,6 +81,14 @@ is
       begin
          XML3_DOM_Store.Add_Child (Current, Parent, Child, Result, Status);
       end Add_Child;
+
+      procedure Add_Content
+        (Facade : System.Address; Suffix : String;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.Append (Current, Facade, Suffix, Status);
+      end Add_Content;
 
       procedure Set_Root
         (Doc, Root : System.Address; Previous : out System.Address;
