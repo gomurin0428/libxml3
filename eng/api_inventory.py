@@ -25,6 +25,10 @@ KINDS = {
 }
 
 
+def type_spelling(type_, include):
+    return type_.spelling.replace(str(include) + "/", "")
+
+
 def inventory(include, global_allocator=False):
     include = include.resolve()
     headers = sorted((include / "libxml").glob("*.h"))
@@ -60,10 +64,10 @@ def inventory(include, global_allocator=False):
             name = f"anonymous@{cursor.location.line}:{cursor.location.column}"
         if not name:
             continue
-        declaration = cursor.type.spelling
+        declaration = type_spelling(cursor.type, include)
         if kind == "typedef":
             underlying = cursor.underlying_typedef_type
-            declaration = underlying.spelling
+            declaration = type_spelling(underlying, include)
             canonical = underlying.get_canonical()
             if canonical.kind == clang.TypeKind.POINTER and canonical.get_pointee().kind in (
                 clang.TypeKind.FUNCTIONPROTO, clang.TypeKind.FUNCTIONNOPROTO
@@ -85,7 +89,7 @@ def inventory(include, global_allocator=False):
         if kind in ("struct", "union", "enum"):
             entry["defined"] = cursor.is_definition()
         if kind == "function":
-            entry["parameters"] = [{"name": p.spelling, "type": p.type.spelling}
+            entry["parameters"] = [{"name": p.spelling, "type": type_spelling(p.type, include)}
                                    for p in cursor.get_arguments()]
         previous = entries.get(key)
         if previous is not None:

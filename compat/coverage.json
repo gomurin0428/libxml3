@@ -66,7 +66,7 @@
   },
   "function:tree.h:xmlNewDoc": {
     "implementation": "partial",
-    "scope": "version NULL 時は1.0、指定 C string はそのままコピー。XML 1.0 制限は parser に適用。C DOM ownership は SPARK proof 対象外。",
+    "scope": "version NULL 時は1.0、指定 C string はそのままコピー。XML 1.0 制限は parser に適用。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/dom-test.c",
       "tests/oom-test.c"
@@ -75,7 +75,7 @@
   },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
-    "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。C DOM ownership は SPARK proof 対象外。",
+    "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/dom-test.c",
       "tests/oom-test.c"
@@ -84,7 +84,7 @@
   },
   "function:tree.h:xmlNewText": {
     "implementation": "partial",
-    "scope": "raw C string content をコピーし UTF-8 検証なし。NULL content は NULL のまま。C DOM ownership は SPARK proof 対象外。",
+    "scope": "raw C string content をコピーし UTF-8 検証なし。NULL content は NULL のまま。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/dom-test.c",
       "tests/oom-test.c"
@@ -119,7 +119,7 @@
   },
   "function:tree.h:xmlFreeNode": {
     "implementation": "partial",
-    "scope": "element/text/comment/CDATA/PI subtree のみ unlink して反復解放。document/attribute/namespace pointer は code 115 で拒否。C DOM ownership は SPARK proof 対象外。",
+    "scope": "element/text/comment/CDATA/PI subtree のみ unlink して反復解放。document/attribute/namespace pointer は code 115 で拒否。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/dom-test.c"
     ],
@@ -160,7 +160,7 @@
   },
   "function:tree.h:xmlNewProp": {
     "implementation": "partial",
-    "scope": "colon のない namespace-free attribute を raw C string から作成。XML name/UTF-8 検証なし。NULL value は child なし、empty value は text child。C DOM ownership は SPARK proof 対象外。",
+    "scope": "colon のない namespace-free attribute を raw C string から作成。XML name/UTF-8 検証なし。NULL value は child なし、empty value は text child。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/attribute-test.c",
       "tests/oom-test.c"
@@ -169,16 +169,17 @@
   },
   "function:tree.h:xmlSetProp": {
     "implementation": "partial",
-    "scope": "namespace-free attribute のみ。既存 attribute pointer/_private/list links を保持し、旧 value children は解放。未存在時は末尾追加。C DOM ownership は SPARK proof 対象外。",
+    "scope": "no-namespace property を従来どおり更新し、prefix を含む QName は SPARK で NCName 検証・scope 解決。unbound/malformed prefix は code 115。documentless `xml:lang`/`xml:space` は暗黙 XML namespace を作成する。",
     "tests": [
       "tests/attribute-test.c",
+      "tests/namespace-edit-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
   },
   "function:tree.h:xmlUnsetProp": {
     "implementation": "partial",
-    "scope": "同名の namespace-free attribute を削除。欠落・非対応は -1。C DOM ownership は SPARK proof 対象外。",
+    "scope": "同名の namespace-free attribute を削除。欠落・非対応は -1。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/attribute-test.c",
       "tests/oom-test.c"
@@ -187,18 +188,20 @@
   },
   "function:tree.h:xmlRemoveProp": {
     "implementation": "partial",
-    "scope": "attached namespace-free attribute を安全に unlink/free。detached・namespace-qualified attribute は拒否。C DOM ownership は SPARK proof 対象外。",
+    "scope": "attached namespace-free または qualified attribute を安全に unlink/free。detached attribute は拒否。",
     "tests": [
       "tests/attribute-test.c",
+      "tests/namespace-edit-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
   },
   "function:tree.h:xmlFreeProp": {
     "implementation": "partial",
-    "scope": "namespace-free attribute を解放。attached pointer は先に安全に unlink し、detached pointer も解放。namespace-qualified attribute は code 115 で拒否。",
+    "scope": "attribute を解放。attached pointer は先に安全に unlink し、detached pointer も解放。qualified attribute も対応し、namespace declaration は解放しない。",
     "tests": [
-      "tests/attribute-test.c"
+      "tests/attribute-test.c",
+      "tests/namespace-edit-test.c"
     ],
     "proof": "not-proved"
   },
@@ -299,6 +302,62 @@
       "tests/error-test.c",
       "tests/oom-test.c",
       "tests/fuzz-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNs": {
+    "implementation": "partial",
+    "scope": "href/prefix をコピーして standalone または element 宣言を作成。NULL と empty prefix/href を区別し、同じ要素の local prefix 重複を拒否。constructed namespace は明示 reservation を持つ。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c",
+      "tests/dom_core_test.adb",
+      "tests/dom_bridge_test.adb"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetNs": {
+    "implementation": "partial",
+    "scope": "element/attribute の namespace reference のみを変更し、NULL で解除。unknown facade は Store identity lookup で拒否し、node content/document pin を保持。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/dom_bridge_test.adb"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeNs": {
+    "implementation": "partial",
+    "scope": "attached または parsed/unowned namespace の手動解放を拒否。detached constructed namespace の explicit reservation を一度解放し、borrower pin が残る間は保持。NULL は no-op。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/dom_core_test.adb",
+      "tests/dom_bridge_test.adb"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNsProp": {
+    "implementation": "partial",
+    "scope": "namespace-aware detached/attached attribute を作成。local name と値をコピーし、NULL value と empty value を区別。expanded name が異なる重複 local name を許す。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetNsProp": {
+    "implementation": "partial",
+    "scope": "URI と local name で既存属性を照合。既存 attribute address、`_private`、list position を保持し、新値確保後に namespace/value を更新。",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlUnsetNsProp": {
+    "implementation": "partial",
+    "scope": "namespace URI と local name で属性を照合して削除。欠落時は -1。",
+    "tests": [
+      "tests/namespace-edit-test.c"
     ],
     "proof": "not-proved"
   }

@@ -22,6 +22,9 @@ Windows、Cygwin、別コンパイラ、機能無効構成との条件付き宣�
 宣言台帳です。関数、変数、typedef、コールバック、struct/union、フィールド、
 enum/定数、マクロを区別し、宣言・ヘッダー・行番号・ヘッダーSHA-256を保存します。
 前方宣言と定義は統合します。匿名の型はソース位置で識別します。
+型表記にClangが付加するソース位置はincludeディレクトリからの相対パス
+（`libxml/encoding.h:205:5` 等）で保存し、チェックアウト先に依存させません。
+型・行番号・ヘッダーハッシュの差は引き続き検出します。マクロの字句は変更しません。
 マクロにはインクルードガードやコンパイラ補助マクロも含まれるため、合計件数を
 API互換率の分母に使ってはいけません。ヘッダーの使用許諾は `compat/Copyright.libxml2`。
 
@@ -37,8 +40,11 @@ thread allocator有効構成の一つのみで、global allocator動作の比較
 通常呼び出せる `xmlFree` も、上流の変更可能なallocator変数/マクロとは非互換です。
 構造体フィールドの型・可変性、コールバック、定数の意味なども今後評価します。
 生成された[概要](api-coverage.md)と機械可読の全台帳を一緒に管理します。
-C APIへの証明ステータスは現在すべて `not-proved` で、SPARKコアの405条件を
-C APIやXML全仕様の証明として数えません。
+C APIへの証明ステータスは現在すべて `not-proved` です。公開DOM操作の状態遷移・
+所有権・寿命判断はSPARK Store/Runtimeへ接続済みですが、C ABI・native pointer・
+allocator・mutexは信頼境界です。SPARKの検証結果をC APIやXML全仕様の証明として
+数えません。最新の証明範囲と記録は [assurance.md](assurance.md) と
+[proof-report.md](proof-report.md) を参照してください。
 
 ## 再現手順
 
