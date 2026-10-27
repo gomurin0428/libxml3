@@ -66,6 +66,12 @@ package XML3_C is
    function New_Text (Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewText";
 
+   function New_Comment (Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewComment";
+
+   function New_PI (Name, Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewPI";
+
    function Doc_Set_Root_Element
      (Doc, Root : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlDocSetRootElement";

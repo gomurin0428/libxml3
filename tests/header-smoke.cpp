@@ -30,6 +30,8 @@ int main() {
         xmlUnsetNsProp;
     void (*dump_memory_enc)(xmlDocPtr, xmlChar **, int *, const char *) =
         xmlDocDumpMemoryEnc;
+    xmlNodePtr (*new_comment)(const xmlChar *) = xmlNewComment;
+    xmlNodePtr (*new_pi)(const xmlChar *, const xmlChar *) = xmlNewPI;
     xmlDocPtr doc = xmlReadMemory("<r/>", 4, nullptr, nullptr, XML_PARSE_NONET);
     if (!doc) return 1;
     xmlNodePtr root = xmlDocGetRootElement(doc);
@@ -50,6 +52,8 @@ int main() {
     (void)set_ns_prop;
     (void)unset_ns_prop;
     (void)dump_memory_enc;
+    (void)new_comment;
+    (void)new_pi;
     (void)last_error;
     xmlFreeDoc(doc);
     return 0;

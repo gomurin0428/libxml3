@@ -287,15 +287,29 @@ int main(int argc, char **argv) {
             dom_node = NULL;
             assert(xmlGetLastError() == NULL);
         }
-    } else if (strcmp(operation, "dom-new-text") == 0) {
+    } else if (strcmp(operation, "dom-new-text") == 0 ||
+               strcmp(operation, "dom-new-comment") == 0 ||
+               strcmp(operation, "dom-new-pi") == 0) {
         xml3_oom_enable(fail_index);
-        dom_node = xmlNewText(BAD_CAST "text");
+        dom_node = strcmp(operation, "dom-new-comment") == 0
+            ? xmlNewComment(BAD_CAST "text")
+            : strcmp(operation, "dom-new-pi") == 0
+                ? xmlNewPI(BAD_CAST "target", BAD_CAST "text")
+                : xmlNewText(BAD_CAST "text");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         if (injected) {
             assert(dom_node == NULL);
             require_oom_error();
+            dom_node = strcmp(operation, "dom-new-comment") == 0
+                ? xmlNewComment(BAD_CAST "text")
+                : strcmp(operation, "dom-new-pi") == 0
+                    ? xmlNewPI(BAD_CAST "target", BAD_CAST "text")
+                    : xmlNewText(BAD_CAST "text");
+            assert(dom_node != NULL);
+            xmlFreeNode(dom_node);
+            dom_node = NULL;
         } else {
             assert(dom_node != NULL);
             xmlFreeNode(dom_node);

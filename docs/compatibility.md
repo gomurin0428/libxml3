@@ -137,6 +137,10 @@ policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び
 宣言には指定 encoding 表記を保持します。default encoding、formatting、DTD、file output
 は未対応です。source encoding/standalone metadata は保持されず、宣言に出力しません。
 要素のない document は宣言のみを出力する場合があります。
+`xmlNewComment` / `xmlNewPI` は既存のSPARK作成・寿命管理を使って独立nodeを作成します。
+raw文字列はコピーし、NULLと空contentを区別します。NULL PI targetは拒否しますが、
+XML名・文字、予約target、comment/PIの構文はシリアライズ時に検査します。
+NULL contentのcommentは出力しません。文書付き作成APIとnode登録callbackは未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて

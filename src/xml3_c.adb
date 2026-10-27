@@ -802,7 +802,10 @@ package body XML3_C is
          return System.Null_Address;
    end New_Node;
 
-   function New_Text (Content : System.Address) return System.Address is
+   function New_Content_Node
+     (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address)
+     return System.Address
+   is
       Result, Implicit_Ns : System.Address := System.Null_Address;
       Has_Content : constant Boolean := Content /= System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
@@ -817,7 +820,7 @@ package body XML3_C is
          begin
             XML3_DOM_Lock.Acquire (Guard);
             XML3_DOM_Runtime.Construct
-              (XML3_DOM.Text_Node, "text", Content_Text, Has_Content,
+              (Kind, Name, Content_Text, Has_Content,
                System.Null_Address, Result, Implicit_Ns, Status);
          end;
          Report_Operation_Status (Status);
@@ -836,7 +839,38 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end New_Content_Node;
+
+   function New_Text (Content : System.Address) return System.Address is
+   begin
+      return New_Content_Node (XML3_DOM.Text_Node, "text", Content);
    end New_Text;
+
+   function New_Comment (Content : System.Address) return System.Address is
+   begin
+      return New_Content_Node (XML3_DOM.Comment_Node, "comment", Content);
+   end New_Comment;
+
+   function New_PI
+     (Name, Content : System.Address) return System.Address
+   is
+   begin
+      if Name = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return New_Content_Node
+        (XML3_DOM.Processing_Instruction_Node, C_String_Value (Name), Content);
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end New_PI;
 
    function Doc_Set_Root_Element
      (Doc, Root : System.Address) return System.Address
