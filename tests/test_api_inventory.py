@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -48,6 +49,36 @@ int inspect(const Item *item);
             (include / "libxml/broken.h").write_text("undefined_type fn(void);")
             with self.assertRaisesRegex(ValueError, "Header parse failed"):
                 api.inventory(include)
+
+    def test_anonymous_types_are_independent_of_include_directory(self):
+        header = """
+struct Item { union { int integer; double real; } payload; };
+struct { int code; } result;
+int inspect(struct { int code; } value);
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            roots = [Path(directory) / name for name in ("first include", "second include")]
+            catalogs = []
+            for include in roots:
+                (include / "libxml").mkdir(parents=True)
+                (include / "libxml/example.h").write_text(header)
+                catalogs.append(api.inventory(include))
+            self.assertEqual(catalogs[0], catalogs[1])
+            serialized = api.serialize(catalogs[0])
+            self.assertNotIn(directory, serialized)
+            self.assertIn("libxml/example.h:", serialized)
+            entries = {e["id"]: e for e in catalogs[0]["entries"]}
+            self.assertIn("libxml/example.h:", entries["function:example.h:inspect"]["parameters"][0]["type"])
+            (roots[1] / "libxml/example.h").write_text(header.replace("double real", "float real"))
+            changed = api.inventory(roots[1])
+            self.assertNotEqual(catalogs[0]["headers"], changed["headers"])
+            self.assertNotEqual(catalogs[0]["entries"], changed["entries"])
+
+    def test_checked_in_report_matches_frozen_inventory_and_coverage(self):
+        catalog = json.loads((ROOT / "compat/api-inventory.json").read_text())
+        coverage = json.loads((ROOT / "compat/coverage.json").read_text())
+        report = (ROOT / "docs/api-coverage.md").read_text()
+        self.assertEqual(report, api.render(catalog, coverage))
 
     def test_unrecognized_coverage_and_stale_report_fail(self):
         with self.assertRaisesRegex(ValueError, "unknown declaration"):
