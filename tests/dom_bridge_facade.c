@@ -33,6 +33,9 @@ static xmlAttr *store_property_retired_attribute;
 static xmlNode *store_property_retired_value;
 static void *store_property_retired_block;
 static unsigned store_property_retired_frees;
+static void *namespace_block;
+static xmlNs *namespace_facade;
+static unsigned namespace_free_count;
 
 void bridge_store_merge_track(xmlNode *root, xmlNode *target, xmlNode *source) {
     store_merge_root = root;
@@ -299,6 +302,23 @@ void bridge_reset_tracking(void) {
         facades[i] = NULL;
         free_counts[i] = 0;
     }
+}
+
+void bridge_namespace_track(void *block, xmlNs *facade) {
+    assert(block != NULL && facade != NULL && namespace_free_count == 0);
+    namespace_block = block;
+    namespace_facade = facade;
+}
+
+unsigned bridge_namespace_free_count(void) {
+    return namespace_free_count;
+}
+
+void bridge_namespace_reset(void) {
+    assert(namespace_free_count == 1);
+    namespace_block = NULL;
+    namespace_facade = NULL;
+    namespace_free_count = 0;
 }
 
 void bridge_merge_track(void *target_block, void *source_content,
@@ -625,6 +645,13 @@ void __wrap_free(void *pointer) {
             assert(ns->href == NULL && ns->prefix == NULL && ns->next == NULL);
         }
         ++materialize_frees;
+    }
+    if (pointer != NULL && pointer == namespace_block) {
+        assert(namespace_free_count == 0);
+        assert(namespace_facade->next == NULL);
+        assert(namespace_facade->href == NULL);
+        assert(namespace_facade->prefix == NULL);
+        ++namespace_free_count;
     }
     if (pointer != NULL && pointer == import_arena) {
         assert(import_frees == 0);

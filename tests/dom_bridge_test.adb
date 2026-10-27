@@ -1,6 +1,7 @@
 with Ada.Text_IO;
 with Interfaces.C;
 with System;
+with System.Storage_Elements;
 with XML3_DOM; use XML3_DOM;
 with XML3_DOM.Import;
 with XML3_DOM_Allocation;
@@ -21,6 +22,7 @@ procedure DOM_Bridge_Test is
    use type Native.Byte_Count;
    use type System.Address;
    use type Interfaces.C.unsigned;
+   use type System.Storage_Elements.Integer_Address;
 
    procedure Store_Merge_Track (Root, Target, Source : System.Address)
      with Import, Convention => C, External_Name => "bridge_store_merge_track";
@@ -52,6 +54,15 @@ procedure DOM_Bridge_Test is
      (Root, Namespaced, Lang, Added : System.Address)
      with Import, Convention => C,
        External_Name => "bridge_store_no_namespace_check";
+   procedure Namespace_Track (Block, Facade : System.Address)
+     with Import, Convention => C,
+       External_Name => "bridge_namespace_track";
+   function Namespace_Free_Count return Interfaces.C.unsigned
+     with Import, Convention => C,
+       External_Name => "bridge_namespace_free_count";
+   procedure Namespace_Reset
+     with Import, Convention => C,
+       External_Name => "bridge_namespace_reset";
 
    procedure Track
      (Doc_Block, Root_Block, Child_Block, Doc, Root, Child : System.Address)
@@ -1512,4 +1523,56 @@ begin
          and then XML3_DOM_Store.Is_Empty (Managed));
    end;
    Ada.Text_IO.Put_Line ("Unpublished document rollback and Store reuse passed");
+
+   declare
+      use type XML3_DOM_Constructors.Construction_Status;
+      Managed : XML3_DOM_Store.Store;
+      Root, Borrower, Ns, Implicit_Ns : System.Address;
+      Status : XML3_DOM_Store.Operation_Status;
+      Block : System.Address;
+   begin
+      XML3_DOM_Store.Construct
+        (Managed, Element_Node, "root", "", False, System.Null_Address,
+         Root, Implicit_Ns, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Root /= System.Null_Address);
+      XML3_DOM_Store.Construct
+        (Managed, Element_Node, "borrower", "", False, System.Null_Address,
+         Borrower, Implicit_Ns, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Borrower /= System.Null_Address);
+      XML3_DOM_Store.Create_Namespace
+        (Managed, Root, "urn:retained", "p", True, True, Ns, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Ns /= System.Null_Address);
+      Block := System.Storage_Elements.To_Address
+        (System.Storage_Elements.To_Integer (Ns)
+         - System.Storage_Elements.Integer_Address (Native.Metadata_Bytes));
+      Namespace_Track (Block, Ns);
+      XML3_DOM_Store.Free_Namespace (Managed, Ns, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Invalid_Argument);
+      XML3_DOM_Store.Set_Namespace (Managed, Borrower, Ns, Status);
+      pragma Assert (Status = XML3_DOM_Constructors.Created);
+      XML3_DOM_Store.Release
+        (Managed, Root, XML3_DOM_Store.Content_Node, False, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Namespace_Free_Count = 0);
+      XML3_DOM_Store.Free_Namespace (Managed, Ns, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Invalid_Argument
+         and then Namespace_Free_Count = 0);
+      XML3_DOM_Store.Release
+        (Managed, Borrower, XML3_DOM_Store.Content_Node, False, Status);
+      pragma Assert
+        (Status = XML3_DOM_Constructors.Created
+         and then Namespace_Free_Count = 1
+         and then XML3_DOM_Store.Is_Empty (Managed));
+      Namespace_Reset;
+   end;
+   Ada.Text_IO.Put_Line
+     ("Constructed namespace retention and exactly-once release passed");
 end DOM_Bridge_Test;

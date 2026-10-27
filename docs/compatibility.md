@@ -16,6 +16,8 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
+  `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
+  `xmlUnsetNsProp`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlHasNsProp`、`xmlGetNsProp`、`xmlGetNoNsProp`、
   要素 sibling/child 関数
@@ -62,7 +64,9 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` を実装しています。`xmlNewDoc` は
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
+`xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
 します。parser が受け付ける文書は XML 1.0 です。`xmlNewNode` の name と
 `xmlNewText` の content は NUL 終端 byte string としてコピーされますが、
@@ -81,10 +85,9 @@ comment、CDATA、PI の subtree を先に安全に unlink してから反復解
 document、attribute、namespace pointer は code 115 で拒否します。これは呼び出し側に
 unlink を要求する upstream 動作より安全な差です。
 
-`xmlNewProp`、`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` は
-namespace-free attribute に限ります。name は `:` を含まない C string をコピーし、
-colon を含む場合は tree error 115 で拒否します。XML name/UTF-8 の妥当性は検証しません。
-value も raw string として扱い、entity syntax を展開しません。`xmlNewProp(NULL, ...)` は detached attribute を作成し、
+`xmlNewProp` と `xmlUnsetProp` は namespace-free attribute に限り、colon を含む名前を
+拒否します。`xmlSetProp` は QName を解決でき、`xmlRemoveProp` と `xmlFreeProp` は
+qualified attribute にも適用できます。`xmlNewProp(NULL, ...)` は detached attribute を作成し、
 重複名は既存順の末尾に追加します。NULL value は text child なし、empty value は
 empty text child です。`xmlSetProp` は同名の no-namespace attribute があれば
 attribute pointer、`_private`、sibling links を保って値を置換し、なければ末尾に追加
@@ -93,8 +96,27 @@ attribute pointer、`_private`、sibling links を保って値を置換し、な
 `xmlRemoveProp` は attached attribute を削除し、欠落・非対応の場合は `-1` を返します。
 `xmlFreeProp` は detached attribute も解放でき、attached attribute は先に安全に
 unlink します。これは attached attribute の unlink を呼び出し側に要求する upstream
-動作より安全な差です。namespace-qualified attributes はこれらの API では編集できず、
-`xmlFreeProp` も code 115 で拒否します。
+動作より安全な差です。`xmlSetProp` の QName は単一 prefix/local-name 組に限り、
+各部を UTF-8 NCName として検証します。unprefixed 名は no-namespace property の
+既存動作を保ち、prefixed 名は有効 scope 内の binding を使います。Malformed QName
+と未束縛 prefix は tree error 115 で拒否します。documentless node の `xml:lang` と
+`xml:space` は XML namespace 宣言を作成または再利用し、後続の属性操作が失敗すると
+暗黙宣言も rollback します。値は raw string として扱い、entity syntax を展開しません。
+
+`xmlNewNs` は href/prefix をコピーし、NULL と empty string を区別します。同じ要素
+上の重複 prefix は拒否し、失敗時は既存宣言 chain を変更しません。`xmlSetNs` は
+element/attribute の namespace 参照のみを変更し、NULL で解除します。`xmlFreeNs`
+は detached の独立作成 namespace のみを解放でき、attached 宣言や parsed namespace
+の手動解放は拒否します。namespace が node から借用中であれば、その参照がなくなる
+まで native storage は保持されます。subtree 解放では宣言 chain を unlink してから
+element arena を解放し、独立作成宣言の reservation を一度だけ解放します。
+
+`xmlNewNsProp` は detached/attached attribute を作り、異なる namespace 内の同じ
+local name を許します。`xmlSetNsProp` と `xmlUnsetNsProp` は prefix/namespace pointer
+ではなく namespace URI と local name で属性を照合します。置換は既存 attribute の
+address、`_private`、list position と sibling links を保ち、allocation 失敗では
+旧 namespace/value を保ちます。`xmlRemoveProp` と `xmlFreeProp` は qualified attribute
+にも適用されます。
 
 添付可能なのは documentless subtree または同一文書に属する subtree のみです。
 他文書との移動や、別文書に関連付いた node の documentless parent への移動は
@@ -108,8 +130,9 @@ source document が解放されても node 自体が解放されるまで有効�
 
 caller は有効な library pointer lifetime、直接の tree field 書き換えをしないこと、
 同時 mutation を避けること、double free をしないことに責任を持ちます。DOM の
-ownership/refcount/pointer layer は SPARK proof の対象外です。namespace 作成、
-attribute/namespace copy、namespace-qualified attribute editing、cross-document move、
+logical topology、owner/reservation accounting、namespace retention と mutation/release
+policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び出し、ABI/string
+変換、status 変換に限定されます。attribute/namespace copy、cross-document move、
 serialization は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
@@ -194,8 +217,8 @@ libxml2 が namespace error を報告しながら tree を返す入力でも、l
 を返しません。要素名・属性名・namespace prefix・PI target は UTF-8 で読み取り、
 Unicode 正規化や大文字小文字変換をせず、元のバイト列を保持・比較します。
 名前の先頭では結合文字を拒否し、補助平面は仕様どおり U+EFFFF まで受理します。
-namespace mutation、namespace writer API は
-未対応です。`xmlGetProp`/`xmlHasProp` は local name で検索し、URI を考慮する場合は
+上記の限定的 namespace mutation API 以外の namespace writer API は未対応です。
+`xmlGetProp`/`xmlHasProp` は local name で検索し、URI を考慮する場合は
 namespace-aware getter/query API を使用してください。
 名前空間 URI の entity 参照には libxml2 版による差があります。固定ターゲットの
 libxml2 2.15.4 と libxml3 は `urn:&amp;one` を `urn:&one` として扱いますが、
@@ -268,5 +291,7 @@ for intentional libxml3 differences. A 1 GB value allocation is not tested.
 `XML3_Text`、`XML3_Parser`、`XML3_Namespaces`、`XML3_Encoding` の固定境界コアは
 proof project に含まれます。証明範囲は実行時境界、算術、契約、終了性であり、
 libxml2 との機能的同等性や全ての脆弱性がないことを証明するものではありません。
-C adapter、FFI、公開ポインター、allocator、所有権境界は形式検証の対象外です。
+C adapter、FFI、公開ポインター、allocator 境界は形式検証の対象外です。
+DOM Store の論理 topology、owner/reservation accounting、namespace retention と
+mutation/release policy は SPARK proof の対象です。
 完全な libxml2 API 目標と現在の実装を混同しないでください。

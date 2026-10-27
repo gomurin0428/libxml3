@@ -46,6 +46,32 @@ is
             Status);
       end Construct;
 
+      procedure Create_Namespace
+        (Element : System.Address; Href, Prefix : String;
+         Has_Href, Has_Prefix : Boolean; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Create_Namespace
+           (Current, Element, Href, Prefix, Has_Href, Has_Prefix, Result, Status);
+      end Create_Namespace;
+
+      procedure Set_Namespace
+        (Node, Ns : System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Set_Namespace (Current, Node, Ns, Status);
+      end Set_Namespace;
+
+      procedure Free_Namespace
+        (Ns : System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Free_Namespace (Current, Ns, Status);
+      end Free_Namespace;
+
       procedure Add_Child
         (Parent, Child : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
@@ -108,6 +134,45 @@ is
          XML3_DOM_Store.Properties.Set_Property
            (Current, Element, Name, Value, Has_Value, Result, Status);
       end Set_Property;
+
+      procedure Create_Namespace_Property
+        (Element, Ns : System.Address; Name, Value : String;
+         Has_Value : Boolean; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Properties.Create_Namespace_Property
+           (Current, Element, Ns, Name, Value, Has_Value, Result, Status);
+      end Create_Namespace_Property;
+
+      procedure Set_Namespace_Property
+        (Element, Ns : System.Address; Name, Value : String;
+         Has_Value : Boolean; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Properties.Set_Namespace_Property
+           (Current, Element, Ns, Name, Value, Has_Value, Result, Status);
+      end Set_Namespace_Property;
+
+      procedure Unset_Namespace_Property
+        (Element, Ns : System.Address; Name : String; Removed : out Boolean;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Properties.Unset_Namespace_Property
+           (Current, Element, Ns, Name, Removed, Status);
+      end Unset_Namespace_Property;
+
+      procedure Set_Qualified_Property
+        (Element : System.Address; QName, Value : String;
+         Has_Value : Boolean; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Properties.Set_Qualified_Property
+           (Current, Element, QName, Value, Has_Value, Result, Status);
+      end Set_Qualified_Property;
 
       procedure Unset_Property
         (Element : System.Address; Name : String;

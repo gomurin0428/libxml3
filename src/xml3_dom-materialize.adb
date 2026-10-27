@@ -795,7 +795,8 @@ package body XML3_DOM.Materialize with SPARK_Mode is
          Href => Href, Href_Length => Href_Length,
          Prefix => Prefix, Prefix_Length => Prefix_Length,
          Owner => 1, Parent => Parent, Next => 0, Previous => 0,
-         Sibling_Order => Natural (N), Attached => True);
+         Sibling_Order => Natural (N), Attached => True,
+         Owns_Reservation => False);
       Ns_Previous := S.Graph.Nodes
         (Positive (Parent)).Last_Namespace;
       if Ns_Previous /= 0 then
@@ -1129,7 +1130,7 @@ package body XML3_DOM.Materialize with SPARK_Mode is
          Href => Implicit_Href, Href_Length => XML3_Namespaces.XML_URI'Length,
          Prefix => Implicit_Prefix, Prefix_Length => 3, Owner => 1,
          Parent => 0, Next => 0, Previous => 0, Sibling_Order => 1,
-         Attached => False);
+         Attached => False, Owns_Reservation => False);
 
       for I in 1 .. Count loop
          if not Ok then

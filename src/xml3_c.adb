@@ -973,6 +973,202 @@ package body XML3_C is
          return System.Null_Address;
    end Get_Prop;
 
+   function New_Ns
+     (Node, Href, Prefix : System.Address) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Href_Text : constant String :=
+           (if Href = System.Null_Address then "" else C_String_Value (Href));
+         Prefix_Text : constant String :=
+           (if Prefix = System.Null_Address then ""
+            else C_String_Value (Prefix));
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Create_Namespace
+           (Node, Href_Text, Prefix_Text, Href /= System.Null_Address,
+            Prefix /= System.Null_Address, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end New_Ns;
+
+   procedure Set_Ns (Node, Ns : System.Address) is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Node = System.Null_Address then
+         return;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Set_Namespace (Node, Ns, Status);
+      end;
+      Report_Operation_Status (Status);
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+      when others =>
+         Report_Dom_Error (115);
+   end Set_Ns;
+
+   procedure Free_Ns (Ns : System.Address) is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Ns = System.Null_Address then
+         return;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Free_Namespace (Ns, Status);
+      end;
+      Report_Operation_Status (Status);
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+      when others =>
+         Report_Dom_Error (115);
+   end Free_Ns;
+
+   function New_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Has_Value : constant Boolean := Value /= System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Name = System.Null_Address then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      declare
+         Name_Text : constant String := C_String_Value (Name);
+         Value_Text : constant String :=
+           (if Has_Value then C_String_Value (Value) else "");
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Create_Namespace_Property
+           (Node, Ns, Name_Text, Value_Text, Has_Value, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end New_Ns_Prop;
+
+   function Set_Ns_Prop
+     (Node, Ns, Name, Value : System.Address) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Has_Value : constant Boolean := Value /= System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Node = System.Null_Address or else Name = System.Null_Address then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      declare
+         Name_Text : constant String := C_String_Value (Name);
+         Value_Text : constant String :=
+           (if Has_Value then C_String_Value (Value) else "");
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Set_Namespace_Property
+           (Node, Ns, Name_Text, Value_Text, Has_Value, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Set_Ns_Prop;
+
+   function Unset_Ns_Prop
+     (Node, Ns, Name : System.Address) return Interfaces.C.int
+   is
+      Removed : Boolean := False;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Node = System.Null_Address or else Name = System.Null_Address then
+         Report_Dom_Error (115);
+         return -1;
+      end if;
+      declare
+         Name_Text : constant String := C_String_Value (Name);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Unset_Namespace_Property
+           (Node, Ns, Name_Text, Removed, Status);
+      end;
+      if Status = XML3_DOM_Constructors.Created and then Removed then
+         return 0;
+      end if;
+      Report_Operation_Status (Status);
+      return -1;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return -1;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return -1;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return -1;
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end Unset_Ns_Prop;
+
    function New_Prop
      (Node, Name, Value : System.Address) return System.Address
    is
@@ -1036,7 +1232,7 @@ package body XML3_C is
             Guard : XML3_DOM_Lock.Guard;
          begin
             XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Set_Property
+            XML3_DOM_Runtime.Set_Qualified_Property
               (Node, Name_Text, Value_Text, Has_Value, Result, Status);
          end;
          Report_Operation_Status (Status);
@@ -1114,7 +1310,7 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Release
-           (Attribute, XML3_DOM_Store.Plain_Attribute, True, Status);
+           (Attribute, XML3_DOM_Store.Namespaced_Attribute, True, Status);
       end;
       if Status = XML3_DOM_Constructors.Created then
          return 0;
@@ -1145,7 +1341,7 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Release
-           (Attribute, XML3_DOM_Store.Plain_Attribute, False, Status);
+           (Attribute, XML3_DOM_Store.Namespaced_Attribute, False, Status);
       end;
       Report_Operation_Status (Status);
    exception

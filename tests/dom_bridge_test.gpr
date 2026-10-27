@@ -28,6 +28,10 @@ project DOM_Bridge_Test is
         ("-std=c11", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
          "-I" & DOM_Bridge_Test'Project_Dir & "../include");
    end Compiler;
+   package Binder is
+      --  Keep assertion scratch allocations outside malloc fault injection.
+      for Default_Switches ("Ada") use ("-D16m");
+   end Binder;
    package Linker is
       for Default_Switches ("Ada") use
         ("-Wl,--wrap=free", "-Wl,--wrap=malloc");

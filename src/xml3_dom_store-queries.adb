@@ -438,11 +438,11 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Original_View := Node (S.Current.all, Original);
       if Implicit_Query (Mode, Has_Value, Value) then
          Ns := Find_Implicit (S, Original);
-         Status := Created;
          if Ns /= Null_Namespace then
             Result := Namespace (S.Current.all, Ns).Facade;
+            Status := Created;
+            return;
          end if;
-         return;
       end if;
       Current :=
         (if Original_View.Kind = Attribute_Node

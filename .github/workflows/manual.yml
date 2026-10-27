@@ -16,7 +16,7 @@ jobs:
           make check-inventory
           make build
           make test-api
-          make test-errors test-oom test-fuzz test-resources test-encoding test-dom test-attributes test-sanitize
+          make test-errors test-oom test-fuzz test-resources test-encoding test-dom test-attributes test-namespace-edit test-sanitize
           make compare
           make compare-system
           make check

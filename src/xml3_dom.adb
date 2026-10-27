@@ -1,6 +1,7 @@
 with XML3_DOM_Allocation;
 
 package body XML3_DOM with SPARK_Mode is
+   pragma Unevaluated_Use_Of_Old (Allow);
 
    procedure Release_Pin (Item : in out Owner_View)
    with Global => null,
@@ -188,6 +189,16 @@ package body XML3_DOM with SPARK_Mode is
        and then (for all I in 1 .. Before.Ns_Used =>
          Namespace_Links_Valid (Before, I)
          and then Before.Namespaces (I) = After.Namespaces (I))
+       and then (for all I in 1 .. Before.Ns_Used =>
+         (if Before.Namespaces (I).State = Live
+           and then Before.Namespaces (I).Owns_Reservation
+          then After.Owners
+            (Positive (Before.Namespaces (I).Owner)).State = Live
+            and then After.Owners
+              (Positive (Before.Namespaces (I).Owner)).Reservations > 0
+            and then (if Before.Namespaces (I).Parent /= Null_Node then
+              After.Nodes
+                (Positive (Before.Namespaces (I).Parent)).State = Live)))
        and then (for all I in 1 .. Before.Node_Used =>
          Namespace_Parent_Preserved (Before.Nodes (I), After.Nodes (I)))
        and then (for all I in 1 .. Before.Owner_Used =>
@@ -328,6 +339,7 @@ package body XML3_DOM with SPARK_Mode is
    begin
       if Current.Capacity >= Needed then
          Success := True;
+         pragma Assert (Well_Sized (Current.Graph));
          return;
       end if;
       if Current.Capacity <= Positive'Last / 2 then
@@ -336,6 +348,7 @@ package body XML3_DOM with SPARK_Mode is
       Fresh := XML3_DOM_Allocation.Allocate_State (New_Capacity);
       if Fresh = null then
          Success := False;
+         pragma Assert (Well_Sized (Current.Graph));
          return;
       end if;
       for I in 1 .. New_Capacity loop
@@ -372,6 +385,7 @@ package body XML3_DOM with SPARK_Mode is
          Fresh := null;
          XML3_DOM_Allocation.Free_State (Old);
          pragma Assert (Valid (Current.all));
+         pragma Assert (Well_Sized (Current.Graph));
       end;
       Success := True;
    end Reserve;
@@ -408,6 +422,16 @@ package body XML3_DOM with SPARK_Mode is
             pragma Loop_Invariant
               (for all K in 1 .. I => not Holds (S.Graph.Nodes (K), Target));
          end loop;
+         for I in 1 .. S.Graph.Ns_Used loop
+            pragma Assert (Namespace_Links_Valid (S.Graph, I));
+            pragma Assert
+              (if S.Graph.Namespaces (I).State = Live then
+                 S.Graph.Namespaces (I).Owner /= Target);
+            pragma Loop_Invariant
+              (for all K in 1 .. I =>
+                 (if S.Graph.Namespaces (K).State = Live then
+                    S.Graph.Namespaces (K).Owner /= Target));
+         end loop;
          Zero_Holder_Count (Snapshot_Nodes (S), Target, S.Graph.Node_Used);
       end;
       if Slot = 0 then
@@ -434,6 +458,54 @@ package body XML3_DOM with SPARK_Mode is
         (for all I in 1 .. S.Graph.Ns_Used =>
            S.Graph.Namespaces (I) = Before.Graph.Namespaces (I));
       Preserve_Namespace_Links (Before.Graph, S.Graph);
+      pragma Assert (Well_Sized (S));
+      pragma Assert (Effects_Valid (S));
+      pragma Assert (Pins_In_Range (S));
+      pragma Assert (Pin_Equation (S));
+      pragma Assert (Links_Valid (S));
+      pragma Assert (Can_Edit (S));
+      pragma Assert
+        (if Success then
+           B in 1 .. Owner_Ref (Owner_Count (S))
+           and then Owner (S, B).State = Live
+           and then Owner (S, B).References = 1
+           and then Owner (S, B).Reservations = 1
+           and then Owner (S, B).Address = Address
+           and then not Namespace_Reservation_Held (S, B)
+           and then (for all I in Namespace_Ref range
+             1 .. Namespace_Ref (Namespace_Count (S)) =>
+               (if Namespace (S, I).State = Live
+                then Namespace (S, I).Owner /= B))
+         else B = Null_Owner);
+      pragma Assert (S.Capacity = Before.Capacity);
+      pragma Assert (Node_Count (S) = Node_Count (Before));
+      pragma Assert (Namespace_Count (S) = Namespace_Count (Before));
+      pragma Assert
+        (if Success then
+           Owner_Count (S) =
+             Natural'Max (Owner_Count (Before), Natural (B))
+           and then
+             (if Natural (B) <= Owner_Count (Before)
+              then Owner (Before, B).State = Unused
+              else Owner_Count (S) > Owner_Count (Before)
+                and then B = Owner_Ref (Owner_Count (S)))
+         else Owner_Count (S) = Owner_Count (Before)
+           and then Projection_Required (S) = Projection_Required (Before));
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (Before)) =>
+           Node (S, I) = Node (Before, I));
+      pragma Assert
+        (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (Before)) =>
+             Namespace (S, I) = Namespace (Before, I));
+      pragma Assert
+        (if Success then
+           (for all B0 in Owner_Ref range 1 .. Owner_Ref (Owner_Count (Before)) =>
+              (if B0 /= B then Owner (S, B0) = Owner (Before, B0)))
+           and then Owner (S, B).Address /= System.Null_Address
+         else Same_Used_Entries (Before, S));
+      pragma Assert
+        (if Facades_Present (Before) then Facades_Present (S));
    end Register_Owner;
 
    procedure Register_Node
@@ -579,6 +651,32 @@ package body XML3_DOM with SPARK_Mode is
               S.Graph.Owners (K) = Before.Graph.Owners (K)));
    end Release_Reservation;
 
+   procedure Release_Namespace_Reservation
+     (S : in out State; N : Namespace_Ref)
+   is
+      Before : constant State := S with Ghost;
+      B : constant Owner_Ref := S.Graph.Namespaces (Positive (N)).Owner;
+      Item : Namespace_View := S.Graph.Namespaces (Positive (N));
+   begin
+      Item.Owns_Reservation := False;
+      S.Graph.Namespaces (Positive (N)) := Item;
+      for I in 1 .. S.Graph.Node_Used loop
+         pragma Assert (Node_Links_Valid (Before.Graph, I));
+         pragma Assert (Namespace_Links_Valid (Before.Graph, Positive (N)));
+         pragma Assert (Node_Links_Valid (S.Graph, I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I => Node_Links_Valid (S.Graph, J));
+      end loop;
+      for I in 1 .. S.Graph.Ns_Used loop
+         pragma Assert (Namespace_Links_Valid (Before.Graph, I));
+         pragma Assert (Namespace_Links_Valid (Before.Graph, Positive (N)));
+         pragma Assert (Namespace_Links_Valid (S.Graph, I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I => Namespace_Links_Valid (S.Graph, J));
+      end loop;
+      Release_Reservation (S, B);
+   end Release_Namespace_Reservation;
+
    procedure Begin_Projection (S : in out State) is
    begin
       S.Effects :=
@@ -647,10 +745,21 @@ package body XML3_DOM with SPARK_Mode is
          pragma Loop_Variant (Increases => S.Effects.Released_Through);
          pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
          pragma Loop_Invariant (not S.Effects.Dirty);
+         pragma Loop_Invariant (S.Effects.Phase = Editing);
+         pragma Loop_Invariant (S.Effects.Cursor = 0);
+         pragma Loop_Invariant (S.Effects.Active_Release = Null_Owner);
+         pragma Loop_Invariant
+           (S.Effects.Released_Through <= S.Graph.Owner_Used);
          pragma Loop_Invariant (Facades_Present (S) = Facades_Present (Before));
          pragma Loop_Invariant (Same_Graph (S, Before));
          pragma Loop_Invariant
            (S.Effects.Released_Through >= Before.Effects.Released_Through);
+         pragma Loop_Invariant
+           (for all I in 1 .. S.Effects.Released_Through =>
+              S.Graph.Owners (I).State /= Releasing);
+         pragma Loop_Invariant
+           (for all I in 1 .. S.Effects.Released_Through =>
+              not S.Graph.Owners (I).Release_Emitted);
          S.Effects.Released_Through := S.Effects.Released_Through + 1;
          B := Owner_Ref (S.Effects.Released_Through);
          if S.Graph.Owners (Positive (B)).State = Releasing then
@@ -664,23 +773,171 @@ package body XML3_DOM with SPARK_Mode is
                pragma Loop_Invariant
                  (for all J in 1 .. I => Node_Links_Valid (S.Graph, J));
             end loop;
+            for I in 1 .. S.Graph.Owner_Used loop
+               pragma Assert
+                 (S.Graph.Owners (I).Release_Emitted =
+                    (S.Effects.Phase = Release_Pending
+                     and then Owner_Ref (I) = S.Effects.Active_Release));
+               pragma Loop_Invariant
+                 (for all J in 1 .. I =>
+                    S.Graph.Owners (J).Release_Emitted =
+                      (S.Effects.Phase = Release_Pending
+                       and then Owner_Ref (J) = S.Effects.Active_Release));
+            end loop;
             Preserve_Namespace_Links (Before.Graph, S.Graph);
+            pragma Assert
+              (for all I in 1 .. S.Graph.Node_Used =>
+                 Node_Links_Valid (S.Graph, I));
+            pragma Assert
+              (for all I in 1 .. S.Graph.Ns_Used =>
+                 Namespace_Links_Valid (S.Graph, I));
+            pragma Assert (Links_Valid (S));
+            pragma Assert (S.Graph.Owner_Used <= S.Capacity);
+            pragma Assert (S.Effects.Released_Through <= S.Graph.Owner_Used);
+            pragma Assert (S.Effects.Phase = Release_Pending);
+            pragma Assert (not S.Effects.Dirty and then S.Effects.Cursor = 0);
+            pragma Assert
+              (S.Effects.Active_Release in
+                 1 .. Owner_Ref (S.Graph.Owner_Used));
+            pragma Assert
+              (S.Graph.Owners (Positive (S.Effects.Active_Release)).State =
+                 Releasing);
+            pragma Assert
+              (for all I in 1 .. S.Graph.Owner_Used =>
+                 S.Graph.Owners (I).Release_Emitted =
+                   (S.Effects.Phase = Release_Pending
+                    and then Owner_Ref (I) = S.Effects.Active_Release));
+            pragma Assert
+              (for all I in 1 .. S.Graph.Owner_Used =>
+                 (if not S.Effects.Dirty
+                   and then I <= S.Effects.Released_Through
+                   and then Owner_Ref (I) /= S.Effects.Active_Release
+                  then S.Graph.Owners (I).State /= Releasing));
+            pragma Assert
+              (for all I in 1 .. S.Graph.Owner_Used =>
+                 (if S.Graph.Owners (I).State = Releasing then
+                    S.Graph.Owners (I).References = 0
+                    and then S.Graph.Owners (I).Reservations = 0));
+            pragma Assert (Effects_Valid (S));
+            pragma Assert (Valid (S));
             return;
          end if;
       end loop;
       B := Null_Owner;
       Address := System.Null_Address;
+      pragma Assert (Effects_Valid (S));
+      pragma Assert (Valid (S));
    end Take_Release;
+
+   procedure Namespace_Release_Lemma
+     (Before, After : Graph_State; B : Owner_Ref; I : Positive)
+   with Ghost, Global => null,
+     Pre => Well_Sized (Before) and then Well_Sized (After)
+       and then Before.Node_Used = After.Node_Used
+       and then Before.Ns_Used = After.Ns_Used
+       and then Before.Owner_Used = After.Owner_Used
+       and then B in 1 .. Owner_Ref (Before.Owner_Used)
+       and then Before.Owners (Positive (B)).State = Releasing
+       and then I <= Before.Ns_Used
+       and then (for all J in 1 .. Before.Node_Used =>
+         Node_Pins_Valid (Before, J)
+         and then After.Nodes (J) =
+           (if Before.Nodes (J).Owner = B then (others => <>)
+            else Before.Nodes (J)))
+       and then (for all J in 1 .. Before.Ns_Used =>
+         Namespace_Links_Valid (Before, J)
+         and then After.Namespaces (J) =
+           (if Before.Namespaces (J).Owner = B then (others => <>)
+            else Before.Namespaces (J)))
+       and then (for all K in 1 .. Before.Owner_Used =>
+         After.Owners (K) =
+           (if Owner_Ref (K) = B then (others => <>) else Before.Owners (K))),
+     Post => Namespace_Links_Valid (After, I);
+
+   procedure Namespace_Release_Lemma
+     (Before, After : Graph_State; B : Owner_Ref; I : Positive)
+   is
+      N : constant Namespace_View := Before.Namespaces (I);
+   begin
+      pragma Assert (Namespace_Links_Valid (Before, I));
+      if N.State /= Live or else N.Owner = B then
+         return;
+      end if;
+      pragma Assert (After.Namespaces (I) = N);
+      pragma Assert (After.Owners (Positive (N.Owner)) =
+                       Before.Owners (Positive (N.Owner)));
+      if N.Parent /= Null_Node then
+         pragma Assert (Node_Pins_Valid (Before, Positive (N.Parent)));
+         pragma Assert (Before.Nodes (Positive (N.Parent)).Owner /= B);
+         pragma Assert (After.Nodes (Positive (N.Parent)) =
+                          Before.Nodes (Positive (N.Parent)));
+      end if;
+      if N.Previous /= Null_Namespace then
+         pragma Assert (Namespace_Links_Valid (Before, Positive (N.Previous)));
+         pragma Assert (Before.Namespaces (Positive (N.Previous)).Owner /= B);
+         pragma Assert (After.Namespaces (Positive (N.Previous)) =
+                          Before.Namespaces (Positive (N.Previous)));
+      end if;
+      if N.Next /= Null_Namespace then
+         pragma Assert (Namespace_Links_Valid (Before, Positive (N.Next)));
+         pragma Assert (Before.Namespaces (Positive (N.Next)).Owner /= B);
+         pragma Assert (After.Namespaces (Positive (N.Next)) =
+                          Before.Namespaces (Positive (N.Next)));
+      end if;
+      for J in 1 .. Before.Ns_Used loop
+         pragma Assert
+           (if After.Namespaces (J).State = Live then
+             After.Namespaces (J) = Before.Namespaces (J));
+         pragma Loop_Invariant
+           (for all K in 1 .. J =>
+             (if K /= I and then After.Namespaces (K).State = Live
+               and then After.Namespaces (K).Owns_Reservation
+               and then N.Owns_Reservation
+              then After.Namespaces (K).Owner /= N.Owner));
+      end loop;
+   end Namespace_Release_Lemma;
 
    procedure Acknowledge_Release (S : in out State; B : Owner_Ref) is
       Before : constant State := S with Ghost;
    begin
       for I in 1 .. S.Graph.Node_Used loop
          pragma Assert (Node_Pins_Valid (Before.Graph, I));
+         pragma Assert (Node_Namespaces_Valid (Before.Graph, I));
          pragma Assert (if S.Graph.Nodes (I).State = Live then
            not Holds (S.Graph.Nodes (I), B));
          if S.Graph.Nodes (I).Owner = B then
             pragma Assert (S.Graph.Nodes (I).State /= Live);
+            pragma Assert (Before.Graph.Nodes (I).State /= Live);
+            if S.Graph.Nodes (I).State = Tombstone
+              and then S.Graph.Nodes (I).First_Namespace /= Null_Namespace
+            then
+               pragma Assert
+                 (Before.Graph.Nodes (I).First_Namespace <=
+                    Namespace_Ref (Before.Graph.Ns_Used));
+               pragma Assert (Namespace_Links_Valid
+                 (Before.Graph,
+                  Positive (Before.Graph.Nodes (I).First_Namespace)));
+               pragma Assert (not Before.Graph.Namespaces
+                 (Positive (Before.Graph.Nodes (I).First_Namespace)).
+                   Owns_Reservation);
+               pragma Assert (Before.Graph.Namespaces
+                 (Positive (Before.Graph.Nodes (I).First_Namespace)).Owner = B);
+            end if;
+            if S.Graph.Nodes (I).State = Tombstone
+              and then S.Graph.Nodes (I).Last_Namespace /= Null_Namespace
+            then
+               pragma Assert
+                 (Before.Graph.Nodes (I).Last_Namespace <=
+                    Namespace_Ref (Before.Graph.Ns_Used));
+               pragma Assert (Namespace_Links_Valid
+                 (Before.Graph,
+                  Positive (Before.Graph.Nodes (I).Last_Namespace)));
+               pragma Assert (not Before.Graph.Namespaces
+                 (Positive (Before.Graph.Nodes (I).Last_Namespace)).
+                   Owns_Reservation);
+               pragma Assert (Before.Graph.Namespaces
+                 (Positive (Before.Graph.Nodes (I).Last_Namespace)).Owner = B);
+            end if;
             S.Graph.Nodes (I) := (others => <>);
          end if;
          pragma Loop_Invariant
@@ -698,6 +955,43 @@ package body XML3_DOM with SPARK_Mode is
            (if Facades_Present (Before) then Facades_Present (S));
       end loop;
       for I in 1 .. S.Graph.Ns_Used loop
+         pragma Assert (Namespace_Links_Valid (Before.Graph, I));
+         pragma Assert
+           (if Before.Graph.Namespaces (I).State = Live
+              and then Before.Graph.Namespaces (I).Parent /= Null_Node
+            then
+              Before.Graph.Namespaces (I).Parent <=
+                Node_Ref (Before.Graph.Node_Used));
+         pragma Assert
+           (if Before.Graph.Namespaces (I).State = Live
+              and then Before.Graph.Namespaces (I).Parent /= Null_Node
+              and then Before.Graph.Namespaces (I).Owner /= B
+            then Before.Graph.Nodes
+              (Positive (Before.Graph.Namespaces (I).Parent)).Owner /= B);
+         if S.Graph.Namespaces (I).State = Live
+           and then S.Graph.Namespaces (I).Owner /= B
+         then
+            if S.Graph.Namespaces (I).Previous /= Null_Namespace then
+               pragma Assert
+                 (Before.Graph.Namespaces (I).Previous <=
+                    Namespace_Ref (Before.Graph.Ns_Used));
+               pragma Assert (Namespace_Links_Valid
+                 (Before.Graph,
+                  Positive (Before.Graph.Namespaces (I).Previous)));
+               pragma Assert (Before.Graph.Namespaces
+                 (Positive (Before.Graph.Namespaces (I).Previous)).Owner /= B);
+            end if;
+            if S.Graph.Namespaces (I).Next /= Null_Namespace then
+               pragma Assert
+                 (Before.Graph.Namespaces (I).Next <=
+                    Namespace_Ref (Before.Graph.Ns_Used));
+               pragma Assert (Namespace_Links_Valid
+                 (Before.Graph,
+                  Positive (Before.Graph.Namespaces (I).Next)));
+               pragma Assert (Before.Graph.Namespaces
+                 (Positive (Before.Graph.Namespaces (I).Next)).Owner /= B);
+            end if;
+         end if;
          if S.Graph.Namespaces (I).Owner = B then
             S.Graph.Namespaces (I) := (others => <>);
          end if;
@@ -710,6 +1004,11 @@ package body XML3_DOM with SPARK_Mode is
            (if Facades_Present (Before) then Facades_Present (S));
       end loop;
       S.Graph.Owners (Positive (B)) := (others => <>);
+      pragma Assert
+        (for all K in Owner_Ref range 1 .. Owner_Ref (S.Graph.Owner_Used) =>
+           S.Graph.Owners (Positive (K)) =
+             (if K = B then (others => <>) else
+                Before.Graph.Owners (Positive (K))));
       S.Effects.Active_Release := Null_Owner;
       S.Effects.Phase := Editing;
       Preserve_Pin_Equation (Before, S);
@@ -722,9 +1021,9 @@ package body XML3_DOM with SPARK_Mode is
          pragma Loop_Invariant
            (for all J in 1 .. I => Node_Links_Valid (S.Graph, J));
       end loop;
+      pragma Assert (Projection_Links_In_Range (S));
       for I in 1 .. S.Graph.Ns_Used loop
-         pragma Assert (Namespace_Links_Valid (Before.Graph, I));
-         pragma Assert (Namespace_Links_Valid (S.Graph, I));
+         Namespace_Release_Lemma (Before.Graph, S.Graph, B, I);
          pragma Loop_Invariant
            (for all J in 1 .. I => Namespace_Links_Valid (S.Graph, J));
       end loop;
@@ -739,7 +1038,8 @@ package body XML3_DOM with SPARK_Mode is
       Prefix_Length : Natural;
       Own : Owner_Ref;
       Ns : out Namespace_Ref;
-      Success : out Boolean)
+      Success : out Boolean;
+      Owns_Reservation : Boolean := False)
    is
       Before : constant State := S with Ghost;
       Slot : Natural := 0;
@@ -768,7 +1068,8 @@ package body XML3_DOM with SPARK_Mode is
          Href_Length => Href_Length, Prefix => Prefix,
          Prefix_Length => Prefix_Length, Owner => Own,
          Parent => Null_Node, Next => Null_Namespace, Previous => Null_Namespace,
-         Sibling_Order => 0, Attached => False);
+         Sibling_Order => 0, Attached => False,
+         Owns_Reservation => Owns_Reservation);
       for I in 1 .. S.Graph.Node_Used loop
          pragma Assert (Node_Links_Valid (Before.Graph, I));
          pragma Assert (Node_Links_Valid (S.Graph, I));
@@ -805,8 +1106,10 @@ package body XML3_DOM with SPARK_Mode is
        and then Before.Nodes (Positive (Element)).Kind = Element_Node
        and then Before.Namespaces (Positive (Ns)).State = Live
        and then not Before.Namespaces (Positive (Ns)).Attached
-       and then Before.Namespaces (Positive (Ns)).Owner =
-         Before.Nodes (Positive (Element)).Owner
+       and then
+         (Before.Namespaces (Positive (Ns)).Owner =
+            Before.Nodes (Positive (Element)).Owner
+          or else Before.Namespaces (Positive (Ns)).Owns_Reservation)
        and then (for all I in 1 .. Before.Owner_Used =>
          Before.Owners (I) = After.Owners (I))
        and then (for all I in 1 .. Before.Node_Used =>
@@ -876,7 +1179,9 @@ package body XML3_DOM with SPARK_Mode is
       Last : Namespace_Ref := Parent_Item.Last_Namespace;
    begin
       if Parent_Item.Kind /= Element_Node or else Ns_Item.Attached
-        or else Ns_Item.Owner /= Parent_Item.Owner
+        or else
+          (Ns_Item.Owner /= Parent_Item.Owner
+           and then not Ns_Item.Owns_Reservation)
         or else (Last /= Null_Namespace and then
           (Last > Namespace_Ref (S.Graph.Ns_Used) or else
            S.Graph.Namespaces (Positive (Last)).Sibling_Order = Natural'Last))
@@ -902,6 +1207,148 @@ package body XML3_DOM with SPARK_Mode is
       Success := True;
       pragma Assert (Valid (S));
    end Attach_Namespace;
+
+   procedure Namespace_Detach_Lemma
+     (Before, After : Graph_State; Ns : Namespace_Ref)
+   with Ghost, Global => null,
+     Pre => Well_Sized (Before) and then Well_Sized (After)
+       and then Before.Node_Used = After.Node_Used
+       and then Before.Ns_Used = After.Ns_Used
+       and then Before.Owner_Used = After.Owner_Used
+       and then Before.Owners = After.Owners
+       and then Ns in 1 .. Namespace_Ref (Before.Ns_Used)
+       and then Before.Namespaces (Positive (Ns)).State = Live
+       and then Before.Namespaces (Positive (Ns)).Attached
+       and then (for all I in 1 .. Before.Node_Used => Node_Links_Valid (Before, I))
+       and then (for all I in 1 .. Before.Ns_Used => Namespace_Links_Valid (Before, I))
+       and then (declare
+         N : constant Namespace_View := Before.Namespaces (Positive (Ns));
+       begin
+         (for all I in 1 .. Before.Node_Used =>
+           After.Nodes (I) =
+             (if Node_Ref (I) = N.Parent then
+               (Before.Nodes (I) with delta
+                 First_Namespace => (if N.Previous = 0 then N.Next
+                                     else Before.Nodes (I).First_Namespace),
+                 Last_Namespace => (if N.Next = 0 then N.Previous
+                                    else Before.Nodes (I).Last_Namespace))
+              else Before.Nodes (I)))
+         and then (for all I in 1 .. Before.Ns_Used =>
+           After.Namespaces (I) =
+             (if Namespace_Ref (I) = Ns then
+               (Before.Namespaces (I) with delta Parent => 0, Next => 0,
+                 Previous => 0, Attached => False)
+              elsif Namespace_Ref (I) = N.Previous then
+               (Before.Namespaces (I) with delta Next => N.Next)
+              elsif Namespace_Ref (I) = N.Next then
+               (Before.Namespaces (I) with delta Previous => N.Previous)
+              else Before.Namespaces (I)))),
+     Post => (for all I in 1 .. After.Node_Used => Node_Links_Valid (After, I))
+       and then (for all I in 1 .. After.Ns_Used => Namespace_Links_Valid (After, I));
+
+   procedure Namespace_Detach_Lemma
+     (Before, After : Graph_State; Ns : Namespace_Ref)
+   is
+   begin
+      pragma Assert (Namespace_Links_Valid (Before, Positive (Ns)));
+      for I in 1 .. Before.Node_Used loop
+         pragma Assert (Node_Links_Valid (Before, I));
+         pragma Assert (Node_Pins_Valid (Before, I));
+         pragma Assert (Node_Siblings_Valid (Before, I));
+         pragma Assert (Node_Children_Valid (Before, I));
+         pragma Assert (Node_Namespaces_Valid (Before, I));
+         pragma Assert (Node_Pins_Valid (After, I));
+         pragma Assert (Node_Siblings_Valid (After, I));
+         pragma Assert (Node_Children_Valid (After, I));
+         if After.Nodes (I).State in Live | Tombstone then
+            if After.Nodes (I).First_Namespace /= Null_Namespace then
+               pragma Assert (Allocated_Namespace
+                 (Before, After.Nodes (I).First_Namespace));
+               pragma Assert (Namespace_Links_Valid
+                 (Before, Positive (After.Nodes (I).First_Namespace)));
+            end if;
+            if After.Nodes (I).Last_Namespace /= Null_Namespace then
+               pragma Assert (Allocated_Namespace
+                 (Before, After.Nodes (I).Last_Namespace));
+               pragma Assert (Namespace_Links_Valid
+                 (Before, Positive (After.Nodes (I).Last_Namespace)));
+            end if;
+         end if;
+         pragma Assert (Node_Namespaces_Valid (After, I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I => Node_Links_Valid (After, J));
+      end loop;
+      for I in 1 .. Before.Ns_Used loop
+         pragma Assert (Namespace_Links_Valid (Before, I));
+         pragma Assert (Namespace_Links_Valid (Before, Positive (Ns)));
+         if After.Namespaces (I).State = Live then
+            if After.Namespaces (I).Parent /= Null_Node then
+               pragma Assert (Node_Namespaces_Valid
+                 (Before, Positive (After.Namespaces (I).Parent)));
+            end if;
+            if After.Namespaces (I).Previous /= Null_Namespace then
+               pragma Assert (Namespace_Links_Valid
+                 (Before, Positive (After.Namespaces (I).Previous)));
+            end if;
+            if After.Namespaces (I).Next /= Null_Namespace then
+               pragma Assert (Namespace_Links_Valid
+                 (Before, Positive (After.Namespaces (I).Next)));
+            end if;
+         end if;
+         pragma Assert (Namespace_Links_Valid (After, I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I => Namespace_Links_Valid (After, J));
+      end loop;
+   end Namespace_Detach_Lemma;
+
+   procedure Detach_Namespace_Declaration
+     (S : in out State; Ns : Namespace_Ref)
+   is
+      Before_State : constant State := S with Ghost;
+      Before : constant Graph_State := S.Graph with Ghost;
+      Item : Namespace_View := S.Graph.Namespaces (Positive (Ns));
+      Parent_Item : Node_View;
+      Previous : constant Namespace_Ref := Item.Previous;
+      Next : constant Namespace_Ref := Item.Next;
+   begin
+      pragma Assert (Item.Parent in 1 .. Node_Ref (S.Graph.Node_Used));
+      pragma Assert
+        (Previous = Null_Namespace
+         or else Previous in 1 .. Namespace_Ref (S.Graph.Ns_Used));
+      pragma Assert
+        (Next = Null_Namespace
+         or else Next in 1 .. Namespace_Ref (S.Graph.Ns_Used));
+      pragma Assert (Namespace_Links_Valid (Before, Positive (Ns)));
+      pragma Assert (Previous /= Ns and then Next /= Ns);
+      pragma Assert
+        (Previous = Null_Namespace or else Next = Null_Namespace
+         or else Previous /= Next);
+      Parent_Item := S.Graph.Nodes (Positive (Item.Parent));
+      if Previous = Null_Namespace then
+         Parent_Item.First_Namespace := Next;
+      else
+         S.Graph.Namespaces (Positive (Previous)).Next := Next;
+         pragma Assert
+           (S.Graph.Namespaces (Positive (Previous)).Next = Next);
+      end if;
+      if Next = Null_Namespace then
+         Parent_Item.Last_Namespace := Previous;
+      else
+         S.Graph.Namespaces (Positive (Next)).Previous := Previous;
+         pragma Assert
+           (S.Graph.Namespaces (Positive (Next)).Previous = Previous);
+      end if;
+      S.Graph.Nodes (Positive (Item.Parent)) := Parent_Item;
+      Item.Parent := Null_Node;
+      Item.Next := Null_Namespace;
+      Item.Previous := Null_Namespace;
+      Item.Attached := False;
+      S.Graph.Namespaces (Positive (Ns)) := Item;
+      S.Effects.Dirty := True;
+      Preserve_Pin_Equation (Before_State, S);
+      Namespace_Detach_Lemma (Before, S.Graph, Ns);
+      pragma Assert (Valid (S) and then Can_Edit (S));
+   end Detach_Namespace_Declaration;
 
    procedure Set_Node_Projection_Internal
      (S : in out State;
@@ -932,6 +1379,9 @@ package body XML3_DOM with SPARK_Mode is
       S.Effects.Dirty := True;
       S.Graph.Nodes (Positive (N)) := New_Item;
       for B in Owner_Ref range 1 .. Owner_Ref (S.Graph.Owner_Used) loop
+         pragma Assert
+           (if Before.Graph.Owners (Positive (B)).State /= Live then
+              not Holds (Old_Item, B) and then not Holds (New_Item, B));
          Changed_Holder_Count
            (Snapshot_Nodes (Before), Snapshot_Nodes (S), B,
             S.Graph.Node_Used, Positive (N));
@@ -945,11 +1395,16 @@ package body XML3_DOM with SPARK_Mode is
               S.Graph.Owners (Positive (B)).Reservations);
             Release_Pin (S.Graph.Owners (Positive (B)));
          end if;
+         pragma Assert (not S.Graph.Owners (Positive (B)).Release_Emitted);
          pragma Loop_Invariant (S.Graph.Node_Used = Before.Graph.Node_Used);
          pragma Loop_Invariant (S.Graph.Owner_Used = Before.Graph.Owner_Used);
          pragma Loop_Invariant (S.Graph.Ns_Used = Before.Graph.Ns_Used);
          pragma Loop_Invariant
            (S.Effects = (Before.Effects with delta Dirty => True));
+         pragma Loop_Invariant
+           (for all K in 1 .. S.Graph.Owner_Used =>
+             S.Graph.Owners (K).Release_Emitted =
+               Before.Graph.Owners (K).Release_Emitted);
          pragma Loop_Invariant
            (for all K in 1 .. S.Graph.Owner_Used =>
              not S.Graph.Owners (K).Release_Emitted
@@ -968,6 +1423,11 @@ package body XML3_DOM with SPARK_Mode is
            (for all K in Owner_Ref range 1 .. Owner_Ref (S.Graph.Owner_Used) =>
              (if K > B then
                S.Graph.Owners (Positive (K)) = Before.Graph.Owners (Positive (K))));
+         pragma Loop_Invariant
+           (for all K in Owner_Ref range 1 .. B =>
+             (if Before.Graph.Owners (Positive (K)).State /= Live then
+                S.Graph.Owners (Positive (K)) =
+                  Before.Graph.Owners (Positive (K))));
          pragma Loop_Invariant
            (for all K in Owner_Ref range 1 .. B =>
              (if Holds (Old_Item, K) = Holds (New_Item, K) then
@@ -1374,6 +1834,7 @@ package body XML3_DOM with SPARK_Mode is
        and then (for all I in Namespace_Ref range
          1 .. Namespace_Ref (Namespace_Count (S)) =>
            Namespace (S, I) = Namespace (S'Old, I))
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then (for all I in Owner_Ref range
          1 .. Owner_Ref (Owner_Count (S)) =>
            Owner (S, I) = Owner (S'Old, I))
@@ -1746,21 +2207,253 @@ package body XML3_DOM with SPARK_Mode is
       end if;
    end Leaf_Ancestor_Lemma;
 
+   procedure Empty_Namespace_List_Lemma
+     (S : State; Root : Node_Ref; Ns : Namespace_Ref)
+   with Ghost, Global => null,
+     Pre => Valid (S) and then Root in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Root).First_Namespace = Null_Namespace
+       and then Ns in 1 .. Namespace_Ref (Namespace_Count (S))
+       and then Namespace (S, Ns).State = Live,
+     Post => Namespace (S, Ns).Parent /= Root,
+     Subprogram_Variant => (Decreases => Namespace (S, Ns).Sibling_Order);
+
+   procedure Empty_Namespace_List_Lemma
+     (S : State; Root : Node_Ref; Ns : Namespace_Ref)
+   is
+   begin
+      pragma Assert (Namespace_Links_Valid (S.Graph, Positive (Ns)));
+      if Namespace (S, Ns).Parent = Root
+        and then Namespace (S, Ns).Previous /= Null_Namespace
+      then
+         Empty_Namespace_List_Lemma (S, Root, Namespace (S, Ns).Previous);
+      end if;
+   end Empty_Namespace_List_Lemma;
+
+   procedure Leaf_Retained_Declarations_Lemma (S : State; Root : Node_Ref) is
+   begin
+      for I in Namespace_Ref range 1 .. Namespace_Ref (Namespace_Count (S)) loop
+         if Namespace (S, I).State = Live
+           and then Namespace (S, I).Owns_Reservation
+           and then Namespace (S, I).Parent /= Null_Node
+         then
+            Empty_Namespace_List_Lemma (S, Root, I);
+            Leaf_Ancestor_Lemma (S, Root, Namespace (S, I).Parent);
+         end if;
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range 1 .. I =>
+             (if Namespace (S, J).State = Live
+               and then Namespace (S, J).Owns_Reservation
+               and then Namespace (S, J).Parent /= Null_Node
+              then not Ancestor (S, Root, Namespace (S, J).Parent)));
+      end loop;
+   end Leaf_Retained_Declarations_Lemma;
+
+   procedure Compose_Namespace_Snapshots
+     (Left, Middle, Right : Namespace_View_Array)
+     with Ghost, Global => null,
+       Pre => Left'First = 1 and then Middle'First = 1
+         and then Right'First = 1
+         and then Left'Last = Middle'Last and then Middle'Last = Right'Last
+         and then Left = Middle and then Middle = Right,
+       Post => Left = Right;
+
+   procedure Compose_Namespace_Snapshots
+     (Left, Middle, Right : Namespace_View_Array) is
+   begin
+      for I in Left'Range loop
+         pragma Assert (Left (I) = Middle (I));
+         pragma Assert (Middle (I) = Right (I));
+         pragma Loop_Invariant
+           (for all J in Left'First .. I => Left (J) = Right (J));
+      end loop;
+   end Compose_Namespace_Snapshots;
+
+   procedure Namespace_Array_Equality
+     (Left, Right : Namespace_View_Array)
+     with Ghost, Global => null,
+       Pre => Left'First = 1 and then Right'First = 1
+         and then Left'Last = Right'Last
+         and then (for all I in Left'Range => Left (I) = Right (I)),
+       Post => Left = Right;
+
+   procedure Namespace_Array_Equality
+     (Left, Right : Namespace_View_Array) is
+   begin
+      for I in Left'Range loop
+         pragma Assert (Left (I) = Right (I));
+         pragma Loop_Invariant
+           (for all J in Left'First .. I => Left (J) = Right (J));
+      end loop;
+   end Namespace_Array_Equality;
+
+   procedure Namespace_Frame
+     (S : State; Original : Namespace_View_Array)
+     with Ghost, Global => null,
+       Pre => Original'First = 1 and then Original'Last = S.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           S.Graph.Namespaces (I) = Original (I)),
+       Post => S.Graph.Namespaces = Original
+         and then Snapshot_Namespaces (S) = Original;
+
+   procedure Namespace_Frame
+     (S : State; Original : Namespace_View_Array) is
+   begin
+      Namespace_Array_Equality (S.Graph.Namespaces, Original);
+      Namespace_Array_Equality (Snapshot_Namespaces (S), Original);
+   end Namespace_Frame;
+
+   procedure Unchanged_Graph_Namespaces (Before, After : State)
+     with Ghost, Global => null,
+       Pre => Before.Capacity = After.Capacity
+         and then (for all I in 1 .. Before.Capacity =>
+           Before.Graph.Namespaces (I) = After.Graph.Namespaces (I)),
+       Post => After.Graph.Namespaces = Before.Graph.Namespaces;
+
+   procedure Unchanged_Graph_Namespaces (Before, After : State) is
+   begin
+      for I in 1 .. Before.Capacity loop
+         pragma Assert
+           (After.Graph.Namespaces (I) = Before.Graph.Namespaces (I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I =>
+             After.Graph.Namespaces (J) = Before.Graph.Namespaces (J));
+      end loop;
+   end Unchanged_Graph_Namespaces;
+
+   procedure Compose_Mark_Snapshots (Left, Middle, Right : Mark_Array)
+     with Ghost, Global => null,
+       Pre => Left'First = 1 and then Middle'First = 1
+         and then Right'First = 1
+         and then Left'Last = Middle'Last and then Middle'Last = Right'Last
+         and then Left = Middle and then Middle = Right,
+       Post => Left = Right;
+
+   procedure Compose_Mark_Snapshots (Left, Middle, Right : Mark_Array) is
+   begin
+      for I in Left'Range loop
+         pragma Assert (Left (I) = Middle (I));
+         pragma Assert (Middle (I) = Right (I));
+         pragma Loop_Invariant
+           (for all J in Left'First .. I => Left (J) = Right (J));
+      end loop;
+   end Compose_Mark_Snapshots;
+
+   procedure Mark_Frame (S : State; Original : Mark_Array)
+     with Ghost, Global => null,
+       Pre => Original'First = 1 and then Original'Last = S.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           S.Marks (I) = Original (I)),
+       Post => S.Marks = Original;
+
+   procedure Mark_Frame (S : State; Original : Mark_Array) is
+   begin
+      for I in 1 .. S.Capacity loop
+         pragma Assert (S.Marks (I) = Original (I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I => S.Marks (J) = Original (J));
+      end loop;
+   end Mark_Frame;
+
+   procedure Preserve_Marked_State
+     (Before, After : Node_View_Array;
+      Before_Marks, After_Marks : Mark_Array; Used : Natural;
+      Target_Doc : Node_Ref)
+     with Ghost, Global => null,
+       Pre => Before'First = 1 and then After'First = 1
+         and then Before_Marks'First = 1 and then After_Marks'First = 1
+         and then Used <= Before'Last and then Used <= After'Last
+         and then Used <= Before_Marks'Last and then Used <= After_Marks'Last
+         and then Before_Marks = After_Marks
+         and then (for all I in 1 .. Used =>
+           Before (I).State = After (I).State
+           and then Before (I).Document = After (I).Document)
+         and then (for all I in 1 .. Used =>
+           (if Before_Marks (I) then Before (I).State = Live
+             and then (Before (I).Document = Null_Node
+               or else Before (I).Document = Target_Doc))),
+       Post => (for all I in 1 .. Used =>
+         (if After_Marks (I) then After (I).State = Live
+           and then (After (I).Document = Null_Node
+             or else After (I).Document = Target_Doc)));
+
+   procedure Preserve_Marked_State
+     (Before, After : Node_View_Array;
+      Before_Marks, After_Marks : Mark_Array; Used : Natural;
+      Target_Doc : Node_Ref) is
+   begin
+      for I in 1 .. Used loop
+         pragma Assert (Before (I).State = After (I).State);
+         pragma Assert (Before (I).Document = After (I).Document);
+         pragma Assert (Before_Marks (I) = After_Marks (I));
+         pragma Assert (if After_Marks (I) then Before (I).State = Live);
+         pragma Assert
+           (if After_Marks (I) then Before (I).Document = Null_Node
+             or else Before (I).Document = Target_Doc);
+         pragma Loop_Invariant
+           (for all J in 1 .. I =>
+             (if After_Marks (J) then After (J).State = Live
+               and then (After (J).Document = Null_Node
+                 or else After (J).Document = Target_Doc)));
+      end loop;
+   end Preserve_Marked_State;
+
+   procedure Same_Graph_Snapshots (Left, Right : State)
+     with Ghost, Global => null,
+       Pre => Well_Sized (Left) and then Well_Sized (Right)
+         and then Same_Graph (Left, Right),
+       Post => Snapshot_Nodes (Left) = Snapshot_Nodes (Right)
+         and then Snapshot_Namespaces (Left) = Snapshot_Namespaces (Right)
+         and then Facades_Present (Left) = Facades_Present (Right)
+         and then Left.Graph.Capacity = Right.Graph.Capacity
+         and then Left.Graph.Nodes = Right.Graph.Nodes
+         and then Left.Graph.Namespaces = Right.Graph.Namespaces
+         and then Left.Graph.Owners = Right.Graph.Owners
+         and then Left.Graph.Node_Used = Right.Graph.Node_Used
+         and then Left.Graph.Ns_Used = Right.Graph.Ns_Used
+         and then Left.Graph.Owner_Used = Right.Graph.Owner_Used;
+
+   procedure Same_Graph_Snapshots (Left, Right : State) is
+   begin
+      for I in 1 .. Left.Capacity loop
+         pragma Assert
+           (Snapshot_Nodes (Left) (I) = Node (Left, Node_Ref (I)));
+         pragma Assert
+           (Snapshot_Nodes (Right) (I) = Node (Right, Node_Ref (I)));
+         pragma Assert
+           (Snapshot_Nodes (Left) (I) = Snapshot_Nodes (Right) (I));
+         pragma Loop_Invariant
+           (for all J in 1 .. I =>
+              Snapshot_Nodes (Left) (J) = Snapshot_Nodes (Right) (J)
+              and then Snapshot_Namespaces (Left) (J) =
+                Snapshot_Namespaces (Right) (J));
+      end loop;
+   end Same_Graph_Snapshots;
+
    procedure Prepare_Subtree
      (S : in out State; Root : Node_Ref; Lift : Natural;
       Success : out Boolean)
    with Global => null,
      Pre => Valid (S) and then Root in 1 .. Node_Ref (Node_Count (S))
        and then Node (S, Root).State = Live,
-     Post => S.Effects = S.Effects'Old and then Valid (S)
+     Post => (declare
+       Original_Namespaces : constant Namespace_View_Array :=
+         S.Graph.Namespaces'Old;
+     begin S.Effects = S.Effects'Old and then Valid (S)
        and then S.Graph = S.Graph'Old
        and then S.Graph.Nodes = S.Graph.Nodes'Old
        and then (if Lift = 0 then Success)
-       and then S.Graph.Namespaces = S.Graph.Namespaces'Old
+       and then (for all I in 1 .. S.Capacity =>
+         S.Graph.Namespaces (I) = Original_Namespaces (I))
+       and then S.Graph.Namespaces = Original_Namespaces
        and then S.Graph.Owners = S.Graph.Owners'Old
        and then S.Graph.Node_Used = S.Graph.Node_Used'Old
        and then S.Graph.Ns_Used = S.Graph.Ns_Used'Old
        and then S.Graph.Owner_Used = S.Graph.Owner_Used'Old
+       and then (if Success
+         and then S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+         and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node then
+           (for all I in 1 .. S.Graph.Node_Used =>
+             S.Marks (I) = (Node_Ref (I) = Root)))
        and then (if Success then S.Marks (Positive (Root))
          and then (for all I in 1 .. S.Graph.Node_Used =>
            S.Marks (I) = (S.Graph.Nodes (I).State = Live and then
@@ -1770,16 +2463,21 @@ package body XML3_DOM with SPARK_Mode is
            and then (if S.Graph.Nodes (I).State = Live
              and then S.Graph.Nodes (I).Parent /= 0 and then Node_Ref (I) /= Root
              then S.Graph.Nodes (I).Parent <= Node_Ref (S.Graph.Node_Used)
-                and then S.Marks (I) = S.Marks (Positive (S.Graph.Nodes (I).Parent)))));
+                and then S.Marks (I) = S.Marks (Positive (S.Graph.Nodes (I).Parent))))));
 
    procedure Prepare_Subtree
      (S : in out State; Root : Node_Ref; Lift : Natural;
       Success : out Boolean)
    is
+      Before : constant State := S with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        S.Graph.Namespaces with Ghost;
       Is_Leaf : constant Boolean :=
         S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
         and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node;
    begin
+      Unchanged_Graph_Namespaces (S, Before);
+      Success := True;
       for I in 1 .. S.Graph.Node_Used loop
          if S.Graph.Nodes (I).State /= Live then
             S.Marks (I) := False;
@@ -1789,11 +2487,25 @@ package body XML3_DOM with SPARK_Mode is
          else
             S.Marks (I) := Is_Ancestor (S, Root, Node_Ref (I));
          end if;
+         Namespace_Frame (S, Original_Namespaces);
          if S.Marks (I) and then S.Graph.Nodes (I).Tree_Rank > Natural'Last - Lift then
+            pragma Assert (Lift /= 0);
+            pragma Assert (Before.Graph = S.Graph);
+            pragma Assert (S.Graph = Before.Graph);
             Success := False;
-            return;
+            exit;
          end if;
+         pragma Loop_Invariant (Success);
+         pragma Loop_Invariant (Before.Graph = S.Graph);
+         pragma Loop_Invariant (S.Graph = Before.Graph);
+         pragma Loop_Invariant (S.Graph.Namespaces = Original_Namespaces);
          pragma Loop_Invariant (Valid (S));
+         pragma Loop_Invariant
+           (Is_Leaf = (S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+             and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node));
+         pragma Loop_Invariant
+           (if Is_Leaf then
+             (for all J in 1 .. I => S.Marks (J) = (Node_Ref (J) = Root)));
          pragma Loop_Invariant
            (for all J in 1 .. I =>
              S.Marks (J) = (S.Graph.Nodes (J).State = Live and then
@@ -1801,21 +2513,94 @@ package body XML3_DOM with SPARK_Mode is
              and then (if S.Marks (J) then
                S.Graph.Nodes (J).Tree_Rank <= Natural'Last - Lift));
       end loop;
-      for I in 1 .. S.Graph.Node_Used loop
-         pragma Assert (Node_Siblings_Valid (S.Graph, I));
+      if Success then
+         pragma Assert (Ancestor (S, Root, Root));
+         pragma Assert (S.Marks (Positive (Root)));
+         for I in 1 .. S.Graph.Node_Used loop
+            pragma Assert (Node_Siblings_Valid (S.Graph, I));
+            pragma Assert
+              (if S.Graph.Nodes (I).State = Live and then S.Graph.Nodes (I).Parent /= 0
+                and then Node_Ref (I) /= Root
+               then Ancestor (S, Root, Node_Ref (I)) =
+                 Ancestor (S, Root, S.Graph.Nodes (I).Parent));
+            pragma Loop_Invariant (S.Marks (Positive (Root)));
+            pragma Loop_Invariant (Before.Graph = S.Graph);
+            pragma Loop_Invariant (S.Graph = Before.Graph);
+            pragma Loop_Invariant
+              (for all J in 1 .. I =>
+                (if S.Graph.Nodes (J).State = Live and then S.Graph.Nodes (J).Parent /= 0
+                  and then Node_Ref (J) /= Root
+                 then S.Graph.Nodes (J).Parent <= Node_Ref (S.Graph.Node_Used)
+                   and then S.Marks (J) = S.Marks (Positive (S.Graph.Nodes (J).Parent))));
+         end loop;
          pragma Assert
-           (if S.Graph.Nodes (I).State = Live and then S.Graph.Nodes (I).Parent /= 0
-             and then Node_Ref (I) /= Root
-            then Ancestor (S, Root, Node_Ref (I)) =
-              Ancestor (S, Root, S.Graph.Nodes (I).Parent));
-         pragma Loop_Invariant
-           (for all J in 1 .. I =>
-             (if S.Graph.Nodes (J).State = Live and then S.Graph.Nodes (J).Parent /= 0
-               and then Node_Ref (J) /= Root
-              then S.Graph.Nodes (J).Parent <= Node_Ref (S.Graph.Node_Used)
-                and then S.Marks (J) = S.Marks (Positive (S.Graph.Nodes (J).Parent))));
-      end loop;
-      Success := True;
+           (if S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+             and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node then
+               (for all I in 1 .. S.Graph.Node_Used =>
+                 S.Marks (I) = (Node_Ref (I) = Root)));
+         Namespace_Frame (S, Original_Namespaces);
+         pragma Assert (S.Graph.Namespaces = Original_Namespaces);
+         Unchanged_Graph_Namespaces (Before, S);
+         pragma Assert_And_Cut
+           (S.Effects = Before.Effects and then Valid (S)
+            and then S.Graph = Before.Graph
+            and then S.Graph.Nodes = Before.Graph.Nodes
+            and then (if Lift = 0 then Success)
+            and then (for all I in 1 .. S.Capacity =>
+              S.Graph.Namespaces (I) = Before.Graph.Namespaces (I))
+            and then S.Graph.Namespaces = Before.Graph.Namespaces
+            and then S.Graph.Owners = Before.Graph.Owners
+            and then S.Graph.Node_Used = Before.Graph.Node_Used
+            and then S.Graph.Ns_Used = Before.Graph.Ns_Used
+            and then S.Graph.Owner_Used = Before.Graph.Owner_Used
+            and then (if Success
+              and then S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+              and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node then
+                (for all I in 1 .. S.Graph.Node_Used =>
+                  S.Marks (I) = (Node_Ref (I) = Root)))
+            and then (if Success then S.Marks (Positive (Root))
+              and then (for all I in 1 .. S.Graph.Node_Used =>
+                S.Marks (I) = (S.Graph.Nodes (I).State = Live and then
+                  Ancestor (S, Root, Node_Ref (I)))
+                and then (if S.Marks (I) then
+                  S.Graph.Nodes (I).Tree_Rank <= Natural'Last - Lift)
+                and then (if S.Graph.Nodes (I).State = Live
+                  and then S.Graph.Nodes (I).Parent /= 0 and then Node_Ref (I) /= Root
+                  then S.Graph.Nodes (I).Parent <= Node_Ref (S.Graph.Node_Used)
+                     and then S.Marks (I) = S.Marks (Positive (S.Graph.Nodes (I).Parent))))));
+         return;
+      end if;
+      pragma Assert (not Success and then Lift /= 0);
+      Namespace_Frame (S, Original_Namespaces);
+      pragma Assert (S.Graph.Namespaces = Original_Namespaces);
+      Unchanged_Graph_Namespaces (Before, S);
+      pragma Assert_And_Cut
+        (S.Effects = Before.Effects and then Valid (S)
+         and then S.Graph = Before.Graph
+         and then S.Graph.Nodes = Before.Graph.Nodes
+         and then (if Lift = 0 then Success)
+         and then (for all I in 1 .. S.Capacity =>
+           S.Graph.Namespaces (I) = Before.Graph.Namespaces (I))
+         and then S.Graph.Namespaces = Before.Graph.Namespaces
+         and then S.Graph.Owners = Before.Graph.Owners
+         and then S.Graph.Node_Used = Before.Graph.Node_Used
+         and then S.Graph.Ns_Used = Before.Graph.Ns_Used
+         and then S.Graph.Owner_Used = Before.Graph.Owner_Used
+         and then (if Success
+           and then S.Graph.Nodes (Positive (Root)).First_Child = Null_Node
+           and then S.Graph.Nodes (Positive (Root)).First_Prop = Null_Node then
+             (for all I in 1 .. S.Graph.Node_Used =>
+               S.Marks (I) = (Node_Ref (I) = Root)))
+         and then (not Success or else (S.Marks (Positive (Root))
+           and then (for all I in 1 .. S.Graph.Node_Used =>
+             S.Marks (I) = (S.Graph.Nodes (I).State = Live and then
+               Ancestor (S, Root, Node_Ref (I)))
+             and then (if S.Marks (I) then
+               S.Graph.Nodes (I).Tree_Rank <= Natural'Last - Lift)
+             and then (if S.Graph.Nodes (I).State = Live
+               and then S.Graph.Nodes (I).Parent /= 0 and then Node_Ref (I) /= Root
+               then S.Graph.Nodes (I).Parent <= Node_Ref (S.Graph.Node_Used)
+                  and then S.Marks (I) = S.Marks (Positive (S.Graph.Nodes (I).Parent)))))));
    end Prepare_Subtree;
 
    procedure Lift_Marked (S : in out State; Lift : Natural)
@@ -1881,6 +2666,7 @@ package body XML3_DOM with SPARK_Mode is
        Original_Marks : constant Mark_Array := Snapshot_Marks (S)'Old;
      begin Valid (S) and then Can_Edit (S)
        and then S.Capacity = S.Capacity'Old
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
@@ -1904,18 +2690,25 @@ package body XML3_DOM with SPARK_Mode is
      (S : in out State; Target_Doc : Node_Ref; Target_B : Owner_Ref)
    is
       Before : constant State := S with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S) with Ghost;
+      Original_Marks : constant Mark_Array := S.Marks with Ghost;
       Original_Target_References : constant Natural :=
         S.Graph.Owners (Positive (Target_B)).References with Ghost;
    begin
+      pragma Assert (Before.Marks = Original_Marks);
+      pragma Assert (Snapshot_Namespaces (Before) = Original_Namespaces);
       for I in 0 .. S.Graph.Node_Used loop
          pragma Loop_Variant (Increases => I);
+         pragma Loop_Invariant
+           (Snapshot_Namespaces (S) = Original_Namespaces);
          pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
          pragma Loop_Invariant
            (S.Capacity = Before.Capacity
             and then S.Graph.Node_Used = Before.Graph.Node_Used
             and then S.Graph.Ns_Used = Before.Graph.Ns_Used
-            and then S.Graph.Owner_Used = Before.Graph.Owner_Used
-            and then S.Marks = Before.Marks);
+            and then S.Graph.Owner_Used = Before.Graph.Owner_Used);
+         pragma Loop_Invariant (S.Marks = Original_Marks);
          pragma Loop_Invariant
            (for all J in Namespace_Ref range
              1 .. Namespace_Ref (Namespace_Count (S)) =>
@@ -1954,6 +2747,10 @@ package body XML3_DOM with SPARK_Mode is
                   Item.Content_Length, Target_Doc, Item.Namespace,
                   Item.Ns_Pin, Target_B, Item.Content_Pin);
                Iteration_Before : constant State := S with Ghost;
+               Iteration_Namespaces : constant Namespace_View_Array :=
+                 Snapshot_Namespaces (S) with Ghost;
+               Iteration_Marks : constant Mark_Array :=
+                 S.Marks with Ghost;
                OK : Boolean;
             begin
                pragma Assert
@@ -1996,6 +2793,15 @@ package body XML3_DOM with SPARK_Mode is
                   Item.Namespace, Item.Ns_Pin, Target_B, Item.Content_Pin,
                   OK);
                pragma Assert (OK);
+               pragma Assert (Snapshot_Namespaces (S) = Iteration_Namespaces);
+               pragma Assert (S.Marks = Iteration_Marks);
+               Compose_Namespace_Snapshots
+                 (Snapshot_Namespaces (S), Iteration_Namespaces,
+                  Original_Namespaces);
+               Namespace_Frame (S, Original_Namespaces);
+               Compose_Mark_Snapshots
+                 (Original_Marks, Iteration_Marks, S.Marks);
+               Mark_Frame (S, Original_Marks);
                pragma Assert
                  (for all J in 1 .. S.Graph.Node_Used =>
                     S.Graph.Nodes (J) =
@@ -2004,6 +2810,8 @@ package body XML3_DOM with SPARK_Mode is
             end;
          end if;
       end loop;
+      pragma Assert (S.Marks = Before.Marks);
+      pragma Assert (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
    end Set_Marked_Document;
 
    procedure Relink_Marked_Subtree
@@ -2053,6 +2861,7 @@ package body XML3_DOM with SPARK_Mode is
            and then Node (S, Replaced).Parent = Parent),
      Post => Valid (S) and then Can_Edit (S)
        and then S.Capacity = S.Capacity'Old
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
@@ -2071,6 +2880,14 @@ package body XML3_DOM with SPARK_Mode is
        and then (for all I in Owner_Ref range
          1 .. Owner_Ref (Owner_Count (S)) =>
            Owner (S, I) = Owner (S'Old, I))
+       and then (if not Property and then Replaced = Null_Node
+         and then Node (S'Old, Child).Parent = Null_Node then
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+             Node (S, I).First_Prop = Node (S'Old, I).First_Prop
+             and then Node (S, I).First_Namespace =
+               Node (S'Old, I).First_Namespace
+             and then (if I /= Parent then
+               Node (S, I).First_Child = Node (S'Old, I).First_Child)))
        and then Node (S, Child).Parent = Parent
        and then (if Replaced /= Null_Node then
          Replaced in 1 .. Node_Ref (Node_Count (S))
@@ -2118,6 +2935,8 @@ package body XML3_DOM with SPARK_Mode is
       end if;
       S.Effects.Dirty := True;
       Unlink (S, Child);
+      pragma Assert
+        (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
       if Replaced = Null_Node then
          pragma Assert
            ((if Property then Node (S, Parent).Last_Prop
@@ -2148,6 +2967,8 @@ package body XML3_DOM with SPARK_Mode is
       pragma Assert (Node (S, Parent).Tree_Rank = Parent_Item.Tree_Rank);
       pragma Assert (Node (S, Child).Tree_Rank = Child_Item.Tree_Rank);
       Lift_Marked (S, Rank_Lift);
+      pragma Assert
+        (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
       pragma Assert
         (for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>
@@ -2192,6 +3013,8 @@ package body XML3_DOM with SPARK_Mode is
               and then Node (Before, Original_Last).Sibling_Order <
                 Append_Order));
          Append_Child_Links (S, Parent, Child, Append_Order);
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
       else
          Detached := S;
          pragma Assert (Valid (S));
@@ -2215,9 +3038,27 @@ package body XML3_DOM with SPARK_Mode is
            (for all I in 1 .. Node_Count (S) =>
              Node_Links_Valid (S.Graph, I));
          Replace_Child_Links (S, Parent, Child, Replaced);
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
          Preserve_Pin_Equation (Detached, S);
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
          Preserve_Namespace_Links (Detached.Graph, S.Graph);
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
       end if;
+      pragma Assert
+        (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
+      pragma Assert
+        (if not Property and then Replaced = Null_Node
+          and then Node (Before, Child).Parent = Null_Node
+         then
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              Node (S, I).First_Prop = Node (Before, I).First_Prop
+              and then Node (S, I).First_Namespace =
+                Node (Before, I).First_Namespace
+              and then (if I /= Parent then
+                Node (S, I).First_Child = Node (Before, I).First_Child)));
       pragma Assert (Node (S, Child).Parent = Parent);
       pragma Assert
         (for all I in Namespace_Ref range
@@ -2251,6 +3092,8 @@ package body XML3_DOM with SPARK_Mode is
          then Parent else Node (S, Parent).Document)
        and then (if Target_Doc /= Null_Node then
          Target_Doc in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Target_Doc).Kind = Document_Node
+         and then Node (S, Target_Doc).State in Live | Tombstone
          and then Target_B = Node (S, Target_Doc).Owner
          and then Target_B in 1 .. Owner_Ref (Owner_Count (S))
          and then Owner (S, Target_B).State = Live)
@@ -2289,6 +3132,7 @@ package body XML3_DOM with SPARK_Mode is
                  else Node (S, Parent).Last_Child);
             begin Last = Null_Node or else
               (Last in 1 .. Node_Ref (Node_Count (S))
+               and then Last /= Child
                and then Node (S, Last).Sibling_Order < Append_Order)))));
 
    procedure Check_Attachment
@@ -2303,6 +3147,7 @@ package body XML3_DOM with SPARK_Mode is
       Last : Node_Ref;
       Remaining : Natural := S.Capacity;
    begin
+      pragma Assert (Node_Links_Valid (S.Graph, Positive (Parent)));
       Already_Attached := False;
       Append_Order := 0;
       Rank_Lift := 0;
@@ -2404,6 +3249,196 @@ package body XML3_DOM with SPARK_Mode is
       Success := True;
    end Check_Attachment;
 
+   procedure Prepare_Attachment
+     (S : in out State; Parent, Child : Node_Ref; Property : Boolean;
+      Replaced : Node_Ref; Already_Attached : out Boolean;
+      Append_Order, Rank_Lift : out Natural;
+      Target_Doc : out Node_Ref; Target_B : out Owner_Ref;
+      Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Parent in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Parent).State = Live
+       and then Node (S, Child).State = Live,
+     Post => Valid (S) and then Can_Edit (S)
+       and then S.Graph.Capacity = S.Graph.Capacity'Old
+       and then S.Graph.Nodes = S.Graph.Nodes'Old
+       and then S.Graph.Namespaces = S.Graph.Namespaces'Old
+       and then S.Graph.Owners = S.Graph.Owners'Old
+       and then S.Graph.Node_Used = S.Graph.Node_Used'Old
+       and then S.Graph.Ns_Used = S.Graph.Ns_Used'Old
+       and then S.Graph.Owner_Used = S.Graph.Owner_Used'Old
+       and then S.Effects = S.Effects'Old
+       and then Same_Graph (S, S'Old)
+       and then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
+       and then (if Success then
+       Target_Doc = (if Node (S, Parent).Kind = Document_Node
+         then Parent else Node (S, Parent).Document)
+       and then (if Target_Doc /= Null_Node then
+         Target_Doc in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Target_Doc).Kind = Document_Node
+         and then Node (S, Target_Doc).State in Live | Tombstone
+         and then Target_B = Node (S, Target_Doc).Owner
+         and then Target_B in 1 .. Owner_Ref (Owner_Count (S))
+         and then Owner (S, Target_B).State = Live)
+       and then Parent /= Child
+       and then not Ancestor (S, Child, Parent)
+       and then Property = (Node (S, Child).Kind = Attribute_Node)
+       and then Node (S, Child).Kind /= Document_Node
+       and then (if Property then Node (S, Parent).Kind = Element_Node
+         else Node (S, Parent).Kind in
+           Document_Node | Element_Node | Attribute_Node)
+       and then (if Node (S, Parent).Kind = Attribute_Node then
+         Node (S, Child).Kind = Text_Node)
+       and then (if Node (S, Parent).Kind = Document_Node then
+         Node (S, Child).Kind in
+           Element_Node | Comment_Node | Processing_Instruction_Node)
+       and then (if Replaced /= Null_Node then
+         Node (S, Parent).Kind = Document_Node
+         and then Node (S, Child).Kind = Element_Node
+         and then Replaced in 1 .. Node_Ref (Node_Count (S))
+         and then Replaced /= Parent and then Replaced /= Child
+         and then Node (S, Replaced).State = Live
+         and then Node (S, Replaced).Kind = Element_Node
+         and then Node (S, Replaced).Parent = Parent)
+       and then Already_Attached =
+         (Replaced = Null_Node and then Node (S, Child).Parent = Parent
+          and then (if Property then Node (S, Parent).Last_Prop
+                    else Node (S, Parent).Last_Child) = Child)
+       and then (if not Already_Attached then
+         Rank_Lift <= Natural'Last - Node (S, Child).Tree_Rank
+         and then Node (S, Parent).Tree_Rank <
+           Node (S, Child).Tree_Rank + Rank_Lift
+         and then (if Replaced = Null_Node then
+           (declare
+              Last : constant Node_Ref :=
+                (if Property then Node (S, Parent).Last_Prop
+                 else Node (S, Parent).Last_Child);
+            begin Last = Null_Node or else
+              (Last in 1 .. Node_Ref (Node_Count (S))
+               and then Last /= Child
+               and then Node (S, Last).Sibling_Order < Append_Order)))))
+       and then (if Success then S.Marks (Positive (Child))
+         and then (for all I in 1 .. S.Graph.Node_Used =>
+           S.Marks (I) = (S.Graph.Nodes (I).State = Live and then
+             Ancestor (S, Child, Node_Ref (I)))
+           and then (if S.Marks (I) then
+             S.Graph.Nodes (I).Tree_Rank <= Natural'Last - Rank_Lift
+             and then (S.Graph.Nodes (I).Document = Null_Node
+               or else S.Graph.Nodes (I).Document = Target_Doc))
+           and then (if S.Graph.Nodes (I).State = Live
+             and then S.Graph.Nodes (I).Parent /= Null_Node
+             and then Node_Ref (I) /= Child then
+               S.Graph.Nodes (I).Parent <= Node_Ref (S.Graph.Node_Used)
+               and then S.Marks (I) =
+                 S.Marks (Positive (S.Graph.Nodes (I).Parent))))
+         and then (if Target_Doc /= Null_Node then
+           Target_B in 1 .. Owner_Ref (Owner_Count (S))
+           and then S.Graph.Owners (Positive (Target_B)).References <=
+             Natural'Last - S.Graph.Node_Used));
+
+   procedure Prepare_Attachment
+     (S : in out State; Parent, Child : Node_Ref; Property : Boolean;
+      Replaced : Node_Ref; Already_Attached : out Boolean;
+      Append_Order, Rank_Lift : out Natural;
+      Target_Doc : out Node_Ref; Target_B : out Owner_Ref;
+      Success : out Boolean)
+   is
+      Before : constant State := S with Ghost;
+      Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S) with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S) with Ghost;
+   begin
+      pragma Assert (Original_Nodes = Snapshot_Nodes (Before));
+      pragma Assert (Node_Links_Valid (S.Graph, Positive (Parent)));
+      pragma Assert (Node_Links_Valid (S.Graph, Positive (Child)));
+      Check_Attachment
+        (S, Parent, Child, Property, Replaced, Already_Attached,
+         Append_Order, Rank_Lift, Target_Doc, Target_B, Success);
+      pragma Assert (Same_Graph (S, Before));
+      pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
+      pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+      Same_Graph_Snapshots (S, Before);
+      if not Success then
+         pragma Assert (Same_Graph (S, Before));
+         pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
+      else
+         Prepare_Subtree (S, Child, Rank_Lift, Success);
+         pragma Assert (Same_Graph (S, Before));
+         Same_Graph_Snapshots (S, Before);
+         pragma Assert (S.Graph.Nodes'First = Before.Graph.Nodes'First);
+         pragma Assert (S.Graph.Nodes'Last = Before.Graph.Nodes'Last);
+         pragma Assert (for all I in S.Graph.Nodes'Range =>
+           S.Graph.Nodes (I) = Before.Graph.Nodes (I));
+         pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
+         pragma Assert (Valid (S) and then Can_Edit (S));
+         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+         if not Success then
+            pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+            pragma Assert (Same_Graph (S, Before));
+            pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
+         else
+            pragma Assert
+              (for all I in 1 .. S.Graph.Node_Used =>
+                (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
+            if Target_Doc /= Null_Node then
+               pragma Assert
+                 (S.Graph.Owners (Positive (Target_B)).State = Live);
+            end if;
+            for I in 0 .. S.Graph.Node_Used loop
+               pragma Loop_Variant (Increases => I);
+               pragma Loop_Invariant (Success);
+               pragma Loop_Invariant
+                 (for all J in 1 .. I =>
+                   (if S.Marks (J) then
+                      S.Graph.Nodes (J).Document = Null_Node
+                        or else S.Graph.Nodes (J).Document = Target_Doc));
+               if I < S.Graph.Node_Used
+                 and then S.Marks (Positive (I + 1))
+                 and then S.Graph.Nodes (Positive (I + 1)).Document /= Null_Node
+                 and then S.Graph.Nodes (Positive (I + 1)).Document /= Target_Doc
+               then
+                  Success := False;
+                  pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+                  pragma Assert (Same_Graph (S, Before));
+                  pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
+                  exit;
+               end if;
+            end loop;
+            if Success and then Target_Doc /= Null_Node
+              and then S.Graph.Owners (Positive (Target_B)).References >
+                Natural'Last - S.Graph.Node_Used
+            then
+               Success := False;
+               pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+               pragma Assert (Same_Graph (S, Before));
+               pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
+            end if;
+         end if;
+      end if;
+      pragma Assert (Same_Graph (S, Before));
+      Same_Graph_Snapshots (S, Before);
+      if Success then
+         if Target_Doc /= Null_Node then
+            pragma Assert
+              (S.Graph.Owners (Positive (Target_B)).References <=
+                 Natural'Last - S.Graph.Node_Used);
+         end if;
+         pragma Assert
+           (for all I in 1 .. S.Graph.Node_Used =>
+             (if S.Marks (I) then
+                S.Graph.Nodes (I).Document = Null_Node
+                  or else S.Graph.Nodes (I).Document = Target_Doc));
+         Same_Ancestor
+           (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+            Node_Count (S), Child, Parent);
+         pragma Assert (not Ancestor (S, Child, Parent));
+      end if;
+      pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
+   end Prepare_Attachment;
+
    procedure Attach
      (S : in out State; Parent, Child : Node_Ref;
       Property : Boolean; Success : out Boolean;
@@ -2413,26 +3448,63 @@ package body XML3_DOM with SPARK_Mode is
        and then Parent in 1 .. Node_Ref (S.Graph.Node_Used)
        and then Child in 1 .. Node_Ref (S.Graph.Node_Used)
        and then Node (S, Parent).State = Live
-       and then Node (S, Child).State = Live,
-     Post => (declare
-       Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S)'Old;
-     begin
-       (if not Success then Same_Graph (S, S'Old))
-       and then Valid (S) and then Can_Edit (S)
-         and then S.Capacity = S'Old.Capacity
-         and then Node_Count (S) = Node_Count (S'Old)
-         and then Namespace_Count (S) = Namespace_Count (S'Old)
-         and then Owner_Count (S) = Owner_Count (S'Old)
-         and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+       and then Node (S, Child).State = Live;
+   pragma Postcondition
+     ((if not Success then Same_Graph (S, S'Old)));
+   pragma Postcondition
+     (Valid (S));
+   pragma Postcondition
+     (Can_Edit (S));
+   pragma Postcondition
+     ((if Facades_Present (S'Old) then Facades_Present (S)));
+   pragma Postcondition
+     (Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old);
+   pragma Postcondition
+     (S.Capacity = S'Old.Capacity);
+   pragma Postcondition
+     (Node_Count (S) = Node_Count (S'Old));
+   pragma Postcondition
+     (Namespace_Count (S) = Namespace_Count (S'Old));
+   pragma Postcondition
+     (Owner_Count (S) = Owner_Count (S'Old));
+   pragma Postcondition
+     ((for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
            Node (S, I).State = Node (S'Old, I).State
-             and then Node (S, I).Kind = Original_Nodes (Positive (I)).Kind
+             and then Node (S, I).Kind =
+               Snapshot_Nodes (S)'Old (Positive (I)).Kind
              and then (if I /= Child and then I /= Replaced then
                Node (S, I).Parent = Node (S'Old, I).Parent)
-             and then Node (S, I).Facade = Node (S'Old, I).Facade)
-         and then (for all I in Namespace_Ref range
+             and then Node (S, I).Facade = Node (S'Old, I).Facade));
+   pragma Postcondition
+     ((for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>
-             Namespace (S, I) = Namespace (S'Old, I))
-         and then (if Success then Node (S, Child).Parent = Parent
+             Namespace (S, I) = Namespace (S'Old, I)));
+   pragma Postcondition
+     ((if not Property and then Replaced = Null_Node
+         and then Node (S'Old, Child).Parent = Null_Node then
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+             Node (S, I).First_Prop = Node (S'Old, I).First_Prop
+             and then Node (S, I).First_Namespace =
+               Node (S'Old, I).First_Namespace
+             and then (if I /= Parent then
+               Node (S, I).First_Child = Node (S'Old, I).First_Child))));
+   pragma Postcondition
+     ((if not Property and then Node (S'Old, Parent).Kind = Attribute_Node
+         and then Text_Attribute_Content (S'Old, Parent)
+         and then Node (S'Old, Child).Kind = Text_Node
+         and then Node (S'Old, Child).Parent = Null_Node
+         and then Node (S'Old, Child).First_Child = Null_Node
+         and then Node (S'Old, Child).First_Prop = Null_Node
+         and then Node (S'Old, Child).First_Namespace = Null_Namespace then
+           Text_Attribute_Content (S, Parent)
+           and then Node (S, Parent).First_Prop = Node (S'Old, Parent).First_Prop
+           and then Node (S, Parent).First_Namespace =
+             Node (S'Old, Parent).First_Namespace
+           and then Node (S, Child).First_Child = Null_Node
+           and then Node (S, Child).First_Prop = Null_Node
+           and then Node (S, Child).First_Namespace = Null_Namespace));
+   pragma Postcondition
+     ((if Success then Node (S, Child).Parent = Parent
            and then (if Replaced /= Null_Node then
              Replaced in 1 .. Node_Ref (Node_Count (S))
              and then Node (S, Replaced).State = Live
@@ -2470,188 +3542,308 @@ package body XML3_DOM with SPARK_Mode is
       Target_B : Owner_Ref := Null_Owner;
       Before : constant State := S with Ghost;
       Original_Nodes : constant Node_View_Array := Snapshot_Nodes (S) with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S) with Ghost;
    begin
       pragma Assert (Original_Nodes = Snapshot_Nodes (Before));
-      pragma Assert (Node_Links_Valid (S.Graph, Positive (Parent)));
-      pragma Assert (Node_Links_Valid (S.Graph, Positive (Child)));
-      Check_Attachment
+      Prepare_Attachment
         (S, Parent, Child, Property, Replaced, Already_Attached,
          Append_Order, Rank_Lift, Target_Doc, Target_B, Success);
       pragma Assert (Same_Graph (S, Before));
-      pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
-      pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
+      Same_Graph_Snapshots (Before, S);
       if not Success then
-         return;
-      end if;
-      Prepare_Subtree (S, Child, Rank_Lift, Success);
-      pragma Assert (Same_Graph (S, Before));
-      pragma Assert (S.Graph.Nodes'First = Before.Graph.Nodes'First);
-      pragma Assert (S.Graph.Nodes'Last = Before.Graph.Nodes'Last);
-      pragma Assert (for all I in S.Graph.Nodes'Range =>
-        S.Graph.Nodes (I) = Before.Graph.Nodes (I));
-      pragma Assert (S.Graph.Nodes = Before.Graph.Nodes);
-      pragma Assert (Valid (S) and then Can_Edit (S));
-      pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-      if not Success then
-         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-         return;
-      end if;
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then S.Graph.Nodes (I).State = Live));
-      if Target_Doc /= Null_Node then
-         pragma Assert
-           (S.Graph.Owners (Positive (Target_B)).State = Live);
-      end if;
-      for I in 0 .. S.Graph.Node_Used loop
-         pragma Loop_Variant (Increases => I);
-         pragma Loop_Invariant
-           (for all J in 1 .. I =>
-             (if S.Marks (J) then
-                S.Graph.Nodes (J).Document = Null_Node
-                  or else S.Graph.Nodes (J).Document = Target_Doc));
-         if I < S.Graph.Node_Used
-           and then S.Marks (Positive (I + 1))
-           and then S.Graph.Nodes (Positive (I + 1)).Document /= Null_Node
-           and then S.Graph.Nodes (Positive (I + 1)).Document /= Target_Doc
-         then
-            Success := False;
-            pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-            return;
-         end if;
-      end loop;
-      if Target_Doc /= Null_Node
-        and then S.Graph.Owners (Positive (Target_B)).References >
-          Natural'Last - S.Graph.Node_Used
-      then
-         Success := False;
-         pragma Assert (Snapshot_Nodes (S) = Original_Nodes);
-         return;
-      end if;
-      if Target_Doc /= Null_Node then
-         pragma Assert
-           (S.Graph.Owners (Positive (Target_B)).References <=
-              Natural'Last - S.Graph.Node_Used);
-      end if;
-      pragma Assert
-        (for all I in 1 .. S.Graph.Node_Used =>
-          (if S.Marks (I) then
-             S.Graph.Nodes (I).Document = Null_Node
-               or else S.Graph.Nodes (I).Document = Target_Doc));
-      if not Already_Attached then
-         pragma Assert
-           (for all I in 1 .. S.Graph.Node_Used =>
-             (if S.Marks (I) then
-                S.Graph.Nodes (I).Document = Null_Node
-                  or else S.Graph.Nodes (I).Document = Target_Doc));
-         Same_Ancestor
-           (Snapshot_Nodes (Before), Snapshot_Nodes (S),
-            Node_Count (S), Child, Parent);
-         pragma Assert
-           (not Ancestor_In_Nodes
-              (Snapshot_Nodes (S), Node_Count (S), Child, Parent));
-         pragma Assert (not Ancestor (S, Child, Parent));
-         pragma Assert (not S.Marks (Positive (Parent)));
-         pragma Assert (S.Marks (Positive (Child)));
-         Relink_Marked_Subtree
-           (S, Parent, Child, Property, Append_Order, Rank_Lift, Replaced);
-      end if;
-      pragma Assert (Node (S, Child).Parent = Parent);
-      pragma Assert (Valid (S) and then Can_Edit (S));
-      pragma Assert
-        (for all I in Namespace_Ref range
-           1 .. Namespace_Ref (Namespace_Count (S)) =>
-             Namespace (S, I) = Namespace (Before, I));
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           Node (S, I).State = Node (Before, I).State
-             and then Node (S, I).Facade = Node (Before, I).Facade);
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           (if I /= Child and then I /= Replaced then
-              Node (S, I).Parent = Node (Before, I).Parent));
-      if Target_Doc /= Null_Node then
-         pragma Assert (Target_Doc <= Node_Ref (Node_Count (S)));
-         pragma Assert (Node (S, Target_Doc).Kind = Document_Node);
-         pragma Assert (Node (S, Target_Doc).State in Live | Tombstone);
-         pragma Assert (Node (S, Target_Doc).Owner = Target_B);
-         pragma Assert (Target_B <= Owner_Ref (Owner_Count (S)));
-         pragma Assert
-           (S.Graph.Owners (Positive (Target_B)).References <=
-              Natural'Last - S.Graph.Node_Used);
-         pragma Assert (Owner (S, Target_B).State = Live);
-         pragma Assert
-           (for all J in 1 .. S.Graph.Node_Used =>
-             (if S.Marks (J) then S.Graph.Nodes (J).State = Live));
-         pragma Assert
-           (for all J in 1 .. S.Graph.Node_Used =>
-             (if S.Marks (J) then
-                S.Graph.Nodes (J).Document = Null_Node
-                  or else S.Graph.Nodes (J).Document = Target_Doc));
-         Set_Marked_Document (S, Target_Doc, Target_B);
-         pragma Assert
-           (for all I in 1 .. S.Graph.Node_Used =>
-             (if S.Marks (I) then
-                S.Graph.Nodes (I).Document = Target_Doc
-                  and then S.Graph.Nodes (I).Doc_Pin = Target_B));
+         pragma Assert (Same_Graph (S, Before));
+         pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
       else
+         declare
+            Previous_Namespaces : constant Namespace_View_Array :=
+              Snapshot_Namespaces (S) with Ghost;
+            Previous_Nodes : constant Node_View_Array := S.Graph.Nodes with Ghost;
+            Previous_Marks : constant Mark_Array := S.Marks with Ghost;
+            Previous_Used : constant Natural := S.Graph.Node_Used with Ghost;
+         begin
+            pragma Assert
+              (for all I in 1 .. Previous_Used =>
+                (if Previous_Marks (I) then Previous_Nodes (I).State = Live
+                  and then (Previous_Nodes (I).Document = Null_Node
+                    or else Previous_Nodes (I).Document = Target_Doc)));
+            if not Already_Attached then
+               pragma Assert
+                 (for all I in 1 .. S.Graph.Node_Used =>
+                   (if S.Marks (I) then
+                      S.Graph.Nodes (I).Document = Null_Node
+                        or else S.Graph.Nodes (I).Document = Target_Doc));
+               Same_Ancestor
+                 (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+                  Node_Count (S), Child, Parent);
+               pragma Assert
+                 (not Ancestor_In_Nodes
+                    (Snapshot_Nodes (S), Node_Count (S), Child, Parent));
+               pragma Assert (not Ancestor (S, Child, Parent));
+               pragma Assert (not S.Marks (Positive (Parent)));
+               pragma Assert (S.Marks (Positive (Child)));
+               pragma Assert
+                 (Previous_Namespaces = Snapshot_Namespaces (S));
+               pragma Assert (Previous_Marks = S.Marks);
+               Relink_Marked_Subtree
+                 (S, Parent, Child, Property, Append_Order, Rank_Lift, Replaced);
+               pragma Assert
+                 (Snapshot_Namespaces (S) = Previous_Namespaces);
+               pragma Assert (S.Marks = Previous_Marks);
+            end if;
+            Compose_Namespace_Snapshots
+              (Snapshot_Namespaces (Before), Previous_Namespaces,
+               Snapshot_Namespaces (S));
+            Preserve_Marked_State
+              (Previous_Nodes, S.Graph.Nodes, Previous_Marks, S.Marks,
+               Previous_Used, Target_Doc);
+            pragma Assert (S.Marks = Previous_Marks);
+            pragma Assert (S.Graph.Node_Used = Previous_Used);
+         end;
          pragma Assert
-           (for all I in 1 .. S.Graph.Node_Used =>
-             (if S.Marks (I) then
-                S.Graph.Nodes (I).Document = Null_Node));
+           (if not Property and then Replaced = Null_Node
+             and then Node (Before, Child).Parent = Null_Node then
+               (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+                  Node (S, I).First_Prop = Node (Before, I).First_Prop
+                  and then Node (S, I).First_Namespace =
+                    Node (Before, I).First_Namespace
+                  and then (if I /= Parent then
+                    Node (S, I).First_Child = Node (Before, I).First_Child)));
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
+         pragma Assert (Node (S, Child).Parent = Parent);
+         pragma Assert (Valid (S) and then Can_Edit (S));
+         pragma Assert
+           (for all I in Namespace_Ref range
+              1 .. Namespace_Ref (Namespace_Count (S)) =>
+                Namespace (S, I) = Namespace (Before, I));
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              Node (S, I).State = Node (Before, I).State
+                and then Node (S, I).Facade = Node (Before, I).Facade);
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              (if I /= Child and then I /= Replaced then
+                 Node (S, I).Parent = Node (Before, I).Parent));
+         declare
+            Previous_Namespaces : constant Namespace_View_Array :=
+              Snapshot_Namespaces (S) with Ghost;
+         begin
+            if Target_Doc /= Null_Node then
+               pragma Assert (Target_Doc <= Node_Ref (Node_Count (S)));
+               pragma Assert (Node (S, Target_Doc).Kind = Document_Node);
+               pragma Assert (Node (S, Target_Doc).State in Live | Tombstone);
+               pragma Assert (Node (S, Target_Doc).Owner = Target_B);
+               pragma Assert (Target_B <= Owner_Ref (Owner_Count (S)));
+               pragma Assert
+                 (S.Graph.Owners (Positive (Target_B)).References <=
+                    Natural'Last - S.Graph.Node_Used);
+               pragma Assert (Owner (S, Target_B).State = Live);
+               pragma Assert
+                 (for all J in 1 .. S.Graph.Node_Used =>
+                   (if S.Marks (J) then S.Graph.Nodes (J).State = Live));
+               pragma Assert
+                 (for all J in 1 .. S.Graph.Node_Used =>
+                   (if S.Marks (J) then
+                      S.Graph.Nodes (J).Document = Null_Node
+                        or else S.Graph.Nodes (J).Document = Target_Doc));
+               Set_Marked_Document (S, Target_Doc, Target_B);
+               pragma Assert
+                 (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
+               pragma Assert
+                 (for all I in 1 .. S.Graph.Node_Used =>
+                   (if S.Marks (I) then
+                      S.Graph.Nodes (I).Document = Target_Doc
+                        and then S.Graph.Nodes (I).Doc_Pin = Target_B));
+            else
+               pragma Assert
+                 (for all I in 1 .. S.Graph.Node_Used =>
+                   (if S.Marks (I) then
+                      S.Graph.Nodes (I).Document = Null_Node));
+            end if;
+            Compose_Namespace_Snapshots
+              (Snapshot_Namespaces (Before), Previous_Namespaces,
+               Snapshot_Namespaces (S));
+         end;
+         pragma Assert (Node (S, Child).Parent = Parent);
+         Success := True;
+         pragma Assert
+           (if not Property and then Replaced = Null_Node
+             and then Node (Before, Child).Parent = Null_Node then
+               (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+                  Node (S, I).First_Prop = Node (Before, I).First_Prop
+                  and then Node (S, I).First_Namespace =
+                    Node (Before, I).First_Namespace
+                  and then (if I /= Parent then
+                    Node (S, I).First_Child = Node (Before, I).First_Child)));
+         pragma Assert
+           (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
+         pragma Assert
+           (if Facades_Present (Before) then Facades_Present (S));
+         pragma Assert (Valid (S));
+         pragma Assert (Can_Edit (S));
+         pragma Assert
+           (S.Capacity = Before.Capacity
+            and then Node_Count (S) = Node_Count (Before)
+            and then Namespace_Count (S) = Namespace_Count (Before)
+            and then Owner_Count (S) = Owner_Count (Before));
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              Node (S, I).State = Node (Before, I).State);
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              Node (S, I).Facade = Node (Before, I).Facade
+                and then Node (S, I).Kind = Node (Before, I).Kind);
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              Node (S, I).Kind = Original_Nodes (Positive (I)).Kind);
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              (if I /= Child and then I /= Replaced then
+                 Node (S, I).Parent = Node (Before, I).Parent));
+         pragma Assert
+           (for all I in Namespace_Ref range
+              1 .. Namespace_Ref (Namespace_Count (S)) =>
+                Namespace (S, I) = Namespace (Before, I));
+         pragma Assert
+           (if Replaced /= Null_Node then
+              Replaced in 1 .. Node_Ref (Node_Count (S))
+                and then Node (S, Replaced).State = Live
+                and then Node (S, Replaced).Parent = Null_Node
+                and then Node (S, Replaced).Previous = Null_Node
+                and then Node (S, Replaced).Next = Null_Node
+                and then Node (S, Child).Previous =
+                  Unlinked_View (Before, Child, Replaced).Previous
+                and then Node (S, Child).Next =
+                  Unlinked_View (Before, Child, Replaced).Next
+                and then Node (S, Child).Sibling_Order =
+                  Unlinked_View (Before, Child, Replaced).Sibling_Order);
+         pragma Assert
+           (Target_Doc = (if Node (Before, Parent).Kind = Document_Node
+                          then Parent else Node (Before, Parent).Document));
+         pragma Assert
+           (if Target_Doc /= Null_Node then
+              Target_B = Node (Before, Target_Doc).Owner);
+         pragma Assert
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+              (if Snapshot_Marks (S) (Positive (I)) then
+                 Node (S, I).Document = Target_Doc
+                   and then (Target_Doc = Null_Node
+                     or else Node (S, I).Doc_Pin = Target_B)));
+         pragma Assert
+           (if not Property and then Node (Before, Parent).Kind = Attribute_Node
+             and then Text_Attribute_Content (Before, Parent)
+             and then Node (Before, Child).Kind = Text_Node
+             and then Node (Before, Child).Parent = Null_Node
+             and then Node (Before, Child).First_Child = Null_Node
+             and then Node (Before, Child).First_Prop = Null_Node
+             and then Node (Before, Child).First_Namespace = Null_Namespace
+            then Replaced = Null_Node);
+         for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+            if Node (S, I).State = Live and then Node (S, I).Parent = Parent
+              and then Node (S, I).Kind /= Attribute_Node
+            then
+               if I /= Child then
+                  pragma Assert
+                    (if not Property
+                       and then Node (Before, Parent).Kind = Attribute_Node
+                       and then Text_Attribute_Content (Before, Parent)
+                       and then Node (Before, Child).Kind = Text_Node
+                       and then Node (Before, Child).Parent = Null_Node
+                       and then Node (Before, Child).First_Child = Null_Node
+                       and then Node (Before, Child).First_Prop = Null_Node
+                       and then Node (Before, Child).First_Namespace =
+                         Null_Namespace
+                     then Node (Before, I).Parent = Parent);
+                  pragma Assert
+                    (if not Property
+                       and then Node (Before, Parent).Kind = Attribute_Node
+                       and then Text_Attribute_Content (Before, Parent)
+                       and then Node (Before, Child).Kind = Text_Node
+                       and then Node (Before, Child).Parent = Null_Node
+                       and then Node (Before, Child).First_Child = Null_Node
+                       and then Node (Before, Child).First_Prop = Null_Node
+                       and then Node (Before, Child).First_Namespace =
+                         Null_Namespace
+                     then Node (Before, I).Kind = Text_Node);
+               end if;
+               pragma Assert
+                 (if not Property
+                    and then Node (Before, Parent).Kind = Attribute_Node
+                    and then Text_Attribute_Content (Before, Parent)
+                    and then Node (Before, Child).Kind = Text_Node
+                    and then Node (Before, Child).Parent = Null_Node
+                    and then Node (Before, Child).First_Child = Null_Node
+                    and then Node (Before, Child).First_Prop = Null_Node
+                    and then Node (Before, Child).First_Namespace =
+                      Null_Namespace
+                  then Node (S, I).Kind = Text_Node);
+               pragma Assert
+                 (if not Property
+                    and then Node (Before, Parent).Kind = Attribute_Node
+                    and then Text_Attribute_Content (Before, Parent)
+                    and then Node (Before, Child).Kind = Text_Node
+                    and then Node (Before, Child).Parent = Null_Node
+                    and then Node (Before, Child).First_Child = Null_Node
+                    and then Node (Before, Child).First_Prop = Null_Node
+                    and then Node (Before, Child).First_Namespace =
+                      Null_Namespace
+                  then Node (S, I).First_Child = Null_Node);
+               pragma Assert
+                 (if not Property
+                    and then Node (Before, Parent).Kind = Attribute_Node
+                    and then Text_Attribute_Content (Before, Parent)
+                    and then Node (Before, Child).Kind = Text_Node
+                    and then Node (Before, Child).Parent = Null_Node
+                    and then Node (Before, Child).First_Child = Null_Node
+                    and then Node (Before, Child).First_Prop = Null_Node
+                    and then Node (Before, Child).First_Namespace =
+                      Null_Namespace
+                  then Node (S, I).First_Prop = Null_Node);
+               pragma Assert
+                 (if not Property
+                    and then Node (Before, Parent).Kind = Attribute_Node
+                    and then Text_Attribute_Content (Before, Parent)
+                    and then Node (Before, Child).Kind = Text_Node
+                    and then Node (Before, Child).Parent = Null_Node
+                    and then Node (Before, Child).First_Child = Null_Node
+                    and then Node (Before, Child).First_Prop = Null_Node
+                    and then Node (Before, Child).First_Namespace =
+                      Null_Namespace
+                  then Node (S, I).First_Namespace = Null_Namespace);
+            end if;
+            pragma Loop_Invariant
+              (if not Property
+                 and then Node (Before, Parent).Kind = Attribute_Node
+                 and then Text_Attribute_Content (Before, Parent)
+                 and then Node (Before, Child).Kind = Text_Node
+                 and then Node (Before, Child).Parent = Null_Node
+                 and then Node (Before, Child).First_Child = Null_Node
+                 and then Node (Before, Child).First_Prop = Null_Node
+                 and then Node (Before, Child).First_Namespace = Null_Namespace
+               then
+                 (for all J in Node_Ref range 1 .. I =>
+                   (if Node (S, J).State = Live
+                     and then Node (S, J).Parent = Parent
+                     and then Node (S, J).Kind /= Attribute_Node then
+                       Node (S, J).Kind = Text_Node
+                       and then Node (S, J).First_Child = Null_Node
+                       and then Node (S, J).First_Prop = Null_Node
+                       and then Node (S, J).First_Namespace = Null_Namespace)));
+         end loop;
+         pragma Assert
+           (if not Property and then Node (Before, Parent).Kind = Attribute_Node
+             and then Text_Attribute_Content (Before, Parent)
+             and then Node (Before, Child).Kind = Text_Node
+             and then Node (Before, Child).Parent = Null_Node
+             and then Node (Before, Child).First_Child = Null_Node
+             and then Node (Before, Child).First_Prop = Null_Node
+             and then Node (Before, Child).First_Namespace = Null_Namespace
+            then Text_Attribute_Content (S, Parent));
+         pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
       end if;
-      pragma Assert (Node (S, Child).Parent = Parent);
-      Success := True;
-      pragma Assert (Valid (S));
-      pragma Assert (Can_Edit (S));
-      pragma Assert
-        (S.Capacity = Before.Capacity
-         and then Node_Count (S) = Node_Count (Before)
-         and then Namespace_Count (S) = Namespace_Count (Before)
-         and then Owner_Count (S) = Owner_Count (Before));
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           Node (S, I).State = Node (Before, I).State);
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           Node (S, I).Facade = Node (Before, I).Facade
-             and then Node (S, I).Kind = Node (Before, I).Kind);
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           Node (S, I).Kind = Original_Nodes (Positive (I)).Kind);
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           (if I /= Child and then I /= Replaced then
-              Node (S, I).Parent = Node (Before, I).Parent));
-      pragma Assert
-        (for all I in Namespace_Ref range
-           1 .. Namespace_Ref (Namespace_Count (S)) =>
-             Namespace (S, I) = Namespace (Before, I));
-      pragma Assert
-        (if Replaced /= Null_Node then
-           Replaced in 1 .. Node_Ref (Node_Count (S))
-             and then Node (S, Replaced).State = Live
-             and then Node (S, Replaced).Parent = Null_Node
-             and then Node (S, Replaced).Previous = Null_Node
-             and then Node (S, Replaced).Next = Null_Node
-             and then Node (S, Child).Previous =
-               Unlinked_View (Before, Child, Replaced).Previous
-             and then Node (S, Child).Next =
-               Unlinked_View (Before, Child, Replaced).Next
-             and then Node (S, Child).Sibling_Order =
-               Unlinked_View (Before, Child, Replaced).Sibling_Order);
-      pragma Assert
-        (Target_Doc = (if Node (Before, Parent).Kind = Document_Node
-                       then Parent else Node (Before, Parent).Document));
-      pragma Assert
-        (if Target_Doc /= Null_Node then
-           Target_B = Node (Before, Target_Doc).Owner);
-      pragma Assert
-        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
-           (if Snapshot_Marks (S) (Positive (I)) then
-              Node (S, I).Document = Target_Doc
-                and then (Target_Doc = Null_Node
-                  or else Node (S, I).Doc_Pin = Target_B)));
+      pragma Assert (if not Success then Same_Graph (S, Before));
+      pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
    end Attach;
 
    procedure Attach_Child
@@ -2770,6 +3962,14 @@ package body XML3_DOM with SPARK_Mode is
        and then S.Graph.Namespaces = S.Graph.Namespaces'Old
        and then S.Marks = S.Marks'Old
        and then S.Capacity = S.Capacity'Old
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (S.Graph.Owner_Used) =>
+           (if not Holds (S.Graph.Nodes'Old (Positive (N)), B) then
+             S.Graph.Owners (Positive (B)) =
+               S.Graph.Owners'Old (Positive (B))))
+       and then (for all B in 1 .. S.Graph.Owner_Used =>
+         (if S.Graph.Owners'Old (B).State /= Live then
+           S.Graph.Owners (B) = S.Graph.Owners'Old (B)))
        and then (for all J in 1 .. S.Capacity =>
          S.Graph.Nodes (J) =
            (if J = Positive (N)
@@ -2911,12 +4111,54 @@ package body XML3_DOM with SPARK_Mode is
       end loop;
    end Retired_Links_Lemma;
 
+   procedure Marked_Text_Declarations_Clear (S : State; Root : Node_Ref)
+     with Ghost, Global => null,
+       Pre => Valid (S)
+         and then Root in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Root).State = Live
+         and then Node (S, Root).Kind = Text_Node
+         and then (for all I in 1 .. S.Graph.Node_Used =>
+           S.Marks (I) = (Node_Ref (I) = Root)),
+       Post => (for all I in 1 .. S.Graph.Ns_Used =>
+         (if S.Graph.Namespaces (I).State = Live
+           and then S.Graph.Namespaces (I).Owns_Reservation
+           and then S.Graph.Namespaces (I).Parent /= Null_Node then
+             not S.Marks (Positive (S.Graph.Namespaces (I).Parent))));
+
+   procedure Marked_Text_Declarations_Clear (S : State; Root : Node_Ref) is
+   begin
+      for I in 1 .. S.Graph.Ns_Used loop
+         pragma Assert (Namespace_Links_Valid (S.Graph, I));
+         if S.Graph.Namespaces (I).State = Live
+           and then S.Graph.Namespaces (I).Owns_Reservation
+           and then S.Graph.Namespaces (I).Parent /= Null_Node
+         then
+            pragma Assert
+              (Node (S, S.Graph.Namespaces (I).Parent).Kind = Element_Node);
+            pragma Assert (S.Graph.Namespaces (I).Parent /= Root);
+            pragma Assert
+              (not S.Marks (Positive (S.Graph.Namespaces (I).Parent)));
+         end if;
+         pragma Loop_Invariant
+           (for all J in 1 .. I =>
+             (if S.Graph.Namespaces (J).State = Live
+               and then S.Graph.Namespaces (J).Owns_Reservation
+               and then S.Graph.Namespaces (J).Parent /= Null_Node then
+                 not S.Marks (Positive (S.Graph.Namespaces (J).Parent))));
+      end loop;
+   end Marked_Text_Declarations_Clear;
+
    procedure Free_Marked_Subtree (S : in out State; Root : Node_Ref)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S)
        and then Root in 1 .. Node_Ref (Node_Count (S))
        and then Node (S, Root).State = Live
        and then S.Marks (Positive (Root))
+       and then (for all I in 1 .. S.Graph.Ns_Used =>
+         (if S.Graph.Namespaces (I).State = Live
+           and then S.Graph.Namespaces (I).Owns_Reservation
+           and then S.Graph.Namespaces (I).Parent /= Null_Node
+          then not S.Marks (Positive (S.Graph.Namespaces (I).Parent))))
        and then (for all I in 1 .. S.Graph.Node_Used =>
          (if S.Marks (I) then S.Graph.Nodes (I).State = Live)
          and then (if S.Graph.Nodes (I).State = Live
@@ -2928,7 +4170,18 @@ package body XML3_DOM with SPARK_Mode is
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Same_Marks (S, S'Old)
+       and then (if (for all I in 1 .. S.Graph.Node_Used =>
+         S.Marks (I) = (Node_Ref (I) = Root)) then
+           (for all B in Owner_Ref range
+             1 .. Owner_Ref (Owner_Count (S'Old)) =>
+               (if not Holds (Node (S'Old, Root), B) then
+                 Owner (S, B) = Owner (S'Old, B))))
        and then Node (S, Root).State = Tombstone
        and then Projection_Required (S)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
@@ -2966,6 +4219,18 @@ package body XML3_DOM with SPARK_Mode is
             pragma Loop_Invariant (Pin_Equation (S));
             pragma Loop_Invariant (Effects_Valid (S));
             pragma Loop_Invariant (S.Effects = Before.Effects);
+            pragma Loop_Invariant
+              (if (for all J in 1 .. Before.Graph.Node_Used =>
+                Before.Marks (J) = (Node_Ref (J) = Root)) then
+                  (for all B in Owner_Ref range
+                    1 .. Owner_Ref (Owner_Count (Before)) =>
+                      (if not Holds (Node (Before, Root), B) then
+                        Owner (S, B) = Owner (Before, B))));
+            pragma Loop_Invariant
+              (for all B in Owner_Ref range
+                1 .. Owner_Ref (Owner_Count (Before)) =>
+                  (if Owner (Before, B).State /= Live then
+                    Owner (S, B) = Owner (Before, B)));
             pragma Loop_Invariant
               (if Facades_Present (Before) then Facades_Present (S));
             pragma Loop_Invariant
@@ -3005,8 +4270,11 @@ package body XML3_DOM with SPARK_Mode is
    procedure Free_Subtree (S : in out State; Root : Node_Ref) is
       Prepared : Boolean;
       Before : constant State := S with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S) with Ghost;
    begin
       Prepare_Subtree (S, Root, 0, Prepared);
+      Namespace_Frame (S, Original_Namespaces);
       pragma Assert (Prepared);
       pragma Assert (Same_Used_Entries (Before, S));
       for I in 1 .. S.Graph.Node_Used loop
@@ -3044,9 +4312,173 @@ package body XML3_DOM with SPARK_Mode is
                 S.Marks (J) = (Node_Ref (J) = Root));
          end loop;
       end if;
-      Free_Marked_Subtree (S, Root);
+      declare
+         Prepared_Namespaces : constant Namespace_View_Array :=
+           Snapshot_Namespaces (S) with Ghost;
+      begin
+         pragma Assert (Prepared_Namespaces = Original_Namespaces);
+         Free_Marked_Subtree (S, Root);
+         Compose_Namespace_Snapshots
+           (Snapshot_Namespaces (S), Prepared_Namespaces,
+            Original_Namespaces);
+      end;
+      pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
       pragma Assert (Facades_Preserved (Before, S));
    end Free_Subtree;
+
+   procedure Free_Subtree_With_Namespaces
+     (S : in out State; Root : Node_Ref)
+   is
+      Before : constant State := S with Ghost;
+      Parent : Node_Ref;
+      Retained : Boolean;
+   begin
+      for I in Namespace_Ref range
+        1 .. Namespace_Ref (Namespace_Count (S))
+      loop
+         if Namespace (S, I).State = Live
+           and then Namespace (S, I).Attached
+         then
+            Parent := Namespace (S, I).Parent;
+            if Parent in 1 .. Node_Ref (Node_Count (S))
+              and then Node (S, Parent).State = Live
+            then
+               Same_Ancestor
+                 (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+                  Node_Count (Before), Root, Parent);
+               if Is_Ancestor (S, Root, Parent) then
+                  Retained := Namespace (S, I).Owns_Reservation;
+                  pragma Assert
+                    (Namespace_Links_Valid (S.Graph, Positive (I)));
+                  pragma Assert
+                    (for all J in Namespace_Ref range
+                      1 .. Namespace_Ref (Namespace_Count (S)) =>
+                        (if not Namespace (S, J).Attached then
+                           Namespace (S, I).Previous /= J
+                           and then Namespace (S, I).Next /= J));
+                  Detach_Namespace_Declaration (S, I);
+                  if Retained then
+                     Release_Namespace_Reservation (S, I);
+                  end if;
+               end if;
+            end if;
+         end if;
+         pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
+         pragma Loop_Invariant
+           (Node_Count (S) = Node_Count (Before)
+            and then Namespace_Count (S) = Namespace_Count (Before)
+            and then Owner_Count (S) = Owner_Count (Before));
+         pragma Loop_Invariant (Capacity_Of (S) = Capacity_Of (Before));
+         pragma Loop_Invariant
+           (for all B in Owner_Ref range
+             1 .. Owner_Ref (Owner_Count (Before)) =>
+               (if Owner (Before, B).State /= Live then
+                 Owner (S, B) = Owner (Before, B)));
+         pragma Loop_Invariant (Facades_Preserved (Before, S));
+         pragma Loop_Invariant
+           (if Facades_Present (Before) then Facades_Present (S));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range
+             1 .. Node_Ref (Node_Count (Before)) =>
+               Node (S, J).State = Node (Before, J).State
+               and then Node (S, J).Parent = Node (Before, J).Parent
+               and then Node (S, J).Tree_Rank = Node (Before, J).Tree_Rank
+               and then Node (S, J) =
+                 (Node (Before, J) with delta
+                    First_Namespace => Node (S, J).First_Namespace,
+                    Last_Namespace => Node (S, J).Last_Namespace));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range
+             1 .. Node_Ref (Node_Count (Before)) =>
+               (if Node (Before, J).State /= Live
+                 or else not Ancestor (Before, Root, J)
+                then Node (S, J) = Node (Before, J)));
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range
+             1 .. Namespace_Ref (Namespace_Count (S)) =>
+               (if J > I then
+                 Namespace (S, J) = (Namespace (Before, J) with delta
+                   Previous => Namespace (S, J).Previous,
+                   Next => Namespace (S, J).Next)));
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range
+             1 .. Namespace_Ref (Namespace_Count (S)) =>
+               (if Namespace (Before, J).State = Live
+                 and then Namespace (Before, J).Parent /= Null_Node
+                 and then Namespace (Before, J).Parent in
+                   1 .. Node_Ref (Node_Count (Before))
+                 and then Node
+                   (Before, Namespace (Before, J).Parent).State = Live
+                 and then Ancestor
+                   (Before, Root, Namespace (Before, J).Parent)
+                 and then J <= I
+                then Namespace (S, J).Parent = Null_Node
+                  and then Namespace (S, J).Next = Null_Namespace
+                  and then Namespace (S, J).Previous = Null_Namespace
+                  and then not Namespace (S, J).Attached
+                  and then not Namespace (S, J).Owns_Reservation));
+         pragma Loop_Invariant
+           (for all J in Namespace_Ref range
+             1 .. Namespace_Ref (Namespace_Count (S)) =>
+               (if J <= I
+                 and then Namespace (Before, J).State = Live
+                 and then
+                   (Namespace (Before, J).Parent = Null_Node
+                    or else Namespace (Before, J).Parent not in
+                      1 .. Node_Ref (Node_Count (Before))
+                    or else Node
+                      (Before, Namespace (Before, J).Parent).State /= Live
+                    or else not Ancestor
+                      (Before, Root, Namespace (Before, J).Parent))
+                then Namespace (S, J).State = Namespace (Before, J).State
+                  and then Namespace (S, J).Parent =
+                    Namespace (Before, J).Parent
+                  and then Namespace (S, J).Owns_Reservation =
+                    Namespace (Before, J).Owns_Reservation));
+      end loop;
+      for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+         if Node (S, I).State = Live then
+            Same_Ancestor
+              (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+               Node_Count (Before), Root, I);
+         end if;
+         pragma Loop_Invariant
+           (for all J in Node_Ref range 1 .. I =>
+            (if Node (Before, J).State = Live then
+               Ancestor (Before, Root, J) = Ancestor (S, Root, J)));
+      end loop;
+      pragma Assert (Retained_Declarations_Clear (S, Root));
+      Free_Subtree (S, Root);
+      pragma Assert
+        (for all I in Namespace_Ref range
+          1 .. Namespace_Ref (Namespace_Count (S)) =>
+            (if Namespace (Before, I).State = Live
+              and then Namespace (Before, I).Parent /= Null_Node
+              and then Namespace (Before, I).Parent in
+                1 .. Node_Ref (Node_Count (Before))
+              and then Node
+                (Before, Namespace (Before, I).Parent).State = Live
+              and then Ancestor
+                (Before, Root, Namespace (Before, I).Parent)
+             then Namespace (S, I).Parent = Null_Node
+               and then Namespace (S, I).Next = Null_Namespace
+               and then Namespace (S, I).Previous = Null_Namespace
+               and then not Namespace (S, I).Attached
+               and then not Namespace (S, I).Owns_Reservation));
+   end Free_Subtree_With_Namespaces;
+
+   procedure Empty_Attribute_Content_Lemma (S : State; Attribute : Node_Ref) is
+   begin
+      for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+         if Node (S, I).State = Live then
+            Leaf_Has_No_Child (S, Attribute, I);
+         end if;
+         pragma Loop_Invariant
+           (for all J in Node_Ref range 1 .. I =>
+              (if Node (S, J).State = Live then
+                 Node (S, J).Parent /= Attribute));
+      end loop;
+   end Empty_Attribute_Content_Lemma;
 
    procedure Retire_Attribute_Children
      (S : in out State; Attribute, Keep : Node_Ref)
@@ -3055,6 +4487,10 @@ package body XML3_DOM with SPARK_Mode is
       Before_Attribute : Node_View := Node (S, Attribute) with Ghost;
    begin
       for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+         pragma Assert
+           (if Text_Attribute_Content (Before, Attribute) then
+              Text_Attribute_Content (S, Attribute)
+              and then Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
          if Node (S, I).State = Live
            and then Node (S, I).Kind /= Attribute_Node
            and then Node (S, I).Parent = Attribute
@@ -3067,18 +4503,79 @@ package body XML3_DOM with SPARK_Mode is
             pragma Assert
               (if Keep /= Null_Node then not Ancestor (S, I, Keep));
             Before_Attribute := Node (S, Attribute);
-            Free_Subtree (S, I);
+            if Text_Attribute_Content (S, Attribute) then
+               pragma Assert (Node (S, I).Kind = Text_Node);
+               pragma Assert (Node (S, I).First_Child = Null_Node);
+               pragma Assert (Node (S, I).First_Prop = Null_Node);
+               pragma Assert (Node (S, I).First_Namespace = Null_Namespace);
+               for E in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+                  if Node (S, E).State = Live
+                    and then E /= I
+                  then
+                     Leaf_Ancestor_Lemma (S, I, E);
+                  end if;
+                  pragma Loop_Invariant
+                    (for all J in Node_Ref range 1 .. E =>
+                      (if Node (S, J).State = Live
+                        and then J /= I then
+                          not Ancestor (S, I, J)));
+               end loop;
+               Leaf_Retained_Declarations_Lemma (S, I);
+               pragma Assert
+                 (if Text_Attribute_Content (Before, Attribute) then
+                    Snapshot_Namespaces (S) =
+                      Snapshot_Namespaces (Before));
+               Free_Subtree (S, I);
+               pragma Assert
+                 (if Text_Attribute_Content (Before, Attribute) then
+                    Snapshot_Namespaces (S) =
+                      Snapshot_Namespaces (Before));
+            elsif Node (S, I).First_Child = Null_Node
+              and then Node (S, I).First_Prop = Null_Node
+              and then Node (S, I).First_Namespace = Null_Namespace
+            then
+               pragma Assert (not Text_Attribute_Content (Before, Attribute));
+               Leaf_Retained_Declarations_Lemma (S, I);
+               Free_Subtree (S, I);
+            else
+               pragma Assert (not Text_Attribute_Content (Before, Attribute));
+               Free_Subtree_With_Namespaces (S, I);
+            end if;
             pragma Assert
               (Node (S, Attribute) =
                  (Before_Attribute with delta
                     First_Child => Node (S, Attribute).First_Child,
                     Last_Child => Node (S, Attribute).Last_Child));
          end if;
+         pragma Assert
+           (if Text_Attribute_Content (Before, Attribute) then
+              Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
          pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
          pragma Loop_Invariant (Node_Count (S) = Node_Count (Before));
          pragma Loop_Invariant
            (Namespace_Count (S) = Namespace_Count (Before));
          pragma Loop_Invariant (Owner_Count (S) = Owner_Count (Before));
+         pragma Loop_Invariant
+           (for all B in Owner_Ref range
+             1 .. Owner_Ref (Owner_Count (Before)) =>
+               (if Owner (Before, B).State /= Live then
+                 Owner (S, B) = Owner (Before, B)));
+         pragma Loop_Invariant
+           (if Text_Attribute_Content (Before, Attribute) then
+             Text_Attribute_Content (S, Attribute)
+             and then Snapshot_Namespaces (S) = Snapshot_Namespaces (Before)
+             and then (for all J in Node_Ref range
+               1 .. Node_Ref (Node_Count (Before)) =>
+                 (if J /= Attribute and then Node (Before, J).Parent /= Attribute
+                  then Node (S, J) = Node (Before, J)))
+             and then (for all B in Owner_Ref range
+               1 .. Owner_Ref (Owner_Count (Before)) =>
+                 Owner (S, B).Reservations = Owner (Before, B).Reservations)
+             and then (for all J in Node_Ref range
+               1 .. Node_Ref (Node_Count (Before)) =>
+                 (if Node (Before, J).State = Live
+                   and then Node (Before, J).Kind = Element_Node then
+                     Node (S, J) = Node (Before, J))));
          pragma Loop_Invariant (Facades_Preserved (Before, S));
          pragma Loop_Invariant
            (if Facades_Present (Before) then Facades_Present (S));
@@ -3117,6 +4614,9 @@ package body XML3_DOM with SPARK_Mode is
       Content : System.Address; Length : Natural; Content_Owner : Owner_Ref;
       Success : out Boolean)
    is
+      Before : constant State := S with Ghost;
+      Original_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S) with Ghost;
       T : constant Node_View := Node (S, Target);
       C : constant Node_View := Node (S, Source);
       Proposed : constant Node_View := Projected_View
@@ -3125,6 +4625,7 @@ package body XML3_DOM with SPARK_Mode is
       Prepared : Boolean;
    begin
       Success := False;
+      pragma Assert (Snapshot_Namespaces (Before) = Original_Namespaces);
       if Target = Source or else T.Kind /= Text_Node or else C.Kind /= Text_Node
         or else T.First_Child /= Null_Node or else T.First_Prop /= Null_Node
         or else C.First_Child /= Null_Node or else C.First_Prop /= Null_Node
@@ -3145,15 +4646,35 @@ package body XML3_DOM with SPARK_Mode is
       end if;
       Prepare_Subtree (S, Source, 0, Prepared);
       pragma Assert (Prepared);
+      Same_Graph_Snapshots (Before, S);
+      pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
       if S.Marks (Positive (Target)) then
          return;
       end if;
 
-      Set_Node_Projection_Internal
-        (S, Target, T.Name, T.Name_Length, Content, Length,
-         T.Document, T.Namespace, T.Ns_Pin, T.Doc_Pin, Content_Owner, Success);
-      pragma Assert (Success);
-      Free_Marked_Subtree (S, Source);
+      declare
+         Projection_Namespaces : constant Namespace_View_Array :=
+           Snapshot_Namespaces (S) with Ghost;
+      begin
+         Set_Node_Projection_Internal
+           (S, Target, T.Name, T.Name_Length, Content, Length,
+            T.Document, T.Namespace, T.Ns_Pin, T.Doc_Pin, Content_Owner, Success);
+         pragma Assert (Success);
+         Compose_Namespace_Snapshots
+           (Original_Namespaces, Projection_Namespaces,
+            Snapshot_Namespaces (S));
+         pragma Assert
+           (for all I in 1 .. S.Graph.Node_Used =>
+             S.Marks (I) = (Node_Ref (I) = Source));
+         Marked_Text_Declarations_Clear (S, Source);
+         pragma Assert (Snapshot_Namespaces (S) = Projection_Namespaces);
+         Free_Marked_Subtree (S, Source);
+         pragma Assert (Snapshot_Namespaces (S) = Projection_Namespaces);
+         Compose_Namespace_Snapshots
+           (Original_Namespaces, Projection_Namespaces,
+            Snapshot_Namespaces (S));
+      end;
+      pragma Assert (Snapshot_Namespaces (S) = Original_Namespaces);
    end Merge_Text;
 
 end XML3_DOM;

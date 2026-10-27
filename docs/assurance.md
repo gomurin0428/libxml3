@@ -7,7 +7,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
-`XML3_DOM_Constructors`, `XML3_DOM_Store`, `XML3_DOM.Import`, and
+`XML3_DOM_Constructors`, `XML3_DOM_Store`, its `Queries`, `Properties`, and
+`Documents` children, `XML3_DOM_Runtime`, `XML3_DOM.Import`, and
 `XML3_DOM.Materialize`, plus
 the trusted interfaces of `XML3_DOM_Allocation` and `XML3_Native_Memory`.
 GNATprove must establish all generated flow and run-time checks and the written
@@ -19,12 +20,15 @@ indices are bounded by `XML3_Text.Max_Bytes = Integer'Last - 16`, and node IDs b
 half that representation bound. The parser/decoder core has no allocator, filesystem,
 network, or callback access. The C adapter supplies bounded node/name arrays and
 heap scratch buffers, grows the arena geometrically when the parser reports
-`Arena_Exhausted`, and reparses; adapter allocation, pointer arithmetic, and
-ownership remain outside the proof scope.
+`Arena_Exhausted`, and reparses; native allocation, pointer arithmetic, and
+foreign-pointer validity remain trusted.
 
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
-the parser/decoder, DOM foundation, and internal parser-arena materializer, but
-not the C adapter or public C API routing.
+the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
+operations used by public C APIs, including namespace editing. The C adapters
+and native ABI implementation are not proved. The recorded aggregate has
+10,188 checks, no unproved or justified conditions, and 110 flow warnings;
+the representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -146,6 +150,20 @@ Connected native tests cover literal bytes, duplicate attributes, allocation
 rollback, null-versus-empty value children, and clearing the old value links
 before its exactly-once native free. Public property APIs route through these
 operations; C ABI conversion and facade projection remain trusted boundaries.
+
+Namespace editing extends the same Store/Runtime path. Constructed declarations
+own one explicit reservation; node namespace pins are accounted separately.
+Cross-owner attachment requires that retained reservation, and core invariants
+require a live owner with a positive reservation and at most one retaining
+namespace per owner. Namespace-aware lookup uses URI plus local name. QName
+parsing and UTF-8 NCName validation for `xmlSetProp` occur in SPARK, and
+documentless XML namespace creation is rolled back if the attribute operation
+fails. Namespace-aware subtree release detaches declaration links before
+retiring element nodes and releases constructed declaration reservations while
+preserving namespace owners still borrowed by live nodes. The C adapter remains
+limited to guarded ABI/string/status conversion and does not decide ownership
+or release. Namespace-edit core/bridge and public C regressions cover retention,
+cross-owner borrowing, rollback, attribute identity, and allocation failure.
 
 The ghost `Count_Holders` helper retains the recursive holder-count definition
 with a bounded-result postcondition and decreasing variant. `Holder_Count`
@@ -279,10 +297,11 @@ own name, `libxml3`, and must not be loaded alongside libxml2 into the same symb
 namespace. Only APIs and structure fields explicitly listed in the compatibility
 document are supported. The minimal DOM editor API includes `xmlNewDoc`,
 `xmlNewNode`, `xmlNewText`, `xmlDocSetRootElement`, `xmlAddChild`,
-`xmlUnlinkNode`, `xmlFreeNode`, and the namespace-free attribute APIs
-`xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and `xmlFreeProp`.
-Namespace creation, attribute/namespace copying, namespace-qualified attribute
-editing, cross-document moves, and serialization are deferred. Unsupported
+`xmlUnlinkNode`, `xmlFreeNode`, namespace APIs `xmlNewNs`, `xmlSetNs`,
+`xmlFreeNs`, `xmlNewNsProp`, `xmlSetNsProp`, `xmlUnsetNsProp`, and attribute
+APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and
+`xmlFreeProp`. Attribute/namespace copying, cross-document moves, and
+serialization are deferred. Unsupported
 operations fail without silently creating invalid links. Unsupported parser
 options fail, not silently degrade.
 

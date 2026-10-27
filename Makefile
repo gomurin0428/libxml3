@@ -8,7 +8,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes compare compare-system check prove install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -19,11 +19,12 @@ build-development:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=development
 
 test-development: build-development tests/runtime-test tests/string-exception-test \
-		tests/namespace-test tests/attribute-test
+		tests/namespace-test tests/attribute-test tests/namespace-edit-test
 	LD_LIBRARY_PATH=lib/development ./tests/runtime-test
 	LD_LIBRARY_PATH=lib/development ./tests/string-exception-test
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-test
 	LD_LIBRARY_PATH=lib/development ./tests/attribute-test
+	LD_LIBRARY_PATH=lib/development ./tests/namespace-edit-test
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
 		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
@@ -58,6 +59,18 @@ tests/namespace-test: tests/namespace-test.c $(PUBLIC_HEADERS) Makefile | build
 	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
 
 tests/namespace-test-sanitize: tests/namespace-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/namespace-edit-test: tests/namespace-edit-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,--enable-new-dtags,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/namespace-edit-test-reference: tests/namespace-edit-test.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST \
+		-DXML3_REFERENCE_VERSION_STRING='"$(REFERENCE_VERSION)"' $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/namespace-edit-test-sanitize: tests/namespace-edit-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
 
 tests/differential-libxml3: tests/differential.c $(PUBLIC_HEADERS)
@@ -245,7 +258,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-merge attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -261,6 +274,7 @@ test-oom: tests/oom-test
 		[ $$index -lt 128 ] || { echo "$$operation exceeded allocation cap" >&2; exit 1; }; \
 	done
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-delete 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 
 test-fuzz: tests/fuzz-test
 	LD_LIBRARY_PATH=lib ./tests/fuzz-test
@@ -272,6 +286,10 @@ test-api: build tests/api-test tests/header-smoke.o tests/namespace-test tests/u
 
 test-namespace: tests/namespace-test
 	LD_LIBRARY_PATH=lib ./tests/namespace-test
+
+test-namespace-edit: tests/namespace-edit-test tests/namespace-edit-test-reference
+	LD_LIBRARY_PATH=lib ./tests/namespace-edit-test
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/namespace-edit-test-reference
 
 reference:
 	/usr/bin/python3 eng/build_reference.py
@@ -308,6 +326,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
 		xmlNewDoc xmlNewNode xmlNewText xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
+	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
 	xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory \
@@ -330,6 +349,7 @@ install: build
 test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize \
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/error-test-sanitize tests/fuzz-test-sanitize tests/dom-test-sanitize \
+		tests/namespace-edit-test-sanitize \
 		tests/attribute-test-sanitize tests/runtime-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
@@ -343,6 +363,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/fuzz-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/dom-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/attribute-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-edit-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/runtime-test-sanitize
 
 clean:
@@ -361,6 +382,8 @@ clean:
 		tests/dom-test-reference tests/dom-test-sanitize tests/dom-core-test \
 		tests/dom-bridge-test tests/attribute-test \
 		tests/attribute-test-reference tests/attribute-test-sanitize \
+		tests/namespace-edit-test tests/namespace-edit-test-reference \
+		tests/namespace-edit-test-sanitize \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out

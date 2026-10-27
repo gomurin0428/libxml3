@@ -57,6 +57,7 @@ package XML3_DOM with SPARK_Mode is
       Previous     : Namespace_Ref := Null_Namespace;
       Sibling_Order : Natural := 0;
       Attached : Boolean := False;
+      Owns_Reservation : Boolean := False;
    end record;
 
    type Owner_View is record
@@ -105,7 +106,8 @@ package XML3_DOM with SPARK_Mode is
    function Namespace_Count (S : State) return Natural
      with Global => null;
    function Owner_Count (S : State) return Natural
-     with Global => null;
+     with Global => null,
+       Annotate => (GNATprove, Inline_For_Proof);
    function Capacity_Of (S : State) return Positive
      with Global => null;
 
@@ -131,7 +133,11 @@ package XML3_DOM with SPARK_Mode is
      with Ghost, Global => null;
 
    function Snapshot_Nodes (S : State) return Node_View_Array
-     with Ghost, Global => null;
+     with Ghost, Global => null,
+       Post => Snapshot_Nodes'Result'First = 1
+         and then Snapshot_Nodes'Result'Last = S.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           Snapshot_Nodes'Result (I) = Node (S, Node_Ref (I)));
 
    function Count_Holders
      (Nodes : Node_View_Array; B : Owner_Ref; N : Natural) return Natural
@@ -213,12 +219,41 @@ package XML3_DOM with SPARK_Mode is
       and then (for all N in Namespace_Ref range
         1 .. Namespace_Ref (Namespace_Count (S)) =>
           (if Namespace (S, N).State = Live then
-             Namespace (S, N).Next <= Namespace_Ref (Namespace_Count (S)))))
+             Namespace (S, N).Next <= Namespace_Ref (Namespace_Count (S))
+             and then Namespace (S, N).Previous <=
+               Namespace_Ref (Namespace_Count (S))
+             and then Namespace (S, N).Parent <= Node_Ref (Node_Count (S)))))
+     with Ghost, Global => null, Pre => Well_Sized (S);
+
+   function Namespace_Retention_Valid (S : State) return Boolean is
+     (for all N in Namespace_Ref range
+        1 .. Namespace_Ref (Namespace_Count (S)) =>
+       (declare
+          Item : constant Namespace_View := Namespace (S, N);
+        begin
+          Item.State /= Live or else
+            (Item.Owner in 1 .. Owner_Ref (Owner_Count (S))
+             and then Owner (S, Item.Owner).State in Live | Releasing
+             and then Item.Attached = (Item.Parent /= Null_Node)
+             and then (if Item.Owns_Reservation then
+               Owner (S, Item.Owner).State = Live
+               and then Owner (S, Item.Owner).Reservations > 0)
+             and then (if Item.Parent /= Null_Node then
+               Item.Parent in 1 .. Node_Ref (Node_Count (S))
+               and then Node (S, Item.Parent).State in Live | Tombstone
+               and then Node (S, Item.Parent).Kind = Element_Node
+               and then (Item.Owns_Reservation
+                 or else Node (S, Item.Parent).Owner = Item.Owner)
+               and then (if Node (S, Item.Parent).State = Live then
+                 Owner (S, Item.Owner).State = Live)
+               and then (if Item.Owns_Reservation then
+                 Node (S, Item.Parent).State = Live)))))
      with Ghost, Global => null, Pre => Well_Sized (S);
 
    function Links_Valid (S : State) return Boolean
      with Ghost, Global => null, Pre => Well_Sized (S),
-       Post => (if Links_Valid'Result then Projection_Links_In_Range (S));
+       Post => (if Links_Valid'Result then
+         Projection_Links_In_Range (S) and then Namespace_Retention_Valid (S));
    function Pins_In_Range (S : State) return Boolean is
      (for all N in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
        (Node (S, N).State /= Live or else
@@ -254,14 +289,31 @@ package XML3_DOM with SPARK_Mode is
          and then Namespace (S, N).State = Live,
        Post => Namespace (S, N).Owner in 1 .. Owner_Ref (Owner_Count (S))
          and then Namespace_Release_Required'Result =
-           (Owner (S, Namespace (S, N).Owner).State = Releasing);
+         (Owner (S, Namespace (S, N).Owner).State = Releasing);
+
+   function Namespace_Reservation_Held
+     (S : State; B : Owner_Ref) return Boolean is
+     (for some I in Namespace_Ref range
+       1 .. Namespace_Ref (Namespace_Count (S)) =>
+         Namespace (S, I).State = Live
+         and then Namespace (S, I).Owns_Reservation
+         and then Namespace (S, I).Owner = B)
+     with Ghost, Global => null,
+       Pre => Well_Sized (S),
+       Annotate => (GNATprove, Inline_For_Proof);
 
    function Snapshot_Namespaces (S : State) return Namespace_View_Array
      with Ghost, Global => null,
-       Annotate => (GNATprove, Inline_For_Proof);
+       Post => Snapshot_Namespaces'Result'First = 1
+         and then Snapshot_Namespaces'Result'Last = S.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           Snapshot_Namespaces'Result (I) = Namespace (S, Namespace_Ref (I)));
    function Snapshot_Owners (S : State) return Owner_View_Array
      with Ghost, Global => null,
-       Annotate => (GNATprove, Inline_For_Proof);
+       Post => Snapshot_Owners'Result'First = 1
+         and then Snapshot_Owners'Result'Last = S.Capacity
+         and then (for all I in 1 .. S.Capacity =>
+           Snapshot_Owners'Result (I) = Owner (S, Owner_Ref (I)));
 
    function Live_Entries_Preserved (Before, After : State) return Boolean is
      (Capacity_Of (Before) = Capacity_Of (After)
@@ -269,10 +321,12 @@ package XML3_DOM with SPARK_Mode is
       and then Namespace_Count (Before) = Namespace_Count (After)
       and then Owner_Count (Before) = Owner_Count (After)
       and then (for all N in Node_Ref range 1 .. Node_Ref (Node_Count (Before)) =>
-        (if Node (Before, N).State = Live then
+        (if Node (Before, N).State = Live or else Node (After, N).State = Live then
            Node (After, N) = Node (Before, N)))
       and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (Before)) =>
         (if Owner (Before, B).State = Live then
+           Owner (After, B) = Owner (Before, B))
+        and then (if Owner (After, B).State = Live then
            Owner (After, B) = Owner (Before, B)))
       and then (for all N in Namespace_Ref range
         1 .. Namespace_Ref (Namespace_Count (Before)) =>
@@ -280,7 +334,9 @@ package XML3_DOM with SPARK_Mode is
              and then Namespace (Before, N).Owner in
                1 .. Owner_Ref (Owner_Count (Before))
              and then Owner (Before, Namespace (Before, N).Owner).State = Live
-           then Namespace (After, N) = Namespace (Before, N))))
+           then Namespace (After, N) = Namespace (Before, N))
+          and then (if Namespace (After, N).State = Live then
+            Namespace (After, N) = Namespace (Before, N))))
      with Ghost, Global => null,
        Pre => Well_Sized (Before) and then Well_Sized (After),
        Annotate => (GNATprove, Inline_For_Proof);
@@ -440,6 +496,11 @@ package XML3_DOM with SPARK_Mode is
                  and then Owner (S, B).References = 1
                  and then Owner (S, B).Reservations = 1
                  and then Owner (S, B).Address = Address
+                 and then not Namespace_Reservation_Held (S, B)
+                 and then (for all I in Namespace_Ref range
+                   1 .. Namespace_Ref (Namespace_Count (S)) =>
+                     (if Namespace (S, I).State = Live then
+                       Namespace (S, I).Owner /= B))
                  else B = Null_Owner)
        and then S.Capacity = S'Old.Capacity
        and then Node_Count (S) = Node_Count (S'Old)
@@ -469,6 +530,7 @@ package XML3_DOM with SPARK_Mode is
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S) and then B in 1 .. Owner_Ref (Owner_Count (S))
        and then Owner (S, B).State = Live
+       and then not Namespace_Reservation_Held (S, B)
        and then Owner (S, B).Reservations > 0,
      Post => Valid (S) and then Can_Edit (S)
        and then Projection_Required (S)
@@ -490,6 +552,47 @@ package XML3_DOM with SPARK_Mode is
        and then (for all B0 in Owner_Ref range
          1 .. Owner_Ref (Owner_Count (S'Old)) =>
            (if B0 /= B then Owner (S, B0) = Owner (S'Old, B0)))
+       and then (if Facades_Present (S'Old) then Facades_Present (S));
+
+   procedure Release_Namespace_Reservation
+     (S : in out State; N : Namespace_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then N in 1 .. Namespace_Ref (Namespace_Count (S))
+       and then Namespace (S, N).State = Live
+       and then Namespace (S, N).Owns_Reservation
+       and then Namespace (S, N).Parent = Null_Node
+       and then Owner (S, Namespace (S, N).Owner).State = Live
+       and then Owner (S, Namespace (S, N).Owner).Reservations > 0,
+     Post => Valid (S) and then Can_Edit (S)
+       and then Projection_Required (S)
+       and then not Namespace (S, N).Owns_Reservation
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S'Old)) =>
+           Node (S, I) = Node (S'Old, I))
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S'Old)) =>
+           (if I = N then
+              Namespace (S, I) =
+                (Namespace (S'Old, I) with delta Owns_Reservation => False)
+            else Namespace (S, I) = Namespace (S'Old, I)))
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if B = Namespace (S'Old, N).Owner then
+              Owner (S, B).Address = Owner (S'Old, B).Address
+              and then Owner (S, B).References =
+                Owner (S'Old, B).References - 1
+              and then Owner (S, B).Reservations =
+                Owner (S'Old, B).Reservations - 1
+              and then not Owner (S, B).Release_Emitted
+              and then Owner (S, B).State =
+                (if Owner (S, B).References = 0 then Releasing else Live)
+            else Owner (S, B) = Owner (S'Old, B)))
+       and then Facades_Preserved (S'Old, S)
        and then (if Facades_Present (S'Old) then Facades_Present (S));
 
    procedure Register_Node
@@ -525,7 +628,9 @@ package XML3_DOM with SPARK_Mode is
            and then Owner_Count (S) = Owner_Count (S'Old)
            and then (if N <= Node_Ref (Node_Count (S'Old)) then
              Node (S'Old, N).State = Unused
-             else N = Node_Ref (Node_Count (S)))
+             else N = Node_Ref (Node_Count (S))
+               and then Node_Count (S'Old) < S.Capacity
+               and then N = Node_Ref (Node_Count (S'Old)) + 1)
            and then Owner (S, Own).State = Live
            and then Owner (S, Own).Address = Owner (S'Old, Own).Address
            and then Owner (S, Own).Reservations =
@@ -547,9 +652,12 @@ package XML3_DOM with SPARK_Mode is
            and then Node (S, N).Next = Null_Node
            and then Node (S, N).First_Prop = Null_Node
            and then Node (S, N).Last_Prop = Null_Node
+           and then Node (S, N).First_Namespace = Null_Namespace
+           and then Node (S, N).Last_Namespace = Null_Namespace
            and then Node (S, N).Document = Null_Node
            and then Node (S, N).Namespace = Null_Namespace
            and then Node (S, N).Ns_Pin = Null_Owner
+           and then Node (S, N).Doc_Pin = Doc_Pin
            and then Node (S, N).Content_Pin = Null_Owner
            and then (for all I in Node_Ref range
              1 .. Node_Ref (Node_Count (S'Old)) =>
@@ -629,6 +737,9 @@ package XML3_DOM with SPARK_Mode is
        and then (for all I in Namespace_Ref range 1 .. Namespace_Ref (Namespace_Count (S)) =>
          XML3_DOM.Namespace (S, I) = Original_Ns (Positive (I)))
        and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+         (if Original_Owners (Positive (B)).State /= Live then
+            Owner (S, B) = Original_Owners (Positive (B))))
+       and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
          (if Holds (Original_Nodes (Positive (N)), B) = Holds (Node (S, N), B) then
            Owner (S, B) = Original_Owners (Positive (B))
           else Owner (S, B).Address = Original_Owners (Positive (B)).Address
@@ -651,16 +762,25 @@ package XML3_DOM with SPARK_Mode is
       Prefix_Length : Natural;
       Own : Owner_Ref;
       Ns : out Namespace_Ref;
-      Success : out Boolean)
+      Success : out Boolean;
+      Owns_Reservation : Boolean := False)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S) and then Own in 1 .. Owner_Ref (Owner_Count (S))
        and then Owner (S, Own).State = Live
-       and then Owner (S, Own).Reservations > 0,
+       and then Owner (S, Own).Reservations > 0
+       and then (if Owns_Reservation then
+         not Namespace_Reservation_Held (S, Own)),
      Post => Valid (S) and then Can_Edit (S)
+       and then (if Success then Projection_Required (S))
        and then (if Success then Ns in 1 .. Namespace_Ref (Namespace_Count (S))
          and then Namespace (S, Ns).State = Live
          and then Namespace (S, Ns).Facade = Facade
          and then Namespace (S, Ns).Owner = Own
+         and then Namespace (S, Ns).Owns_Reservation = Owns_Reservation
+         and then Namespace (S, Ns).Parent = Null_Node
+         and then Namespace (S, Ns).Previous = Null_Namespace
+         and then Namespace (S, Ns).Next = Null_Namespace
+         and then not Namespace (S, Ns).Attached
          else Ns = Null_Namespace)
        and then S.Capacity = S'Old.Capacity
        and then (if Success then
@@ -683,7 +803,10 @@ package XML3_DOM with SPARK_Mode is
          else Same_Used_Entries (S'Old, S))
        and then (if Facades_Present (S'Old)
          and then (not Success or else Facade /= System.Null_Address)
-         then Facades_Present (S));
+         then Facades_Present (S))
+       and then Namespace_Reservation_Held (S, Own) =
+         (Namespace_Reservation_Held (S'Old, Own)
+          or else (Success and then Owns_Reservation));
 
    procedure Attach_Namespace
      (S : in out State; Element : Node_Ref; Ns : Namespace_Ref;
@@ -695,18 +818,124 @@ package XML3_DOM with SPARK_Mode is
        and then Ns in 1 .. Namespace_Ref (Namespace_Count (S))
        and then Namespace (S, Ns).State = Live,
      Post => Valid (S) and then Can_Edit (S)
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then Snapshot_Owners (S) = Snapshot_Owners (S)'Old
+       and then Namespace (S, Ns).State = Namespace (S'Old, Ns).State
+       and then Namespace (S, Ns).Owner = Namespace (S'Old, Ns).Owner
+       and then Namespace (S, Ns).Owns_Reservation =
+         Namespace (S'Old, Ns).Owns_Reservation
        and then (if Success then Namespace (S, Ns).Attached
+                   and then Namespace (S, Ns).Parent = Element
                  else Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old
                    and then Snapshot_Namespaces (S) =
                      Snapshot_Namespaces (S)'Old);
 
+   procedure Detach_Namespace_Declaration
+     (S : in out State; Ns : Namespace_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Ns in 1 .. Namespace_Ref (Namespace_Count (S))
+       and then Namespace (S, Ns).State = Live
+       and then Namespace (S, Ns).Attached
+       and then Namespace (S, Ns).Parent in
+         1 .. Node_Ref (Node_Count (S))
+       and then (Namespace (S, Ns).Previous = Null_Namespace
+         or else Namespace (S, Ns).Previous in
+           1 .. Namespace_Ref (Namespace_Count (S)))
+       and then (Namespace (S, Ns).Next = Null_Namespace
+         or else Namespace (S, Ns).Next in
+           1 .. Namespace_Ref (Namespace_Count (S))),
+     Post => Valid (S) and then Can_Edit (S)
+       and then Namespace (S, Ns).State = Live
+       and then Namespace (S, Ns).Parent = Null_Node
+       and then Namespace (S, Ns).Next = Null_Namespace
+       and then Namespace (S, Ns).Previous = Null_Namespace
+       and then not Namespace (S, Ns).Attached
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then Namespace (S, Ns).Owns_Reservation =
+         Namespace (S'Old, Ns).Owns_Reservation
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S'Old)) =>
+           (if I = Namespace (S'Old, Ns).Parent then
+              Node (S, I) =
+                (Node (S'Old, I) with delta
+                   First_Namespace =>
+                     (if Namespace (S'Old, Ns).Previous = Null_Namespace
+                      then Namespace (S'Old, Ns).Next
+                      else Node (S'Old, I).First_Namespace),
+                   Last_Namespace =>
+                     (if Namespace (S'Old, Ns).Next = Null_Namespace
+                      then Namespace (S'Old, Ns).Previous
+                      else Node (S'Old, I).Last_Namespace))
+            else Node (S, I) = Node (S'Old, I)))
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S'Old)) =>
+           (if I = Ns then
+              Namespace (S, I) =
+                (Namespace (S'Old, I) with delta
+                   Parent => Null_Node, Next => Null_Namespace,
+                   Previous => Null_Namespace, Attached => False)
+            elsif I = Namespace (S'Old, Ns).Previous then
+              Namespace (S, I) =
+                (Namespace (S'Old, I) with delta
+                   Next => Namespace (S'Old, Ns).Next)
+            elsif I = Namespace (S'Old, Ns).Next then
+              Namespace (S, I) =
+                (Namespace (S'Old, I) with delta
+                   Previous => Namespace (S'Old, Ns).Previous)
+            else Namespace (S, I) = Namespace (S'Old, I)))
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           Owner (S, B) = Owner (S'Old, B))
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S));
+
    function Unlinked_View (S : State; N, I : Node_Ref) return Node_View
      with Ghost, Global => null,
+       Annotate => (GNATprove, Inline_For_Proof),
        Pre => Well_Sized (S) and then N in 1 .. Node_Ref (Node_Count (S))
          and then I in 1 .. Node_Ref (Node_Count (S)),
-       Post => Unlinked_View'Result.State = Node (S, I).State
-         and then (if Node (S, N).Parent = Null_Node then
-         Unlinked_View'Result = Node (S, I));
+       Post => Unlinked_View'Result =
+         (declare
+            Item : constant Node_View := Node (S, N);
+            Original : constant Node_View := Node (S, I);
+          begin
+            (if Item.Parent = Null_Node then Original
+             elsif I = N then
+               (Original with delta Parent => Null_Node,
+                  Previous => Null_Node, Next => Null_Node)
+             else
+               (Original with delta
+                  Previous =>
+                    (if I = Item.Next then Item.Previous
+                     else Original.Previous),
+                  Next =>
+                    (if I = Item.Previous then Item.Next
+                     else Original.Next),
+                  First_Child =>
+                    (if I = Item.Parent and then Item.Previous = Null_Node
+                       and then Item.Kind /= Attribute_Node
+                     then Item.Next else Original.First_Child),
+                  Last_Child =>
+                    (if I = Item.Parent and then Item.Next = Null_Node
+                       and then Item.Kind /= Attribute_Node
+                     then Item.Previous else Original.Last_Child),
+                  First_Prop =>
+                    (if I = Item.Parent and then Item.Previous = Null_Node
+                       and then Item.Kind = Attribute_Node
+                     then Item.Next else Original.First_Prop),
+                  Last_Prop =>
+                    (if I = Item.Parent and then Item.Next = Null_Node
+                       and then Item.Kind = Attribute_Node
+                     then Item.Previous else Original.Last_Prop))));
 
    procedure Unlink (S : in out State; N : Node_Ref)
    with Global => null,
@@ -745,6 +974,21 @@ package XML3_DOM with SPARK_Mode is
          Same_Pins (Node (S, I), Node (S'Old, I))
          and then Node (S, I) = Unlinked_View (S'Old, N, I));
 
+   function Text_Attribute_Content (S : State; Attribute : Node_Ref)
+      return Boolean is
+     (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+       (if Node (S, I).State = Live and then Node (S, I).Parent = Attribute
+         and then Node (S, I).Kind /= Attribute_Node
+        then Node (S, I).Kind = Text_Node
+          and then Node (S, I).First_Child = Null_Node
+          and then Node (S, I).First_Prop = Null_Node
+          and then Node (S, I).First_Namespace = Null_Namespace))
+     with Global => null,
+       Annotate => (GNATprove, Inline_For_Proof),
+       Pre => Valid (S) and then Attribute in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Attribute).State = Live
+         and then Node (S, Attribute).Kind = Attribute_Node;
+
    procedure Attach_Child
      (S : in out State; Parent, Child : Node_Ref; Success : out Boolean)
    with Global => null,
@@ -764,6 +1008,7 @@ package XML3_DOM with SPARK_Mode is
        and then Capacity_Of (S) = Capacity_Of (S'Old)
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Owner_Count (S) = Owner_Count (S'Old)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
          Node (S, I).State = Node (S'Old, I).State
@@ -773,6 +1018,27 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S, I).Facade = Node (S'Old, I).Facade)
        and then (if not Success then Same_Graph (S, S'Old))
        and then (if Success then Node (S, Child).Parent = Parent)
+       and then (if Node (S'Old, Child).Parent = Null_Node then
+           (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+             Node (S, I).First_Prop = Node (S'Old, I).First_Prop
+             and then Node (S, I).First_Namespace =
+               Node (S'Old, I).First_Namespace
+             and then (if I /= Parent then
+               Node (S, I).First_Child = Node (S'Old, I).First_Child)))
+       and then (if Node (S'Old, Parent).Kind = Attribute_Node
+         and then Text_Attribute_Content (S'Old, Parent)
+         and then Node (S'Old, Child).Kind = Text_Node
+         and then Node (S'Old, Child).Parent = Null_Node
+         and then Node (S'Old, Child).First_Child = Null_Node
+         and then Node (S'Old, Child).First_Prop = Null_Node
+         and then Node (S'Old, Child).First_Namespace = Null_Namespace then
+           Text_Attribute_Content (S, Parent)
+           and then Node (S, Parent).First_Prop = Node (S'Old, Parent).First_Prop
+           and then Node (S, Parent).First_Namespace =
+             Node (S'Old, Parent).First_Namespace
+           and then Node (S, Child).First_Child = Null_Node
+           and then Node (S, Child).First_Prop = Null_Node
+           and then Node (S, Child).First_Namespace = Null_Namespace)
        and then (if not Success then Snapshot_Nodes (S) = Snapshot_Nodes (S)'Old)
        and then (if Success then
          (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
@@ -843,6 +1109,7 @@ package XML3_DOM with SPARK_Mode is
        and then Capacity_Of (S) = Capacity_Of (S'Old)
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Owner_Count (S) = Owner_Count (S'Old)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
          Node (S, I).State = Node (S'Old, I).State
@@ -880,6 +1147,7 @@ package XML3_DOM with SPARK_Mode is
        and then Capacity_Of (S) = Capacity_Of (S)'Old
        and then Node_Count (S) = Node_Count (S)'Old
        and then Namespace_Count (S) = Namespace_Count (S)'Old
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Owner_Count (S) = Owner_Count (S)'Old
        and then (for all B in Owner_Ref range
          1 .. Owner_Ref (Owner_Count (S'Old)) =>
@@ -897,11 +1165,33 @@ package XML3_DOM with SPARK_Mode is
          and then Projection_Required (S)
          else Same_Graph (S, S'Old));
 
+   function Retained_Declarations_Clear (S : State; Root : Node_Ref)
+      return Boolean is
+     (for all N in Namespace_Ref range
+        1 .. Namespace_Ref (Namespace_Count (S)) =>
+        (if Namespace (S, N).State = Live
+          and then Namespace (S, N).Owns_Reservation
+          and then Namespace (S, N).Parent /= Null_Node
+         then not Ancestor (S, Root, Namespace (S, N).Parent)))
+     with Ghost, Global => null,
+       Pre => Valid (S) and then Root in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Root).State = Live;
+
+   procedure Leaf_Retained_Declarations_Lemma (S : State; Root : Node_Ref)
+     with Ghost, Global => null,
+       Pre => Valid (S) and then Root in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Root).State = Live
+         and then Node (S, Root).First_Child = Null_Node
+         and then Node (S, Root).First_Prop = Null_Node
+         and then Node (S, Root).First_Namespace = Null_Namespace,
+       Post => Retained_Declarations_Clear (S, Root);
+
    procedure Free_Subtree
      (S : in out State; Root : Node_Ref)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S) and then Root in 1 .. Node_Ref (Node_Count (S))
-       and then Node (S, Root).State = Live,
+       and then Node (S, Root).State = Live
+       and then Retained_Declarations_Clear (S, Root),
      Post => Valid (S) and then Can_Edit (S)
        and then Node (S, Root).State = Tombstone
        and then Facades_Preserved (S'Old, S)
@@ -909,7 +1199,12 @@ package XML3_DOM with SPARK_Mode is
        and then S.Capacity = S'Old.Capacity
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
        and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S'Old)) =>
          (if Node (S'Old, I).State = Live
            and then Ancestor (S'Old, Root, I)
@@ -925,7 +1220,67 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S'Old, Root).First_Child = Null_Node
          and then Node (S'Old, Root).First_Prop = Null_Node then
            (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S'Old)) =>
-             (if I /= Root then Node (S, I) = Node (S'Old, I))));
+             (if I /= Root then Node (S, I) = Node (S'Old, I)))
+           and then (for all B in Owner_Ref range
+             1 .. Owner_Ref (Owner_Count (S'Old)) =>
+               (if not Holds (Node (S'Old, Root), B) then
+                 Owner (S, B) = Owner (S'Old, B))));
+
+   procedure Free_Subtree_With_Namespaces
+     (S : in out State; Root : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Root in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Root).State = Live,
+     Post => Valid (S) and then Can_Edit (S)
+       and then Node (S, Root).State = Tombstone
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S'Old)) =>
+           (if Node (S'Old, I).State = Live
+             and then Ancestor (S'Old, Root, I)
+            then Node (S, I).State = Tombstone
+            else Node (S, I) = Unlinked_View (S'Old, Root, I)))
+       and then (for all I in Namespace_Ref range
+         1 .. Namespace_Ref (Namespace_Count (S'Old)) =>
+           (if Namespace (S'Old, I).State = Live
+             and then Namespace (S'Old, I).Parent /= Null_Node
+             and then Namespace (S'Old, I).Parent in
+               1 .. Node_Ref (Node_Count (S'Old))
+             and then Node
+               (S'Old, Namespace (S'Old, I).Parent).State = Live
+             and then Ancestor
+               (S'Old, Root, Namespace (S'Old, I).Parent)
+            then Namespace (S, I).Parent = Null_Node
+              and then Namespace (S, I).Next = Null_Namespace
+              and then Namespace (S, I).Previous = Null_Namespace
+              and then not Namespace (S, I).Attached
+              and then not Namespace (S, I).Owns_Reservation))
+       and then (if Node (S'Old, Root).Parent = Null_Node
+         and then Node (S'Old, Root).First_Child = Null_Node
+         and then Node (S'Old, Root).First_Prop = Null_Node then
+           (for all I in Node_Ref range
+             1 .. Node_Ref (Node_Count (S'Old)) =>
+               (if I /= Root then Node (S, I) = Node (S'Old, I))));
+
+   procedure Empty_Attribute_Content_Lemma (S : State; Attribute : Node_Ref)
+     with Ghost, Global => null,
+       Pre => Valid (S)
+         and then Attribute in 1 .. Node_Ref (Node_Count (S))
+         and then Node (S, Attribute).State = Live
+         and then Node (S, Attribute).Kind = Attribute_Node
+         and then Node (S, Attribute).First_Child = Null_Node
+         and then Node (S, Attribute).First_Prop = Null_Node,
+       Post => Text_Attribute_Content (S, Attribute);
 
    procedure Retire_Attribute_Children
      (S : in out State; Attribute, Keep : Node_Ref)
@@ -945,6 +1300,24 @@ package XML3_DOM with SPARK_Mode is
        and then Node_Count (S) = Node_Count (S'Old)
        and then Namespace_Count (S) = Namespace_Count (S'Old)
        and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
+       and then (if Text_Attribute_Content (S'Old, Attribute) then
+         Snapshot_Namespaces (S) = Snapshot_Namespaces (S)'Old
+         and then (for all I in Node_Ref range
+           1 .. Node_Ref (Node_Count (S'Old)) =>
+             (if I /= Attribute and then Node (S'Old, I).Parent /= Attribute
+              then Node (S, I) = Node (S'Old, I)))
+         and then (for all B in Owner_Ref range
+           1 .. Owner_Ref (Owner_Count (S'Old)) =>
+             Owner (S, B).Reservations = Owner (S'Old, B).Reservations)
+         and then (for all I in Node_Ref range
+           1 .. Node_Ref (Node_Count (S'Old)) =>
+             (if Node (S'Old, I).State = Live
+               and then Node (S'Old, I).Kind = Element_Node then
+                 Node (S, I) = Node (S'Old, I))))
        and then Node (S, Attribute) =
          (Node (S'Old, Attribute) with delta First_Child => Keep,
            Last_Child => Keep)
@@ -1248,13 +1621,17 @@ private
              Allocated_Namespace (S, N.First_Namespace)
              and then S.Namespaces (Positive (N.First_Namespace)).Attached
              and then S.Namespaces (Positive (N.First_Namespace)).Parent = Node_Ref (I)
-             and then S.Namespaces (Positive (N.First_Namespace)).Owner = N.Owner
+             and then
+               (S.Namespaces (Positive (N.First_Namespace)).Owner = N.Owner
+                or else S.Namespaces (Positive (N.First_Namespace)).Owns_Reservation)
              and then S.Namespaces (Positive (N.First_Namespace)).Previous = 0)
            and then (if N.Last_Namespace /= 0 then
              Allocated_Namespace (S, N.Last_Namespace)
              and then S.Namespaces (Positive (N.Last_Namespace)).Attached
              and then S.Namespaces (Positive (N.Last_Namespace)).Parent = Node_Ref (I)
-             and then S.Namespaces (Positive (N.Last_Namespace)).Owner = N.Owner
+             and then
+               (S.Namespaces (Positive (N.Last_Namespace)).Owner = N.Owner
+                or else S.Namespaces (Positive (N.Last_Namespace)).Owns_Reservation)
              and then S.Namespaces (Positive (N.Last_Namespace)).Next = 0)))
      with Pre => Well_Sized (S) and then I <= S.Node_Used;
 
@@ -1264,24 +1641,41 @@ private
       begin
         N.State /= Live or else
           (N.Owner in 1 .. Owner_Ref (S.Owner_Used)
-           and then S.Owners (Positive (N.Owner)).State in Live | Releasing
+           and then (if N.Owns_Reservation then
+             S.Owners (Positive (N.Owner)).State = Live
+             and then S.Owners (Positive (N.Owner)).Reservations > 0
+             and then (for all J in 1 .. S.Ns_Used =>
+               (if J /= I and then S.Namespaces (J).State = Live
+                  and then S.Namespaces (J).Owns_Reservation
+                then S.Namespaces (J).Owner /= N.Owner))
+             else S.Owners (Positive (N.Owner)).State in Live | Releasing)
            and then N.Attached = (N.Parent /= 0)
            and then (if N.Parent = 0 then N.Next = 0 and then N.Previous = 0
              else N.Parent in 1 .. Node_Ref (S.Node_Used)
                and then S.Nodes (Positive (N.Parent)).State in Live | Tombstone
+               and then (if N.Owns_Reservation then
+                 S.Nodes (Positive (N.Parent)).State = Live)
                and then S.Nodes (Positive (N.Parent)).Kind = Element_Node
-               and then S.Nodes (Positive (N.Parent)).Owner = N.Owner)
+               and then
+                 (S.Nodes (Positive (N.Parent)).Owner = N.Owner
+                  or else N.Owns_Reservation))
            and then (if N.Previous /= 0 then
              Allocated_Namespace (S, N.Previous)
              and then S.Namespaces (Positive (N.Previous)).Next = Namespace_Ref (I)
              and then S.Namespaces (Positive (N.Previous)).Parent = N.Parent
-             and then S.Namespaces (Positive (N.Previous)).Owner = N.Owner
+             and then
+               (S.Namespaces (Positive (N.Previous)).Owner = N.Owner
+                or else N.Owns_Reservation
+                or else S.Namespaces (Positive (N.Previous)).Owns_Reservation)
              and then S.Namespaces (Positive (N.Previous)).Sibling_Order < N.Sibling_Order)
            and then (if N.Next /= 0 then
              Allocated_Namespace (S, N.Next)
              and then S.Namespaces (Positive (N.Next)).Previous = Namespace_Ref (I)
              and then S.Namespaces (Positive (N.Next)).Parent = N.Parent
-             and then S.Namespaces (Positive (N.Next)).Owner = N.Owner
+             and then
+               (S.Namespaces (Positive (N.Next)).Owner = N.Owner
+                or else N.Owns_Reservation
+                or else S.Namespaces (Positive (N.Next)).Owns_Reservation)
              and then S.Namespaces (Positive (N.Next)).Sibling_Order > N.Sibling_Order)
            and then (if N.Parent /= 0 and then N.Previous = 0 then
              S.Nodes (Positive (N.Parent)).First_Namespace = Namespace_Ref (I))
@@ -1404,6 +1798,10 @@ private
            Node (S, I) = Original_Nodes (Positive (I))))
        and then (for all I in Namespace_Ref range 1 .. Namespace_Ref (Namespace_Count (S)) =>
          XML3_DOM.Namespace (S, I) = Original_Ns (Positive (I)))
+       and then Snapshot_Namespaces (S) = Original_Ns
+       and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
+         (if Original_Owners (Positive (B)).State /= Live then
+            Owner (S, B) = Original_Owners (Positive (B))))
        and then (for all B in Owner_Ref range 1 .. Owner_Ref (Owner_Count (S)) =>
          (if Holds (Original_Nodes (Positive (N)), B) = Holds (Node (S, N), B) then
            Owner (S, B) = Original_Owners (Positive (B))

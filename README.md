@@ -42,8 +42,8 @@ Ada の範囲チェックと整数オーバーフロー検査は維持します�
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
 `src/xml3_namespaces.*`、`src/xml3_encoding.*`）と、DOM 状態・反映・Store・
 parser materialization・Runtime（`src/xml3_dom*.{ads,adb}`）を GNATprove で検査します。
-名前空間は読み取りと
-参照 API のみをサポートし、完全な XML/namespace conformance は主張しません。
+名前空間の読み取り・参照と限定的な宣言／qualified attribute 編集をサポートし、
+完全な XML/namespace conformance は主張しません。
 公開 DOM API は共通の SPARK Store/Runtime に委譲され、pthread mutex の
 trusted Ada/C Guard で直列化されます。Runtime の DOM 操作は証明対象ですが、
 C ABI 変換、外部ポインターとネイティブレイアウト、allocator、mutex 自体は
@@ -72,13 +72,15 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 ```
 
 主なサブセットは、UTF-8/UTF-16LE/BE のメモリ入力、要素・属性・テキスト・CDATA・
-コメント・PI の DOM 閲覧、読み取り専用の namespace lookup に加え、
+コメント・PI の DOM 閲覧、namespace lookup に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode` と namespace-free attribute の
-作成・更新・削除 API をサポートします。attribute 名に colon は使えません。
-namespace 作成・編集、namespace-qualified attribute 編集、copy、文書間移動、
-serialization は未対応です。
+`xmlAddChild`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
+`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
+`xmlSetProp` は namespace-aware QName を
+解決し、malformed QName と未束縛 prefix を拒否します。namespace 宣言の copy、
+属性／namespace copy、文書間移動、serialization は未対応です。
 構造 fields の直接変更はサポートしません。固定上限や
 非対応機能を含む実際の API 一覧は [docs/compatibility.md](docs/compatibility.md)
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
