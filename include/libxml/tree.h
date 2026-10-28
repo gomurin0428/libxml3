@@ -143,6 +143,8 @@ int xmlValidateName(const xmlChar *value, int space);
 int xmlValidateNCName(const xmlChar *value, int space);
 int xmlValidateQName(const xmlChar *value, int space);
 int xmlValidateNMToken(const xmlChar *value, int space);
+xmlChar *xmlSplitQName2(const xmlChar *name, xmlChar **prefix);
+const xmlChar *xmlSplitQName3(const xmlChar *name, int *len);
 xmlChar *xmlNodeGetContent(const xmlNode *cur);
 xmlChar *xmlGetProp(const xmlNode *node, const xmlChar *name);
 xmlAttrPtr xmlHasProp(const xmlNode *node, const xmlChar *name);

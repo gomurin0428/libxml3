@@ -618,6 +618,18 @@
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlSplitQName2": {
+    "implementation": "partial",
+    "scope": "Raw-byte first-colon split, not lexical validation or namespace resolution. Returns independently allocated NUL-terminated prefix/local copies owned by xmlFree; clears prefix output first and returns NULL for NULL inputs/outputs, no colon, or leading/trailing first colon. Later colons, spaces and malformed UTF-8 remain raw bytes. QName2 allocation failure cleans partial output and reports the existing memory diagnostic. C conversion limits, native allocator/copy/pointer ABI and complete public semantics remain outside proof. OOM injection is libxml3-only; the pinned-reference Unicode comparison does not run it.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSplitQName3": {
+    "implementation": "partial",
+    "scope": "Raw-byte first-colon split, not validation. Returns a borrowed pointer into the input local suffix and writes the prefix byte length only on success; leaves length unchanged on failure. No native allocation or DOM mutation. Later colons, spaces and malformed UTF-8 remain raw bytes. C conversion limits, pointer arithmetic/ABI and complete public semantics remain outside proof. OOM injection is libxml3-only; the pinned-reference Unicode comparison does not run it.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlValidateNCName": {
     "implementation": "partial",
     "scope": "Shared pure SPARK name validator in NCName mode rejects colon and enforces a NameStartChar. Optional XML whitespace, status mapping and trust boundary as xmlValidateName.",

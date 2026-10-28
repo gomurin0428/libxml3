@@ -112,7 +112,33 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "ns-list") == 0) {
+    if (strcmp(operation, "qname-split") == 0) {
+        const xmlChar input[] = "p:name";
+        xmlChar *prefix = (xmlChar *)1;
+        int length = -1;
+        xml3_oom_enable(fail_index);
+        assert(xmlSplitQName3(input, &length) == input + 2 && length == 1);
+        assert(xml3_oom_count() == 0);
+        xmlChar *local = xmlSplitQName2(input, &prefix);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!local && !prefix);
+            require_oom_error();
+        } else {
+            assert(local && prefix);
+            assert(xmlStrEqual(local, BAD_CAST "name"));
+            assert(xmlStrEqual(prefix, BAD_CAST "p"));
+        }
+        xmlFree(local);
+        xmlFree(prefix);
+        local = xmlSplitQName2(input, &prefix);
+        assert(local && prefix && xmlStrEqual(local, BAD_CAST "name")
+               && xmlStrEqual(prefix, BAD_CAST "p"));
+        xmlFree(local);
+        xmlFree(prefix);
+    } else if (strcmp(operation, "ns-list") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);
         xmlNsPtr ns = xmlNewNs(dom_node, BAD_CAST "urn:p", BAD_CAST "p");

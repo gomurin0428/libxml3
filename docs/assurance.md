@@ -5,7 +5,7 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 ## Intended proof claims
 
-`proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Parser`,
+`proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Text.QNames`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
 `XML3_DOM_Constructors`, `XML3_DOM_Store`, its `Queries`, `Properties`, and
 `Documents` and `Serialization` children, `XML3_Serialization`,
@@ -40,10 +40,11 @@ managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
 managed list release through `Runtime.Release_List` / `Store.Release_List`,
 namespace-list traversal through
 `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
-`Collect_Namespaces`, and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,183 checks
-(958 flow and 10,225 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 133 warnings. The representation-generation
+`Collect_Namespaces`, QName splitting through `XML3_Text.QNames.Prefix_Length`
+and `Split`, and explicit UTF-8 memory serialization. The C adapters and native ABI
+implementation are not proved. The refreshed aggregate has 11,218 checks
+(968 flow and 10,250 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -164,7 +165,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,183-check aggregate proof; see
+new units are included in the current successful 11,218-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -349,6 +350,15 @@ XML名の4つの公開validatorは、SPARKの `Text.Valid_Name` でXML空白・�
 所有権を変更しません。走査の範囲・停止性は証明対象です。XML名の完全な意味論は契約に
 記述しておらず、固定版比較でUnicode境界・不正UTF-8・空白・QNameの形を検査します。
 C pointerの妥当性・変換とstatus写像は従来どおり証明外です。
+
+`xmlSplitQName2` / `xmlSplitQName3` は validation や namespace 解決ではなく、SPARK
+`XML3_Text.QNames.Prefix_Length` が NUL 終端 byte 列の最初の colon と prefix byte length
+を求める raw split です。QName2 の `Split` は prefix/local の independent copy、終端 byte、
+部分確保失敗時の cleanup を管理し、QName3 は input 内の borrowed local suffix と成功時だけ
+更新する length slot を返します。後続 colon、空白、不正 UTF-8 は検査せず raw bytes のままです。
+DOM/Store は変更せず、C conversion limit/error mapping、native allocator/copy、pointer arithmetic
+と ABI は trusted boundary です。Unicode 比較は pinned reference と libxml3 の両方で行い、
+OOM allocation injection は libxml3 のみで実行します。
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、
