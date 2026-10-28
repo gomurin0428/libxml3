@@ -214,7 +214,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
 
    procedure Append
       (S : in out Store; Facade : System.Address; Suffix : String;
-      Status : out Operation_Status)
+      Status : out Operation_Status; Has_Input : Boolean := False)
    is
       N : constant Node_Ref := Find_Node (S, Facade);
       Tail : Node_Ref;
@@ -228,7 +228,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       if N = Null_Node then
          return;
       end if;
-      if Suffix'Length = 0 then
+      if Suffix'Length = 0 and then not Has_Input then
          Status := Created;
          return;
       end if;

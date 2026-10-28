@@ -26,11 +26,11 @@ foreign-pointer validity remain trusted.
 
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
-operations used by public C APIs, including namespace editing and explicit
-UTF-8 memory serialization. The C adapters and native ABI implementation are
-not proved. The recorded aggregate has 10,831 checks, no unproved or justified
-conditions, and 128 warnings; the representation-generation diagnostic
-is recorded separately.
+operations used by public C APIs, including bounded content append, namespace
+editing and explicit UTF-8 memory serialization. The C adapters and native ABI
+implementation are not proved. The refreshed aggregate has 10,831 checks, no
+unproved or justified conditions, 0 `pragma Assume` statements, and 128
+warnings; the representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -207,6 +207,12 @@ API に対応する mode と content が NULL かどうかを渡すだけで、r
 NUL-terminated 変換です。この pointer 走査は形式証明外で、正の長さを指定した
 非終端バッファと長さ 0 の入力を guard page で検査します。置換・所有権・解放判断は
 既存の SPARK 実装のままです。新しい ABI entry の追加が証明範囲を広げる主張ではありません。
+
+`xmlNodeAddContentLen` も同じ bounded string 変換を使います。C 境界は正の長さの non-NULL
+入力かを渡し、Store が空の入力を無操作として扱うか、空の text として扱うかを決めます。
+接続・文字列結合・失敗時の保持は既存の Append operation を再利用し、`Ready` 契約は
+維持しています。guard page、空の text の確保失敗と再試行、UTF-8 の分割追記から出力への
+回復は実行テストの根拠であり、C pointer の読み取り安全性の形式証明ではありません。
 
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.
