@@ -9,6 +9,13 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
+`xmlNodeIsText` は text のみで 1、CDATA を含む他の kind・NULL・未登録 node で 0 です。
+`xmlIsBlankNode` は text/CDATA の content が NULL・空・XML 空白のみなら 1、他は 0 です。
+空白は space・tab・LF・CR に限り、垂直タブ・form feed・NBSP・全角空白は含めません。
+判定は child の内容に再帰せず、管理中の content 長を上限に読み取ります。
+追記・置換・結合後や文書先行解放後も同じ管理状態を使い、DOM・所有権を変更しません。
+外部で作った構造体や C 構造体フィールドの直接書換えは対象外です。
+
 `xmlTextConcat` は text・CDATA・comment・PI のみに追記し、成功で 0、失敗で -1 を返します。
 要素・属性・document・未登録 node は内容を変えず拒否し、NULL content でも kind を検査します。
 非負の長さは読み取り上限、0 では入力を読みません。負の長さ（-1 以外も固定版と同様）は

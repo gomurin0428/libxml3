@@ -293,6 +293,14 @@ is
          XML3_DOM_Store.Queries.Get_Content (Current, Property, Result, Status);
       end Get_Property;
 
+      procedure Test_Node
+        (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind;
+         Result : out Boolean; Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Queries.Test_Node (Current, Facade, Mode, Result, Status);
+      end Test_Node;
+
       procedure Select_Element
         (Facade : System.Address;
          Mode : XML3_DOM_Store.Queries.Element_Query_Kind;

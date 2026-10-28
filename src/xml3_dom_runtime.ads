@@ -170,6 +170,11 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Test_Node
+        (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind;
+         Result : out Boolean; Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (Input => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Select_Element
         (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Element_Query_Kind;
          Result : out System.Address; Count : out Natural;

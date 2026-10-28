@@ -666,6 +666,44 @@ package body XML3_C is
       return Read_Doc (Cur, System.Null_Address, System.Null_Address, 0);
    end Parse_Doc;
 
+   function Test_Node
+     (Node : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind)
+     return Interfaces.C.int
+   is
+      Result : Boolean := False;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Test_Node (Node, Mode, Result, Status);
+      end;
+      Report_Operation_Status (Status, Validation_Error => False);
+      return (if Result then 1 else 0);
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return 0;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return 0;
+      when others =>
+         Report_Dom_Error (1);
+         return 0;
+   end Test_Node;
+
+   function Node_Is_Text (Node : System.Address) return Interfaces.C.int is
+   begin
+      return Test_Node (Node, XML3_DOM_Store.Queries.Text_Test);
+   end Node_Is_Text;
+
+   function Is_Blank_Node (Node : System.Address) return Interfaces.C.int is
+   begin
+      return Test_Node (Node, XML3_DOM_Store.Queries.Blank_Test);
+   end Is_Blank_Node;
+
    function Select_Element_Node
      (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Element_Query_Kind;
       Validation_Error : Boolean := False) return System.Address
