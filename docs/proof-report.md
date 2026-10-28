@@ -49,8 +49,8 @@ NUL-then-`:name` tail quirk. Guard-page and tail cases are libxml3-only.
 Early mismatches return immediately; equality requiring reads beyond the
 `Max_Bytes` scan cap maps to limit error plus zero rather than silent equality.
 Native reads, foreign
-pointer validity/bounds, actual bytes, address arithmetic, C mapping, XML-name
-and UTF-8 validation, and full equivalence remain trusted.
+pointer validity/bounds, actual bytes, address arithmetic, C mapping, and full
+equivalence remain trusted. XML-name and UTF-8 validation are not performed.
 `xmlStrdup` and `xmlStrndup` convert bounded C inputs in the adapter and call
 `XML3_Text.Buffers.Duplicate`, also reused by `xmlSplitQName2`. The SPARK proof
 covers input-size constraints, arithmetic/range checks and native-call

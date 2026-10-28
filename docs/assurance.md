@@ -383,8 +383,8 @@ terminator 後を読む unsafe path を意図的に除外した安全性差分�
 `Comparison_Limit_Exceeded` として C 側で diagnostic plus 0 に写像されます。
 scan cap は長い入力の一律拒否ではありません。Native
 byte reads、foreign pointer validity/bounds、actual contents、address arithmetic、C mapping、
-XML-name/UTF-8 semantics、full public equivalence remain trusted. The operation allocates
-nothing and performs no writes.
+full public equivalence remain trusted. XML-name/UTF-8 validation is not performed.
+The comparison itself allocates nothing and performs no writes.
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、

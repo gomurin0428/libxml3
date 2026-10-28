@@ -159,7 +159,7 @@ name/value も非NULLでなければならず、prefix の literal bytes、colon
 NUL まで比較します。空 prefix は常に0を返し、name/valueを読みません。これは、pinned
 reference の空 prefix path が空 value の終端後を読む unsafe な挙動と、NUL後の `:name` tail
 を解釈する挙動を再現しないためです。guard-page と NUL-then-`:name` の安全性テストは
-libxml3-only で、pinned reference との不一致を主張しません。比較には `Max_Bytes` の
+libxml3-only で、固定版との比較対象には含めません。比較には `Max_Bytes` の
 scan cap があり、上限を越える追加読み取りが必要なら診断を記録して0を返します。
 早い一致・不一致は返るため、長い入力を一律拒否するものではありません。allocation・
 書き込み・XML name/UTF-8検証は行わず、native pointer、
