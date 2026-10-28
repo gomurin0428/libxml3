@@ -112,7 +112,20 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "substring-search") == 0) {
+    if (strcmp(operation, "full-string-compare") == 0) {
+        xml3_oom_enable(0);
+        assert(xmlStrcmp(BAD_CAST "abc", BAD_CAST "abd") == -1);
+        assert(xmlStrcasecmp(BAD_CAST "aBc[", BAD_CAST "AbC{") == 0);
+        assert(xmlStrcasecmp(BAD_CAST "a", BAD_CAST "B") == -1);
+        assert(xmlStrcasecmp(NULL, NULL) == 0);
+        assert(xmlStrcasecmp(NULL, BAD_CAST "") == -1);
+        assert(xmlStrEqual(BAD_CAST "abc", BAD_CAST "abc") == 1);
+        assert(!xmlStrEqual(BAD_CAST "a", BAD_CAST "b"));
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "substring-search") == 0) {
         xmlChar source[] = "aB[aB";
         xml3_oom_enable(0);
         assert(xmlStrstr(source, BAD_CAST "aB") == source);
@@ -1686,6 +1699,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "string-compare") == 0) {
         puts("bounded string comparisons used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "full-string-compare") == 0) {
+        puts("full string comparisons used no native allocations");
         return 0;
     }
     if (strcmp(operation, "release-lists") == 0) {

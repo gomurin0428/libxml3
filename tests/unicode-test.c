@@ -234,6 +234,39 @@ static void test_substring_search(void) {
     xmlFree(copy);
 }
 
+static void test_full_string_comparisons(void) {
+    assert(xmlStrcmp(NULL, NULL) == 0 && xmlStrcasecmp(NULL, NULL) == 0);
+    assert(xmlStrEqual(NULL, NULL) == 1);
+    assert(xmlStrcmp(NULL, BAD_CAST "") == -1 && xmlStrcmp(BAD_CAST "", NULL) == 1);
+    assert(xmlStrcasecmp(NULL, BAD_CAST "") == -1 && xmlStrcasecmp(BAD_CAST "", NULL) == 1);
+    assert(!xmlStrEqual(NULL, BAD_CAST "") && !xmlStrEqual(BAD_CAST "", NULL));
+    for (unsigned left = 0; left < 256; ++left) {
+        for (unsigned right = 0; right < 256; ++right) {
+            xmlChar a[] = {(xmlChar)left, 0}, b[] = {(xmlChar)right, 0};
+            assert(xmlStrcmp(a, b) == (int)left - (int)right);
+            assert(xmlStrcasecmp(a, b) ==
+                   (int)reference_case_map(left) - (int)reference_case_map(right));
+            assert(xmlStrEqual(a, b) == (left == right));
+        }
+    }
+    assert(xmlStrcasecmp(BAD_CAST "AbC", BAD_CAST "aBc") == 0);
+    assert(xmlStrcasecmp(BAD_CAST "[name]", BAD_CAST "{NAME]") == 0);
+    assert(xmlStrcasecmp(BAD_CAST "名a", BAD_CAST "名B") == -1);
+    assert(xmlStrcasecmp(BAD_CAST "É", BAD_CAST "é") != 0);
+    assert(xmlStrcasecmp(BAD_CAST "abc", BAD_CAST "abcd") == -'d');
+    assert(xmlStrcmp(BAD_CAST "a\0x", BAD_CAST "a\0y") == 0);
+    assert(xmlStrcasecmp(BAD_CAST "a\0x", BAD_CAST "A\0y") == 0);
+    xmlDocPtr doc = xmlReadMemory("<Root>MiXeD</Root>", 18, NULL, NULL, 0);
+    assert(doc);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root && xmlStrcasecmp(root->name, BAD_CAST "root") == 0);
+    assert(!xmlStrEqual(root->name, BAD_CAST "root"));
+    xmlChar *text = xmlNodeGetContent(root);
+    xmlFreeDoc(doc);
+    assert(text && xmlStrcasecmp(text, BAD_CAST "mixed") == 0);
+    xmlFree(text);
+}
+
 static void test_bounded_string_comparisons(void) {
     for (unsigned left = 0; left < 256; ++left) {
         for (unsigned right = 0; right < 256; ++right) {
@@ -487,8 +520,20 @@ static void test_string_duplicates(void) {
         source[2] = 0;
         assert(!xmlStrsub(source, 3, 1));
         source[2] = 'A';
+        assert(xmlStrcmp(unreadable, unreadable) == 0);
+        assert(xmlStrcasecmp(unreadable, unreadable) == 0);
+        assert(xmlStrEqual(unreadable, unreadable) == 1);
+        assert(xmlStrcasecmp(NULL, unreadable) == -1);
+        assert(xmlStrcasecmp(unreadable, NULL) == 1);
+        assert(xmlStrcmp(source + 2, BAD_CAST "B") == -1);
+        assert(xmlStrcasecmp(source + 2, BAD_CAST "b") == -1);
+        assert(!xmlStrEqual(source + 2, BAD_CAST "B"));
         assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
         assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
+        source[1] = 'A'; source[2] = 0;
+        assert(xmlStrcasecmp(source + 1, BAD_CAST "a") == 0);
+        assert(xmlStrcmp(source + 1, BAD_CAST "A") == 0);
+        assert(xmlStrEqual(source + 1, BAD_CAST "A") == 1);
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -739,6 +784,7 @@ int main(void) {
     test_char_string_duplicates();
     test_string_concatenation();
     test_bounded_string_comparisons();
+    test_full_string_comparisons();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

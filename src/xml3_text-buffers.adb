@@ -118,18 +118,24 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end if;
    end Find_Substring;
 
-   function Compare_Bounded
-     (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean)
-      return Integer
+   procedure Compare_Scan
+     (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean;
+      Result : out Integer; Complete : out Boolean)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Result in -255 .. 255
    is
       L, R : Character;
    begin
+      Result := 0;
+      Complete := True;
       if Length <= 0 or else Left = Right then
-         return 0;
+         return;
       elsif Left = System.Null_Address then
-         return -1;
+         Result := -1;
+         return;
       elsif Right = System.Null_Address then
-         return 1;
+         Result := 1;
+         return;
       end if;
       for Index in 0 .. Length - 1 loop
          L := Native.Byte_At (Left, Index);
@@ -139,13 +145,43 @@ package body XML3_Text.Buffers with SPARK_Mode is
             R := Case_Map (R);
          end if;
          if L /= R then
-            return Character'Pos (L) - Character'Pos (R);
+            Result := Character'Pos (L) - Character'Pos (R);
+            return;
          elsif L = Character'Val (0) then
-            return 0;
+            return;
          end if;
       end loop;
-      return 0;
+      Complete := False;
+   end Compare_Scan;
+
+   function Compare_Bounded
+     (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean)
+      return Integer
+   is
+      Result : Integer;
+      Complete : Boolean;
+   begin
+      Compare_Scan (Left, Right, Length, Ignore_Case, Result, Complete);
+      if Complete then
+         return Result;
+      else
+         return 0;
+      end if;
    end Compare_Bounded;
+
+   procedure Compare_Terminated
+     (Left, Right : System.Address; Ignore_Case : Boolean;
+      Result : out Integer; Limit_Exceeded : out Boolean;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Complete : Boolean;
+   begin
+      Compare_Scan (Left, Right, Last + 1, Ignore_Case, Result, Complete);
+      Limit_Exceeded := not Complete;
+      if Limit_Exceeded then
+         Result := -1;
+      end if;
+   end Compare_Terminated;
 
    procedure Concatenate
      (Left, Right : String; Has_Left, Has_Right : Boolean;

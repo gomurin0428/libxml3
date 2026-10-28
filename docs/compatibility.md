@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -442,6 +442,21 @@ NULLの左辺は-1、NULLの右辺は+1です。`xmlStrncmp` はunsigned byte差
 `xmlStrncasecmp` は `A`–`Z` に32を加え、`[` も `{` に写す pinned reference のbyte-map
 quirkを保持します。これはUnicode case foldingではありません。比較自体はallocationも
 C-string変換も行いませんが、foreign pointerの有効性、byte内容、読み取り可能範囲は信頼境界です。
+`xmlStrcmp`、`xmlStrEqual`、`xmlStrcasecmp` は SPARK `Buffers.Compare_Terminated` を共有し、
+最初の不一致またはNULで停止します。同一pointerは読み取りなしで一致し、NULL/NULLも一致、
+片側だけNULLなら左NULLが-1、右NULLが+1です。`xmlStrcmp` は unsigned byte 差、
+`xmlStrEqual` はraw byte equalityを返します。`xmlStrcasecmp` は `A`–`Z` と `[`→`{` の
+pinned byte-map quirkを保ち、Unicode foldingやUTF-8 validation/transcodingは行いません。
+scan は `0..Max_Bytes` を読み、境界の不一致またはNULで完了します。同じ非NUL byteがcapまで続き、
+さらなる読み取りが必要なら診断付き `-1` を返します。これは `xmlStrcmp` / `xmlStrcasecmp` で
+信頼できる順序値ではなく、呼び出し側は診断を確認してください。`xmlStrEqual` はこの場合0です。
+不一致・NUL・NULL・同一pointerによる早期終了があるため、長い文字列を一律拒否するものではありません。
+小さい `Last` を与えた内部Ada helper testと形式検証がcap挙動の根拠であり、公開C APIのcap長文字列を
+動的に試したとは主張しません。C adapterはscalar dispatchとdiagnostic mappingのみを行います。
+shared byte vectorsとguard-page casesはpinned referenceとlibxml3の両方で実行し、OOM/no-allocation
+checkはlibxml3-onlyです。SPARKはloop bounds、result range、native preconditions、cap failure contractを
+証明しますが、native pointer/readable bounds/actual bytes、address arithmetic、C mapping、完全なAPI意味論は
+信頼境界です。
 `xmlStrncatNew` は負の `len` を `str2` のNUL終端長として扱い、
 `str1 == NULL` なら `xmlStrndup` 相当、非NULLの `str1` ではNULLの `str2` または
 有効長0なら `str1` の複製、それ以外では `str1` と `str2` の指定byte spanを連結します。

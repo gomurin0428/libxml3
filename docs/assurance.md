@@ -47,12 +47,13 @@ and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
 bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
-`XML3_Text.Buffers.Slice`, and explicit UTF-8 memory serialization.
+`XML3_Text.Buffers.Slice`, terminated byte comparisons through
+`XML3_Text.Buffers.Compare_Terminated`, and explicit UTF-8 memory serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,329 checks
-(1,009 flow and 10,320 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,340 checks
+(1,018 flow and 10,322 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -174,7 +175,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,329-check aggregate proof; see
+new units are included in the current successful 11,340-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -645,6 +646,22 @@ reference quirk rather than Unicode case folding. The comparison allocates
 nothing and performs no C-string conversion; actual native byte reads,
 pointer validity, available memory bounds, and complete API semantics remain
 trusted.
+`xmlStrcmp`, `xmlStrEqual`, and `xmlStrcasecmp` share
+`XML3_Text.Buffers.Compare_Terminated` / `Compare_Scan`. Identical-pointer
+and NULL decisions occur without native reads; otherwise the scan checks
+offsets 0 through `Max_Bytes`, stopping at the first mismatch or NUL. A
+mismatch or NUL at the boundary completes the comparison. Equal non-NUL bytes
+through the cap produce a diagnostic and `Limit_Exceeded`, with -1 returned
+for `xmlStrcmp` / `xmlStrcasecmp`; that is not a trustworthy ordering result.
+`xmlStrEqual` maps the diagnostic result to 0. The case map retains the
+pinned `A`–`Z` and `[` to `{` behavior, not Unicode folding. SPARK proves
+loop bounds, native-call preconditions, result range, and the cap-failure
+contract; actual native reads, foreign-pointer validity/bounds/bytes, C
+diagnostic mapping, and full API semantics remain trusted. The small-cap
+boundary test passes a small `Last` to the Ada helper; no public C string near
+the cap is dynamically constructed. Shared byte-pair and guard-page cases run
+against libxml3 and the pinned reference; OOM/no-allocation checks are
+libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum

@@ -10,6 +10,14 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Slice_Status is (Sliced, No_Slice, No_Memory, Slice_Limit_Exceeded);
 
+   procedure Compare_Terminated
+     (Left, Right : System.Address; Ignore_Case : Boolean;
+      Result : out Integer; Limit_Exceeded : out Boolean;
+      Last : Byte_Count := Max_Bytes)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Result in -255 .. 255
+         and then (if Limit_Exceeded then Result = -1);
+
    procedure Slice
      (Item : System.Address; Start, Length : Integer;
       Result : out System.Address; Status : out Slice_Status)

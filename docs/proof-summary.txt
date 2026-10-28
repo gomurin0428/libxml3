@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ---------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total         Flow                                 Provers   Justified   Unproved
 ---------------------------------------------------------------------------------------------------------------
-Data Dependencies               276          276                                       .           .          .
+Data Dependencies               278          278                                       .           .          .
 Flow Dependencies                 .            .                                       .           .          .
-Initialization                  584          584                                       .           .          .
+Initialization                  591          591                                       .           .          .
 Non-Aliasing                      .            .                                       .           .          .
 Run-time Checks                5063            .      5063 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
 Assertions                     1486            .    1486 (CVC5 66%, Trivial 11%, Z3 23%)           .          .
-Functional Contracts           3716            .     3716 (CVC5 69%, Trivial 2%, Z3 29%)           .          .
+Functional Contracts           3718            .     3718 (CVC5 69%, Trivial 2%, Z3 29%)           .          .
 LSP Verification                  .            .                                       .           .          .
 Termination                     204          149                    55 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .            .                                       .           .          .
 ---------------------------------------------------------------------------------------------------------------
-Total                         11329    1009 (9%)                             10320 (91%)           .          .
+Total                         11340    1018 (9%)                             10322 (91%)           .          .
 
 
 max steps used for successful proof: 47922
@@ -442,16 +442,18 @@ in unit xml3_text, 9 subprograms and packages out of 9 analyzed
   XML3_Text.Valid_UTF8 at xml3_text.ads:33 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Text.Validate_UTF8 at xml3_text.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_Text.XML_Char at xml3_text.ads:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-in unit xml3_text-buffers, 9 subprograms and packages out of 9 analyzed
+in unit xml3_text-buffers, 11 subprograms and packages out of 11 analyzed
   XML3_Text.Buffers at xml3_text-buffers.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.Buffers.Case_Map at xml3_text-buffers.adb:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Compare_Bounded at xml3_text-buffers.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Text.Buffers.Concatenate at xml3_text-buffers.ads:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_Text.Buffers.Duplicate at xml3_text-buffers.ads:58 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Find_Byte at xml3_text-buffers.ads:29 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Text.Buffers.Find_Substring at xml3_text-buffers.ads:20 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
-  XML3_Text.Buffers.Fits at xml3_text-buffers.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Buffers.Slice at xml3_text-buffers.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Text.Buffers.Compare_Bounded at xml3_text-buffers.ads:46 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Compare_Scan at xml3_text-buffers.adb:121 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Text.Buffers.Compare_Terminated at xml3_text-buffers.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Concatenate at xml3_text-buffers.ads:57 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Text.Buffers.Duplicate at xml3_text-buffers.ads:66 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Find_Byte at xml3_text-buffers.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Text.Buffers.Find_Substring at xml3_text-buffers.ads:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_Text.Buffers.Fits at xml3_text-buffers.ads:52 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text.Buffers.Slice at xml3_text-buffers.ads:21 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
 in unit xml3_text-qnames, 5 subprograms and packages out of 5 analyzed
   XML3_Text.QNames at xml3_text-qnames.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.QNames.Build at xml3_text-qnames.ads:19 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
