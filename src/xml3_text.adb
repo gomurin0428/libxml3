@@ -69,6 +69,57 @@ package body XML3_Text with SPARK_Mode is
       return 0;
    end Name_Width;
 
+   function Valid_Name
+     (Input : String; Kind : Name_Kind; Allow_Space : Boolean) return Boolean
+   is
+      Position : Positive := 1;
+      Last : Natural := Input'Last;
+      Initial : Boolean := True;
+      Colon_Seen : Boolean := False;
+      Width : Natural;
+      function Blank (C : Character) return Boolean is
+        (C = ' ' or else Character'Pos (C) in 9 | 10 | 13);
+   begin
+      if Allow_Space then
+         while Position <= Last and then Blank (Input (Position)) loop
+            pragma Loop_Invariant (Position in 1 .. Input'Length + 1);
+            pragma Loop_Variant (Increases => Position);
+            Position := Position + 1;
+         end loop;
+         while Last >= Position and then Blank (Input (Last)) loop
+            pragma Loop_Invariant (Last <= Input'Last);
+            pragma Loop_Variant (Decreases => Last);
+            Last := Last - 1;
+         end loop;
+      end if;
+      if Position > Last then
+         return False;
+      end if;
+      while Position <= Last loop
+         pragma Loop_Invariant (Position in 1 .. Input'Length + 1);
+         pragma Loop_Variant (Increases => Position);
+         if Input (Position) = ':' then
+            if Kind = NCName
+              or else (Kind = QName and then (Initial or else Colon_Seen))
+            then
+               return False;
+            end if;
+            Colon_Seen := True;
+            Initial := Kind = QName;
+            Position := Position + 1;
+         else
+            Width := Name_Width
+              (Input, Position, Initial and then Kind /= NMToken);
+            if Width = 0 or else Width > Last - Position + 1 then
+               return False;
+            end if;
+            Initial := False;
+            Position := Position + Width;
+         end if;
+      end loop;
+      return not Initial;
+   end Valid_Name;
+
    procedure Validate_UTF8
      (Input : String;
       Kind : out Text_Error_Kind;

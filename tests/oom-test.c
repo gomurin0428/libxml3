@@ -112,7 +112,24 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "success") == 0) {
+    if (strcmp(operation, "validate-name") == 0) {
+        assert(!xmlReadMemory("<", 1, NULL, NULL,
+                              XML_PARSE_NOERROR | XML_PARSE_NOWARNING));
+        error = xmlGetLastError();
+        assert(error && error->code != XML_ERR_OK);
+        int saved_code = error->code;
+        xml3_oom_enable(fail_index);
+        assert(xmlValidateName(BAD_CAST "p:名", 0) == 0);
+        assert(xmlValidateNCName(BAD_CAST "p:名", 0) == 1);
+        assert(xmlValidateQName(BAD_CAST " \tp:名\r\n", -1) == 0);
+        assert(xmlValidateNMToken(BAD_CAST "1:名", 0) == 0);
+        assert(xmlValidateName(NULL, 0) == -1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        assert(xmlGetLastError() == error && error->code == saved_code);
+    } else if (strcmp(operation, "success") == 0) {
         int status = -1;
         xml3_oom_enable(fail_index);
         doc = xml3ReadMemory("<r><x/></r>", 11, &status);
@@ -1440,6 +1457,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "attr-delete") == 0) {
         puts("attribute deletion used no allocations");
+        return 0;
+    }
+    if (strcmp(operation, "validate-name") == 0) {
+        puts("name validation used no native allocations");
         return 0;
     }
     if (strcmp(operation, "ns-noalloc") == 0) {

@@ -39,8 +39,8 @@ attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
 managed list release through `Runtime.Release_List` / `Store.Release_List`,
 and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,116 checks
-(943 flow and 10,173 prover), no
+implementation are not proved. The refreshed aggregate has 11,143 checks
+(947 flow and 10,196 prover), no
 unproved or justified conditions, 0 `pragma Assume` statements, and 130
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -162,7 +162,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,116-check aggregate proof; see
+new units are included in the current successful 11,143-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -326,6 +326,12 @@ mutex・Runtime 呼び出し・status/exception 変換のみで、native の `ne
 接続済み suffix の安全な切り離し、再編集・出力・再読み込み、文書先行解放、名前空間の
 残存利用者、native allocation 不要を実行テストで検査します。完全な一覧解放の意味論・
 全原子性・native pointer validity を証明したという主張ではありません。
+
+XML名の4つの公開validatorは、SPARKの `Text.Valid_Name` でXML空白・コロン・先頭文字を
+処理し、既存の `Name_Width` でUTF-8と名前文字を検査します。Globalはnullで、DOMや
+所有権を変更しません。走査の範囲・停止性は証明対象です。XML名の完全な意味論は契約に
+記述しておらず、固定版比較でUnicode境界・不正UTF-8・空白・QNameの形を検査します。
+C pointerの妥当性・変換とstatus写像は従来どおり証明外です。
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、

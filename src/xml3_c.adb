@@ -2271,6 +2271,41 @@ package body XML3_C is
          return 0;
    end Str_Length;
 
+   function Validate_Name_Value
+     (Value : System.Address; Space : int; Kind : XML3_Text.Name_Kind)
+      return int
+   is
+   begin
+      if Value = System.Null_Address then
+         return -1;
+      end if;
+      return (if XML3_Text.Valid_Name
+        (C_String_Value (Value), Kind, Space /= 0) then 0 else 1);
+   exception
+      when others =>
+         return -1;
+   end Validate_Name_Value;
+
+   function Validate_Name (Value : System.Address; Space : int) return int is
+   begin
+      return Validate_Name_Value (Value, Space, XML3_Text.XML_Name);
+   end Validate_Name;
+
+   function Validate_NCName (Value : System.Address; Space : int) return int is
+   begin
+      return Validate_Name_Value (Value, Space, XML3_Text.NCName);
+   end Validate_NCName;
+
+   function Validate_QName (Value : System.Address; Space : int) return int is
+   begin
+      return Validate_Name_Value (Value, Space, XML3_Text.QName);
+   end Validate_QName;
+
+   function Validate_NMToken (Value : System.Address; Space : int) return int is
+   begin
+      return Validate_Name_Value (Value, Space, XML3_Text.NMToken);
+   end Validate_NMToken;
+
    procedure Free (Item : System.Address) is
    begin
       if Item /= System.Null_Address then
