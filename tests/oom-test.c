@@ -168,6 +168,10 @@ int main(int argc, char **argv) {
         assert(xmlUTF8Strpos(position_text, 1) == position_text + 1);
         assert(xmlUTF8Strpos(position_text, 2) == position_text + 4);
         assert(!xmlUTF8Strpos(position_text, 3));
+        assert(xmlUTF8Strsize(position_text, 1) == 1);
+        assert(xmlUTF8Strsize(position_text, 3) == 4);
+        assert(xmlUTF8Strsize(NULL, 2) == 0);
+        assert(xmlUTF8Strsize(BAD_CAST "a\xed\xa0\x80", 2) == -1);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();

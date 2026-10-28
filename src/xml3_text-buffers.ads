@@ -15,6 +15,16 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type UTF8_Status is (UTF8_Valid, UTF8_Invalid, UTF8_Limit_Exceeded);
 
+   procedure Measure_UTF8_Prefix
+     (Item : System.Address; Characters : Integer;
+      Size : out Byte_Count; Status : out UTF8_Status;
+      Last : Byte_Count := Max_Bytes)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Size <= Last
+         and then (if Status /= UTF8_Valid then Size = 0)
+         and then (if Item = System.Null_Address or Characters <= 0
+                   then Size = 0 and Status = UTF8_Valid);
+
    procedure Find_UTF8_Position
      (Item : System.Address; Index : Integer;
       Position : out Byte_Count; Status : out Search_Status;

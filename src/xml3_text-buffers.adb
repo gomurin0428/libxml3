@@ -30,6 +30,22 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Scan_UTF8 (Item, -1, Length, Offset, Status, Last);
    end Count_UTF8;
 
+   procedure Measure_UTF8_Prefix
+     (Item : System.Address; Characters : Integer;
+      Size : out Byte_Count; Status : out UTF8_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Length : Byte_Count;
+      pragma Unreferenced (Length);
+   begin
+      Size := 0;
+      Status := UTF8_Valid;
+      if Item = System.Null_Address or else Characters <= 0 then
+         return;
+      end if;
+      Scan_UTF8 (Item, Characters, Length, Size, Status, Last);
+   end Measure_UTF8_Prefix;
+
    procedure Find_UTF8_Position
      (Item : System.Address; Index : Integer;
       Position : out Byte_Count; Status : out Search_Status;

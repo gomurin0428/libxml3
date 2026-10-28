@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ---------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total         Flow                                 Provers   Justified   Unproved
 ---------------------------------------------------------------------------------------------------------------
-Data Dependencies               287          287                                       .           .          .
+Data Dependencies               288          288                                       .           .          .
 Flow Dependencies                 .            .                                       .           .          .
-Initialization                  622          622                                       .           .          .
+Initialization                  624          624                                       .           .          .
 Non-Aliasing                      .            .                                       .           .          .
 Run-time Checks                5088            .      5088 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1493            .    1493 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           3742            .     3742 (CVC5 68%, Trivial 2%, Z3 29%)           .          .
+Functional Contracts           3743            .     3743 (CVC5 68%, Trivial 3%, Z3 29%)           .          .
 LSP Verification                  .            .                                       .           .          .
 Termination                     205          149                    56 (CVC5 95%, Z3 5%)           .          .
 Concurrency                       .            .                                       .           .          .
 ---------------------------------------------------------------------------------------------------------------
-Total                         11437    1058 (9%)                             10379 (91%)           .          .
+Total                         11441    1061 (9%)                             10380 (91%)           .          .
 
 
 max steps used for successful proof: 47922
@@ -442,27 +442,28 @@ in unit xml3_text, 9 subprograms and packages out of 9 analyzed
   XML3_Text.Valid_UTF8 at xml3_text.ads:34 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Text.Validate_UTF8 at xml3_text.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_Text.XML_Char at xml3_text.ads:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-in unit xml3_text-buffers, 20 subprograms and packages out of 20 analyzed
+in unit xml3_text-buffers, 21 subprograms and packages out of 21 analyzed
   XML3_Text.Buffers at xml3_text-buffers.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Buffers.Append at xml3_text-buffers.ads:55 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Build_Append at xml3_text-buffers.adb:210 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (14 checks)
-  XML3_Text.Buffers.Case_Map at xml3_text-buffers.adb:344 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Check_UTF8 at xml3_text-buffers.ads:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Compare_Bounded at xml3_text-buffers.ads:97 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Compare_Scan at xml3_text-buffers.adb:401 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Text.Buffers.Compare_Terminated at xml3_text-buffers.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Concatenate at xml3_text-buffers.ads:108 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_Text.Buffers.Count_UTF8 at xml3_text-buffers.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Duplicate at xml3_text-buffers.ads:117 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Find_Byte at xml3_text-buffers.ads:88 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Text.Buffers.Find_Substring at xml3_text-buffers.ads:79 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
-  XML3_Text.Buffers.Find_UTF8_Position at xml3_text-buffers.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Buffers.Fits at xml3_text-buffers.ads:103 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Buffers.Get_UTF8_Char at xml3_text-buffers.ads:41 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_Text.Buffers.Measure at xml3_text-buffers.ads:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_Text.Buffers.Read_Length at xml3_text-buffers.adb:178 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Text.Buffers.Append at xml3_text-buffers.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Build_Append at xml3_text-buffers.adb:226 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (14 checks)
+  XML3_Text.Buffers.Case_Map at xml3_text-buffers.adb:360 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Check_UTF8 at xml3_text-buffers.ads:45 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Compare_Bounded at xml3_text-buffers.ads:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Compare_Scan at xml3_text-buffers.adb:417 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Text.Buffers.Compare_Terminated at xml3_text-buffers.ads:74 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Concatenate at xml3_text-buffers.ads:118 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Text.Buffers.Count_UTF8 at xml3_text-buffers.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Duplicate at xml3_text-buffers.ads:127 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Find_Byte at xml3_text-buffers.ads:98 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Text.Buffers.Find_Substring at xml3_text-buffers.ads:89 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_Text.Buffers.Find_UTF8_Position at xml3_text-buffers.ads:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Fits at xml3_text-buffers.ads:113 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text.Buffers.Get_UTF8_Char at xml3_text-buffers.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Text.Buffers.Measure at xml3_text-buffers.ads:59 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Text.Buffers.Measure_UTF8_Prefix at xml3_text-buffers.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Buffers.Read_Length at xml3_text-buffers.adb:194 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Text.Buffers.Scan_UTF8 at xml3_text-buffers.adb:5 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (23 checks)
-  XML3_Text.Buffers.Slice at xml3_text-buffers.ads:72 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Text.Buffers.Slice at xml3_text-buffers.ads:82 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
 in unit xml3_text-qnames, 5 subprograms and packages out of 5 analyzed
   XML3_Text.QNames at xml3_text-qnames.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.QNames.Build at xml3_text-qnames.ads:19 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)

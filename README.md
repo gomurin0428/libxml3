@@ -198,6 +198,15 @@ XML character validationはしません。overlong、surrogate、U+10FFFF超過�
 返却pointerはinputのlifetime中だけ有効で、`xmlFree`しません。小さい `Last` のAda testでcapを検査し、巨大な公開C stringは
 構築していません。SPARKはscan control、index/offset bounds、status/result contractとnative-call preconditionsを対象にし、
 foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論はtrusted boundaryです。
+`xmlUTF8Strsize` は最大 `len` 個のUnicode scalarに対応するbyte数を返し、終端NULは含めません。scalar数であり、
+grapheme数ではありません。NULL inputまたは `len <= 0` は読み取りなしで0です。要求数より短い文字列は最初のNULまでの
+byte数を返します。要求したscalar数に到達した時点で停止し、その後のsuffixは検査しません。訪問prefixにmalformed、
+truncatedまたはnoncanonicalなstrict UTF-8があれば、部分byte数ではなく診断なしで-1です。referenceのinvalid UTF-8
+動作は保証されないため、この実装は不正な訪問prefixを明示的に拒否します。ASCII controlとUnicode noncharacterは許可しますが、
+XML character validationはしません。inclusive `Max_Bytes` まで走査が未解決ならDOM error 115と-1、予期しない例外は
+DOM error 1と-1です。allocation、input mutation、normalizationは行いません。小さい `Last` のAda testでcapを確認し、
+巨大な公開C stringは構築していません。SPARKはscan control、byte-offset bounds、status/result contractとnative-call
+preconditionsを対象にし、foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論はtrusted boundaryです。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
