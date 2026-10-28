@@ -28,9 +28,9 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
 editing and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 10,892 checks
-(877 flow and 10,015 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 129 warnings; the representation-generation
+implementation are not proved. The refreshed aggregate has 10,908 checks
+(884 flow and 10,024 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 130 warnings; the representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -141,7 +141,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,892-check aggregate proof; see
+new units are included in the successful 10,908-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -237,6 +237,14 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
+`Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。
+文書・namespace の保持は `New_Doc_Content`、text 子の接続は既存の `Attach`、
+途中失敗での非公開ノードの解放は既存の `Release` が担当します。C 側は API 種別の
+選択・文字列変換・mutex・status/exception 変換だけを行い、`xmlNewNode` も共通経路です。
+新しい Store operation の契約は `Ready` の保持と result/status の対応です。
+全公開API意味論や C pointer の有効性を証明したという主張ではありません。
 
 `xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK
 `New_Doc_Content` を使います。C wrapper は non-NULL content の負の長さを走査前に拒否し、

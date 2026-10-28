@@ -783,44 +783,14 @@ package body XML3_C is
    function New_Node
       (Ns, Name : System.Address) return System.Address
    is
-      Result, Implicit_Ns : System.Address := System.Null_Address;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
    begin
-      if Name = System.Null_Address then
-         return System.Null_Address;
-      end if;
-      declare
-         Name_Text : constant String := C_String_Value (Name);
-      begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Construct
-              (XML3_DOM.Element_Node, Name_Text, "", False, Ns,
-               Result, Implicit_Ns, Status);
-         end;
-         Report_Operation_Status (Status);
-         return Result;
-      end;
-   exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
+      return New_Doc_Node
+        (System.Null_Address, Ns, Name, System.Null_Address);
    end New_Node;
 
-   function New_Child_Node
-     (Parent, Ns, Name, Content : System.Address; Raw_Content : Boolean)
+   function New_Element_Node
+     (Context, Ns, Name, Content : System.Address;
+      Raw_Content, As_Child : Boolean)
      return System.Address
    is
       Result : System.Address := System.Null_Address;
@@ -837,9 +807,15 @@ package body XML3_C is
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.New_Child
-           (Parent, Ns, Name_Text, Content_Text, Raw_Content,
-            Content /= System.Null_Address, Result, Status);
+         if As_Child then
+            XML3_DOM_Runtime.New_Child
+              (Context, Ns, Name_Text, Content_Text, Raw_Content,
+               Content /= System.Null_Address, Result, Status);
+         else
+            XML3_DOM_Runtime.New_Doc_Node
+              (Context, Ns, Name_Text, Content_Text, Raw_Content,
+               Content /= System.Null_Address, Result, Status);
+         end if;
       end;
       Report_Operation_Status (Status);
       return Result;
@@ -856,20 +832,44 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end New_Child_Node;
+   end New_Element_Node;
+
+   function New_Doc_Node
+     (Doc, Ns, Name, Content : System.Address) return System.Address
+   is
+   begin
+      if Name = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return New_Element_Node
+        (Doc, Ns, Name, Content, Raw_Content => False, As_Child => False);
+   end New_Doc_Node;
+
+   function New_Doc_Raw_Node
+     (Doc, Ns, Name, Content : System.Address) return System.Address
+   is
+   begin
+      if Name = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return New_Element_Node
+        (Doc, Ns, Name, Content, Raw_Content => True, As_Child => False);
+   end New_Doc_Raw_Node;
 
    function New_Child
      (Parent, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      return New_Child_Node (Parent, Ns, Name, Content, False);
+      return New_Element_Node
+        (Parent, Ns, Name, Content, Raw_Content => False, As_Child => True);
    end New_Child;
 
    function New_Text_Child
      (Parent, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      return New_Child_Node (Parent, Ns, Name, Content, True);
+      return New_Element_Node
+        (Parent, Ns, Name, Content, Raw_Content => True, As_Child => True);
    end New_Text_Child;
 
    function New_Content_Node

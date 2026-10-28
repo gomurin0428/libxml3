@@ -44,6 +44,10 @@ int main() {
     int (*node_add_content_len)(xmlNodePtr, const xmlChar *, int) = xmlNodeAddContentLen;
     xmlNodePtr (*new_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                            const xmlChar *) = xmlNewChild;
+    xmlNodePtr (*new_doc_node)(xmlDocPtr, xmlNsPtr, const xmlChar *,
+                              const xmlChar *) = xmlNewDocNode;
+    xmlNodePtr (*new_doc_raw_node)(xmlDocPtr, xmlNsPtr, const xmlChar *,
+                                  const xmlChar *) = xmlNewDocRawNode;
     xmlNodePtr (*new_text_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                                 const xmlChar *) = xmlNewTextChild;
     xmlDocPtr doc = xmlReadMemory("<r/>", 4, nullptr, nullptr, XML_PARSE_NONET);
@@ -79,6 +83,8 @@ int main() {
     (void)node_set_content_len;
     (void)node_add_content_len;
     (void)new_child;
+    (void)new_doc_node;
+    (void)new_doc_raw_node;
     (void)new_text_child;
     (void)last_error;
     xmlFreeDoc(doc);
