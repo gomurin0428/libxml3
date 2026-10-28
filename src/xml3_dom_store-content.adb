@@ -23,9 +23,11 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if Kind not in Element_Node | Text_Node | CData_Node | Comment_Node |
-        Processing_Instruction_Node
-        or else (Kind = Element_Node and then Has_Content)
+      if Kind not in Element_Node | Attribute_Node | Text_Node | CData_Node |
+        Comment_Node | Processing_Instruction_Node
+        or else (Kind in Element_Node | Attribute_Node and then Has_Content)
+        or else (Kind = Attribute_Node and then
+          (Ns /= System.Null_Address or else (for some C of Name => C = ':')))
       then
          return;
       end if;
@@ -67,7 +69,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       if Status = Created then
          Result := Facade;
       else
-         Release (S, Facade, Content_Node, False, Cleanup_Status);
+         Release
+           (S, Facade, (if Kind = Attribute_Node then Plain_Attribute
+                        else Content_Node), False, Cleanup_Status);
          if Cleanup_Status /= Created then
             Status := Internal_Error;
          end if;
@@ -78,7 +82,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
      (S : in out Store; Doc, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;
       Result : out System.Address;
-      Status : out Operation_Status)
+      Status : out Operation_Status; Attribute_Mode : Boolean := False)
    is
       Element, Text, Ignored_Ns : System.Address := System.Null_Address;
       Cleanup_Status : Operation_Status;
@@ -108,7 +112,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          end if;
       end if;
       New_Doc_Content
-        (S, Doc, Element_Node, Name, "", False, Element, Status, Ns);
+        (S, Doc, (if Attribute_Mode then Attribute_Node else Element_Node),
+         Name, "", False, Element, Status, Ns);
       if Status /= Created then
          return;
       end if;
@@ -129,7 +134,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       if Status = Created then
          Result := Element;
       else
-         Release (S, Element, Content_Node, False, Cleanup_Status);
+         Release
+           (S, Element, (if Attribute_Mode then Plain_Attribute
+                         else Content_Node), False, Cleanup_Status);
          if Cleanup_Status /= Created then
             Status := Internal_Error;
          end if;

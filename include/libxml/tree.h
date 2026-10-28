@@ -126,6 +126,7 @@ xmlNsPtr xmlNewNs(xmlNodePtr node, const xmlChar *href, const xmlChar *prefix);
 void xmlSetNs(xmlNodePtr node, xmlNsPtr ns);
 void xmlFreeNs(xmlNsPtr cur);
 xmlAttrPtr xmlNewProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
+xmlAttrPtr xmlNewDocProp(xmlDocPtr doc, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewNsProp(xmlNodePtr node, xmlNsPtr ns,
                         const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlSetNsProp(xmlNodePtr node, xmlNsPtr ns,

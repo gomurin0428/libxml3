@@ -31,11 +31,12 @@ editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
 through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
 through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Properties.Set_Qualified_Property`, reverse element navigation through
-`Store.Queries.Select_Element`, and explicit UTF-8 memory serialization. The C
-adapters and native ABI implementation are not proved. The refreshed aggregate
-has 10,980 checks (914 flow and 10,066 prover), no unproved or justified
-conditions, 0 `pragma Assume` statements, and 131 warnings; the
-representation-generation diagnostic is recorded separately.
+`Store.Queries.Select_Element`, detached `xmlNewDocProp` construction through
+`Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, and explicit UTF-8 memory
+serialization. The C adapters and native ABI implementation are not proved.
+The refreshed aggregate has 10,980 checks (914 flow and 10,066 prover), no
+unproved or justified conditions, 0 `pragma Assume` statements, and 131
+warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -123,10 +124,16 @@ calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
 parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`,
 `xmlNewDocPI`, `xmlNewDocText`, `xmlNewDocTextLen`, and `xmlNewCDataBlock`
 share `Runtime.New_Doc_Content` and `Store.Content.New_Doc_Content`. The
+`xmlNewDocProp` adapter uses `Runtime.New_Doc_Node` and
+`Store.Content.New_Doc_Node` with `Attribute_Mode`; it supports only detached,
+unnamespaced attributes. Attribute attachment and standalone serialization are
+not supported. Its complete public C semantics are not proved.
 private C `New_Content_Node` helper handles input conversion, locking, status
-reporting, and exception mapping for these constructors, replacing the
-separate document-text adapter without adding a C ownership path. The Store
-operation is restricted to text, CDATA, comment, and PI kinds; it maintains
+reporting, and exception mapping for the preceding content constructors,
+replacing the separate document-text adapter without adding a C ownership path.
+The `xmlNewDocProp` path uses the shared C `New_Container_Node` helper for
+marshalling, locking, and status mapping; graph and owner decisions stay in SPARK.
+The Store operation is restricted to text, CDATA, comment, and PI kinds; it maintains
 `Ready (S)`, relates the result address to `Created` status, and uses the
 existing `Set_Node_Projection` invariant to set document affiliation and owner
 pin. The core `Create_Node` postcondition specifically guarantees a null name
@@ -288,6 +295,13 @@ Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NU
 選択・文字列変換・mutex・status/exception 変換だけを行い、`xmlNewNode` も共通経路です。
 新しい Store operation の契約は `Ready` の保持と result/status の対応です。
 全公開API意味論や C pointer の有効性を証明したという主張ではありません。
+
+`xmlNewDocProp` は同じ `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node` を
+`Attribute_Mode` で使い、未接続・無namespaceの属性を作ります。文書所属と owner pin、
+値の参照展開、text child の作成、失敗時の解放は SPARK 側にあります。NULL doc と
+管理中の live document を受け入れ、文書先行解放後も属性は `xmlFreeProp` まで保持します。
+NULL/空値は text child なしです。`xmlAddChild` による属性接続と detached attribute の
+単独シリアライズは未対応であり、API 全体の意味論や C pointer validity を証明した主張ではありません。
 
 `xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK
 `New_Doc_Content` を使います。C wrapper は non-NULL content の負の長さを走査前に拒否し、

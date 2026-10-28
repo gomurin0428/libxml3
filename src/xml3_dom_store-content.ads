@@ -15,7 +15,8 @@ package XML3_DOM_Store.Content with SPARK_Mode is
    procedure New_Doc_Node
      (S : in out Store; Doc, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;
-      Result : out System.Address; Status : out Operation_Status)
+      Result : out System.Address; Status : out Operation_Status;
+      Attribute_Mode : Boolean := False)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => Ready (S)
