@@ -23,7 +23,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if Kind not in Text_Node | Comment_Node | Processing_Instruction_Node then
+      if Kind not in Text_Node | CData_Node | Comment_Node |
+        Processing_Instruction_Node
+      then
          return;
       end if;
       if Doc /= System.Null_Address

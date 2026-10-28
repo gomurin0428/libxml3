@@ -44,6 +44,67 @@ static void test_shared_lexical_cases(void) {
     expect_exact_output(representative_input, representative_expected);
 }
 
+static void test_cdata_construction(void) {
+    static const char expected[] =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<r><![CDATA[A&<]]]]><![CDATA[>B]]><![CDATA[x]]>"
+        "<![CDATA[]]><![CDATA[]]></r>\n";
+    xmlChar raw[] = {'A', '&', '<', ']', ']', '>', 'B'};
+    static const xmlChar embedded[] = {'x', 0, 'h'};
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    xmlNodePtr node = xmlNewCDataBlock(doc, raw, sizeof(raw));
+    xmlNodePtr other = xmlNewCDataBlock(NULL, embedded, sizeof(embedded));
+    xmlNodePtr absent = xmlNewCDataBlock(doc, NULL, -1);
+    xmlNodePtr empty = xmlNewCDataBlock(doc, BAD_CAST "", 0);
+    xmlDocPtr reparsed;
+    xmlChar *memory = NULL, *content;
+    int size = 0;
+    assert(doc && root && node && other && absent && empty);
+    assert(node->type == XML_CDATA_SECTION_NODE && node->name == NULL);
+    assert(node->doc == doc && node->parent == NULL && doc->children == NULL);
+    assert(other->doc == NULL && other->name == NULL);
+    assert(absent->content == NULL && empty->content && !empty->content[0]);
+    assert(xmlNewCDataBlock(doc, BAD_CAST "x", -1) == NULL);
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlNewCDataBlock((xmlDocPtr)root, BAD_CAST "x", 1) == NULL);
+#endif
+    raw[0] = 'Z';
+    assert(strcmp((const char *)node->content, "A&<]]>B") == 0);
+    assert(strcmp((const char *)other->content, "x") == 0);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlAddChild(root, node) == node);
+    assert(xmlAddChild(root, other) == other);
+    assert(node->next == other && other->doc == doc);
+    assert(xmlAddChild(root, absent) == absent);
+    assert(xmlAddChild(root, empty) == empty);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size == (int)strlen(expected));
+    assert(memcmp(memory, expected, (size_t)size) == 0);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    content = xmlNodeGetContent(xmlDocGetRootElement(reparsed));
+    assert(content && strcmp((const char *)content, "A&<]]>Bx") == 0);
+    xmlFree(content);
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlNodeSetContent(node, BAD_CAST "\xc3") == 0);
+    memory = NULL;
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory == NULL && size == 0);
+    assert(xmlNodeSetContent(node, BAD_CAST "fixed") == 0);
+    xmlUnlinkNode(node);
+    xmlFreeDoc(doc);
+    assert(node->doc == doc && node->name == NULL);
+    assert(xmlNodeAddContent(node, BAD_CAST "!") == 0);
+    assert(strcmp((const char *)node->content, "fixed!") == 0);
+    xmlFreeNode(node);
+#else
+    xmlFreeDoc(doc);
+#endif
+}
+
 static void test_constructed_comments_and_pi(int affiliated) {
     static const char expected[] =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -651,6 +712,7 @@ static void test_serialization_oom(void) {
 
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "--misc") == 0) {
+        test_cdata_construction();
         test_constructed_comments_and_pi(0);
         test_constructed_comments_and_pi(1);
         test_document_misc_lifetime();
@@ -661,6 +723,7 @@ int main(int argc, char **argv) {
     }
     test_shared_lexical_cases();
     test_round_trip();
+    test_cdata_construction();
     test_constructed_comments_and_pi(0);
     test_constructed_comments_and_pi(1);
     test_document_misc_lifetime();
@@ -684,6 +747,7 @@ int main(int argc, char **argv) {
 #else
 int main(void) {
     test_shared_lexical_cases();
+    test_cdata_construction();
     test_constructed_comments_and_pi(0);
     test_constructed_comments_and_pi(1);
     test_document_misc_lifetime();

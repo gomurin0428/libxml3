@@ -98,6 +98,11 @@ package XML3_C is
      (Doc, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewDocComment";
 
+   function New_CData_Block
+     (Doc, Content : System.Address; Length : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlNewCDataBlock";
+
    function New_Doc_PI
      (Doc, Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewDocPI";

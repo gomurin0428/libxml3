@@ -635,6 +635,10 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
             begin
                pragma Assert (Attachment_In_State (Checkpoint, Ns) = Was_Attached);
                Attach_Property (S.Current.all, E, Attribute, Attached);
+               pragma Assert
+                 (for all I in Namespace_Ref range
+                    1 .. Namespace_Ref (Namespace_Count (Checkpoint)) =>
+                      Namespace (S.Current.all, I) = Namespace (Checkpoint, I));
                Preserve_Safe_Attachment (Checkpoint, S.Current.all, Ns);
                pragma Assert
                  (Attachment_In_State (S.Current.all, Ns) = Was_Attached);
@@ -819,6 +823,10 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
             begin
                pragma Assert (Attachment_In_State (Checkpoint, Ns) = Was_Attached);
                Attach_Child (S.Current.all, Attribute, Replacement, Attached);
+               pragma Assert
+                 (for all I in Namespace_Ref range
+                    1 .. Namespace_Ref (Namespace_Count (Checkpoint)) =>
+                      Namespace (S.Current.all, I) = Namespace (Checkpoint, I));
                Preserve_Safe_Attachment (Checkpoint, S.Current.all, Ns);
                pragma Assert
                  (Attachment_In_State (S.Current.all, Ns) = Was_Attached);

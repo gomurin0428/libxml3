@@ -166,6 +166,12 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewCDataBlock": {
+    "implementation": "partial",
+    "scope": "Bounded raw CDATA construction with optional live document, no attachment and NULL name. Non-NULL negative length rejected; zero length reads no content; NULL/empty distinct. Early NUL ends retained bytes. SPARK construction/owner pin path; document-first release supported. UTF-8/XML validation and CDATA delimiter splitting occur at serialization. Native input validity/callbacks/full API semantics not proved.",
+    "tests": ["tests/serialization-test.c", "tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewDocComment": {
     "implementation": "partial",
     "scope": "Document-affiliated comment construction through shared SPARK Store.Content.New_Doc_Content, without tree attachment. NULL doc supported; non-NULL doc must be registered/live. Owner retention protects detached nodes after document release. NULL/empty content distinction and deferred serializer validation match xmlNewComment. Registration callbacks excluded; complete API semantics not formally proved.",

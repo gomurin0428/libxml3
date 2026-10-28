@@ -519,8 +519,9 @@ package body XML3_DOM_Constructors with SPARK_Mode is
                    Namespace (Before_Projection, I).Owner /= Own));
          Set_Node_Projection
            (Current.all, Local_N,
-            (if Is_Doc then System.Null_Address else Name_Address),
-            (if Is_Doc then 0 else Name'Length),
+            (if Kind in Document_Node | CData_Node then
+               System.Null_Address else Name_Address),
+            (if Kind in Document_Node | CData_Node then 0 else Name'Length),
             Content_Address, (if Has_Content then Content'Length else 0),
             (if Is_Doc then Local_N else Null_Node), Ns,
             (if Ns = Null_Namespace then Null_Owner
@@ -541,22 +542,45 @@ package body XML3_DOM_Constructors with SPARK_Mode is
               (for all B in Owner_Ref range 1 .. Owner_Ref (Entry_Owner_Count) =>
                  (if Entry_Owners (Positive (B)).State = Live then
                     Owner (Current.all, B).State = Live));
-            Retire_Registered (Current, Own, Local_N);
-            pragma Assert
-              (for all B in Owner_Ref range 1 .. Owner_Ref (Entry_Owner_Count) =>
-                 (if Entry_Owners (Positive (B)).State = Live then
-                    Owner (Current.all, B).State = Live));
-            pragma Assert
-              (for all I in Namespace_Ref range
-                 1 .. Namespace_Ref (Entry_Namespace_Count) =>
-                   (if Entry_Namespaces (Positive (I)).State = Live
-                     and then Entry_Namespaces (Positive (I)).Owner in
-                       1 .. Owner_Ref (Entry_Owner_Count)
-                     and then Entry_Owners
-                       (Positive (Entry_Namespaces (Positive (I)).Owner)).State =
-                         Live
-                    then Namespace (Current.all, I) =
-                      Entry_Namespaces (Positive (I))));
+            declare
+               Retire_Namespaces : constant Namespace_View_Array :=
+                 Snapshot_Namespaces (Current.all) with Ghost;
+               Retire_Owners : constant Owner_View_Array :=
+                 Snapshot_Owners (Current.all) with Ghost;
+            begin
+               pragma Assert
+                 (for all I in Namespace_Ref range
+                    1 .. Namespace_Ref (Entry_Namespace_Count) =>
+                      Retire_Namespaces (Positive (I)) =
+                        Entry_Namespaces (Positive (I)));
+               Retire_Registered (Current, Own, Local_N);
+               pragma Assert
+                 (for all B in Owner_Ref range 1 .. Owner_Ref (Entry_Owner_Count) =>
+                    (if Entry_Owners (Positive (B)).State = Live then
+                       Owner (Current.all, B).State = Live));
+               pragma Assert
+                 (for all I in Namespace_Ref range
+                    1 .. Namespace_Ref (Entry_Namespace_Count) =>
+                      (if Retire_Namespaces (Positive (I)).State = Live
+                        and then Retire_Namespaces (Positive (I)).Owner in
+                          1 .. Owner_Ref (Entry_Owner_Count)
+                        and then Retire_Owners
+                          (Positive (Retire_Namespaces (Positive (I)).Owner)).State =
+                            Live
+                       then Namespace (Current.all, I) =
+                         Retire_Namespaces (Positive (I))));
+               pragma Assert
+                 (for all I in Namespace_Ref range
+                    1 .. Namespace_Ref (Entry_Namespace_Count) =>
+                      (if Entry_Namespaces (Positive (I)).State = Live
+                        and then Entry_Namespaces (Positive (I)).Owner in
+                          1 .. Owner_Ref (Entry_Owner_Count)
+                        and then Entry_Owners
+                          (Positive (Entry_Namespaces (Positive (I)).Owner)).State =
+                            Live
+                       then Namespace (Current.all, I) =
+                         Entry_Namespaces (Positive (I))));
+            end;
             Status := Internal_Error;
             return;
          end if;
@@ -757,7 +781,9 @@ package body XML3_DOM_Constructors with SPARK_Mode is
          and then Node (Current.all, Local_N).Last_Namespace = Null_Namespace
          and then Node (Current.all, Local_N).Namespace = Ns
          and then Node (Current.all, Local_N).Name_Length =
-           (if Kind = Document_Node then 0 else Name'Length)
+           (if Kind in Document_Node | CData_Node then 0 else Name'Length)
+         and then (if Kind = CData_Node then
+           Node (Current.all, Local_N).Name = System.Null_Address)
          and then Node (Current.all, Local_N).Content_Length =
            (if Has_Content then Content'Length else 0)
          and then Node (Current.all, Local_N).Document =

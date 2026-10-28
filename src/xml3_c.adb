@@ -960,6 +960,19 @@ package body XML3_C is
         (XML3_DOM.Comment_Node, "comment", Content, Doc => Doc);
    end New_Doc_Comment;
 
+   function New_CData_Block
+     (Doc, Content : System.Address; Length : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Content /= System.Null_Address and then Length < 0 then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      return New_Content_Node
+        (XML3_DOM.CData_Node, "", Content, Length, Doc);
+   end New_CData_Block;
+
    function New_PI
      (Name, Content : System.Address) return System.Address
    is

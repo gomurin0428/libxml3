@@ -117,7 +117,9 @@ package XML3_DOM_Constructors with SPARK_Mode is
                 Text_Attribute_Content (Current.all, N))
               and then Node (Current.all, N).Namespace = Ns
               and then Node (Current.all, N).Name_Length =
-                (if Kind = Document_Node then 0 else Name'Length)
+                (if Kind in Document_Node | CData_Node then 0 else Name'Length)
+              and then (if Kind = CData_Node then
+                Node (Current.all, N).Name = System.Null_Address)
               and then Node (Current.all, N).Content_Length =
                 (if Has_Content then Content'Length else 0)
               and then Node (Current.all, N).Document =

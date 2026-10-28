@@ -86,6 +86,7 @@ namespaceは拒否します。source encoding/standalone metadata は保持さ�
 出力しません。暗黙encoding、formatting、ファイル出力、DTD等は未対応です。
 `xmlNewComment` / `xmlNewPI` と文書付きの `xmlNewDocComment` / `xmlNewDocPI` で
 コメント・処理命令も作成できます。
+`xmlNewCDataBlock` は長さ指定でCDATAを作り、文書を指定してもまだ親へ接続しません。
 作成時はraw文字列をコピーし、XML構文・文字・予約PI名の検査は出力時に行います。
 NULLと空のcontentは区別し、NULL contentのコメントは出力しません。
 属性／namespace copy と文書間移動も未対応です。

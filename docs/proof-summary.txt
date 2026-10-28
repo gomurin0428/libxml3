@@ -8,17 +8,17 @@ Data Dependencies               243         243                                 
 Flow Dependencies                 .           .                                       .           .          .
 Initialization                  491         491                                       .           .          .
 Non-Aliasing                      .           .                                       .           .          .
-Run-time Checks                4902           .      4902 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
-Assertions                     1464           .    1464 (CVC5 67%, Trivial 11%, Z3 22%)           .          .
-Functional Contracts           3567           .     3567 (CVC5 69%, Trivial 2%, Z3 28%)           .          .
+Run-time Checks                4921           .      4921 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
+Assertions                     1468           .    1468 (CVC5 67%, Trivial 11%, Z3 21%)           .          .
+Functional Contracts           3574           .     3574 (CVC5 70%, Trivial 2%, Z3 28%)           .          .
 LSP Verification                  .           .                                       .           .          .
 Termination                     195         143                    52 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .           .                                       .           .          .
 --------------------------------------------------------------------------------------------------------------
-Total                         10862    877 (8%)                              9985 (92%)           .          .
+Total                         10892    877 (8%)                             10015 (92%)           .          .
 
 
-max steps used for successful proof: 71707
+max steps used for successful proof: 47922
 
 Analyzed 19 units
 in unit xml3_dom, 134 subprograms and packages out of 134 analyzed
@@ -221,8 +221,8 @@ in unit xml3_dom_constructors, 8 subprograms and packages out of 8 analyzed
   XML3_DOM_Constructors.Add_Bytes at xml3_dom_constructors.adb:10 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_DOM_Constructors.Add_Natural at xml3_dom_constructors.adb:25 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Constructors.Allocate_Node_Buffer at xml3_dom_constructors.adb:137 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (22 checks)
-  XML3_DOM_Constructors.Create_Namespace at xml3_dom_constructors.ads:133 flow analyzed (0 errors, 0 checks, 5 warnings and 0 pragma Assume statements) and proved (83 checks)
-  XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (443 checks)
+  XML3_DOM_Constructors.Create_Namespace at xml3_dom_constructors.ads:135 flow analyzed (0 errors, 0 checks, 5 warnings and 0 pragma Assume statements) and proved (83 checks)
+  XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (463 checks)
   XML3_DOM_Constructors.Prepare_Node_Capacity at xml3_dom_constructors.adb:298 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (81 checks)
   XML3_DOM_Constructors.Retire_Registered at xml3_dom_constructors.adb:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (119 checks)
 in unit xml3_dom_runtime, 28 subprograms and packages out of 28 analyzed
@@ -279,7 +279,7 @@ in unit xml3_dom_store-content, 6 subprograms and packages out of 6 analyzed
   XML3_DOM_Store.Content.Append at xml3_dom_store-content.ads:26 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (32 checks)
   XML3_DOM_Store.Content.New_Child at xml3_dom_store-content.ads:15 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (29 checks)
   XML3_DOM_Store.Content.New_Doc_Content at xml3_dom_store-content.ads:5 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (21 checks)
-  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:154 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (71 checks)
+  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:156 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (71 checks)
   XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:33 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
 in unit xml3_dom_store-documents, 3 subprograms and packages out of 3 analyzed
   XML3_DOM_Store.Documents at xml3_dom_store-documents.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -289,7 +289,7 @@ in unit xml3_dom_store-properties, 18 subprograms and packages out of 18 analyze
   XML3_DOM_Store.Properties at xml3_dom_store-properties.ads:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Store.Properties.Attached_Entry at xml3_dom_store-properties.adb:21 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
   XML3_DOM_Store.Properties.Attachment_In_State at xml3_dom_store-properties.adb:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_DOM_Store.Properties.Create_Namespace_Property at xml3_dom_store-properties.ads:33 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (133 checks)
+  XML3_DOM_Store.Properties.Create_Namespace_Property at xml3_dom_store-properties.ads:33 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (138 checks)
   XML3_DOM_Store.Properties.Create_Property at xml3_dom_store-properties.ads:15 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (28 checks)
   XML3_DOM_Store.Properties.Discard_Unpublished at xml3_dom_store-properties.adb:258 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (135 checks)
   XML3_DOM_Store.Properties.Has_Colon at xml3_dom_store-properties.adb:224 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -298,8 +298,8 @@ in unit xml3_dom_store-properties, 18 subprograms and packages out of 18 analyze
   XML3_DOM_Store.Properties.Preserve_Attachment at xml3_dom_store-properties.adb:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (40 checks)
   XML3_DOM_Store.Properties.Preserve_Safe_Attachment at xml3_dom_store-properties.adb:167 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (46 checks)
   XML3_DOM_Store.Properties.Reclaim_Empty_Preserving_Attachment at xml3_dom_store-properties.adb:93 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (23 checks)
-  XML3_DOM_Store.Properties.Retire_Text_Attribute_Children at xml3_dom_store-properties.adb:674 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (35 checks)
-  XML3_DOM_Store.Properties.Set_Namespace_Property at xml3_dom_store-properties.ads:46 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (138 checks)
+  XML3_DOM_Store.Properties.Retire_Text_Attribute_Children at xml3_dom_store-properties.adb:678 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (35 checks)
+  XML3_DOM_Store.Properties.Set_Namespace_Property at xml3_dom_store-properties.ads:46 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (143 checks)
   XML3_DOM_Store.Properties.Set_Property at xml3_dom_store-properties.ads:24 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
   XML3_DOM_Store.Properties.Set_Qualified_Property at xml3_dom_store-properties.ads:64 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (38 checks)
   XML3_DOM_Store.Properties.Unset_Namespace_Property at xml3_dom_store-properties.ads:59 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (17 checks)
