@@ -98,6 +98,31 @@ procedure Text_Buffers_Test is
       XML3_Text.Validate_UTF8 (Text (1 .. 1), Kind, Error_Position, XML_Only => False);
       pragma Assert (Kind = XML3_Text.No_Text_Error and Error_Position = 0);
    end Check_UTF8;
+
+   procedure Check_UTF8_Count is
+      Text : aliased String := "a" & Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#) & Character'Val (0);
+      Status : XML3_Text.Buffers.UTF8_Status;
+      Length : XML3_Text.Byte_Count;
+   begin
+      XML3_Text.Buffers.Count_UTF8 (System.Null_Address, Length, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Invalid and Length = 0);
+      for Last in 0 .. 3 loop
+         XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, Last);
+         pragma Assert (Status = XML3_Text.Buffers.UTF8_Limit_Exceeded and Length = 0);
+      end loop;
+      XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Length = 2);
+      Text (3) := Character'Val (0);
+      XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Invalid and Length = 0);
+      Text (2) := Character'Val (0);
+      XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, 1);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Length = 1);
+      Text (1) := Character'Val (0);
+      XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Length = 0);
+   end Check_UTF8_Count;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -114,5 +139,6 @@ begin
    Check_Append;
    Check_Measure;
    Check_UTF8;
+   Check_UTF8_Count;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

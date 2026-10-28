@@ -6,6 +6,8 @@ static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
+    int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
+    (void)utf8_length;
     int (*get_utf8_char)(const unsigned char *, int *) = xmlGetUTF8Char;
     (void)get_utf8_char;
     (void)check_utf8;
