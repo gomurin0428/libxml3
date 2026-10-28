@@ -2691,11 +2691,18 @@ package body XML3_C is
    function UTF8_Str_N_Duplicate
      (Item : System.Address; Characters : Interfaces.C.int) return System.Address
    is
+   begin
+      return UTF8_Str_Sub_Copy (Item, 0, Characters);
+   end UTF8_Str_N_Duplicate;
+
+   function UTF8_Str_Sub_Copy
+     (Item : System.Address; Start, Characters : Interfaces.C.int) return System.Address
+   is
       Result : System.Address;
       Status : XML3_Text.Buffers.Slice_Status;
    begin
-      XML3_Text.Buffers.Copy_UTF8_Prefix
-        (Item, Integer (Characters), Result, Status);
+      XML3_Text.Buffers.Copy_UTF8_Slice
+        (Item, Integer (Start), Integer (Characters), Result, Status);
       return Slice_Result (Result, Status);
    exception
       when Storage_Error =>
@@ -2704,7 +2711,7 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end UTF8_Str_N_Duplicate;
+   end UTF8_Str_Sub_Copy;
 
    function Str_Length (Item : System.Address) return Interfaces.C.int is
       Length : XML3_Text.Byte_Count;

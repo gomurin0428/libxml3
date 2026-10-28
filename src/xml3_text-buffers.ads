@@ -15,6 +15,14 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type UTF8_Status is (UTF8_Valid, UTF8_Invalid, UTF8_Limit_Exceeded);
 
+   procedure Copy_UTF8_Slice
+     (Item : System.Address; Start, Characters : Integer;
+      Result : out System.Address; Status : out Slice_Status;
+      Last : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Sliced then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    procedure Copy_UTF8_Prefix
      (Item : System.Address; Characters : Integer;
       Result : out System.Address; Status : out Slice_Status;

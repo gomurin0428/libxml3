@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Strndup`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -482,6 +482,18 @@ UTF-8として許可しますが、XML character validationはしません。ref
 SPARKはscan、span/byte bounds、status/result contract、native-call preconditionsを対象にしますが、native bytes/readable extent、
 pointer validity、allocation実動作、C mapping/ABI、完全なUnicode意味論は信頼境界です。共有malformed/reference・guard-page vectorsは
 両方で実行し、OOM/no-allocation testはlibxml3のみです。
+`xmlUTF8Strsub` は `start` から最大 `len` 個のUnicode scalarに対応する新しいNUL終端owned copyを返します。NULL input、
+負の `start` / `len`、または範囲外の開始位置はNULLで、最初の二つはreads/allocation/diagnosticsなしです。スキップするprefixは
+`Find_UTF8_Position` でstrict UTF-8として検証し、次に選択prefixだけを同じstrict規則で検証してコピーします。`len == 0` でも
+skipped prefixを検証しますがtarget byteは読みません。`start == 0 && len == 0` はinput readなしで空copyを確保し、
+scalar lengthでのstartは正のlenでもempty copyを返します。訪問したskipped/selected bytesがmalformed、truncated、または
+noncanonicalならallocation前に診断なしでNULLとなり、未訪問suffixは検査しません。scalar数でありbyte/grapheme数ではなく、
+normalization/transcodingはしません。返却copyはcaller所有で `xmlFree` し、inputは変更・解放しません。ASCII controlとUnicode
+noncharacterはUTF-8として許可しますがXML character validationはしません。pinned referenceの `xmlUTF8Strsub` はskip時に
+non-NUL continuation valuesを検査しません。この実装がそれらもstrictに拒否するのは意図的な安全差です。ひとつのinclusive
+`Max_Bytes` capをscan全体に適用し、start位置でresetしません。cap errorは115、allocation errorは2、unexpected exceptionは1で
+NULLです。小さい `Last` のAda testでglobal capを確認し、巨大な公開C stringは構築していません。native bytes/readable stable
+extents、pointer validity/offset arithmetic、allocation、C mapping/ABI、完全なUnicode意味論は信頼境界です。
 `xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
 pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
 読み取りなしでNULLを返し、NUL byte自体は

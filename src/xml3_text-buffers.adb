@@ -51,6 +51,30 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end case;
    end Copy_UTF8_Prefix;
 
+   procedure Copy_UTF8_Slice
+     (Item : System.Address; Start, Characters : Integer;
+      Result : out System.Address; Status : out Slice_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Position : Byte_Count;
+      Found : Search_Status;
+   begin
+      Result := System.Null_Address;
+      Status := No_Slice;
+      if Item = System.Null_Address or else Start < 0 or else Characters < 0 then
+         return;
+      end if;
+      Find_UTF8_Position (Item, Start, Position, Found, Last);
+      case Found is
+         when Matched =>
+            Copy_UTF8_Prefix
+              (Native.Offset (Item, Native.Byte_Count (Position)), Characters,
+               Result, Status, Last - Position);
+         when No_Match => null;
+         when Search_Limit_Exceeded => Status := Slice_Limit_Exceeded;
+      end case;
+   end Copy_UTF8_Slice;
+
    procedure Scan_UTF8
      (Item : System.Address; Stop_After : Integer;
       Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)

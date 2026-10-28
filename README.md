@@ -218,6 +218,18 @@ allocation failureは標準のDOM error 2、予期しない例外はDOM error 1�
 巨大な公開C stringは構築していません。SPARKはscan、span/byte bounds、status/result contract、native-call preconditionsを対象にし、
 native bytes/readable extent、pointer validity、allocationの実動作、C ABI/mapping、完全なUnicode API意味論はtrusted boundaryです。
 shared malformed/reference・guard-page vectorsはreferenceとlibxml3の両方で実行し、OOM/no-allocation testはlibxml3のみです。
+`xmlUTF8Strsub` は `start` から最大 `len` 個のUnicode scalarを新しいNUL終端owned copyへ複製します。
+NULL input、負の引数、範囲外の開始位置はNULLです。`start` は要求したscalar数までのprefixをstrict UTF-8として検証し、
+その後の選択範囲もコピーする範囲だけ検証します。訪問したskipped/selected prefixのmalformed・truncated・noncanonical
+encodingは診断なしでNULLとなり、末尾の未訪問byteは検査しません。`len == 0` でもskipped prefixは検証しますが、
+選択targetは読みません。`start == 0 && len == 0` はinputを読まずempty copyを作り、scalar lengthでのstartは
+正のlenでもempty copyを返します。返却値はcaller所有で `xmlFree` し、inputは変更・解放しません。
+scalar countであり、byte/grapheme countではなく、normalization/transcodingもしません。ASCII controlとUnicode
+noncharacterはUTF-8として有効ですがXML character validationではありません。pinned referenceがskip中のnon-NUL
+continuation byteを検査しない挙動に対し、strict rejectionは意図的な安全差です。inclusive `Max_Bytes` のglobal cap
+超過はDOM error 115、allocation failureはerror 2、予期しない例外はerror 1を記録してNULLを返します。小さい `Last` の
+Ada testsでglobal capを確認し、巨大な公開C stringは構築していません。native bytes/readable stable extents、pointer validity/
+offset arithmetic、allocation、C mapping/ABI、完全なUnicode API意味論はtrusted boundaryです。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
