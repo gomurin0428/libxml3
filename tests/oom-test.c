@@ -112,7 +112,30 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "ns-copy") == 0) {
+    if (strcmp(operation, "strdup") == 0 || strcmp(operation, "strndup") == 0) {
+        const xmlChar source[] = {'a', 0, 'b', 0xff};
+        int bounded = strcmp(operation, "strndup") == 0;
+        size_t length = bounded ? sizeof(source) : 1;
+        xml3_oom_enable(fail_index);
+        assert(!xmlStrdup(NULL) && !xmlStrndup(NULL, 0));
+        assert(!xmlStrndup(source, -1) && xml3_oom_count() == 0);
+        xmlChar *copy = bounded ? xmlStrndup(source, sizeof(source)) : xmlStrdup(source);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy && copy != source && memcmp(copy, source, length) == 0);
+            assert(copy[length] == 0);
+        }
+        xmlFree(copy);
+        assert(source[0] == 'a' && source[1] == 0 && source[2] == 'b' && source[3] == 0xff);
+        copy = bounded ? xmlStrndup(source, sizeof(source)) : xmlStrdup(source);
+        assert(copy && memcmp(copy, source, length) == 0 && copy[length] == 0);
+        xmlFree(copy);
+    } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);
         xmlNsPtr source = xmlNewNs(dom_node, BAD_CAST "urn:p", BAD_CAST "p");

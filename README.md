@@ -86,6 +86,11 @@ href/prefix の bytes と NULL/empty の区別を独立した detached namespace
 source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が
 `xmlFreeNs` で解放します。node から参照されている間は Store の pin が storage を保持します。
 foreign・stale pointer の検証、namespace list のコピー、native pointer/ABI の安全性は対象外です。
+`xmlStrdup` は非NULLのNUL終端文字列を上限内で複製し、`xmlStrndup` は指定された長さの
+raw bytes を埋め込みNULを含めて正確に複製して末尾NULを付加します。後者の長さ0は
+入力を読み取らず、所有権付きの空文字列を返し、負または上限超過の長さは拒否します。
+NULL入力はNULLを返し、返却値は `xmlFree` で解放します。UTF-8検証は行わず、native
+pointer、読み取り可能性、allocation、ABI は信頼境界です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
