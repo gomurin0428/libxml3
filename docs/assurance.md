@@ -210,7 +210,8 @@ capacity checks, status and cleanup decisions are SPARK code; native address
 allocation, array writes, pointer validity and the C ABI remain trusted. The
 namespace pointers are borrowed and remain valid only while their owning node
 is alive. Fixed-reference tests cover order, shadowing, NULL/empty hrefs,
-element/text/attribute ancestry, detach/reattach, and allocation failure.
+element/text/attribute ancestry, and detach/reattach. Allocation failure and
+document-first release are tested separately against libxml3.
 Complete `xmlGetNsList` / `xmlGetNsListSafe` semantic equivalence is not proved.
 
 `xmlAddSibling` resolves its reference node and incoming node through Store IDs,
