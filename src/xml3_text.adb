@@ -123,7 +123,8 @@ package body XML3_Text with SPARK_Mode is
    procedure Validate_UTF8
      (Input : String;
       Kind : out Text_Error_Kind;
-      Error_Position : out Natural)
+      Error_Position : out Natural;
+      XML_Only : Boolean := True)
    is
       I : Positive := Input'First;
       C, B, Extra, Minimum : Natural;
@@ -183,7 +184,7 @@ package body XML3_Text with SPARK_Mode is
             Kind := Invalid_UTF8;
             Error_Position := I;
             return;
-         elsif not XML_Char (C) then
+         elsif XML_Only and then not XML_Char (C) then
             Kind := Invalid_XML_Character;
             Error_Position := I;
             return;

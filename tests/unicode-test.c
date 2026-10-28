@@ -234,6 +234,48 @@ static void test_substring_search(void) {
     xmlFree(copy);
 }
 
+static void test_utf8_check(void) {
+    xmlResetLastError();
+    assert(xmlCheckUTF8(NULL) == 0);
+    for (unsigned b = 0; b < 256; ++b) {
+        const unsigned char text[] = {(unsigned char)b, 0};
+        assert(xmlCheckUTF8(text) == (b < 128));
+    }
+    const char *valid[] = {
+        "", "ASCII", "名é", "a\0\xff", "\x01", "\x7f", "\xc2\x80", "\xdf\xbf",
+        "\xe0\xa0\x80", "\xed\x9f\xbf", "\xee\x80\x80", "\xef\xbf\xbe", "\xef\xbf\xbf",
+        "\xf0\x90\x80\x80", "\xf4\x8f\xbf\xbf"
+    };
+    for (size_t i = 0; i < sizeof(valid) / sizeof(valid[0]); ++i)
+        assert(xmlCheckUTF8((const unsigned char *)valid[i]) == 1);
+    const char *invalid[] = {
+        "\xc2", "\xe2\x82", "\xf0\x90\x80", "\xc2x", "\xe2\x28\xa1",
+        "\xf0\x90x\x80", "\x80", "\xf8\x88\x80\x80\x80", "\xfe", "\xff"
+    };
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
+        assert(xmlCheckUTF8((const unsigned char *)invalid[i]) == 0);
+    const char *noncanonical[] = {
+        "\xc0\x80", "\xc1\xbf", "\xe0\x80\x80", "\xf0\x80\x80\x80",
+        "\xed\xa0\x80", "\xed\xbf\xbf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80"
+    };
+#ifdef XML3_REFERENCE_VERSION
+    const int permissive = 1;
+#else
+    const int permissive = 0;
+#endif
+    for (size_t i = 0; i < sizeof(noncanonical) / sizeof(noncanonical[0]); ++i)
+        assert(xmlCheckUTF8((const unsigned char *)noncanonical[i]) == permissive);
+    assert(!xmlGetLastError());
+    const char source[] = "<r>名é</r>";
+    assert(xmlCheckUTF8((const unsigned char *)source));
+    xmlDocPtr doc = xmlReadMemory(source, (int)sizeof(source) - 1, NULL, NULL, 0);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    xmlFreeDoc(doc);
+    assert(content && xmlCheckUTF8(content));
+    xmlFree(content);
+}
+
 static void test_string_length(void) {
     assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
     assert(xmlStrlen(BAD_CAST "abc") == 3);
@@ -627,6 +669,23 @@ static void test_string_duplicates(void) {
         assert(!appended && xmlGetLastError() && xmlGetLastError()->code == XML_ERR_ARGUMENT);
         xmlResetLastError();
 #endif
+        const xmlChar complete[] = {0xf4, 0x8f, 0xbf, 0xbf, 0};
+        xmlChar *utf = mapping + page_size - sizeof(complete);
+        memcpy(utf, complete, sizeof(complete));
+        assert(xmlCheckUTF8(utf) == 1);
+        source[0] = 0xe2;
+        source[1] = 0x82;
+        source[2] = 0;
+        assert(xmlCheckUTF8(source) == 0);
+        source[1] = 0xe2;
+        assert(xmlCheckUTF8(source + 1) == 0);
+        assert(xmlCheckUTF8(source + 2) == 1);
+        source[2] = 0xff;
+        assert(xmlCheckUTF8(source + 2) == 0);
+#ifndef XML3_REFERENCE_VERSION
+        source[2] = 0xc0;
+        assert(xmlCheckUTF8(source + 2) == 0);
+#endif
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -880,6 +939,7 @@ int main(void) {
     test_full_string_comparisons();
     test_string_append();
     test_string_length();
+    test_utf8_check();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

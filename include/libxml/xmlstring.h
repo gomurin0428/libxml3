@@ -24,6 +24,7 @@ int xmlStrncasecmp(const xmlChar *str1, const xmlChar *str2, int len);
 int xmlStrEqual(const xmlChar *str1, const xmlChar *str2);
 int xmlStrQEqual(const xmlChar *pref, const xmlChar *name, const xmlChar *str);
 int xmlStrlen(const xmlChar *str);
+int xmlCheckUTF8(const unsigned char *utf);
 xmlChar *xmlStrdup(const xmlChar *cur);
 xmlChar *xmlCharStrdup(const char *cur);
 xmlChar *xmlCharStrndup(const char *cur, int len);

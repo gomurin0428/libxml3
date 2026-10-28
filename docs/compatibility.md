@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -413,6 +413,20 @@ pinned reference は早いNULの後も `len+1` bytesを確保しますが、そ�
 libxml3はコピーしたprefixと末尾NULのみを確保し、余剰capacityやallocation-size equivalence
 は保証しません。テストは未規定tailを検査せず、定義済みの返却文字列だけを比較します。
 native pointerの有効性、C conversion、allocation、byte writes、ABIは信頼境界です。
+`xmlCheckUTF8` は strict UTF-8 encodingを検査し、NULL・malformed・truncated入力で0、空入力で1を
+返します。最初のNULで停止し、その後は読みません。overlong encoding、surrogate、U+10FFFFを超える
+scalarは拒否しますが、ASCII controlやUnicode noncharacterはUTF-8として受け入れます。したがって
+この結果はXML character validityを示しません。既存のXML parsingとname/content validationの
+XML文字制約は変更しません。pinned referenceは上記の非canonical encodingを
+受け入れるため、libxml3は危険なmalformed形式を拒否する意図的な安全差があります。
+malformed UTF-8は診断なしで0ですが、`Max_Bytes` までにNULを見つけられないscan-limitは
+DOM error 115を記録して0を返し、予期しない例外はDOM error 1と0です。境界位置のNULは有効です。
+この検査は最大4 byteのstack bufferでstreamし、allocation・mutation・transcodingを行いません。
+cap testは小さい `Last` を使うAda helperで行い、巨大な公開C stringは構築していません。
+形式証明はscan control・index bounds・native-call preconditionsを対象にし、native byte/readable bounds、
+foreign pointer validity、C diagnostic mapping、完全なUnicode API意味論はtrusted boundaryです。
+通常・malformed・guard-page testsはpinned referenceとlibxml3の両方で比較します。
+permissive vectorsも両方で実行して期待値を分け、no-allocation/OOM testsはlibxml3-onlyです。
 `xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
 pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
 読み取りなしでNULLを返し、NUL byte自体は

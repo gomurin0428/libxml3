@@ -153,6 +153,20 @@ allocation・mutation・transcoding・UTF-8/XML validationは行いません。S
 result range、status contractを証明しますが、native reads、pointerの有効性・読み取り可能範囲・
 実byte内容、C diagnostic mapping、完全なAPI意味論は信頼境界です。raw-byte、Unicode byte count、
 guard-page vectorsはreferenceとlibxml3の両方で、no-allocation testはlibxml3のみで実行します。
+`xmlCheckUTF8` は NUL 終端列を strict UTF-8 として検査し、NULL・不正・途中で切れた列は0、
+空列は1を返します。NULで検査を終え、その後のbyteは読みません。ASCII controlとUnicode
+noncharacterもUTF-8として正しければ1です。これはUTF-8 byte encodingだけの検査で、XML文字の
+許容性やXML text validityを判定しません。overlong encoding、surrogate、U+10FFFFを超える
+scalarは拒否します。pinned referenceが受け入れるこれらの非canonical encodingを拒否するのは、
+危険なmalformed UTF-8の受容を再現しない意図的な安全差です。malformed入力では診断を記録しません。
+既存のXML parsing、name/content validationのXML文字制約は変更しません。
+offset `0..Max_Bytes` を調べ、境界NULは受け入れますが、その範囲で終端しない入力はDOM error 115を
+記録して0を返します。予期しないC-side例外はDOM error 1と0です。最大4 byteのstack bufferを使い、
+allocation・mutation・transcodingを行いません。小さい `Last` のAda testでcap動作を検査し、
+巨大な公開C stringは構築していません。SPARKの証明範囲は走査制御・index bounds・native call
+preconditionsであり、native byteの実値や読み取り可能範囲、pointer妥当性、C mapping、完全な
+Unicode API意味論は信頼境界です。通常・malformed・guard-page vectorsはreferenceとlibxml3の両方で、
+referenceだけが受け入れる非canonical casesは期待値を分け、no-allocation testはlibxml3のみで実行します。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
