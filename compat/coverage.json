@@ -677,8 +677,12 @@
   },
   "function:xmlstring.h:xmlStrlen": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "Returns the raw-byte count before the first NUL; NULL returns zero and invalid UTF-8 bytes count as bytes without decoding. The SPARK Read_Length scan checks offsets 0..Max_Bytes inclusive and accepts a NUL at the boundary; unresolved non-NUL data records DOM error 115 and returns -1, an error sentinel callers must not treat as empty. This is a scan cap, not rejection of longer strings that terminate earlier. Unexpected C-side exceptions map to DOM error 1 and -1. Unlike the pinned reference's silent zero above INT_MAX, this subset diagnoses an unresolved scan at Max_Bytes (Integer'Last - 16). Reduced-Last Ada tests exercise cap behavior; no huge public C string is constructed. No allocation, mutation, transcoding, or UTF-8/XML validation. Shared raw-byte, Unicode-byte-count, and guard-page tests run against the reference and libxml3; the no-allocation test is libxml3-only. SPARK proves scan bounds, result/status contracts, and native-call preconditions; actual native reads/bytes, pointer validity/readable bounds, C diagnostic mapping, and complete API semantics remain trusted.",
     "tests": [
+      "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp",
       "tests/api-test.c"
     ],
     "proof": "not-proved"

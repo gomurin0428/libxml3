@@ -234,6 +234,23 @@ static void test_substring_search(void) {
     xmlFree(copy);
 }
 
+static void test_string_length(void) {
+    assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
+    assert(xmlStrlen(BAD_CAST "abc") == 3);
+    assert(xmlStrlen(BAD_CAST "名é") == 5);
+    assert(xmlStrlen(BAD_CAST "a\0tail") == 1);
+    const xmlChar raw[] = {0xff, 0xc0, 0x80, 0};
+    assert(xmlStrlen(raw) == 3);
+    xmlDocPtr doc = xmlReadMemory("<Root>名</Root>", 16, NULL, NULL, 0);
+    assert(doc);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root && xmlStrlen(root->name) == 4);
+    xmlChar *content = xmlNodeGetContent(root);
+    xmlFreeDoc(doc);
+    assert(content && xmlStrlen(content) == 3);
+    xmlFree(content);
+}
+
 static void test_string_append(void) {
     assert(!xmlStrcat(NULL, NULL));
     assert(!xmlStrncat(NULL, NULL, -1));
@@ -588,6 +605,7 @@ static void test_string_duplicates(void) {
         assert(xmlStrcasecmp(source + 1, BAD_CAST "a") == 0);
         assert(xmlStrcmp(source + 1, BAD_CAST "A") == 0);
         assert(xmlStrEqual(source + 1, BAD_CAST "A") == 1);
+        assert(xmlStrlen(source + 1) == 1 && xmlStrlen(source + 2) == 0);
         assert(xmlStrcat((xmlChar *)unreadable, NULL) == unreadable);
         assert(xmlStrcat((xmlChar *)unreadable, BAD_CAST "") == unreadable);
         assert(xmlStrncat((xmlChar *)unreadable, unreadable, 0) == unreadable);
@@ -861,6 +879,7 @@ int main(void) {
     test_bounded_string_comparisons();
     test_full_string_comparisons();
     test_string_append();
+    test_string_length();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

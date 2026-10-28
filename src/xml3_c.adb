@@ -49,9 +49,6 @@ package body XML3_C is
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
 
-   function C_Strlen (Item : System.Address) return size_t
-     with Import, Convention => C, External_Name => "strlen";
-
    function Byte_At (Base : System.Address; Offset : Natural) return Character;
    function Scan_Length (Item : System.Address; Limit : Natural) return Integer;
    function To_String (Item : System.Address; Length : Natural) return String;
@@ -2590,19 +2587,19 @@ package body XML3_C is
    end Str_Sub_Copy;
 
    function Str_Length (Item : System.Address) return Interfaces.C.int is
-      Length : size_t;
+      Length : XML3_Text.Byte_Count;
+      Success : Boolean;
    begin
-      if Item = System.Null_Address then
-         return 0;
-      end if;
-      Length := C_Strlen (Item);
-      if Length > size_t (int'Last) then
+      XML3_Text.Buffers.Measure (Item, Length, Success);
+      if not Success then
+         Report_Dom_Error (115);
          return -1;
       end if;
       return int (Length);
    exception
       when others =>
-         return 0;
+         Report_Dom_Error (1);
+         return -1;
    end Str_Length;
 
    function Build_QName

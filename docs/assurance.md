@@ -53,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,369 checks
-(1,030 flow and 10,339 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,374 checks
+(1,033 flow and 10,341 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -176,7 +176,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,369-check aggregate proof; see
+new units are included in the current successful 11,374-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -663,6 +663,23 @@ boundary test passes a small `Last` to the Ada helper; no public C string near
 the cap is dynamically constructed. Shared byte-pair and guard-page cases run
 against libxml3 and the pinned reference; OOM/no-allocation checks are
 libxml3-only.
+`xmlStrlen` delegates to `XML3_Text.Buffers.Measure`, which handles NULL as
+successful zero and otherwise uses the shared `Read_Length` scan through
+`0..Last` inclusive. A NUL at the boundary is accepted; an unresolved scan
+returns a failed status and zero length, which the C adapter maps to DOM error
+115 and -1. Unexpected C-side exceptions map to DOM error 1 and -1 rather
+than a silent zero. The `Max_Bytes` bound (`Integer'Last - 16`) is a
+deliberate safe subset: unlike
+the pinned reference's zero for lengths above `INT_MAX`, an over-cap scan is
+diagnosed and must not be treated as an empty string. Tests exercise the
+helper with reduced `Last` values instead of constructing an enormous public
+C string. SPARK proves `Read_Length` (2 checks) and `Measure` (2 checks),
+including scan bounds, result/status contracts, and the native read
+precondition; actual bytes, foreign pointer validity/readable bounds,
+C-side mapping/exception behavior, and full semantics remain trusted. No
+allocation, mutation, transcoding, or UTF-8/XML validation occurs. Shared
+raw-byte, UTF-8-byte-count, and guard-page vectors run against both
+implementations; the no-allocation OOM-shim check is libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum
