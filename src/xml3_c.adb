@@ -929,6 +929,58 @@ package body XML3_C is
       return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length);
    end New_Text_Len;
 
+   function New_Document_Text
+     (Doc, Content : System.Address; Length : Interfaces.C.int)
+     return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Value : constant String := C_String_Prefix (Content, Length);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.New_Doc_Text
+           (Doc, Value, Content /= System.Null_Address, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end New_Document_Text;
+
+   function New_Doc_Text
+     (Doc, Content : System.Address) return System.Address
+   is
+   begin
+      return New_Document_Text (Doc, Content, -1);
+   end New_Doc_Text;
+
+   function New_Doc_Text_Len
+     (Doc, Content : System.Address; Length : Interfaces.C.int)
+     return System.Address
+   is
+   begin
+      if Content /= System.Null_Address and then Length < 0 then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      return New_Document_Text (Doc, Content, Length);
+   end New_Doc_Text_Len;
+
    function New_Comment (Content : System.Address) return System.Address is
    begin
       return New_Content_Node (XML3_DOM.Comment_Node, "comment", Content);

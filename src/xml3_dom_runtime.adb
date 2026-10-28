@@ -113,6 +113,16 @@ is
            (Current, Facade, Content, Has_Content, Status);
       end Set_Content;
 
+      procedure New_Doc_Text
+        (Doc : System.Address; Content : String; Has_Content : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.New_Doc_Text
+           (Current, Doc, Content, Has_Content, Result, Status);
+      end New_Doc_Text;
+
       procedure Set_Root
         (Doc, Root : System.Address; Previous : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

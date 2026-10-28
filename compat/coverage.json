@@ -109,6 +109,18 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewDocText": {
+    "implementation": "partial",
+    "scope": "SPARK-owned raw text construction and document affiliation without attachment. NULL doc is supported; non-NULL doc must be a registered live document. Document owner retention keeps detached text safe after document release. Unpublished text is released if affiliation fails. Native pointers and complete API semantics remain outside the formal claim.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewDocTextLen": {
+    "implementation": "partial",
+    "scope": "Length-bounded raw text construction with the same SPARK document affiliation and retention as xmlNewDocText. Input length/NULL semantics match xmlNewTextLen, retaining only the visible prefix before NUL. Native pointer validity remains trusted.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewTextLen": {
     "implementation": "partial",
     "scope": "Bounded raw text construction delegates to the existing SPARK constructor. Non-NULL input with negative length fails; zero length never reads input and creates empty non-NULL content. NULL content produces a NULL-content node regardless of length. Positive lengths stop at NUL or len bytes; hidden bytes after NUL are not retained. Native pointer validity remains trusted.",

@@ -10,6 +10,64 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    use type Native.Byte_Count;
    pragma Unevaluated_Use_Of_Old (Allow);
 
+   procedure New_Doc_Text
+     (S : in out Store; Doc : System.Address;
+      Content : String; Has_Content : Boolean; Result : out System.Address;
+      Status : out Operation_Status)
+   is
+      D : Node_Ref := Find_Node (S, Doc);
+      N : Node_Ref;
+      Text, Ignored_Ns : System.Address := System.Null_Address;
+      Changed : Boolean;
+      Cleanup_Status : Operation_Status;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Doc /= System.Null_Address
+        and then (D = Null_Node
+          or else Node (S.Current.all, D).Kind /= Document_Node)
+      then
+         return;
+      end if;
+      Construct
+        (S, Text_Node, "text", Content, Has_Content, System.Null_Address,
+         Text, Ignored_Ns, Status);
+      if Status /= Created then
+         return;
+      end if;
+      if Doc /= System.Null_Address then
+         D := Find_Node (S, Doc);
+         N := Find_Node (S, Text);
+         if D = Null_Node or else N = Null_Node
+           or else Node (S.Current.all, D).Kind /= Document_Node
+         then
+            Status := Internal_Error;
+         else
+            declare
+               Item : constant Node_View := Node (S.Current.all, N);
+            begin
+               Set_Node_Projection
+                 (S.Current.all, N, Item.Name, Item.Name_Length,
+                  Item.Content, Item.Content_Length, D, Item.Namespace,
+                  Item.Ns_Pin, Node (S.Current.all, D).Owner,
+                  Item.Content_Pin, Changed);
+            end;
+            XML3_DOM_Bridge.Synchronize (S.Current.all);
+            if not Changed then
+               Status := Limit_Exceeded;
+            end if;
+         end if;
+      end if;
+      if Status = Created then
+         Result := Text;
+      else
+         Release (S, Text, Content_Node, False, Cleanup_Status);
+         if Cleanup_Status /= Created then
+            Status := Internal_Error;
+         end if;
+      end if;
+   end New_Doc_Text;
+
    procedure New_Child
      (S : in out Store; Parent, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;

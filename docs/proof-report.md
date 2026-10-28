@@ -3,13 +3,14 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,831 checks, 868 by flow analysis and 9,963 by provers;
+**10,862 checks, 877 by flow analysis and 9,985 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetContent`,
-`xmlNewChild`, and `xmlNewTextChild` through the SPARK Store/Runtime. The
-entity summaries report 0 flow errors, 128 warnings, and 0 `pragma Assume`
+`xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, and `xmlNewDocTextLen`
+through the SPARK Store/Runtime. The entity summaries report 0 flow errors,
+129 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -26,13 +27,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 241 |
-| Initialization | 484 |
-| Runtime checks | 4,891 |
+| Data dependencies | 243 |
+| Initialization | 491 |
+| Runtime checks | 4,902 |
 | Assertions | 1,464 |
-| Functional contracts | 3,556 |
+| Functional contracts | 3,567 |
 | Termination | 195 |
-| **Total** | **10,831** |
+| **Total** | **10,862** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -156,6 +157,20 @@ Pointer scanning and validity remain outside GNATprove; guard-page, NULL/empty,
 serialization, detached-node, and allocation-failure cases are runtime
 evidence for the API wrapper.
 
+`xmlNewDocText` and `xmlNewDocTextLen` route through
+`Runtime.New_Doc_Text` and `XML3_DOM_Store.Content.New_Doc_Text`. The Store
+operation requires and restores `Ready (S)` and relates a non-NULL result to
+`Created` status. It validates a non-NULL document before constructing the
+text, re-finds the document and new text after construction, then uses the
+existing `Set_Node_Projection` contract to set `Document` and `Doc_Pin` without
+attaching the text as a child. The projection contract preserves owner reference
+invariants; failed affiliation releases the unpublished text. The C adapter's
+string conversion and bounded pointer scan remain outside GNATprove. These
+existing contracts do not establish complete public API semantics or rollback;
+NULL/bounded input behavior, document validation, unattached construction,
+serialization, document-first release, and allocation-failure retry are runtime
+evidence.
+
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
 mutation and read-only queries use the same Store. `xmlNewComment` and
@@ -262,8 +277,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-2153a2ba1d5d1efbfca86336f23feae770f364e49527f2ec9b9e8f24caa0850b  src/xml3_c.adb
-3f40be962ce239ddda55b21751d7bc3a6d7895bd97ec9766ea6c3a9875668346  src/xml3_c.ads
+2c8d588e8a5fc5cc98337bef985b87b67d5a22b855ff216b439427defd81fd2c  src/xml3_c.adb
+cdb47fcc6d08c7552c4ef511a505cfd0be8b34a0337f64d89e257bf4d01650f5  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -279,10 +294,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-aad8f399b8a010c7519925f3393f9f8438dbd20b9d9ba4d4136f540630919d47  src/xml3_dom_runtime.adb
-d87f9d450fb9abc961a3d7594157dcd095baa04a3d6c2abd9cb9683d33657601  src/xml3_dom_runtime.ads
-b2d5e997bbfd3d043e51901ffa3e7363b3dc838388f0bf7bd0ea5de5e3970418  src/xml3_dom_store-content.adb
-b84caf0789557a45cc2338871dca1fa7618ccfcbdbc888b9a3554593d1b54a69  src/xml3_dom_store-content.ads
+f758882b57fcb20533a4c3c659e3bd42df934970727ca58d2b41f1bc8c7412f3  src/xml3_dom_runtime.adb
+734f6f961bd39b8112f9330dfb501d1604c67744239c79e860924dd57ffde84c  src/xml3_dom_runtime.ads
+bd8ae1878229f3aba1e79088c38f0faf996c1a30a76742fbd0fca0ed07be4a16  src/xml3_dom_store-content.adb
+72acffe42e47e7670f4a34adc6bce5989bd8b27dbfce08b7ee8a46771bbb9519  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 1334154710f271040b55a309cd9b4ff93fb1d82988fbd85046dd7d05d3179944  src/xml3_dom_store-properties.adb
@@ -308,10 +323,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-731fbd3a164c35a0f1605901faaec984108f137470f1a54bb232d2f620d1996b  include/libxml/tree.h
+d2c59507143240c74f38f0d2074953792318f3690cf0abb5df6fb2a42461e899  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-aca9cbcd9b725a6c2728af23f4d24c0ff8f590c8c469f8a3fc9a3829f785cceb  Makefile
+09588a73436d14086a3a274dd1f8c2199b78d114e4cd5ec5e7ee9812e4f0718d  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

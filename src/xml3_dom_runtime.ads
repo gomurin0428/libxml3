@@ -75,6 +75,12 @@ is
          Has_Input : Boolean := False)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure New_Doc_Text
+        (Doc : System.Address; Content : String; Has_Content : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Set_Content
         (Facade : System.Address; Content : String; Has_Content : Boolean;
          Status : out XML3_DOM_Store.Operation_Status)
