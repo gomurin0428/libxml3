@@ -18,6 +18,47 @@
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 
+static void test_qname_equality(void) {
+    static const struct { const char *prefix, *name, *value; int equal; } cases[] = {
+        {NULL, NULL, NULL, 1}, {NULL, NULL, "", 0}, {NULL, "", NULL, 0},
+        {NULL, "", "", 1}, {NULL, "n", "n", 1}, {NULL, "n", "p:n", 0},
+        {"p", NULL, "p:n", 0}, {"p", "n", NULL, 0}, {"p", NULL, NULL, 0},
+        {"p", "n", "p:n", 1}, {"p", "n", "q:n", 0}, {"p", "n", "p:x", 0},
+        {"p", "n", "p:nx", 0}, {"p", "n", "p:", 0}, {"p", "n", "p", 0},
+        {"pq", "n", "p:n", 0}, {"p", "n", "pq:n", 0},
+        {"p", "", "p:", 1}, {"", "n", ":n", 0}, {"", "", ":", 0},
+        {"p:q", "n", "p:q:n", 1}, {"p", "n:x", "p:n:x", 1},
+        {"P", "n", "p:n", 0}, {"p", "名", "p:名", 1},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i)
+        assert(xmlStrQEqual(BAD_CAST cases[i].prefix, BAD_CAST cases[i].name,
+                            BAD_CAST cases[i].value) == cases[i].equal);
+    xmlChar left[] = "name", right[] = "name";
+    assert(xmlStrQEqual(NULL, left, right) == 1);
+    right[3] = 'x';
+    assert(xmlStrQEqual(NULL, left, right) == 0);
+    xmlChar alias[] = "p:name";
+    assert(xmlStrQEqual(BAD_CAST "p", alias + 2, alias) == 1);
+    for (unsigned byte = 1; byte < 256; ++byte) {
+        xmlChar prefix[] = {(xmlChar)byte, 0}, name[] = {(xmlChar)byte, 0};
+        xmlChar value[] = {(xmlChar)byte, ':', (xmlChar)byte, 0};
+        assert(xmlStrQEqual(prefix, name, value) == 1);
+        value[2] ^= 1;
+        assert(xmlStrQEqual(prefix, name, value) == 0);
+    }
+#ifndef XML3_REFERENCE_VERSION
+    const xmlChar tail[] = {0, ':', 'n', 0};
+    assert(xmlStrQEqual(BAD_CAST "", BAD_CAST "n", tail) == 0);
+#endif
+    const char *xml = "<p:名 xmlns:p=\"urn:test\"/>";
+    xmlDocPtr doc = xmlReadMemory(xml, (int)strlen(xml), NULL, NULL, 0);
+    assert(doc);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root && root->ns);
+    assert(xmlStrQEqual(root->ns->prefix, root->name, BAD_CAST "p:名") == 1);
+    xmlFreeDoc(doc);
+}
+
 static void test_byte_search(void) {
     xmlChar bytes[256];
     for (unsigned value = 1; value < 256; ++value)
@@ -295,6 +336,18 @@ static void test_string_duplicates(void) {
         assert(!xmlStrchr(source + 2, 0));
         source[2] = 0xff;
         assert(xmlStrchr(source + 2, 0xff) == source + 2);
+        source[2] = 'x';
+        assert(xmlStrQEqual(BAD_CAST "p", source + 2, BAD_CAST "p:y") == 0);
+        assert(xmlStrQEqual(source + 2, BAD_CAST "n", BAD_CAST "y:n") == 0);
+        assert(xmlStrQEqual(NULL, unreadable, unreadable) == 1);
+        assert(xmlStrQEqual(unreadable, NULL, unreadable) == 0);
+        assert(xmlStrQEqual(unreadable, unreadable, NULL) == 0);
+        source[0] = 'p'; source[1] = ':'; source[2] = 0;
+        assert(xmlStrQEqual(BAD_CAST "p", BAD_CAST "", source) == 1);
+        assert(xmlStrQEqual(NULL, source + 2, BAD_CAST "") == 1);
+#ifndef XML3_REFERENCE_VERSION
+        assert(xmlStrQEqual(source + 2, BAD_CAST "", source + 2) == 0);
+#endif
         source[2] = 'A';
         assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
         assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
@@ -542,6 +595,7 @@ static void test_ranges(void) {
 int main(void) {
     test_string_duplicates();
     test_byte_search();
+    test_qname_equality();
     test_char_string_duplicates();
     test_string_concatenation();
     test_bounded_string_comparisons();

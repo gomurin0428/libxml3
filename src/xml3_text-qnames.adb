@@ -3,6 +3,54 @@ with XML3_Text.Buffers;
 package body XML3_Text.QNames with SPARK_Mode is
    package Native renames XML3_Native_Memory;
 
+   procedure Compare
+     (Prefix, Name, Value : System.Address; Status : out Comparison_Status)
+   is
+      Offset : Byte_Count := 0;
+      Left, Right : Character;
+   begin
+      Status := Different;
+      if Prefix = System.Null_Address and then Name = Value then
+         Status := Same;
+         return;
+      elsif Name = System.Null_Address or else Value = System.Null_Address then
+         return;
+      end if;
+      if Prefix /= System.Null_Address then
+         for Index in 0 .. Max_Bytes loop
+            Left := Native.Byte_At (Prefix, Index);
+            if Left = Character'Val (0) then
+               if Index = 0 then
+                  return;
+               elsif Index = Max_Bytes then
+                  Status := Comparison_Limit_Exceeded;
+                  return;
+               elsif Native.Byte_At (Value, Index) /= ':' then
+                  return;
+               end if;
+               Offset := Index + 1;
+               exit;
+            elsif Index = Max_Bytes then
+               Status := Comparison_Limit_Exceeded;
+               return;
+            elsif Left /= Native.Byte_At (Value, Index) then
+               return;
+            end if;
+         end loop;
+      end if;
+      for Index in 0 .. Max_Bytes - Offset loop
+         Left := Native.Byte_At (Name, Index);
+         Right := Native.Byte_At (Value, Offset + Index);
+         if Left /= Right then
+            return;
+         elsif Left = Character'Val (0) then
+            Status := Same;
+            return;
+         end if;
+      end loop;
+      Status := Comparison_Limit_Exceeded;
+   end Compare;
+
    procedure Build
      (Name, Prefix : String; Original, Buffer : System.Address;
       Has_Prefix : Boolean; Capacity : Integer;

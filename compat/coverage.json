@@ -578,6 +578,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlStrQEqual": {
+    "implementation": "partial",
+    "scope": "Compares prefix/name/value as raw bytes. NULL prefix delegates string equality, including NULL/NULL and identical-pointer equality. Non-NULL prefix requires non-NULL name/value and compares literal prefix bytes, a colon, and name bytes through NUL without XML-name or UTF-8 validation; empty names are allowed and additional colons remain raw data. Empty prefix safely returns false without reading name/value, intentionally avoiding the pinned reference's unsafe post-terminator read and NUL-then-':name' tail quirk. Guard-page/tail safety cases are libxml3-only. Early mismatch/identity returns immediately; equality requiring reads beyond the Max_Bytes scan cap returns false (0) with a diagnostic, so long inputs are not blanket-rejected. No allocation or writes. SPARK proves scalar status/null-identity contracts and loop bounds; native reads, foreign pointer validity/bounds, actual bytes, address arithmetic, C error mapping, and full semantics remain outside proof.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlStrcmp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

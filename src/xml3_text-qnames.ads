@@ -6,6 +6,16 @@ package XML3_Text.QNames with SPARK_Mode is
    type Split_Status is (No_Prefix, Split_Done, No_Memory);
    type Build_Status is (Built, Invalid_Argument, No_Memory, Limit_Exceeded);
 
+   type Comparison_Status is (Different, Same, Comparison_Limit_Exceeded);
+
+   procedure Compare
+     (Prefix, Name, Value : System.Address; Status : out Comparison_Status)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Same then
+         (Prefix = System.Null_Address and then Name = Value)
+           or else (Name /= System.Null_Address and then
+                    Value /= System.Null_Address));
+
    procedure Build
      (Name, Prefix : String; Original, Buffer : System.Address;
       Has_Prefix : Boolean; Capacity : Integer;

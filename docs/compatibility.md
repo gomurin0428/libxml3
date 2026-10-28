@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -218,6 +218,19 @@ borrowed name は解放しません。変換上限・組み合わせサイズ超
 native/Ada allocation failure は memory diagnostic になります。入力を出力より先にコピーするため
 重複領域でも安全ですが、これは libxml3 側だけの安全性であり、overlap の固定版比較はしません。
 native allocation/write、C string/pointer/ABI は証明外です。
+`xmlStrQEqual` は prefix/name/value を raw byte として比較します。NULL prefix は
+`xmlStrEqual(name, value)` 相当で、NULL/NULL と同一 pointer は1です。非NULL prefix
+では name と value も非NULLである必要があり、prefix の literal bytes、colon、name の bytes
+を NUL まで比較します。空 name は許可し、追加の colon と不正 UTF-8 byte を XML name として
+検証しません。各入力は最初の NUL で終端し、その後の byte は比較しません。空 prefix は安全のため常に0を
+返し、name/valueを読みません。pinned reference の do/while は空 prefix と空 value の
+NULを比較した後に value を進めて terminator 後を読む unsafe path を持ち、NUL-then-`:name`
+tail も解釈し得ますが、libxml3 はこれを再現しません。guard-page とその tail のテストは
+libxml3-only で、固定版では実行しません。比較は早い不一致・一致または pointer
+identity で終了します。`Max_Bytes` のscan capを越える追加読取りが必要な場合は診断を記録して
+0を返します。したがって上限は長い入力を一律拒否するものではありません。allocation・
+書き込み・UTF-8変換は行わず、
+native byte読み取り、pointer/読み取り範囲、byte内容、完全なAPI意味論は信頼境界です。
 
 `xmlNodeGetAttrValue` は名前空間URIを指定して属性値の独立コピーを取得します。
 成功は `0`、属性なしは `1`、確保・上限・文字列変換・内部エラーは `-1` で、失敗時の出力は NULL です。

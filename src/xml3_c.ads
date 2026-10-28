@@ -321,6 +321,10 @@ package XML3_C is
       return System.Address
      with Export, Convention => C, External_Name => "xmlStrchr";
 
+   function Str_Q_Equal
+     (Prefix, Name, Value : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlStrQEqual";
+
    function Char_Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCharStrdup";
 

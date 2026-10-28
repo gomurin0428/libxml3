@@ -49,8 +49,8 @@ QName building through `XML3_Text.QNames.Build`, and explicit UTF-8 memory
 serialization. The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,287 checks
-(995 flow and 10,292 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,299 checks
+(999 flow and 10,300 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -172,7 +172,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,287-check aggregate proof; see
+new units are included in the current successful 11,299-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -372,6 +372,19 @@ result/status 契約を扱います。NULL prefix は borrowed original pointer�
 を含む新しい値です。C string conversion と pointer/ABI、native allocation/write は trusted
 boundary です。overlapping input/output は libxml3 で入力を先にコピーして安全に扱いますが、
 固定版との overlap equivalence は主張しません。
+`xmlStrQEqual` は SPARK `XML3_Text.QNames.Compare` で prefix/name/value の raw-byte
+比較を行います。NULL prefix は `xmlStrEqual` 相当の NULL/NULL・同一 pointer equality を
+保ち、非NULL prefix は prefix、colon、name を NUL まで比較します。空 prefix は name/value
+を読まず常に Different です。これは pinned reference の空-prefix do/while が空 value の
+terminator 後を読む unsafe path を意図的に除外した安全性差分であり、NUL-then-`:name` tail
+の解釈も再現しません。guard-page と tail のケースは libxml3-only です。SPARK は status
+初期化、null/pointer identity 契約、scalar loop の範囲を検査します。早い mismatch/identity
+は返り、`Max_Bytes` scan cap を越える追加読取りが必要な equality は
+`Comparison_Limit_Exceeded` として C 側で diagnostic plus 0 に写像されます。
+scan cap は長い入力の一律拒否ではありません。Native
+byte reads、foreign pointer validity/bounds、actual contents、address arithmetic、C mapping、
+full public equivalence remain trusted. XML-name/UTF-8 validation is not performed.
+The comparison itself allocates nothing and performs no writes.
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、
