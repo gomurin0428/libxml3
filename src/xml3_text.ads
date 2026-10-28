@@ -36,7 +36,8 @@ package XML3_Text with SPARK_Mode is
       References : Boolean;
       Output     : out String;
       Length     : out Byte_Count;
-      Valid      : out Boolean)
+      Valid      : out Boolean;
+      Normalize_Line_Endings : Boolean := True)
      with Global => null, Always_Terminates,
        Pre => Input'First >= 1
          and then Input'Last in 0 .. Max_Bytes

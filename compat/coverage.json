@@ -91,6 +91,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeSetContent": {
+    "implementation": "partial",
+    "scope": "SPARK-owned replacement of scalar, element, and attribute content; element/attribute values decode predefined and numeric references. Malformed or unknown references and invalid UTF-8/XML characters are rejected before mutation only for element/attribute inputs; scalar Text/CDATA/Comment/PI content remains raw, with validation deferred to serialization. Literal CR/LF/TAB are preserved; DTD/entity nodes are unsupported.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
     "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",

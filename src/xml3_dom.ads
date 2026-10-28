@@ -1329,6 +1329,60 @@ package XML3_DOM with SPARK_Mode is
            and then Node (S, I).Kind /= Attribute_Node
            and then Node (S, I).Parent = Attribute then I = Keep));
 
+   procedure Retire_Element_Children
+     (S : in out State; Element, Keep : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Element in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Element).State = Live
+       and then Node (S, Element).Kind = Element_Node
+       and then (Keep = Null_Node or else
+         (Keep in 1 .. Node_Ref (Node_Count (S))
+          and then Node (S, Keep).State = Live
+          and then Node (S, Keep).Kind /= Attribute_Node
+          and then Node (S, Keep).Parent = Element)),
+     Post => Valid (S) and then Can_Edit (S)
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
+       and then Node (S, Element) =
+         (Node (S'Old, Element) with delta
+            First_Child => Node (S, Element).First_Child,
+            Last_Child => Node (S, Element).Last_Child)
+       and then (if Keep = Null_Node then
+         Node (S, Element).First_Child = Null_Node
+           and then Node (S, Element).Last_Child = Null_Node
+       else
+         Node (S, Element).First_Child = Keep
+           and then Node (S, Element).Last_Child = Keep
+           and then Node (S, Keep) =
+             (Node (S'Old, Keep) with delta
+                Previous => Null_Node, Next => Null_Node))
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S)) =>
+           (if Node (S, I).State = Live
+             and then Node (S, I).Parent = Element
+             and then Node (S, I).Kind /= Attribute_Node
+            then I = Keep))
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S)) =>
+           (if I /= Element and then I /= Keep
+             and then Node (S'Old, I).State = Live
+             and then (for all C in Node_Ref range
+               1 .. Node_Ref (Node_Count (S'Old)) =>
+                 not (Node (S'Old, C).State = Live
+                   and then Node (S'Old, C).Kind /= Attribute_Node
+                   and then Node (S'Old, C).Parent = Element
+                   and then C /= Keep
+                   and then (I = C or else Ancestor (S'Old, C, I))))
+            then Node (S, I) = Node (S'Old, I)));
+
    procedure Begin_Projection (S : in out State)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S),

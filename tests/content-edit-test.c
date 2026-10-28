@@ -122,7 +122,175 @@ static void test_detached_lifetime(void) {
     xmlFreeNode(text);
 }
 
+static void test_set_content(void) {
+    static const char input[] =
+        "<root xmlns='urn:root' xmlns:p='urn:attribute' p:a='v'>"
+        "<x>old</x><!--c--></root>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlAttrPtr attr;
+    xmlNsPtr root_ns;
+    xmlNsPtr attr_ns;
+    xmlNodePtr text, cdata, reparsed_root;
+    xmlDocPtr reparsed;
+    xmlChar *memory = NULL;
+    int size = 0;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    attr = root->properties;
+    root_ns = root->ns;
+    attr_ns = attr->ns;
+    assert(root_ns != NULL && attr_ns != NULL);
+    assert(xmlNodeSetContent(root, BAD_CAST "<&amp; &#x1f600;\r\n\t") == 0);
+    assert(root->properties == attr);
+    assert(root->ns == root_ns && attr->ns == attr_ns);
+    assert(root->children != NULL && root->children->next == NULL);
+    assert_content(root, "<& 😀\r\n\t");
+    assert(root->children->type == XML_TEXT_NODE);
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "a&lt;&#65;") == 0);
+    assert(root->properties == attr);
+    assert(attr->ns == attr_ns);
+    assert_content((xmlNodePtr)attr, "a<A");
+
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory != NULL && size > 0);
+    assert(strstr((const char *)memory, "&lt;&amp; 😀") != NULL);
+    assert(strstr((const char *)memory, "p:a=\"a&lt;A\"") != NULL);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed != NULL);
+    reparsed_root = xmlDocGetRootElement(reparsed);
+    assert_content(reparsed_root, "<& 😀\r\n\t");
+    assert(reparsed_root->ns != NULL &&
+           strcmp((const char *)reparsed_root->ns->href, "urn:root") == 0);
+    assert(reparsed_root->properties != NULL &&
+           reparsed_root->properties->ns != NULL);
+    assert_content((xmlNodePtr)reparsed_root->properties, "a<A");
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "") == 0);
+    assert(attr->children == NULL);
+    assert(xmlNodeSetContent((xmlNodePtr)attr, NULL) == 0);
+    assert(attr->children == NULL);
+
+    text = xmlNewText(BAD_CAST "old");
+    assert(text != NULL);
+    assert(xmlNodeSetContent(text, NULL) == 0 && text->content == NULL);
+    assert(xmlNodeSetContent(text, BAD_CAST "") == 0 &&
+           text->content != NULL && strcmp((const char *)text->content, "") == 0);
+    assert(xmlNodeSetContent(text, BAD_CAST "alias") == 0);
+    assert(xmlNodeSetContent(text, text->content) == 0);
+    assert(strcmp((const char *)text->content, "alias") == 0);
+    xmlFreeNode(text);
+
+    assert(xmlNodeSetContent(root, BAD_CAST "") == 0 && root->children == NULL);
+    assert(xmlNodeSetContent(root, NULL) == 0 && root->children == NULL);
+    xmlFreeDoc(doc);
+
+    {
+        static const char cdata_input[] = "<r><![CDATA[old]]></r>";
+        doc = xmlReadMemory(cdata_input, (int)sizeof(cdata_input) - 1,
+                            NULL, NULL, 0);
+    }
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    cdata = root->children;
+    assert(cdata != NULL && cdata->type == XML_CDATA_SECTION_NODE);
+    assert(xmlNodeSetContent(cdata, BAD_CAST "raw<&") == 0);
+    assert(cdata->type == XML_CDATA_SECTION_NODE);
+    assert(strcmp((const char *)cdata->content, "raw<&") == 0);
+    xmlFreeDoc(doc);
+
+    text = xmlNewComment(BAD_CAST "old");
+    assert(text != NULL);
+    assert(xmlNodeSetContent(text, BAD_CAST "raw<&") == 0);
+    assert(strcmp((const char *)text->content, "raw<&") == 0);
+    xmlFreeNode(text);
+    text = xmlNewPI(BAD_CAST "target", BAD_CAST "old");
+    assert(text != NULL);
+    assert(xmlNodeSetContent(text, BAD_CAST "raw<&") == 0);
+    assert(strcmp((const char *)text->content, "raw<&") == 0);
+    xmlFreeNode(text);
+
+    doc = xmlNewDoc(NULL);
+    assert(doc != NULL);
+    assert(xmlNodeSetContent((xmlNodePtr)doc, BAD_CAST "ignored") == 0);
+    assert(xmlDocGetRootElement(doc) == NULL);
+    xmlFreeDoc(doc);
+}
+
+static void test_set_detached_lifetime(void) {
+    xmlDocPtr doc = xmlReadMemory("<r>old</r>", 10, NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNodePtr text;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    text = root->children;
+    xmlUnlinkNode(text);
+    xmlFreeDoc(doc);
+    assert(xmlNodeSetContent(text, BAD_CAST "detached") == 0);
+    assert(strcmp((const char *)text->content, "detached") == 0);
+    xmlFreeNode(text);
+}
+
 #ifndef XML3_REFERENCE_TEST
+static void test_set_rejection_is_transactional(void) {
+    static const char input[] = "<r><x>old</x><y/></r>";
+    static const char *const invalid[] = {
+        "&unknown;", "&amp", "&#xZZ;", "&#0;"
+    };
+    static const char invalid_utf8[] = { (char)0xc0, (char)0xaf, '\0' };
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNodePtr first;
+    xmlNodePtr last;
+    xmlChar *first_content;
+    size_t i;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    first = root->children;
+    last = root->last;
+    first_content = first->children->content;
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        assert(xmlNodeSetContent(root, BAD_CAST invalid[i]) == 1);
+        assert(root->children == first && root->last == last);
+        assert(first->children->content == first_content);
+        assert(strcmp((const char *)first_content, "old") == 0);
+    }
+    assert(xmlNodeSetContent(root, (const xmlChar *)invalid_utf8) == 1);
+    assert(root->children == first && root->last == last);
+    assert(first->children->content == first_content);
+    xmlFreeDoc(doc);
+}
+
+static void test_set_namespace_borrower_lifetime(void) {
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr child = xmlNewNode(NULL, BAD_CAST "child");
+    xmlNodePtr borrower = xmlNewNode(NULL, BAD_CAST "borrower");
+    xmlNsPtr ns;
+
+    assert(doc != NULL && root != NULL && child != NULL && borrower != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlAddChild(root, child) == child);
+    ns = xmlNewNs(child, BAD_CAST "urn:borrowed", BAD_CAST "p");
+    assert(ns != NULL);
+    xmlSetNs(borrower, ns);
+    assert(borrower->ns == ns);
+    assert(xmlNodeSetContent(root, BAD_CAST "replacement") == 0);
+    assert(root->children != NULL && root->children == root->last);
+    assert(root->children->type == XML_TEXT_NODE);
+    assert(borrower->ns == ns);
+    assert(strcmp((const char *)ns->href, "urn:borrowed") == 0);
+    xmlFreeDoc(doc);
+    assert(borrower->ns == ns);
+    assert(strcmp((const char *)ns->href, "urn:borrowed") == 0);
+    xmlFreeNode(borrower);
+}
+
 static void test_invalid_facade_and_document_noop(void) {
     xmlNode invalid = {0};
     xmlDocPtr doc = xmlNewDoc(NULL);
@@ -132,6 +300,9 @@ static void test_invalid_facade_and_document_noop(void) {
     assert(xmlNodeAddContent(&invalid, NULL) == 1);
     assert(xmlNodeAddContent(&invalid, BAD_CAST "x") == 1);
     assert(xmlNodeAddContent((xmlNodePtr)doc, BAD_CAST "ignored") == 0);
+    assert(xmlNodeSetContent(&invalid, BAD_CAST "x") == 1);
+    assert(xmlNodeSetContent(NULL, BAD_CAST "x") == 1);
+    assert(xmlNodeSetContent((xmlNodePtr)doc, BAD_CAST "ignored") == 0);
     assert(xmlDocGetRootElement(doc) == NULL);
     xmlFreeDoc(doc);
 }
@@ -155,14 +326,19 @@ static void test_invalid_comment_serialization(void) {
 
 int main(void) {
     assert(xmlNodeAddContent(NULL, NULL) == 1);
+    assert(xmlNodeSetContent(NULL, NULL) == 1);
     test_element_and_attribute_append();
     test_new_child_after_non_text();
     test_scalar_nodes_and_aliasing();
     test_detached_lifetime();
+    test_set_content();
+    test_set_detached_lifetime();
 #ifndef XML3_REFERENCE_TEST
+    test_set_rejection_is_transactional();
+    test_set_namespace_borrower_lifetime();
     test_invalid_facade_and_document_noop();
     test_invalid_comment_serialization();
 #endif
-    puts("content append tests passed");
+    puts("content edit tests passed");
     return 0;
 }

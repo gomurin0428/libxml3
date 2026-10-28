@@ -69,6 +69,40 @@ package body XML3_DOM with SPARK_Mode is
       end if;
    end Same_Ancestor;
 
+   procedure Retained_Ancestor
+     (Original, Remaining : Node_View_Array; Used : Natural;
+      Candidate, N : Node_Ref)
+   with Ghost, Global => null,
+     Pre => Original'First = 1 and then Remaining'First = 1
+       and then Used <= Original'Last and then Used <= Remaining'Last
+       and then Candidate in 1 .. Node_Ref (Used)
+       and then N in 1 .. Node_Ref (Used)
+       and then (for all I in 1 .. Used =>
+         (if Remaining (I).State = Live then
+           Original (I).State = Live
+           and then Original (I).Parent = Remaining (I).Parent
+           and then Original (I).Tree_Rank = Remaining (I).Tree_Rank)),
+     Post => (if Ancestor_In_Nodes (Remaining, Used, Candidate, N) then
+       Ancestor_In_Nodes (Original, Used, Candidate, N)),
+     Subprogram_Variant =>
+       (Decreases => Remaining (Positive (N)).Tree_Rank);
+
+   procedure Retained_Ancestor
+     (Original, Remaining : Node_View_Array; Used : Natural;
+      Candidate, N : Node_Ref)
+   is
+      P : constant Node_Ref := Remaining (Positive (N)).Parent;
+   begin
+      if Remaining (Positive (N)).State = Live and then Candidate /= N
+        and then P in 1 .. Node_Ref (Used)
+        and then Remaining (Positive (P)).State = Live
+        and then Remaining (Positive (P)).Tree_Rank <
+          Remaining (Positive (N)).Tree_Rank
+      then
+         Retained_Ancestor (Original, Remaining, Used, Candidate, P);
+      end if;
+   end Retained_Ancestor;
+
    procedure Changed_Holder_Count
      (Left, Right : Node_View_Array;
       B : Owner_Ref;
@@ -4608,6 +4642,198 @@ package body XML3_DOM with SPARK_Mode is
          pragma Assert (Node (S, Attribute).Last_Child = Keep);
       end if;
    end Retire_Attribute_Children;
+
+   procedure Retire_One_Element_Child
+     (S : in out State; Element, Child, Keep : Node_Ref)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Element in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Element).State = Live
+       and then Node (S, Element).Kind = Element_Node
+       and then Node_Siblings_Valid (S.Graph, Positive (Element))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Child /= Keep
+       and then Node (S, Child).State = Live
+       and then Node (S, Child).Parent = Element
+       and then Node (S, Child).Kind /= Attribute_Node
+       and then Node_Siblings_Valid (S.Graph, Positive (Child))
+       and then (Keep = Null_Node or else
+         (Keep in 1 .. Node_Ref (Node_Count (S))
+          and then Node (S, Keep).State = Live
+          and then Node (S, Keep).Parent = Element
+          and then Node_Siblings_Valid (S.Graph, Positive (Keep)))),
+     Post => Valid (S) and then Can_Edit (S)
+       and then Node (S, Child).State = Tombstone
+       and then Namespace_Count (S) = Namespace_Count (S'Old)
+       and then Capacity_Of (S) = Capacity_Of (S'Old)
+       and then Node_Count (S) = Node_Count (S'Old)
+       and then Owner_Count (S) = Owner_Count (S'Old)
+       and then (for all B in Owner_Ref range
+         1 .. Owner_Ref (Owner_Count (S'Old)) =>
+           (if Owner (S'Old, B).State /= Live then
+             Owner (S, B) = Owner (S'Old, B)))
+       and then Facades_Preserved (S'Old, S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then (for all I in Node_Ref range
+         1 .. Node_Ref (Node_Count (S'Old)) =>
+           (if Node (S'Old, I).State = Live
+             and then Ancestor (S'Old, Child, I)
+            then Node (S, I).State = Tombstone
+            else Node (S, I) = Unlinked_View (S'Old, Child, I)))
+       and then Node (S, Element) = Unlinked_View (S'Old, Child, Element)
+       and then Node (S, Element) =
+         (Node (S'Old, Element) with delta
+            First_Child => Node (S, Element).First_Child,
+            Last_Child => Node (S, Element).Last_Child)
+       and then (if Keep /= Null_Node then
+         Node (S, Keep) = Unlinked_View (S'Old, Child, Keep)
+         and then Node (S, Keep) =
+           (Node (S'Old, Keep) with delta
+              Previous => Node (S, Keep).Previous,
+              Next => Node (S, Keep).Next));
+
+   procedure Retire_One_Element_Child
+     (S : in out State; Element, Child, Keep : Node_Ref)
+   is
+      Expected_Element : constant Node_View :=
+        Unlinked_View (S, Child, Element) with Ghost;
+      Expected_Keep : constant Node_View :=
+        (if Keep = Null_Node then Node (S, Element)
+         else Unlinked_View (S, Child, Keep)) with Ghost;
+   begin
+      pragma Assert
+        (Expected_Element = (Node (S, Element) with delta
+           First_Child => Expected_Element.First_Child,
+           Last_Child => Expected_Element.Last_Child));
+      pragma Assert
+        (if Keep /= Null_Node then
+          Expected_Keep = (Node (S, Keep) with delta
+            Previous => Expected_Keep.Previous,
+            Next => Expected_Keep.Next));
+      Free_Subtree_With_Namespaces (S, Child);
+      pragma Assert (Node (S, Element) = Expected_Element);
+      pragma Assert
+        (if Keep /= Null_Node then Node (S, Keep) = Expected_Keep);
+   end Retire_One_Element_Child;
+
+   procedure Retire_Element_Children
+     (S : in out State; Element, Keep : Node_Ref)
+   is
+      Before : constant State := S with Ghost;
+   begin
+      for I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+         if Node (S, I).State = Live
+           and then Node (S, I).Kind /= Attribute_Node
+           and then Node (S, I).Parent = Element
+           and then I /= Keep
+         then
+            pragma Assert (Node_Siblings_Valid (S.Graph, Positive (I)));
+            pragma Assert
+              (Node_Siblings_Valid (S.Graph, Positive (Element)));
+            pragma Assert
+              (if Keep /= Null_Node then
+                 Node_Siblings_Valid (S.Graph, Positive (Keep)));
+            pragma Assert
+              (Node (S, Element).Tree_Rank < Node (S, I).Tree_Rank);
+            pragma Assert (not Ancestor (S, I, Element));
+            pragma Assert
+              (if Keep /= Null_Node then not Ancestor (S, I, Keep));
+            for J in Node_Ref range 1 .. Node_Ref (Node_Count (S)) loop
+               Retained_Ancestor
+                 (Snapshot_Nodes (Before), Snapshot_Nodes (S),
+                  Node_Count (S), I, J);
+               pragma Assert
+                 (if J /= Element and then J /= Keep
+                   and then Node (Before, J).State = Live
+                   and then (for all C in Node_Ref range
+                     1 .. Node_Ref (Node_Count (Before)) =>
+                       not (Node (Before, C).State = Live
+                         and then Node (Before, C).Kind /= Attribute_Node
+                         and then Node (Before, C).Parent = Element
+                         and then C /= Keep
+                         and then (J = C or else Ancestor (Before, C, J))))
+                  then not Ancestor (S, I, J)
+                    and then Unlinked_View (S, I, J) = Node (Before, J));
+               pragma Loop_Invariant
+                 (for all K in Node_Ref range 1 .. J =>
+                   (if K /= Element and then K /= Keep
+                     and then Node (Before, K).State = Live
+                     and then (for all C in Node_Ref range
+                       1 .. Node_Ref (Node_Count (Before)) =>
+                         not (Node (Before, C).State = Live
+                           and then Node (Before, C).Kind /= Attribute_Node
+                           and then Node (Before, C).Parent = Element
+                           and then C /= Keep
+                           and then
+                             (K = C or else Ancestor (Before, C, K))))
+                    then not Ancestor (S, I, K)
+                      and then Unlinked_View (S, I, K) = Node (Before, K)));
+            end loop;
+            Retire_One_Element_Child (S, Element, I, Keep);
+         end if;
+         pragma Loop_Invariant (Valid (S) and then Can_Edit (S));
+         pragma Loop_Invariant (Node_Count (S) = Node_Count (Before));
+         pragma Loop_Invariant
+           (Namespace_Count (S) = Namespace_Count (Before));
+         pragma Loop_Invariant (Owner_Count (S) = Owner_Count (Before));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range
+             1 .. Node_Ref (Node_Count (S)) =>
+               (if Node (S, J).State = Live then
+                 Node (Before, J).State = Live
+                 and then Node (S, J).Parent = Node (Before, J).Parent
+                 and then Node (S, J).Tree_Rank = Node (Before, J).Tree_Rank
+                 and then Node (S, J).Kind = Node (Before, J).Kind));
+         pragma Loop_Invariant
+           (for all B in Owner_Ref range
+             1 .. Owner_Ref (Owner_Count (Before)) =>
+               (if Owner (Before, B).State /= Live then
+                 Owner (S, B) = Owner (Before, B)));
+         pragma Loop_Invariant (Facades_Preserved (Before, S));
+         pragma Loop_Invariant
+           (if Facades_Present (Before) then Facades_Present (S));
+         pragma Loop_Invariant
+           (Node (S, Element) = (Node (Before, Element) with delta
+             First_Child => Node (S, Element).First_Child,
+             Last_Child => Node (S, Element).Last_Child));
+         pragma Loop_Invariant
+           (if Keep /= Null_Node then
+             Node (S, Keep) = (Node (Before, Keep) with delta
+               Previous => Node (S, Keep).Previous,
+               Next => Node (S, Keep).Next));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range 1 .. I =>
+             (if Node (S, J).State = Live
+               and then Node (S, J).Kind /= Attribute_Node
+               and then Node (S, J).Parent = Element
+              then J = Keep));
+         pragma Loop_Invariant
+           (for all J in Node_Ref range
+             1 .. Node_Ref (Node_Count (S)) =>
+               (if J /= Element and then J /= Keep
+                 and then Node (Before, J).State = Live
+                 and then (for all C in Node_Ref range
+                   1 .. Node_Ref (Node_Count (Before)) =>
+                     not (Node (Before, C).State = Live
+                       and then Node (Before, C).Kind /= Attribute_Node
+                       and then Node (Before, C).Parent = Element
+                       and then C /= Keep
+                       and then (J = C or else
+                         Ancestor (Before, C, J))))
+                then Node (S, J) = Node (Before, J)));
+      end loop;
+      pragma Assert (Node_Children_Valid (S.Graph, Positive (Element)));
+      if Keep = Null_Node then
+         pragma Assert (Node (S, Element).First_Child = Null_Node);
+         pragma Assert (Node (S, Element).Last_Child = Null_Node);
+      else
+         pragma Assert (Node_Siblings_Valid (S.Graph, Positive (Keep)));
+         pragma Assert (Node (S, Keep).Previous = Null_Node);
+         pragma Assert (Node (S, Keep).Next = Null_Node);
+         pragma Assert (Node (S, Element).First_Child = Keep);
+         pragma Assert (Node (S, Element).Last_Child = Keep);
+      end if;
+   end Retire_Element_Children;
 
    procedure Merge_Text
      (S : in out State; Target, Source : Node_Ref;

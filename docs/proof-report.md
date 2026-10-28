@@ -3,11 +3,12 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,508 checks, 847 by flow analysis and 9,661 by provers;
+**10,793 checks, 860 by flow analysis and 9,933 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
-memory serialization, and `xmlNodeAddContent` through the SPARK Store/Runtime.
-The entity summaries report 0 flow errors, 128 warnings, and 0 `pragma Assume`
+memory serialization, `xmlNodeAddContent`, and `xmlNodeSetContent` through the
+SPARK Store/Runtime. The entity summaries report 0 flow errors, 126 warnings,
+and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -24,13 +25,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 234 |
-| Initialization | 470 |
-| Runtime checks | 4,806 |
-| Assertions | 1,419 |
-| Functional contracts | 3,385 |
-| Termination | 194 |
-| **Total** | **10,508** |
+| Data dependencies | 239 |
+| Initialization | 478 |
+| Runtime checks | 4,870 |
+| Assertions | 1,464 |
+| Functional contracts | 3,547 |
+| Termination | 195 |
+| **Total** | **10,793** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -92,9 +93,20 @@ postconditions a non-null, valid, editable Store with projection complete and
 facades present. Its frame preserves node and namespace counts, unrelated live
 node views, and all target-node fields other than content address, length, and
 pin on success; a non-success status leaves the target node unchanged.
-Runtime tests additionally cover append semantics, aliasing, facade
-preservation, and allocation-failure rollback/retry; those are test evidence,
-not formal claims.
+`xmlNodeSetContent` routes through `Runtime.Set_Content` and
+`XML3_DOM_Store.Content.Set`. Element/Attribute input is decoded before
+mutation; the replacement text child is attached before old children are
+retired. The `Retained_Ancestor` ghost lemma relates current live ancestry to
+the original state for the iterative namespace-aware retirement frame.
+`Retire_One_Element_Child` requires a live element and child, valid sibling
+links, and `Child /= Keep`; its postcondition frames the element's child
+endpoints and the retained child's sibling links while preserving counts,
+capacity, Store validity, and facade/owner guarantees. The `Replace_Content`
+frame preserves unrelated live nodes and, on success, changes only the target
+content address, length, and pin. No element-wise namespace-entry frame is
+claimed. Runtime tests cover append and replacement semantics, decoding,
+aliasing, facade and detached namespace-owner lifetime, and allocation-failure
+rollback/retry; those are test evidence, not formal claims.
 
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
@@ -154,7 +166,8 @@ build runs the shared exact-output cases, including constructed comments/PIs.
 `make test-content-edit` passed for both the library and pinned libxml2 2.15.4
 reference builds.
 
-The following final regression command passed before the aggregate proof:
+The following full regression command passed after the implementation and
+header fix, before the final proof-only edits:
 
 ```sh
 make -k test-development test-oom test-dom test-api test-serialization \
@@ -166,8 +179,9 @@ tests passed in both library and reference builds. `test-oom` walked one
 allocation site each for `dom-content-replace` and `dom-content-child`. The
 inventory check passed; its Python inventory suite reported five passing
 tests. Clang printed its existing deprecation warnings for `SAX.h`, `nanoftp.h`,
-and `xmlunicode.h`. The final regression gate and aggregate proof were run on
-the same source revision.
+and `xmlunicode.h`. After the final proof-only edits, `make test-content-edit
+test-dom-core` and the development content-edit test passed. The wider
+regression command was not repeated because runtime behavior was unchanged.
 
 Regression coverage includes connected parse/edit/query/release and Store
 reuse, two-document preservation, detached subtree lifetime after source
@@ -204,14 +218,14 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-821f43e5c36e77320aa2c418e1bfaa006ffb8c773cadc8d173c6ff5765db460d  src/xml3_c.adb
-98ebcbf45a91055f4a03c833cab012a85f2210dc0b3eaf840749ac4d1908b05f  src/xml3_c.ads
+cf9aaecca2755a64c024fd5b2b5cc7735f80339c1ffc72fe4f6ec3f3bd542328  src/xml3_c.adb
+7bbba730c9c7933417dd01b73cdbd7546f0b639ea51e76ee646fdfd058e29552  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
 11b0272dbbf8cf7988fb7c96ef8f104f22db1a1390e2c3f5df0bd6d3f6ef60c1  src/xml3_dom-materialize.ads
-88179f7d744b408c8fe2a73efdb6aa798c30ec2357f78c3c42997cb1332f5d0a  src/xml3_dom.adb
-af8c8f446580a0cddb1f959f1739d9acd665ecdbc5ddddc7078f41efa36ce878  src/xml3_dom.ads
+ebd48b22f0251b30c6a8b1ddad1183c058ca54643ab796704f73ef939a68c2bc  src/xml3_dom.adb
+42ac3bf19150b83f89cfb6acf21cae98f45ee82b1daef26140dd935d55f843b2  src/xml3_dom.ads
 1b0b582fc5ab3c34e5d96d5fce20b536426df9f68fbe4b4e99423785eb978002  src/xml3_dom_allocation.adb
 38c4ff80e2a8bafa63579a0cb03026926cb4ad4ee44d2324d86842e119ac1c05  src/xml3_dom_allocation.ads
 c25f8e859f3b568737e637ba9e1c8eb0238fcb83aa8de34a09cea35ab1b345aa  src/xml3_dom_bridge.adb
@@ -221,10 +235,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-4d87f96415303684b20850084bca0023b6fa4c1f296312e7eda84650b388a784  src/xml3_dom_runtime.adb
-44e2f313e4be2716124251d9d07b82052c1c0781f21192792ef52d06061a921a  src/xml3_dom_runtime.ads
-bfd1f5d706d448c4d021e7358abba5bf8b3c8bc3e245f461c1571a393f5f00bd  src/xml3_dom_store-content.adb
-7d385591c1f9185cb2023778090a8cf65525caba49e0671e31fe841c8cc2580e  src/xml3_dom_store-content.ads
+aa5c609d149642296831df9671c81e3da57d27c6fc4604c119a73bf6fb753836  src/xml3_dom_runtime.adb
+ca433f681feb91f5a3e51490d2f402e7c243970fa7988f70336abd35962288f0  src/xml3_dom_runtime.ads
+bfb44504830ae755e70e218daa5088653231c798c3b26e95d61f8ef012965612  src/xml3_dom_store-content.adb
+be00d2b2b2afb3853ca748cc05b596bb3658e1a6e7e433f70f2027a7b104cd75  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 1334154710f271040b55a309cd9b4ff93fb1d82988fbd85046dd7d05d3179944  src/xml3_dom_store-properties.adb
@@ -248,12 +262,12 @@ cd9bcad78d7dfd418e27a8237dd47b7e0c2aef4d9826324206b5fdcd93d8ba9e  src/xml3_nativ
 b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_serialization.adb
 4a3c84a0b7ee2b7b1a0129b63f37e36b1547c8e75152c7463e06d3f019d0f217  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
-47f78aaebd907be02955b0d9b991eb47d7b2c344c3cae7b924a7ca575ba10c5b  src/xml3_text.adb
-7e1c81bf4f77e1e6d433710179b63f28bf00057aeef6f5cf07708a113dd4d809  src/xml3_text.ads
-bb67b154b1733ef2e1aaf6eeb6fe55d48cf04ae3d0c97e13882c27266e4cd1bf  include/libxml/tree.h
+03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
+0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
+951f8628f882dcbdc0184f39a289c28c845e9d3b338eca60b7108bcad6b66ced  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-88a94782c24c3fcb50ca10f7900a71d62e335d4422f5c66c590359561adea2f0  Makefile
+8acc71cac3dee91ac1eedaf04a62e41d43ba8efda48fc4b2bac0de0350bc3e2e  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
