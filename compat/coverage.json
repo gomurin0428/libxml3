@@ -528,6 +528,26 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlStrncmp": {
+    "implementation": "partial",
+    "scope": "Compares at most len raw bytes across the full nonnegative C int range without a Max_Input cutoff, returning the unsigned-byte difference and stopping on mismatch, NUL, or bound. Nonpositive length returns 0 before pointer checks; identical pointers return 0; NULL ordering is -1/+1. No allocation or C-string conversion. Bounded loop control and result range are proved, but Native.Byte_At, foreign pointer validity, readable bounds, actual bytes, and full semantics remain trusted.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrncasecmp": {
+    "implementation": "partial",
+    "scope": "Compares at most len raw bytes across the full nonnegative C int range without a Max_Input cutoff, using the pinned byte map (A-Z plus '[' to '{') and stopping on mismatch, NUL, or bound. Nonpositive length returns 0 before pointer checks; identical pointers return 0; NULL ordering is -1/+1. The '[' mapping is a reference quirk, not Unicode case folding. No allocation or C-string conversion; Native.Byte_At, foreign pointer validity, readable bounds, actual bytes, and full semantics remain trusted.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlStrcmp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

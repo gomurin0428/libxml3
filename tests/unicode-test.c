@@ -15,6 +15,43 @@
 #include <unistd.h>
 #endif
 
+typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
+static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
+
+static unsigned reference_case_map(unsigned value) {
+    return (value >= 'A' && value <= 'Z') || value == '[' ? value + 32 : value;
+}
+
+static void test_bounded_string_comparisons(void) {
+    for (unsigned left = 0; left < 256; ++left) {
+        for (unsigned right = 0; right < 256; ++right) {
+            xmlChar a[] = {(xmlChar)left}, b[] = {(xmlChar)right};
+            assert(xmlStrncmp(a, b, 1) == (int)left - (int)right);
+            assert(xmlStrncasecmp(a, b, 1) ==
+                   (int)reference_case_map(left) - (int)reference_case_map(right));
+        }
+    }
+    for (size_t i = 0; i < sizeof(bounded_comparisons) / sizeof(*bounded_comparisons); ++i) {
+        bounded_compare_fn compare = bounded_comparisons[i];
+        xmlChar a[] = {'a', 0, 'x'}, b[] = {'a', 0, 'y'};
+        xmlChar raw_a[] = {'a', 'b', 'c'}, raw_b[] = {'a', 'b', 'c'};
+        assert(compare(NULL, NULL, INT_MAX) == 0);
+        assert(compare(NULL, raw_a, 1) == -1 && compare(raw_a, NULL, 1) == 1);
+        assert(compare(NULL, raw_a, 0) == 0 && compare(raw_a, NULL, INT_MIN) == 0);
+        assert(compare(raw_a, raw_a, INT_MAX) == 0);
+        assert(compare(raw_a, raw_b, 3) == 0);
+        assert(compare(a, b, INT_MAX) == 0);
+        assert(compare(BAD_CAST "abcdef", BAD_CAST "abcXYZ", 3) == 0);
+        assert(compare(BAD_CAST "名a", BAD_CAST "名b", 4) == -1);
+        assert(compare(BAD_CAST "\xc3\x84", BAD_CAST "\xc3\xa4", 2) == -32);
+    }
+    assert(xmlStrncmp(BAD_CAST "AbC", BAD_CAST "aBc", 3) == -32);
+    assert(xmlStrncasecmp(BAD_CAST "AbC", BAD_CAST "aBc", 3) == 0);
+    assert(xmlStrncasecmp(BAD_CAST "[", BAD_CAST "{", 1) == 0);
+    assert(xmlStrncmp(BAD_CAST "abcdef", BAD_CAST "abcXYZ", 4) == 12);
+    assert(xmlStrncasecmp(BAD_CAST "abcdef", BAD_CAST "abcXYZ", 4) == -20);
+}
+
 static void test_string_concatenation(void) {
     static const struct {
         const char *left, *right;
@@ -151,6 +188,23 @@ static void test_string_duplicates(void) {
         assert(!xmlStrndup(unreadable, INT_MAX));
         xmlResetLastError();
 #endif
+        for (size_t i = 0; i < sizeof(bounded_comparisons) / sizeof(*bounded_comparisons); ++i) {
+            bounded_compare_fn compare = bounded_comparisons[i];
+            assert(compare(unreadable, unreadable, INT_MAX) == 0);
+            assert(compare(unreadable, source, 0) == 0);
+            assert(compare(source, unreadable, INT_MIN) == 0);
+            assert(compare(NULL, unreadable, INT_MAX) == -1);
+            assert(compare(unreadable, NULL, INT_MAX) == 1);
+            source[2] = 'a';
+            assert(compare(source + 2, BAD_CAST "a", 1) == 0);
+            assert(compare(source + 2, BAD_CAST "b", INT_MAX) == -1);
+            assert(compare(BAD_CAST "b", source + 2, INT_MAX) == 1);
+            source[2] = 0;
+            assert(compare(source + 2, BAD_CAST "", INT_MAX) == 0);
+        }
+        source[2] = 'A';
+        assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
+        assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -395,6 +449,7 @@ static void test_ranges(void) {
 int main(void) {
     test_string_duplicates();
     test_string_concatenation();
+    test_bounded_string_comparisons();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

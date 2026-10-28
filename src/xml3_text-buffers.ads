@@ -6,6 +6,12 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Concatenate_Status is (Copied, No_Input, No_Memory, Limit_Exceeded);
 
+   function Compare_Bounded
+     (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean)
+      return Integer
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Compare_Bounded'Result in -255 .. 255;
+
    function Fits (Left_Length, Right_Length : Natural) return Boolean is
      (Left_Length <= Max_Bytes
       and then Right_Length <= Max_Bytes - Left_Length)
