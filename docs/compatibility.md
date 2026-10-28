@@ -257,7 +257,8 @@ raw の空文字列は空 text child を作り、NULL は作りません。文�
 要素作成後に text 確保が失敗した場合の後始末は SPARK Store/Runtime が管理します。
 dictionary interning、登録callback、一般実体の展開は未対応です。
 `xmlNewDocProp` は未接続の無namespace属性を作成します。作成後は `xmlAddChild` で
-同一文書または文書なしの element parent に接続できます。NULL doc では文書なし、
+属性が文書未所属、または接続先と同じ文書に所属する場合に element parent へ接続できます。
+NULL doc では文書なし、
 non-NULL doc は管理中の live document に限り、属性はその owner を保持するため
 文書先行解放後も `xmlFreeProp` まで存続します。値は `xmlNewDocNode` と同じ範囲で
 文字参照を展開し、NULL/空文字列はどちらも text child を作りません。NULL name と

@@ -83,7 +83,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
 値の文字参照は展開し、NULL/空文字列はいずれも text child を作りません。
 属性は `xmlFreeProp` で解放でき、文書先行解放後も保持されます。`xmlAddChild` で
-同一文書または文書なしの要素へ接続できます。既存属性との照合は local name と namespace
+文書未所属の属性、または接続先と同じ文書に所属する属性を要素へ接続できます。
+既存属性との照合は local name と namespace
 href による expanded name で行い、接続成功後に一致属性を置き換えます。既に最後の属性なら
 重複があっても no-op です。namespace reconciliation と detached attribute の単独シリアライズは
 このサブセットではサポートしません。

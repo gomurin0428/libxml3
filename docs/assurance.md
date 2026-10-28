@@ -305,8 +305,8 @@ Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NU
 `Attribute_Mode` で使い、未接続・無namespaceの属性を作ります。文書所属と owner pin、
 値の参照展開、text child の作成、失敗時の解放は SPARK 側にあります。NULL doc と
 管理中の live document を受け入れ、文書先行解放後も属性は `xmlFreeProp` まで保持します。
-NULL/空値は text child なしです。管理中の属性は `xmlAddChild` で同一文書または文書なしの
-要素へ接続できます。既存属性とは local name と namespace href の expanded name で照合し、
+NULL/空値は text child なしです。`xmlAddChild` では、文書未所属の属性、または接続先と
+同じ文書に所属する属性を要素へ接続できます。既存属性とは local name と namespace href の expanded name で照合し、
 接続成功後に一致属性を解放します。既に最後の属性なら重複があっても no-op です。
 namespace reconciliation、attribute unlink、detached attribute の単独シリアライズは未対応です。
 API 全体の意味論や C pointer validity を証明した主張ではありません。
