@@ -28,8 +28,8 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including namespace editing and explicit
 UTF-8 memory serialization. The C adapters and native ABI implementation are
-not proved. The recorded aggregate has 10,793 checks, no unproved or justified
-conditions, and 126 warnings; the representation-generation diagnostic
+not proved. The recorded aggregate has 10,828 checks, no unproved or justified
+conditions, and 128 warnings; the representation-generation diagnostic
 is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -130,7 +130,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,793-check aggregate proof; see
+new units are included in the successful 10,828-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -189,6 +189,13 @@ serialization 時に行われます。raw input reference は serializer で展�
 validation/escaping は serialization 時に行われます。new child は完全に準備して attach
 した後に旧 children を namespace-aware に retire し、失敗では旧 tree を保ちます。
 DTD/entity node types と namespace repair は未対応です。
+
+`xmlNewChild` は同じ Content/Runtime 層で namespace 継承、reference decoding、
+新しい element/text の構築、接続と失敗時の後始末を行います。入力用 scratch は native
+node を作る前に確保し、旧 parent への接続は準備完了後の最後に行います。C adapter は
+文字列変換、NULL name の検査、mutex、結果・例外変換のみを担当します。Store 層の契約は
+`Ready` と結果/status の整合性を保証し、API 全体の libxml2 等価性や rollback の完全な
+意味論まで形式証明したという主張ではありません。
 
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.

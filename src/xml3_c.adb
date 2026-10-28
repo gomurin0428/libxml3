@@ -802,6 +802,43 @@ package body XML3_C is
          return System.Null_Address;
    end New_Node;
 
+   function New_Child
+     (Parent, Ns, Name, Content : System.Address) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Name = System.Null_Address then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      declare
+         Name_Text : constant String := C_String_Value (Name);
+         Content_Text : constant String := C_String_Value (Content);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.New_Child
+           (Parent, Ns, Name_Text, Content_Text, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end New_Child;
+
    function New_Content_Node
      (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address)
      return System.Address

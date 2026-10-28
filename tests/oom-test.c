@@ -746,6 +746,37 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)root->last->content, "after") == 0);
         }
         xmlFreeDoc(content_doc);
+    } else if (strcmp(operation, "dom-new-child") == 0) {
+        xmlDocPtr content_doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlNodePtr old = xmlNewComment(BAD_CAST "before");
+        xmlNodePtr child;
+        xmlNsPtr ns;
+        assert(content_doc != NULL && root != NULL && old != NULL);
+        assert(xmlDocSetRootElement(content_doc, root) == NULL);
+        assert(xmlAddChild(root, old) == old);
+        ns = xmlNewNs(root, BAD_CAST "urn:parent", BAD_CAST "p");
+        assert(ns != NULL);
+        xmlSetNs(root, ns);
+        xml3_oom_enable(fail_index);
+        child = xmlNewChild(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(child == NULL);
+            assert(root->children == old && root->last == old && root->ns == ns);
+            assert(old->parent == root && old->next == NULL && old->prev == NULL);
+            assert(strcmp((const char *)ns->href, "urn:parent") == 0);
+            require_oom_error();
+            child = xmlNewChild(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
+        }
+        assert(child != NULL && child->parent == root && child->doc == content_doc);
+        assert(child->ns == ns && root->last == child && child->prev == old);
+        assert(root->children == old && old->next == child && child->next == NULL);
+        assert(child->children != NULL && child->children->doc == content_doc);
+        assert(strcmp((const char *)child->children->content, "new&text") == 0);
+        xmlFreeDoc(content_doc);
     } else if (strcmp(operation, "dom-content-set-scalar") == 0) {
         xmlNodePtr text = xmlNewText(BAD_CAST "old");
         xmlChar *original_content;

@@ -100,6 +100,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewChild": {
+    "implementation": "partial",
+    "scope": "SPARK-owned element construction and append to element/document parents, inheriting the parent namespace when ns is NULL. Predefined/numeric references are decoded with literal whitespace preserved; malformed/unknown references and invalid XML/UTF-8 content are rejected before construction. NULL/empty content creates no text child. Unpublished nodes are retired on failure. Fragment/HTML/DTD/general entity support and namespace repair are excluded; names remain raw until serialization validation.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
     "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
