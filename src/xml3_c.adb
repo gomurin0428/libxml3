@@ -2341,6 +2341,34 @@ package body XML3_C is
          return 0;
    end Str_Equal;
 
+   function Compare_Bounded_Strings
+     (Left, Right : System.Address; Length : Interfaces.C.int;
+      Ignore_Case : Boolean) return Interfaces.C.int
+   is
+   begin
+      return Interfaces.C.int
+        (XML3_Text.Buffers.Compare_Bounded
+           (Left, Right, Integer (Length), Ignore_Case));
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return 0;
+   end Compare_Bounded_Strings;
+
+   function Str_N_Compare
+     (Left, Right : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int is
+   begin
+      return Compare_Bounded_Strings (Left, Right, Length, False);
+   end Str_N_Compare;
+
+   function Str_N_Case_Compare
+     (Left, Right : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int is
+   begin
+      return Compare_Bounded_Strings (Left, Right, Length, True);
+   end Str_N_Case_Compare;
+
    function Str_N_Concat_New
      (Left, Right : System.Address; Length : Interfaces.C.int)
       return System.Address

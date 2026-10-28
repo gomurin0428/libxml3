@@ -14,6 +14,8 @@ typedef xmlChar *xmlCharPtr;
 #define BAD_CAST (xmlChar *)
 
 int xmlStrcmp(const xmlChar *str1, const xmlChar *str2);
+int xmlStrncmp(const xmlChar *str1, const xmlChar *str2, int len);
+int xmlStrncasecmp(const xmlChar *str1, const xmlChar *str2, int len);
 int xmlStrEqual(const xmlChar *str1, const xmlChar *str2);
 int xmlStrlen(const xmlChar *str);
 xmlChar *xmlStrdup(const xmlChar *cur);

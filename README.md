@@ -91,6 +91,14 @@ raw bytes を埋め込みNULを含めて正確に複製して末尾NULを付加�
 入力を読み取らず、所有権付きの空文字列を返し、負または上限超過の長さは拒否します。
 NULL入力はNULLを返し、返却値は `xmlFree` で解放します。UTF-8検証は行わず、native
 pointer、読み取り可能性、allocation、ABI は信頼境界です。
+`xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
+Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
+最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
+同一pointerは0、NULLの左辺は-1、NULLの右辺は+1です。`xmlStrncmp` はunsigned byte差を返します。
+`xmlStrncasecmp` は `A`–`Z` に32を加え、さらに `[` を `{` に写す pinned reference の
+byte-map quirk を保持します。これはUnicode case foldingではありません。比較でallocationや
+C-string変換は行いませんが、foreign pointerの有効性、実際のbyte内容と読み取り可能範囲は
+信頼境界です。
 `xmlStrncatNew` は `str1` のNUL終端部分と `str2` の指定byte spanを新しい
 NUL終端allocationへコピーします。負の `len` は `str2` のNUL終端長として扱い、
 `str1 == NULL` なら `xmlStrndup` 相当のコピーになります。非NULLの `str1` では

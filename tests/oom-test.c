@@ -112,7 +112,18 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "strncat-new") == 0) {
+    if (strcmp(operation, "string-compare") == 0) {
+        xml3_oom_enable(0);
+        assert(xmlStrncmp(BAD_CAST "abc", BAD_CAST "abd", 3) == -1);
+        assert(xmlStrncasecmp(BAD_CAST "aBc", BAD_CAST "AbC", 3) == 0);
+        assert(xmlStrncasecmp(BAD_CAST "[", BAD_CAST "{", 1) == 0);
+        assert(xmlStrncmp(NULL, NULL, 1) == 0);
+        assert(xmlStrncasecmp(NULL, BAD_CAST "a", 0) == 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "strncat-new") == 0) {
         xmlChar left[] = "L", right[] = {'a', 0, 'b', 0xff};
         const xmlChar expected[] = {'L', 'a', 0, 'b', 0xff, 0};
         xml3_oom_enable(fail_index);
@@ -1584,6 +1595,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "string-compare") == 0) {
+        puts("bounded string comparisons used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "release-lists") == 0) {
         puts("list release used no native allocations");
         return 0;

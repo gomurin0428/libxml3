@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -379,7 +379,14 @@ colon を含む name、無効または未対応の参照は拒否し、失敗時
 入力を読み取らず所有権付き空文字列を返し、負または上限超過の長さは拒否します。
 どちらも NULL 入力なら NULL を返し、返却値は `xmlFree` で解放してください。
 UTF-8検証は行わず、native pointer の有効性・読み取り可能性、allocation、C ABI は
-信頼境界です。`xmlStrncatNew` は負の `len` を `str2` のNUL終端長として扱い、
+信頼境界です。`xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
+正の全範囲（早期停止時の `INT_MAX` を含む）までraw byteを比較し、
+不一致・NUL・上限で停止します。`len <= 0` はpointer判定より先に0を返し、同一pointerは0、
+NULLの左辺は-1、NULLの右辺は+1です。`xmlStrncmp` はunsigned byte差を返します。
+`xmlStrncasecmp` は `A`–`Z` に32を加え、`[` も `{` に写す pinned reference のbyte-map
+quirkを保持します。これはUnicode case foldingではありません。比較自体はallocationも
+C-string変換も行いませんが、foreign pointerの有効性、byte内容、読み取り可能範囲は信頼境界です。
+`xmlStrncatNew` は負の `len` を `str2` のNUL終端長として扱い、
 `str1 == NULL` なら `xmlStrndup` 相当、非NULLの `str1` ではNULLの `str2` または
 有効長0なら `str1` の複製、それ以外では `str1` と `str2` の指定byte spanを連結します。
 正の長さでは埋め込みNULや部分UTF-8もそのままコピーし、入力は変更しません。
