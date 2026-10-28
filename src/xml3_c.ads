@@ -263,6 +263,10 @@ package XML3_C is
      (Node, Name, Href : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlGetNsProp";
 
+   function Node_Get_Attr_Value
+     (Node, Name, Href, Output : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeGetAttrValue";
+
    function Get_No_Ns_Prop
      (Node, Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlGetNoNsProp";

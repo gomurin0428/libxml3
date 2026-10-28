@@ -5,6 +5,9 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    int (*get_attr_value)(const xmlNode *, const xmlChar *, const xmlChar *,
+                          xmlChar **) = xmlNodeGetAttrValue;
+    (void)get_attr_value;
     const int equal = xmlStrEqual(BAD_CAST "r", BAD_CAST "r");
     const xmlError *(*last_error)(void) = xmlGetLastError;
     using SearchNsFunction =

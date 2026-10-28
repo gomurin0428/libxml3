@@ -1516,43 +1516,65 @@ package body XML3_C is
          XML3_DOM_Store.Queries.Space_Property, Value);
    end Node_Set_Space_Preserve;
 
-   function Get_Prop
-     (Node, Name : System.Address) return System.Address
+   function Get_Property_Value
+     (Node, Name, Href : System.Address;
+      Filter : XML3_DOM_Store.Queries.Property_Filter;
+      Code : out Interfaces.C.int) return System.Address
    is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
+      Code := 1;
       if Node = System.Null_Address or else Name = System.Null_Address then
          return System.Null_Address;
       end if;
       declare
          Name_Text : constant String := C_String_Value (Name);
+         Href_Text : constant String := C_String_Value (Href);
       begin
          declare
             Guard : XML3_DOM_Lock.Guard;
          begin
             XML3_DOM_Lock.Acquire (Guard);
             XML3_DOM_Runtime.Get_Property
-              (Node, Name_Text, XML3_DOM_Store.Queries.Any_Namespace, "",
-               Result, Status);
+              (Node, Name_Text, Filter, Href_Text, Result, Status);
          end;
          Report_Operation_Status (Status, Validation_Error => False);
+         Code := (case Status is
+                    when XML3_DOM_Constructors.Created =>
+                      (if Result = System.Null_Address then 1 else 0),
+                    when XML3_DOM_Constructors.Invalid_Argument => 1,
+                    when others => -1);
          return Result;
       end;
    exception
       when Invalid_C_String =>
+         Code := -1;
          Report_Dom_Error (115);
          return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
+         Code := -1;
          Report_Dom_Error (1);
          return System.Null_Address;
       when Storage_Error =>
+         Code := -1;
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;
       when others =>
+         Code := -1;
          Report_Dom_Error (1);
          return System.Null_Address;
+   end Get_Property_Value;
+
+   function Get_Prop
+     (Node, Name : System.Address) return System.Address
+   is
+      Code : Interfaces.C.int;
+   begin
+      return Get_Property_Value
+        (Node, Name, System.Null_Address,
+         XML3_DOM_Store.Queries.Any_Namespace, Code);
    end Get_Prop;
 
    function New_Ns
@@ -2091,85 +2113,44 @@ package body XML3_C is
    function Get_Ns_Prop
      (Node, Name, Href : System.Address) return System.Address
    is
-      Result : System.Address := System.Null_Address;
       Filter : constant XML3_DOM_Store.Queries.Property_Filter :=
         (if Href = System.Null_Address
          then XML3_DOM_Store.Queries.No_Namespace
          else XML3_DOM_Store.Queries.Exact_Namespace);
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
+      Code : Interfaces.C.int;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         return System.Null_Address;
-      end if;
-      declare
-         Name_Text : constant String := C_String_Value (Name);
-         Href_Text : constant String :=
-           (if Href = System.Null_Address then "" else C_String_Value (Href));
-      begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Get_Property
-              (Node, Name_Text, Filter, Href_Text, Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         return Result;
-      end;
-   exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
+      return Get_Property_Value (Node, Name, Href, Filter, Code);
    end Get_Ns_Prop;
 
    function Get_No_Ns_Prop
      (Node, Name : System.Address) return System.Address
    is
-      Result : System.Address := System.Null_Address;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         return System.Null_Address;
+      return Get_Ns_Prop (Node, Name, System.Null_Address);
+   end Get_No_Ns_Prop;
+
+   function Node_Get_Attr_Value
+     (Node, Name, Href, Output : System.Address) return Interfaces.C.int
+   is
+      Result : System.Address;
+      Code : Interfaces.C.int;
+      Filter : constant XML3_DOM_Store.Queries.Property_Filter :=
+        (if Href = System.Null_Address
+         then XML3_DOM_Store.Queries.No_Namespace
+         else XML3_DOM_Store.Queries.Exact_Namespace);
+   begin
+      Set_Address (Output, System.Null_Address);
+      if Output = System.Null_Address then
+         return 1;
       end if;
-      declare
-         Name_Text : constant String := C_String_Value (Name);
-      begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Get_Property
-              (Node, Name_Text, XML3_DOM_Store.Queries.No_Namespace, "",
-               Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         return Result;
-      end;
+      Result := Get_Property_Value (Node, Name, Href, Filter, Code);
+      Set_Address (Output, Result);
+      return Code;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
       when others =>
          Report_Dom_Error (1);
-         return System.Null_Address;
-   end Get_No_Ns_Prop;
+         return -1;
+   end Node_Get_Attr_Value;
 
    function First_Element_Child (Parent : System.Address) return System.Address
    is

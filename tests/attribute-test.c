@@ -556,7 +556,76 @@ static void test_free_prop_list(void) {
     xmlFreePropList(standalone);
 }
 
+static void assert_attr_value(xmlNodePtr node, const char *name,
+                              const char *uri, int expected,
+                              const char *value) {
+    xmlChar *result = (xmlChar *)node;
+    assert(xmlNodeGetAttrValue(node, BAD_CAST name, BAD_CAST uri, &result)
+           == expected);
+    if (expected == 0) {
+        assert(result && strcmp((const char *)result, value) == 0);
+        xmlFree(result);
+    } else {
+        assert(result == NULL);
+    }
+}
+
+static void test_attribute_value_status(void) {
+    const char input[] = "<root xmlns:p='urn:p' p:a='qualified' "
+                         "a='A&amp;&#65;' empty=''><child/></root>";
+    xmlDocPtr doc = xmlReadMemory(input, sizeof(input) - 1, NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlChar *copy = NULL, *dump = NULL;
+    xmlDocPtr reparsed;
+    int size = 0;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    assert_attr_value(root, "a", NULL, 0, "A&A");
+    assert_attr_value(root, "a", "urn:p", 0, "qualified");
+    assert_attr_value(root, "a", "", 1, NULL);
+    assert_attr_value(root, "a", "urn:missing", 1, NULL);
+    assert_attr_value(root, "missing", NULL, 1, NULL);
+    assert_attr_value(root, "empty", NULL, 0, "");
+    assert_attr_value(root, NULL, NULL, 1, NULL);
+    assert_attr_value(NULL, "a", NULL, 1, NULL);
+    assert_attr_value((xmlNodePtr)doc, "a", NULL, 1, NULL);
+    assert_attr_value((xmlNodePtr)root->properties, "a", NULL, 1, NULL);
+    assert(xmlNodeGetAttrValue(root, BAD_CAST "a", NULL, NULL) == 1);
+    assert(xmlNodeGetAttrValue(root, BAD_CAST "a", NULL, &copy) == 0);
+    assert(xmlSetProp(root, BAD_CAST "a", BAD_CAST "changed"));
+    assert(strcmp((const char *)copy, "A&A") == 0);
+    assert_attr_value(root, "a", NULL, 0, "changed");
+    assert(xmlUnsetNsProp(root, root->nsDef, BAD_CAST "a") == 0);
+    assert_attr_value(root, "a", "urn:p", 1, NULL);
+    xmlDocDumpMemoryEnc(doc, &dump, &size, "UTF-8");
+    assert(dump && size > 0);
+    reparsed = xmlReadMemory((const char *)dump, size, NULL, NULL, 0);
+    assert(reparsed);
+    assert_attr_value(xmlDocGetRootElement(reparsed), "a", NULL, 0, "changed");
+    xmlFree(dump);
+    xmlFreeDoc(reparsed);
+    xmlFreeDoc(doc);
+    assert(strcmp((const char *)copy, "A&A") == 0);
+    xmlFree(copy);
+#ifndef XML3_REFERENCE_TEST
+    root = xmlNewNode(NULL, BAD_CAST "detached");
+    doc = xmlNewDoc(NULL);
+    assert(root && doc);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlSetProp(root, BAD_CAST "a", BAD_CAST "retained"));
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    assert_attr_value(root, "a", NULL, 0, "retained");
+    {
+        xmlNode unmanaged = {0};
+        assert_attr_value(&unmanaged, "a", NULL, 1, NULL);
+    }
+    xmlFreeNode(root);
+#endif
+}
+
 int main(void) {
+    test_attribute_value_status();
     test_free_prop_list();
     check_reference_version();
     test_edit_flow();
