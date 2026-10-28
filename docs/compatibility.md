@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -450,6 +450,17 @@ allocation、input mutation、transcodingはありません。小さい `Last` �
 foreign pointer validity/readable extent、実bytes、C mapping、完全なUnicode API意味論はtrusted boundaryです。
 shared normal/malformed・guard-page vectorsはreferenceとlibxml3の両方で実行し、permissive reference casesは期待値を分け、
 no-allocation/OOM testはlibxml3のみです。
+`xmlUTF8Strpos` は0-based Unicode scalar位置へのborrowed pointerを返します。NULL inputと負の位置は診断なしでNULL、
+位置0はpointerを読み取りなしで返します。正の位置は要求位置より前のprefixだけをstrict UTF-8として検査し、target scalarと
+suffixは読まず検証しません。位置がscalar lengthならNULのaddressを読まずに返し、それより先ならNUL確認後にNULLです。
+そのため全文字列のvalidation oracleではありません。ASCII controlとUnicode noncharacterは許可し、XML character validationはしません。
+overlong、surrogate、範囲外scalarおよびpinned referenceが許容する5-byte sequenceは訪問prefix内なら拒否する意図的な安全差です。
+`Max_Bytes` までprefixが未解決ならDOM error 115、予期しない例外はDOM error 1を記録してNULLを返します。
+allocation、input mutation、normalizationはありません。返却pointerはinputのlifetime中だけ有効で、`xmlFree`しません。
+小さい `Last` のAda testsでcapを確認し、巨大な公開C stringは作りません。SPARKは走査・index/offset bounds、
+status/result contract、native-call preconditionsを対象にしますが、foreign pointer validity/readable extent、actual bytes、
+C mapping、完全なUnicode API意味論は信頼境界です。共有reference/permissive・guard-page testsは両方で実行し、
+期待値を分けます。OOM/no-allocation testはlibxml3のみです。
 `xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
 pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
 読み取りなしでNULLを返し、NUL byte自体は

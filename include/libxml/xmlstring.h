@@ -26,6 +26,7 @@ int xmlStrQEqual(const xmlChar *pref, const xmlChar *name, const xmlChar *str);
 int xmlStrlen(const xmlChar *str);
 int xmlCheckUTF8(const unsigned char *utf);
 int xmlUTF8Strlen(const xmlChar *utf);
+const xmlChar *xmlUTF8Strpos(const xmlChar *utf, int pos);
 int xmlGetUTF8Char(const unsigned char *utf, int *len);
 xmlChar *xmlStrdup(const xmlChar *cur);
 xmlChar *xmlCharStrdup(const char *cur);

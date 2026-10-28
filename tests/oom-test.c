@@ -164,6 +164,10 @@ int main(int argc, char **argv) {
         assert(xmlUTF8Strlen(NULL) == -1 && xmlUTF8Strlen(BAD_CAST "") == 0);
         assert(xmlUTF8Strlen(BAD_CAST "A名é") == 3);
         assert(xmlUTF8Strlen(BAD_CAST "a\xed\xa0\x80") == -1);
+        const xmlChar position_text[] = "A名";
+        assert(xmlUTF8Strpos(position_text, 1) == position_text + 1);
+        assert(xmlUTF8Strpos(position_text, 2) == position_text + 4);
+        assert(!xmlUTF8Strpos(position_text, 3));
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();

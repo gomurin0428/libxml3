@@ -323,6 +323,10 @@ package XML3_C is
    function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlUTF8Strlen";
 
+   function UTF8_Str_Position
+     (Item : System.Address; Index : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlUTF8Strpos";
+
    function Get_UTF8_Char
      (Item : System.Address; Length : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlGetUTF8Char";
