@@ -146,6 +146,16 @@ API-level semantic proof. Raw reference preservation, NULL/empty distinction,
 namespace behavior, serialization rejection and repair of invalid content,
 detached-parent lifetime, and allocation-failure retry are test evidence.
 
+`xmlNewTextLen` reuses the existing `Runtime.Construct` /
+`Store.Construct` path and adds no SPARK mutation code or new proof claim. Its
+C adapter rejects negative lengths only when content is non-NULL, then uses a
+trusted bounded `C_String_Prefix`/`Scan_Length` conversion for raw bytes. NULL
+content remains NULL for any length; a non-NULL zero-length input creates empty
+content without reading the pointer. Embedded NUL ends the retained prefix.
+Pointer scanning and validity remain outside GNATprove; guard-page, NULL/empty,
+serialization, detached-node, and allocation-failure cases are runtime
+evidence for the API wrapper.
+
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
 mutation and read-only queries use the same Store. `xmlNewComment` and
@@ -252,8 +262,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-ccfc427951ffa67f8bd0d00b09c0317789f75695b26b1286d46b1c74561551a8  src/xml3_c.adb
-a760439a8464ade365435eb3151c626a70f8ed0114c9dd57f2d7670145ae8350  src/xml3_c.ads
+2153a2ba1d5d1efbfca86336f23feae770f364e49527f2ec9b9e8f24caa0850b  src/xml3_c.adb
+3f40be962ce239ddda55b21751d7bc3a6d7895bd97ec9766ea6c3a9875668346  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -298,10 +308,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-e89f077ec996e744c630a8b6c750fa1ce383992b713ff8b47c44b5004f73f01a  include/libxml/tree.h
+731fbd3a164c35a0f1605901faaec984108f137470f1a54bb232d2f620d1996b  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-c4c7ce6ec7540c852721d6576085ba4e4eaf074cb71491b09fd4ad8c0ba7394c  Makefile
+aca9cbcd9b725a6c2728af23f4d24c0ff8f590c8c469f8a3fc9a3829f785cceb  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

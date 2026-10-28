@@ -329,6 +329,59 @@ static void test_invalid_comment_serialization(void) {
 }
 #endif
 
+static void test_new_text_len(void) {
+    static const xmlChar raw[] = {'A', '&', '<', 'X'};
+    static const xmlChar terminated[] = {'z', 0, 'x'};
+    const int null_lengths[] = {-1, 0, 3};
+    xmlNodePtr text, root;
+    xmlDocPtr doc, reparsed;
+    xmlChar *memory = NULL;
+    int size = 0;
+    size_t i;
+    for (i = 0; i < sizeof(null_lengths) / sizeof(null_lengths[0]); ++i) {
+        text = xmlNewTextLen(NULL, null_lengths[i]);
+        assert(text != NULL && text->content == NULL);
+        assert(text->type == XML_TEXT_NODE && text->doc == NULL);
+        xmlFreeNode(text);
+    }
+    assert(xmlNewTextLen(raw, -1) == NULL);
+    text = xmlNewTextLen(raw, 0);
+    assert(text != NULL && text->content != NULL && text->content[0] == 0);
+    xmlFreeNode(text);
+    text = xmlNewTextLen(terminated, 3);
+    assert(text != NULL);
+    assert_content(text, "z");
+    assert(xmlNodeAddContentLen(text, raw, 3) == 0);
+    assert_content(text, "zA&<");
+    xmlFreeNode(text);
+    text = xmlNewTextLen(raw, 3);
+    assert(text != NULL && text->parent == NULL && text->doc == NULL);
+    assert_content(text, "A&<");
+    doc = xmlNewDoc(NULL);
+    root = xmlNewNode(NULL, BAD_CAST "root");
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlAddChild(root, text) == text);
+    assert(text->doc == doc && text->parent == root);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory != NULL && size > 0);
+    assert(strstr((const char *)memory, "A&amp;&lt;") != NULL);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed != NULL);
+    assert_content(xmlDocGetRootElement(reparsed), "A&<");
+    xmlFree(memory);
+    xmlFreeDoc(reparsed);
+#ifndef XML3_REFERENCE_TEST
+    xmlUnlinkNode(text);
+    xmlFreeDoc(doc);
+    assert(xmlNodeAddContentLen(text, BAD_CAST "!ignored", 1) == 0);
+    assert_content(text, "A&<!");
+    xmlFreeNode(text);
+#else
+    xmlFreeDoc(doc);
+#endif
+}
+
 static void test_add_content_len(void) {
     static const xmlChar raw[] = {'A', '&', 'a', 'm', 'p', ';', 'B', 'X'};
     static const xmlChar empty[] = {0, 'x'};
@@ -450,6 +503,17 @@ static void test_bounded_content_guard_page(void) {
     assert(mprotect(mapping + page_size, (size_t)page_size, PROT_NONE) == 0);
     buffer = mapping + page_size - 7;
     memcpy(buffer, "A&amp;B", 7);
+    {
+        xmlNodePtr bounded = xmlNewTextLen(buffer, 7);
+        assert(bounded != NULL);
+        assert_content(bounded, "A&amp;B");
+        xmlFreeNode(bounded);
+        bounded = xmlNewTextLen(mapping + page_size, 0);
+        assert(bounded != NULL && bounded->content != NULL);
+        assert(bounded->content[0] == 0);
+        xmlFreeNode(bounded);
+        assert(xmlNewTextLen(mapping + page_size, -1) == NULL);
+    }
     assert(xmlNodeSetContentLen(element, buffer, 7) == 0);
     assert_content(element, "A&B");
     assert(xmlNodeSetContentLen(text, buffer, 7) == 0);
@@ -674,6 +738,7 @@ int main(void) {
     test_set_detached_lifetime();
     test_set_content_len();
     test_add_content_len();
+    test_new_text_len();
 #if defined(__unix__)
     test_bounded_content_guard_page();
 #endif

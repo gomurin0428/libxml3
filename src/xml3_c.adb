@@ -873,7 +873,8 @@ package body XML3_C is
    end New_Text_Child;
 
    function New_Content_Node
-     (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address)
+     (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address;
+      Length : Interfaces.C.int := -1)
      return System.Address
    is
       Result, Implicit_Ns : System.Address := System.Null_Address;
@@ -883,7 +884,7 @@ package body XML3_C is
    begin
       declare
          Content_Text : constant String :=
-           (if Content = System.Null_Address then "" else C_String_Value (Content));
+           C_String_Prefix (Content, Length);
       begin
          declare
             Guard : XML3_DOM_Lock.Guard;
@@ -915,6 +916,18 @@ package body XML3_C is
    begin
       return New_Content_Node (XML3_DOM.Text_Node, "text", Content);
    end New_Text;
+
+   function New_Text_Len
+     (Content : System.Address; Length : Interfaces.C.int)
+     return System.Address
+   is
+   begin
+      if Content /= System.Null_Address and then Length < 0 then
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      end if;
+      return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length);
+   end New_Text_Len;
 
    function New_Comment (Content : System.Address) return System.Address is
    begin

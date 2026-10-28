@@ -214,6 +214,10 @@ NUL-terminated 変換です。この pointer 走査は形式証明外で、正�
 維持しています。guard page、空の text の確保失敗と再試行、UTF-8 の分割追記から出力への
 回復は実行テストの根拠であり、C pointer の読み取り安全性の形式証明ではありません。
 
+`xmlNewTextLen` は bounded C string 変換から既存の Runtime/Store constructor を呼びます。
+長さ指定は C 境界だけの変更で、新しい所有権処理や証明範囲は追加しません。非終端入力・
+長さ 0 の guard page、NULL/空文字列の違い、接続と出力、確保失敗後の再試行を実行検査します。
+
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.
 Cross-owner attachment requires that retained reservation, and core invariants
@@ -359,7 +363,8 @@ not binary ABI compatibility or a replacement `libxml2.so.2`. The library uses i
 own name, `libxml3`, and must not be loaded alongside libxml2 into the same symbol
 namespace. Only APIs and structure fields explicitly listed in the compatibility
 document are supported. The minimal DOM editor API includes `xmlNewDoc`,
-`xmlNewNode`, `xmlNewText`, `xmlDocSetRootElement`, `xmlAddChild`,
+`xmlNewNode`, `xmlNewText`, `xmlNewTextLen`, `xmlDocSetRootElement`,
+`xmlAddChild`,
 `xmlUnlinkNode`, `xmlFreeNode`, namespace APIs `xmlNewNs`, `xmlSetNs`,
 `xmlFreeNs`, `xmlNewNsProp`, `xmlSetNsProp`, `xmlUnsetNsProp`, and attribute
 APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and

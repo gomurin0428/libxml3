@@ -31,6 +31,7 @@ int main() {
     void (*dump_memory_enc)(xmlDocPtr, xmlChar **, int *, const char *) =
         xmlDocDumpMemoryEnc;
     xmlNodePtr (*new_comment)(const xmlChar *) = xmlNewComment;
+    xmlNodePtr (*new_text_len)(const xmlChar *, int) = xmlNewTextLen;
     xmlNodePtr (*new_pi)(const xmlChar *, const xmlChar *) = xmlNewPI;
     int (*node_add_content)(xmlNodePtr, const xmlChar *) = xmlNodeAddContent;
     int (*node_set_content)(xmlNodePtr, const xmlChar *) = xmlNodeSetContent;
@@ -61,6 +62,7 @@ int main() {
     (void)unset_ns_prop;
     (void)dump_memory_enc;
     (void)new_comment;
+    (void)new_text_len;
     (void)new_pi;
     (void)node_add_content;
     (void)node_set_content;

@@ -74,6 +74,11 @@ package XML3_C is
    function New_Text (Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewText";
 
+   function New_Text_Len
+     (Content : System.Address; Length : Interfaces.C.int)
+     return System.Address
+     with Export, Convention => C, External_Name => "xmlNewTextLen";
+
    function New_Comment (Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewComment";
 

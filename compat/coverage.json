@@ -109,6 +109,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewTextLen": {
+    "implementation": "partial",
+    "scope": "Bounded raw text construction delegates to the existing SPARK constructor. Non-NULL input with negative length fails; zero length never reads input and creates empty non-NULL content. NULL content produces a NULL-content node regardless of length. Positive lengths stop at NUL or len bytes; hidden bytes after NUL are not retained. Native pointer validity remains trusted.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNodeAddContentLen": {
     "implementation": "partial",
     "scope": "Bounded raw-text append through SPARK Store/Runtime. Nonpositive length or NULL content is a no-op; positive length stops at NUL or len bytes. SPARK handles empty-text materialization when a positive-length input starts with NUL, text coalescing and failure rollback. Invisible bytes after NUL are not retained. Raw UTF-8 chunks can be appended and are validated at serialization.",
