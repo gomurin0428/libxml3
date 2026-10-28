@@ -3,11 +3,11 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,908 checks, 884 by flow analysis and 10,024 by provers;
+**10,929 checks, 893 by flow analysis and 10,036 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
-`xmlNodeSetContent`,
+`xmlNodeSetContent`, `xmlTextMerge`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
 `xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`, and
 `xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
@@ -29,13 +29,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 245 |
-| Initialization | 496 |
-| Runtime checks | 4,926 |
+| Data dependencies | 247 |
+| Initialization | 503 |
+| Runtime checks | 4,932 |
 | Assertions | 1,468 |
-| Functional contracts | 3,578 |
+| Functional contracts | 3,584 |
 | Termination | 195 |
-| **Total** | **10,908** |
+| **Total** | **10,929** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -203,6 +203,18 @@ NULL/empty distinction, CDATA delimiter splitting and serialization/reparse,
 invalid UTF-8 rejection and repair, document-first release, and OOM retry are
 runtime evidence for behavior rather than complete semantic proof.
 
+`xmlTextMerge` uses `Runtime.Merge_Text` / `Store.Merge_Text`, also shared by
+`Add_Child` coalescing. The Store contract restores `Ready` and relates a successful result to the
+first non-NULL operand and returns NULL on failure. For non-NULL content the
+existing core `XML3_DOM.Merge_Text` contract guarantees target content/pin,
+target parent preservation, source tombstoning and valid state. Source NULL
+content instead uses the normal release path without replacing target bytes.
+Native buffer allocation precedes graph mutation. This is not a complete
+public semantic/atomicity proof: nonadjacent and attribute text, NULL/empty
+distinctions, retained document lifetime, allocation-failure state preservation
+and retry are covered by C regression tests. Cross-document source affiliation
+and no-escape text variants remain unsupported; the native boundary is trusted.
+
 `xmlLastElementChild` and `xmlPreviousElementSibling` extend the existing
 `Store.Queries.Select_Element` with reverse traversal over `Last_Child` and
 `Previous`. Node-kind filtering and bounded scanning execute in SPARK; the
@@ -319,8 +331,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-b934c8d054daa510070d6594f5fd3ceca1b9e2e3df59ac099297217d4a2e7c9d  src/xml3_c.adb
-e87ef3df12dbaf82202a8c4e22ae70686e20cf1f308a9f77beb650d0082e6a95  src/xml3_c.ads
+10565bfc33a0e224e264bfd49a3da5e389205016d8300ee24de811dbf37fcaf3  src/xml3_c.adb
+947fba45472f5d444effade97b8cac7005ccfe9f5e2a4750c922d4510fd75139  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -336,8 +348,8 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-3036d7eaf6c7f2ee95e5e032017b1d67445f08a5f25619cdac04de0cd1c18413  src/xml3_dom_runtime.adb
-6b3ecc94e65fcbfe59d24ce36081e354af4898db962648c14cf584bf06c82fb0  src/xml3_dom_runtime.ads
+497b53c5a2274945bbda97e86679f337e0cffcb442a3baecaf04c830c9c5a65f  src/xml3_dom_runtime.adb
+0a27cc7137bfc0f652d9ccad2ce6c926ef94de92f025b6757ae20dcf21c2222c  src/xml3_dom_runtime.ads
 90cddceba65719697f3b02ec14403667b73dfcfe7f20c6d24a934825bdfb9c8e  src/xml3_dom_store-content.adb
 af0848cf389c674fb712fd9fbf57ebb03993edaea4de1b3a115fe4e7cd083abc  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
@@ -348,8 +360,8 @@ bc71cab53c16e4f4b9bcc59ab5e2a83a0c33b1c4f8c44adbf768024acc3ebb2d  src/xml3_dom_s
 d8e14df81a1a8b45a3f2f529cf048683d46a26c6af743029ce939d803d9c55ec  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
-b496ecf7c151ee842d8782fe13bead9a44937114a01565b02e424a1ec1c475a5  src/xml3_dom_store.adb
-781edb70343c96ac3ee0c354bb1e514ec76c7c40450a8591d37904d57ada90c4  src/xml3_dom_store.ads
+ea64a3ca261c74cb4c0472d38d0994846e64c76ffee67f0b887b9eb47d8e9974  src/xml3_dom_store.adb
+d9b827c14c465ff57025dd6b2ef07326287abcb093ce0fde1f498ecfa136816b  src/xml3_dom_store.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
@@ -365,10 +377,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-67fce6b6ea7d21d37828e5c235a0893b2c317b1bce2ff2c252cdd48c402e3d12  include/libxml/tree.h
+9fcd8cd500469f973649e295deecac03f97d95c6039b7c788f26d36dfe051150  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-aec321aa6321f471ca7a8b1e1acf427a95d5ca9dea5e1925532f30167be8eafd  Makefile
+34d5058780ce0ccb326f243da6daf5a9657d1b18ed3dea6795bcaaf572d1e24f  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

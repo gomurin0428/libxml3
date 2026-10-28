@@ -123,6 +123,10 @@ package XML3_C is
      (Parent, Child : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlAddChild";
 
+   function Text_Merge
+     (First, Second : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlTextMerge";
+
    function Node_Add_Content
      (Node, Content : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeAddContent";

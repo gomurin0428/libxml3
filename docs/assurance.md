@@ -27,12 +27,12 @@ foreign-pointer validity remain trusted.
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
-editing, reverse element navigation through `Store.Queries.Select_Element`,
-and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 10,908 checks
-(884 flow and 10,024 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 130 warnings; the representation-generation
-diagnostic is recorded separately.
+editing, `xmlTextMerge`, reverse element navigation through
+`Store.Queries.Select_Element`, and explicit UTF-8 memory serialization. The C
+adapters and native ABI implementation are not proved. The refreshed aggregate
+has 10,929 checks (893 flow and 10,036 prover), no unproved or justified
+conditions, 0 `pragma Assume` statements, and 130 warnings; the
+representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -142,7 +142,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,908-check aggregate proof; see
+new units are included in the successful 10,929-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -238,6 +238,15 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlTextMerge` は `Runtime.Merge_Text` / `Store.Merge_Text` を通り、`Add_Child` の
+text 結合と共通です。C は引数の受け渡し・mutex・エラー変換のみで、kind・文書所属・
+容量・結合・解放判断は Store にあります。新しい content を準備してから既存の
+`XML3_DOM.Merge_Text` で pin 更新と source の退役を行い、Bridge が公開構造体を同期します。
+第二引数の content が NULL の場合は通常の `Release` を使い、target content は変えません。
+Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NULL を規定します。完全な公開APIの
+原子性・文字列意味論・C pointer validity を証明したという主張ではなく、確保失敗時の
+内容・リンク保持、NULL/空の違い、属性内 text、文書先行解放は実行テストで検査します。
 
 `xmlLastElementChild` / `xmlPreviousElementSibling` の kind 検査・後方リンク走査は
 `Store.Queries.Select_Element` が実行します。既存の root/first/next 選択と C adapter を

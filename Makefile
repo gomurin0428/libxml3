@@ -303,7 +303,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-cdata dom-new-comment dom-new-pi dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-merge dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname serialization; do \
+	@set -e; for operation in success malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-cdata dom-new-comment dom-new-pi dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-merge dom-text-merge dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-detached attr-set-new attr-set ns-new ns-detached ns-prop-new ns-prop-set ns-qname-set ns-xml-qname serialization; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -370,7 +370,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
 		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlDocSetRootElement xmlAddChild xmlUnlinkNode xmlFreeNode \
-		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode \
+		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \

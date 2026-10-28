@@ -296,6 +296,100 @@ package body XML3_DOM_Store with SPARK_Mode is
       end if;
    end Attach;
 
+   procedure Merge_Text
+     (S : in out Store; First, Second : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      T, C : Node_Ref;
+      Changed : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if First = System.Null_Address or else Second = System.Null_Address then
+         Result := (if First = System.Null_Address then Second else First);
+         Status := Created;
+         return;
+      end if;
+      T := Find_Node (S, First);
+      C := Find_Node (S, Second);
+      if T = Null_Node or else C = Null_Node or else T = C then
+         return;
+      end if;
+      declare
+         Target : constant Node_View := Node (S.Current.all, T);
+         Source : constant Node_View := Node (S.Current.all, C);
+         Length : Natural;
+         Buffer, Suffix : System.Address;
+         Own : Owner_Ref;
+         Allocated : Boolean;
+      begin
+         if Target.Kind /= Text_Node or else Source.Kind /= Text_Node
+           or else (Source.Document /= Null_Node
+             and then Source.Document /= Target.Document)
+         then
+            return;
+         end if;
+         if (Target.Content_Length > 0
+               and then Target.Content = System.Null_Address)
+           or else (Source.Content_Length > 0
+             and then Source.Content = System.Null_Address)
+         then
+            Status := Internal_Error;
+            return;
+         end if;
+         if Source.Content = System.Null_Address then
+            Release (S, Second, Content_Node, False, Status);
+            if Status = Created then
+               Result := First;
+            end if;
+            return;
+         end if;
+         if Source.Content_Length >= Natural'Last - Target.Content_Length
+           or else Owner_Count (S.Current.all) = Natural'Last
+         then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+         Length := Target.Content_Length + Source.Content_Length;
+         Ensure_Capacity
+           (S.Current, Node_Count (S.Current.all),
+            Namespace_Count (S.Current.all), Owner_Count (S.Current.all) + 1,
+            Allocated);
+         if not Allocated then
+            Status := No_Memory;
+            return;
+         end if;
+         Native.Allocate (Native.Byte_Count (Length) + 1, Buffer);
+         if Buffer = System.Null_Address then
+            Status := No_Memory;
+            return;
+         end if;
+         Suffix := Native.Offset
+           (Buffer, Native.Byte_Count (Target.Content_Length));
+         if Suffix = System.Null_Address then
+            Native.Free (Buffer);
+            Status := No_Memory;
+            return;
+         end if;
+         Native.Copy_Bytes (Target.Content, Buffer, Target.Content_Length);
+         Native.Copy_Bytes (Source.Content, Suffix, Source.Content_Length);
+         Native.Write_Byte (Buffer, Length, Character'Val (0));
+         Register_Owner (S.Current.all, Buffer, Own, Allocated);
+         if not Allocated then
+            Native.Free (Buffer);
+            Status := Internal_Error;
+            return;
+         end if;
+         XML3_DOM.Merge_Text (S.Current.all, T, C, Buffer, Length, Own, Changed);
+         Release_Reservation (S.Current.all, Own);
+         XML3_DOM_Bridge.Synchronize (S.Current.all);
+         if Changed then
+            Result := First;
+            Status := Created;
+         end if;
+      end;
+   end Merge_Text;
+
    procedure Add_Child
      (S : in out Store; Parent, Child : System.Address;
       Result : out System.Address; Status : out Operation_Status)
@@ -330,71 +424,8 @@ package body XML3_DOM_Store with SPARK_Mode is
         and then Node (S.Current.all, Tail).State = Live
         and then Node (S.Current.all, Tail).Kind = Text_Node
       then
-         declare
-            Target : constant Node_View := Node (S.Current.all, Tail);
-            Source : constant Node_View := Node (S.Current.all, C);
-            Length : Natural;
-            Buffer, Suffix : System.Address;
-            Own : Owner_Ref;
-            Allocated : Boolean;
-         begin
-            if Source.Document /= Null_Node
-              and then Source.Document /= Target.Document
-            then
-               return;
-            end if;
-            if (Target.Content_Length > 0
-                  and then Target.Content = System.Null_Address)
-              or else (Source.Content_Length > 0
-                and then Source.Content = System.Null_Address)
-            then
-               Status := Internal_Error;
-               return;
-            end if;
-            if Source.Content_Length >= Natural'Last - Target.Content_Length
-              or else Owner_Count (S.Current.all) = Natural'Last
-            then
-               Status := Limit_Exceeded;
-               return;
-            end if;
-            Length := Target.Content_Length + Source.Content_Length;
-            Ensure_Capacity
-              (S.Current, Node_Count (S.Current.all),
-               Namespace_Count (S.Current.all), Owner_Count (S.Current.all) + 1,
-               Allocated);
-            if not Allocated then
-               Status := No_Memory;
-               return;
-            end if;
-            Native.Allocate (Native.Byte_Count (Length) + 1, Buffer);
-            if Buffer = System.Null_Address then
-               Status := No_Memory;
-               return;
-            end if;
-            Suffix := Native.Offset
-              (Buffer, Native.Byte_Count (Target.Content_Length));
-            if Suffix = System.Null_Address then
-               Native.Free (Buffer);
-               Status := No_Memory;
-               return;
-            end if;
-            Native.Copy_Bytes (Target.Content, Buffer, Target.Content_Length);
-            Native.Copy_Bytes (Source.Content, Suffix, Source.Content_Length);
-            Native.Write_Byte (Buffer, Length, Character'Val (0));
-            Register_Owner (S.Current.all, Buffer, Own, Allocated);
-            if not Allocated then
-               Native.Free (Buffer);
-               Status := Internal_Error;
-               return;
-            end if;
-            Merge_Text (S.Current.all, Tail, C, Buffer, Length, Own, Changed);
-            Release_Reservation (S.Current.all, Own);
-            XML3_DOM_Bridge.Synchronize (S.Current.all);
-            if Changed then
-               Result := Target.Facade;
-               Status := Created;
-            end if;
-         end;
+         Merge_Text
+           (S, Node (S.Current.all, Tail).Facade, Child, Result, Status);
       else
          Attach_Child (S.Current.all, P, C, Changed);
          XML3_DOM_Bridge.Synchronize (S.Current.all);

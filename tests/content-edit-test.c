@@ -718,6 +718,111 @@ static void test_construct_doc_node(int raw) {
 #endif
 }
 
+static void test_text_merge(void) {
+    static const char input[] =
+        "<r a='A' b='B'>left<!--gap-->right<x/>tail</r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, first, second, gap, x, tail, extra;
+    xmlChar *memory = NULL;
+    int size = 0;
+    xmlDocPtr reparsed;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    first = root->children;
+    gap = first->next;
+    second = gap->next;
+    x = second->next;
+    tail = root->last;
+    assert(xmlTextMerge(NULL, NULL) == NULL);
+    assert(xmlTextMerge(NULL, root) == root && xmlTextMerge(root, NULL) == root);
+    assert(xmlTextMerge(first, first) == NULL);
+    assert(xmlTextMerge(root, first) == NULL);
+    extra = xmlNewCDataBlock(NULL, BAD_CAST "raw", 3);
+    assert(extra && xmlTextMerge(first, extra) == NULL);
+    assert_content(first, "left");
+    assert_content(extra, "raw");
+    xmlFreeNode(extra);
+    assert(xmlTextMerge(first, second) == first);
+    assert(root->children == first && first->parent == root);
+    assert(first->next == gap && gap->prev == first);
+    assert(gap->next == x && x->prev == gap && root->last == tail);
+    assert_content(first, "leftright");
+    extra = xmlNewText(BAD_CAST "&raw");
+    assert(extra && xmlTextMerge(first, extra) == first);
+    assert_content(first, "leftright&raw");
+    assert(xmlTextMerge(root->properties->children,
+                        root->properties->next->children) ==
+           root->properties->children);
+    assert_content((xmlNodePtr)root->properties, "AB");
+    assert(root->properties->next->children == NULL);
+    assert(root->properties->next->last == NULL);
+    assert(xmlTextMerge(tail, first) == tail);
+    assert(root->children == gap && gap->prev == NULL);
+    assert(root->last == tail && tail->prev == x && x->next == tail);
+    assert_content(root, "tailleftright&raw");
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size > 0);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    assert_content(xmlDocGetRootElement(reparsed), "tailleftright&raw");
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+    xmlUnlinkNode(root);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    extra = xmlNewText(BAD_CAST "!");
+    assert(extra && xmlTextMerge(tail, extra) == tail);
+    assert_content(tail, "tailleftright&raw!");
+    assert(xmlNodeSetContent(tail, BAD_CAST "repaired") == 0);
+    assert_content(root, "repaired");
+    xmlFreeNode(root);
+#ifdef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    first = xmlNewText(NULL);
+    second = xmlNewText(NULL);
+    assert(first && second && xmlTextMerge(first, second) == first);
+    assert(first->content == NULL);
+    second = xmlNewText(BAD_CAST "");
+    assert(second && xmlTextMerge(first, second) == first);
+    assert(first->content && first->content[0] == 0);
+    second = xmlNewText(NULL);
+    memory = first->content;
+    assert(second && xmlTextMerge(first, second) == first);
+    assert(first->content == memory);
+    xmlFreeNode(first);
+    root = xmlNewNode(NULL, BAD_CAST "r");
+    first = xmlNewText(NULL);
+    second = xmlNewText(NULL);
+    assert(root && first && second);
+    assert(xmlAddChild(root, first) == first);
+    assert(xmlAddChild(root, second) == first);
+    assert(first->content == NULL && root->last == first);
+    xmlFreeNode(root);
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlDocPtr other = xmlNewDoc(NULL);
+        xmlNode invalid = {0};
+        doc = xmlNewDoc(NULL);
+        first = xmlNewDocText(doc, BAD_CAST "left");
+        second = xmlNewDocText(other, BAD_CAST "right");
+        assert(doc && other && first && second);
+        assert(xmlTextMerge(first, second) == NULL);
+        assert(first->doc == doc && second->doc == other);
+        assert_content(first, "left");
+        assert_content(second, "right");
+        assert(xmlTextMerge(first, &invalid) == NULL);
+        assert(xmlTextMerge(&invalid, second) == NULL);
+        xmlFreeNode(first);
+        xmlFreeNode(second);
+        xmlFreeDoc(doc);
+        xmlFreeDoc(other);
+    }
+#endif
+    xmlResetLastError();
+}
+
 static void test_reverse_element_navigation(void) {
     static const char input[] =
         "<!--before--><r a='v'>start<a/>mid<!--gap--><b/><?pi x?>"
@@ -1015,6 +1120,7 @@ int main(void) {
     test_construct_doc_node(0);
     test_construct_doc_node(1);
     test_reverse_element_navigation();
+    test_text_merge();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();

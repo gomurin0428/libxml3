@@ -82,6 +82,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
+`xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。
+同じ文書のノード、または文書に属さない第二引数に対応します。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、
