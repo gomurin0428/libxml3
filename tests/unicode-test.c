@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #ifdef XML3_REFERENCE_VERSION
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -9,6 +10,73 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#if defined(__unix__)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+static void test_string_duplicates(void) {
+    static const char *cases[] = {"", "abc", "名", "\xff\xc0", "p:a:b"};
+    assert(!xmlStrdup(NULL));
+    assert(!xmlStrndup(NULL, 0) && !xmlStrndup(NULL, 3));
+    assert(!xmlStrndup(BAD_CAST "abc", -1));
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        const xmlChar *source = BAD_CAST cases[i];
+        size_t size = strlen(cases[i]);
+        xmlChar *copy = xmlStrdup(source);
+        assert(copy && copy != source && memcmp(copy, source, size + 1) == 0);
+        xmlFree(copy);
+        for (size_t len = 0; len <= size; ++len) {
+            copy = xmlStrndup(source, (int)len);
+            assert(copy && copy != source && copy[len] == 0);
+            assert(memcmp(copy, source, len) == 0);
+            xmlFree(copy);
+        }
+    }
+    {
+        xmlChar source[] = {'a', 0, 'b', 0xff};
+        xmlChar *copy = xmlStrndup(source, sizeof(source));
+        assert(copy && copy != source && memcmp(copy, source, sizeof(source)) == 0);
+        assert(copy[sizeof(source)] == 0);
+        source[0] = 'x';
+        assert(copy[0] == 'a');
+        xmlFree(copy);
+        copy = xmlStrdup(source);
+        assert(copy && copy[0] == 'x' && copy[1] == 0);
+        copy[0] = 'y';
+        assert(source[0] == 'x');
+        xmlFree(copy);
+    }
+#if defined(__unix__)
+    {
+        long page_size = sysconf(_SC_PAGESIZE);
+        assert(page_size > 3);
+        xmlChar *mapping = mmap(NULL, (size_t)page_size * 2, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        assert(mapping != MAP_FAILED);
+        xmlChar *unreadable = mapping + page_size;
+        assert(mprotect(unreadable, (size_t)page_size, PROT_NONE) == 0);
+        xmlChar *source = unreadable - 3;
+        memcpy(source, "abc", 3);
+        xmlChar *copy = xmlStrndup(source, 3);
+        assert(copy && memcmp(copy, "abc\0", 4) == 0);
+        xmlFree(copy);
+        copy = xmlStrndup(unreadable, 0);
+        assert(copy && copy[0] == 0);
+        xmlFree(copy);
+        assert(!xmlStrndup(unreadable, -1));
+        source[2] = 0;
+        copy = xmlStrdup(source);
+        assert(copy && strcmp((const char *)copy, "ab") == 0);
+        xmlFree(copy);
+#ifndef XML3_REFERENCE_VERSION
+        assert(!xmlStrndup(unreadable, INT_MAX));
+        xmlResetLastError();
+#endif
+        assert(munmap(mapping, (size_t)page_size * 2) == 0);
+    }
+#endif
+}
 
 typedef int (*validate_name_fn)(const xmlChar *, int);
 static const validate_name_fn validators[] = {
@@ -247,6 +315,7 @@ static void test_ranges(void) {
 }
 
 int main(void) {
+    test_string_duplicates();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

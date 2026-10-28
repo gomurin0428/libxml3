@@ -5,7 +5,8 @@ release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
 ## Intended proof claims
 
-`proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Text.QNames`, `XML3_Parser`,
+`proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Text.Buffers`,
+`XML3_Text.QNames`, `XML3_Parser`,
 `XML3_Namespaces`, `XML3_Encoding`, `XML3_DOM`, `XML3_DOM_Bridge`,
 `XML3_DOM_Constructors`, `XML3_DOM_Store`, its `Queries`, `Properties`, and
 `Documents` and `Serialization` children, `XML3_Serialization`,
@@ -42,10 +43,13 @@ namespace-list traversal through
 `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
 `Collect_Namespaces`, namespace copying through `Runtime.Copy_Namespace` /
 `Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Prefix_Length`
-and `Split`, QName building through `XML3_Text.QNames.Build`, and explicit
-UTF-8 memory serialization. The C adapters and native ABI implementation are
-not proved. The refreshed aggregate has 11,256 checks
-(978 flow and 10,278 prover), no unproved or justified conditions, 0
+and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
+QName building through `XML3_Text.QNames.Build`, and explicit UTF-8 memory
+serialization. The buffer helper checks bounded lengths, allocation sizing,
+and call preconditions; native allocation and byte writes are trusted. The C
+adapters, conversions, pointer validity and native ABI implementation are not
+proved. The refreshed aggregate has 11,255 checks
+(979 flow and 10,276 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -167,7 +171,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,256-check aggregate proof; see
+new units are included in the current successful 11,255-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -558,6 +562,12 @@ document are supported. The minimal DOM editor API includes `xmlNewDoc`,
 `xmlFreeNs`, `xmlCopyNamespace`, `xmlNewNsProp`, `xmlSetNsProp`, `xmlUnsetNsProp`, and attribute
 APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and
 `xmlFreeProp`. Attribute copying and cross-document moves remain deferred.
+`xmlStrdup` and `xmlStrndup` copy raw bytes into `xmlFree`-owned,
+NUL-terminated results; `xmlStrndup` copies exactly the requested length,
+including embedded NUL bytes, and length zero does not read its input.
+UTF-8 validity and complete API
+equivalence are not proved; native pointers, allocation, byte writes, and C
+conversion remain trusted boundaries.
 `xmlCopyNamespace` resolves only managed live namespace facades, copies the
 stored href/prefix spans independently while preserving NULL versus empty
 fields, and omits source `next`, `context`, and `_private` links. Reservation

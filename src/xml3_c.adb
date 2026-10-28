@@ -15,6 +15,7 @@ with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Text;
+with XML3_Text.Buffers;
 with XML3_Text.QNames;
 
 package body XML3_C is
@@ -2339,6 +2340,53 @@ package body XML3_C is
       when others =>
          return 0;
    end Str_Equal;
+
+   function Duplicate_Text
+     (Item : System.Address; Length : Interfaces.C.int; Bounded : Boolean)
+      return System.Address
+   is
+      Result : System.Address;
+   begin
+      if Item = System.Null_Address or else (Bounded and then Length < 0) then
+         return System.Null_Address;
+      end if;
+      if Bounded and then Length > Max_Input then
+         raise Invalid_C_String;
+      end if;
+      declare
+         Value : constant String :=
+           (if not Bounded then C_String_Value (Item)
+            elsif Length = 0 then ""
+            else To_String (Item, Natural (Length)));
+      begin
+         XML3_Text.Buffers.Duplicate (Value, Result);
+      end;
+      if Result = System.Null_Address then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+      end if;
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Duplicate_Text;
+
+   function Str_Duplicate (Item : System.Address) return System.Address is
+   begin
+      return Duplicate_Text (Item, 0, False);
+   end Str_Duplicate;
+
+   function Str_N_Duplicate
+     (Item : System.Address; Length : Interfaces.C.int) return System.Address is
+   begin
+      return Duplicate_Text (Item, Length, True);
+   end Str_N_Duplicate;
 
    function Str_Length (Item : System.Address) return Interfaces.C.int is
       Length : size_t;
