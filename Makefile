@@ -36,6 +36,15 @@ tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
 test-dom-core: tests/dom-core-test
 	./tests/dom-core-test
 
+.PHONY: test-text-buffers
+tests/text-buffers-test: tests/text_buffers_test.adb tests/text_buffers_test.gpr \
+		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \
+		src/xml3_native_memory.ads src/xml3_native_memory.adb
+	$(ADA_BIN)/gprbuild -p -P tests/text_buffers_test.gpr -o text-buffers-test
+
+test-text-buffers: tests/text-buffers-test
+	./tests/text-buffers-test
+
 tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
 		src/xml3_dom_store.ads src/xml3_dom_store.adb \
 		src/xml3_dom_store-queries.ads src/xml3_dom_store-queries.adb \
@@ -326,6 +335,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test validate-name 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-compare 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test full-string-compare 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test substring-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0
@@ -375,7 +385,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 	./tests/differential-system > tests/differential-system.out
 	diff -u tests/differential-system.out tests/differential-libxml3.out
 
-check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection
+check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection test-text-buffers
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
 		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
@@ -385,7 +395,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsList xmlGetNsListSafe \
 	xmlGetNsProp xmlGetNoNsProp xmlNodeGetAttrValue xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \
-	xmlChildElementCount xmlStrcmp xmlStrncmp xmlStrncasecmp xmlStrchr xmlStrstr xmlStrcasestr xmlStrsub xmlStrEqual xmlStrQEqual xmlStrlen xmlStrdup xmlStrndup xmlCharStrdup xmlCharStrndup xmlStrncatNew xmlFree xml3ReadMemory \
+	xmlChildElementCount xmlStrcmp xmlStrcasecmp xmlStrncmp xmlStrncasecmp xmlStrchr xmlStrstr xmlStrcasestr xmlStrsub xmlStrEqual xmlStrQEqual xmlStrlen xmlStrdup xmlStrndup xmlCharStrdup xmlCharStrndup xmlStrncatNew xmlFree xml3ReadMemory \
 	xmlValidateName xmlValidateNCName xmlValidateQName xmlValidateNMToken \
 	xmlSplitQName2 xmlSplitQName3 xmlBuildQName \
 	xmlGetLastError xmlResetLastError xmlResetError xmlCopyError; do \
@@ -445,7 +455,7 @@ clean:
 		tests/encoding-test-sanitize tests/encoding-resource-test-sanitize \
 		tests/fuzz-test tests/fuzz-test-sanitize tests/dom-test \
 		tests/dom-test-reference tests/dom-test-sanitize tests/dom-core-test \
-		tests/dom-bridge-test tests/attribute-test \
+		tests/dom-bridge-test tests/text-buffers-test tests/attribute-test \
 		tests/attribute-test-reference tests/attribute-test-sanitize \
 		tests/namespace-edit-test tests/namespace-edit-test-reference \
 		tests/namespace-edit-test-sanitize \

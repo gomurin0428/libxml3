@@ -1,0 +1,16 @@
+project Text_Buffers_Test is
+   for Source_Dirs use ("../src", ".");
+   for Source_Files use
+     ("xml3_text.ads", "xml3_text.adb",
+      "xml3_text-buffers.ads", "xml3_text-buffers.adb",
+      "xml3_native_memory.ads", "xml3_native_memory.adb",
+      "text_buffers_test.adb");
+   for Main use ("text_buffers_test.adb");
+   for Object_Dir use "../obj/text-buffers-test";
+   for Exec_Dir use ".";
+
+   package Compiler is
+      for Default_Switches ("Ada") use
+        ("-gnat2022", "-gnata", "-gnato", "-gnatwa");
+   end Compiler;
+end Text_Buffers_Test;

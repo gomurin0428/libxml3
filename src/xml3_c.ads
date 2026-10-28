@@ -313,6 +313,10 @@ package XML3_C is
    function Str_Length (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlStrlen";
 
+   function Str_Case_Compare
+     (Left, Right : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlStrcasecmp";
+
    function Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrdup";
 

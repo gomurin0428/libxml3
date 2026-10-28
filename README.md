@@ -128,6 +128,18 @@ NULL入力、負の `start`/`len` は診断なしでNULLです。start byte を�
 `len <= Max_Bytes - start` を読み取り前に確認し、範囲超過は診断付きNULLです。
 実際のnative pointer/読み取り可能範囲/byte内容、allocationとwrite、address計算、完全なAPI意味論は
 信頼境界です。
+`xmlStrcmp`、`xmlStrEqual`、`xmlStrcasecmp` は SPARK
+`XML3_Text.Buffers.Compare_Terminated` の byte scan を共有します。同一 pointer は読み取りなしで
+比較結果0、`xmlStrEqual` は1です。NULL/NULLも等しく、片側だけNULLなら左NULLが-1、右NULLが+1です。
+`xmlStrcmp` は unsigned byte 差、`xmlStrEqual` はraw byte equalityを返します。
+`xmlStrcasecmp` は `A`–`Z` に加えて `[` を `{` に写す pinned reference の byte-map quirk を保ちます。
+Unicode case folding、UTF-8検証、transcoding、allocation、mutation、C-string変換は行いません。
+scan は offset `0..Max_Bytes` を調べ、不一致またはNULで終了します。境界まで同じ非NUL byteが続く場合は
+診断を記録して `xmlStrcmp` / `xmlStrcasecmp` が -1 を返し、この値は順序比較として信頼できません。
+`xmlStrEqual` はその場合0を返すため、診断も確認してください。早期不一致、NUL、NULL、同一pointerは
+上限より前に終了できます。小さな `Last` を使う Ada helper test と形式検証で上限動作を確認し、
+公開C APIの巨大文字列で上限を動的に試してはいません。foreign pointerの有効性、読み取り可能範囲・
+実際のbyte内容、address計算、完全なAPI意味論は信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

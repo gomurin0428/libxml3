@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,329 checks, 1,009 by flow analysis and 10,320 by provers;
+**11,340 checks, 1,018 by flow analysis and 10,322 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -118,6 +118,23 @@ additional `[` to `{` quirk, not general Unicode folding. These routines do
 not allocate or convert C strings. `Native.Byte_At`, actual foreign-memory
 contents/bounds, pointer validity, and full public semantics remain trusted.
 Tests compare all byte pairs and exercise protected-page early exits.
+`xmlStrcmp`, `xmlStrEqual`, and the new `xmlStrcasecmp` share
+`XML3_Text.Buffers.Compare_Terminated`, which uses the same byte scan. The
+terminated comparison accepts identical pointers and NULL ordering before any
+native read, then scans offsets 0 through `Max_Bytes` inclusive, stopping at
+the first mismatch or NUL. If equal non-NUL bytes remain through the boundary,
+the helper reports a limit result and returns -1; the C adapter diagnoses it.
+That sentinel is not a reliable ordering result. The ordering APIs return it,
+while `xmlStrEqual` maps the error to 0. Unexpected C-side exceptions are also
+diagnosed and yield -1 for the ordering APIs and 0 for equality. The
+case-insensitive routine preserves the pinned `[` to `{` map quirk without
+Unicode case folding, validation, or transcoding. SPARK proves loop bounds,
+native-call preconditions, result range, and the cap-failure contract; actual
+foreign pointer validity, readable bounds/bytes, C error mapping, and full
+semantics remain trusted. Shared byte-pair and guard-page cases run against
+both libxml3 and the pinned reference; OOM/no-allocation checks are
+libxml3-only. The cap-specific test invokes the Ada helper with a small `Last`;
+no public C string near the cap is dynamically constructed.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` for a bounded
 sum and status/result contract. The adapter checks a positive right-hand span
 before converting it, and maps the reference's negative-length and NULL-input
@@ -152,8 +169,9 @@ Reference comparison covers returned namespace values and links; the
 node-pin-lifetime scenario and OOM injection are libxml3-only tests.
 The QName proof includes 15 checks for `Build`, 8 for `Compare`, 10 for
 `Prefix_Length`, and 6 for `Split`; `XML3_Text.Buffers.Case_Map` has 1 check,
-`Compare_Bounded` has 4, `Concatenate` has 12, `Duplicate` has 1,
-`Find_Byte` has 3, `Find_Substring` has 8, `Fits` has 0, and `Slice` has 12.
+`Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
+`Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
+`Find_Substring` has 8, `Fits` has 0, and `Slice` has 12.
 The entity
 summaries report 0 flow errors, 136 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
@@ -180,13 +198,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 276 |
-| Initialization | 584 |
+| Data dependencies | 278 |
+| Initialization | 591 |
 | Runtime checks | 5,063 |
 | Assertions | 1,486 |
-| Functional contracts | 3,716 |
+| Functional contracts | 3,718 |
 | Termination | 204 |
-| **Total** | **11,329** |
+| **Total** | **11,340** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -556,8 +574,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-21bda1190fa4644f91d27b4484e0701958b668e3440e666ab99d2db69405b40f  src/xml3_c.adb
-25452c6bbc34db8638c1f96adfff9049097c39897d7c4cd0b38a356fa42d48b9  src/xml3_c.ads
+dc7270aa34cb7ffe25b71e837dc24f666f1a225c233b08ab6e49513e4e5e6d10  src/xml3_c.adb
+a44cad8baae5a96b212a1c30f65ddc8f251bd7b6723ffa0f491cc08261381a96  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -604,13 +622,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-b161471c13ba52f5ec8afedd6d2863bad8bb65e7b70ec89f00120af0b72e0a69  src/xml3_text-buffers.adb
-b707cad48b14842466f8aa5f64251a94fd9d791a35bc9bede883c57198b5896a  src/xml3_text-buffers.ads
+af172679b239a5cd61f7e9d75dd64895a15e5fb0c3a07603cb85710eddc7c2d0  src/xml3_text-buffers.adb
+ff113d04f26329cda67502de0bbabf785d9c3a9c1c4acfe97e5c39a8cb55199c  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-e80bca73094df8266fa4ff3c82d58e6fed71da5143789c0037502f26280e975f  include/libxml/xmlstring.h
+2dc3a68d51fea1a06a6bbd3561ce3594870b0d984e67e4e552c8b300c60815cd  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-590ab4a1e9d02ff43880c8c70a9ba29c02c36464508511190d607e7f71de756b  Makefile
+62fa9a75d2308f68cf8ed51c4f91ab25b302c97721689a04cd472adcb458904d  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

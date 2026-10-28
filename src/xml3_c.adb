@@ -49,10 +49,6 @@ package body XML3_C is
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
 
-   function C_Strcmp
-     (Left, Right : System.Address) return int
-     with Import, Convention => C, External_Name => "strcmp";
-
    function C_Strlen (Item : System.Address) return size_t
      with Import, Convention => C, External_Name => "strlen";
 
@@ -2306,40 +2302,35 @@ package body XML3_C is
          return 0;
    end Child_Element_Count;
 
-   function Str_Compare
-     (Left, Right : System.Address) return Interfaces.C.int
+   function Compare_Strings
+     (Left, Right : System.Address; Ignore_Case : Boolean) return Interfaces.C.int
    is
+      Result : Integer;
+      Limit_Exceeded : Boolean;
    begin
-      if Left = Right then
-         return 0;
-      elsif Left = System.Null_Address then
-         return -1;
-      elsif Right = System.Null_Address then
-         return 1;
+      XML3_Text.Buffers.Compare_Terminated
+        (Left, Right, Ignore_Case, Result, Limit_Exceeded);
+      if Limit_Exceeded then
+         Report_Dom_Error (115);
       end if;
-      return C_Strcmp (Left, Right);
+      return Interfaces.C.int (Result);
    exception
       when others =>
-         return 0;
-   end Str_Compare;
+         Report_Dom_Error (1);
+         return -1;
+   end Compare_Strings;
+
+   function Str_Compare
+     (Left, Right : System.Address) return Interfaces.C.int is
+     (Compare_Strings (Left, Right, False));
+
+   function Str_Case_Compare
+     (Left, Right : System.Address) return Interfaces.C.int is
+     (Compare_Strings (Left, Right, True));
 
    function Str_Equal
      (Left, Right : System.Address) return Interfaces.C.int
-   is
-   begin
-      if Left = Right then
-         return 1;
-      elsif Left = System.Null_Address or else Right = System.Null_Address then
-         return 0;
-      elsif C_Strcmp (Left, Right) = 0 then
-         return 1;
-      else
-         return 0;
-      end if;
-   exception
-      when others =>
-         return 0;
-   end Str_Equal;
+   is (if Compare_Strings (Left, Right, False) = 0 then 1 else 0);
 
    function Str_Q_Equal
      (Prefix, Name, Value : System.Address) return Interfaces.C.int
