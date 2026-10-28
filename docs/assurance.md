@@ -124,16 +124,18 @@ calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
 parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`,
 `xmlNewDocPI`, `xmlNewDocText`, `xmlNewDocTextLen`, and `xmlNewCDataBlock`
 share `Runtime.New_Doc_Content` and `Store.Content.New_Doc_Content`. The
+private C `New_Content_Node` helper handles input conversion, locking, status
+reporting, and exception mapping for these content constructors without adding
+a C ownership path.
+
 `xmlNewDocProp` adapter uses `Runtime.New_Doc_Node` and
 `Store.Content.New_Doc_Node` with `Attribute_Mode`; it supports only detached,
 unnamespaced attributes. Attribute attachment and standalone serialization are
 not supported. Its complete public C semantics are not proved.
-private C `New_Content_Node` helper handles input conversion, locking, status
-reporting, and exception mapping for the preceding content constructors,
-replacing the separate document-text adapter without adding a C ownership path.
 The `xmlNewDocProp` path uses the shared C `New_Container_Node` helper for
 marshalling, locking, and status mapping; graph and owner decisions stay in SPARK.
-The Store operation is restricted to text, CDATA, comment, and PI kinds; it maintains
+The shared `Store.Content.New_Doc_Content` operation accepts text, CDATA,
+comment, and PI nodes as well as empty element/attribute containers; it maintains
 `Ready (S)`, relates the result address to `Created` status, and uses the
 existing `Set_Node_Projection` invariant to set document affiliation and owner
 pin. The core `Create_Node` postcondition specifically guarantees a null name
