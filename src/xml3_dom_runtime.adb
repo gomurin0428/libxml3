@@ -82,6 +82,16 @@ is
          XML3_DOM_Store.Add_Child (Current, Parent, Child, Result, Status);
       end Add_Child;
 
+      procedure New_Child
+        (Parent, Ns : System.Address; Name, Content : String;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.New_Child
+           (Current, Parent, Ns, Name, Content, Result, Status);
+      end New_Child;
+
       procedure Add_Content
         (Facade : System.Address; Suffix : String;
          Status : out XML3_DOM_Store.Operation_Status)

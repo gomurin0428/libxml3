@@ -34,6 +34,8 @@ int main() {
     xmlNodePtr (*new_pi)(const xmlChar *, const xmlChar *) = xmlNewPI;
     int (*node_add_content)(xmlNodePtr, const xmlChar *) = xmlNodeAddContent;
     int (*node_set_content)(xmlNodePtr, const xmlChar *) = xmlNodeSetContent;
+    xmlNodePtr (*new_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
+                           const xmlChar *) = xmlNewChild;
     xmlDocPtr doc = xmlReadMemory("<r/>", 4, nullptr, nullptr, XML_PARSE_NONET);
     if (!doc) return 1;
     xmlNodePtr root = xmlDocGetRootElement(doc);
@@ -58,6 +60,7 @@ int main() {
     (void)new_pi;
     (void)node_add_content;
     (void)node_set_content;
+    (void)new_child;
     (void)last_error;
     xmlFreeDoc(doc);
     return 0;

@@ -324,6 +324,94 @@ static void test_invalid_comment_serialization(void) {
 }
 #endif
 
+static void test_construct_child(void) {
+    static const char input[] =
+        "<p:root xmlns:p='urn:parent' xmlns:q='urn:other'><!--before--></p:root>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, first, child, other, empty;
+    xmlNsPtr alternate;
+    xmlChar *memory = NULL;
+    int size = 0;
+    xmlDocPtr reparsed;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    first = root->children;
+    alternate = xmlSearchNs(doc, root, BAD_CAST "q");
+    assert(root->ns != NULL && alternate != NULL);
+    child = xmlNewChild(root, NULL, BAD_CAST "child",
+                        BAD_CAST "<&amp;&#x1F642;\r\n\t");
+    assert(child != NULL && child->parent == root && child->doc == doc);
+    assert(child->ns == root->ns && child->children->ns == NULL);
+    assert(root->children == first && first->next == child);
+    assert(child->prev == first && root->last == child && child->next == NULL);
+    assert(child->children->parent == child && child->children->doc == doc);
+    assert_content(child, "<&🙂\r\n\t");
+    other = xmlNewChild(root, alternate, child->name, BAD_CAST "other");
+    assert(other != NULL && other->ns == alternate);
+    assert(strcmp((const char *)other->name, "child") == 0);
+    assert(child->next == other && other->prev == child && root->last == other);
+    empty = xmlNewChild(child, NULL, BAD_CAST "empty", NULL);
+    assert(empty != NULL && empty->ns == child->ns && empty->children == NULL);
+    empty = xmlNewChild(child, NULL, BAD_CAST "empty", BAD_CAST "");
+    assert(empty != NULL && empty->children == NULL && child->last == empty);
+    assert(xmlNewChild(first, NULL, BAD_CAST "invalid", NULL) == NULL);
+    assert(xmlNewChild(root, NULL, NULL, NULL) == NULL);
+    assert(xmlNewChild(NULL, NULL, BAD_CAST "invalid", NULL) == NULL);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory != NULL && size > 0);
+    assert(strstr((const char *)memory, "<p:child>") != NULL);
+    assert(strstr((const char *)memory, "<q:child>other</q:child>") != NULL);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed != NULL);
+    assert_content(xmlDocGetRootElement(reparsed)->children->next,
+                   "<&🙂\r\n\t");
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+    xmlFreeDoc(doc);
+
+    doc = xmlNewDoc(NULL);
+    assert(doc != NULL);
+    child = xmlNewChild((xmlNodePtr)doc, NULL, BAD_CAST "root", BAD_CAST "text");
+    assert(child != NULL && child == xmlDocGetRootElement(doc));
+    assert(child->parent == (xmlNodePtr)doc && child->doc == doc);
+    assert(child->children->doc == doc);
+    xmlFreeDoc(doc);
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void test_construct_child_failure_and_lifetime(void) {
+    static const char input[] = "<p:root xmlns:p='urn:parent'><p:old/></p:root>";
+    static const char *const invalid[] = {"&unknown;", "&#0;", "bad &", "\xc3"};
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, old, child;
+    xmlNode invalid_node = {0};
+    xmlNs invalid_ns = {0};
+    xmlNsPtr ns;
+    size_t i;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    old = root->children;
+    ns = root->ns;
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+        assert(xmlNewChild(root, NULL, BAD_CAST "bad", BAD_CAST invalid[i]) == NULL);
+        assert(root->children == old && root->last == old && root->ns == ns);
+        assert(old->parent == root && old->next == NULL && old->prev == NULL);
+    }
+    assert(xmlNewChild(&invalid_node, NULL, BAD_CAST "bad", NULL) == NULL);
+    assert(xmlNewChild(root, &invalid_ns, BAD_CAST "bad", NULL) == NULL);
+    assert(root->children == old && root->last == old);
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    child = xmlNewChild(root, NULL, BAD_CAST "after-release", BAD_CAST "new&amp;text");
+    assert(child != NULL && child->parent == root && child->ns == ns);
+    assert_content(child, "new&text");
+    assert(strcmp((const char *)ns->href, "urn:parent") == 0);
+    xmlFreeNode(root);
+}
+#endif
+
 int main(void) {
     assert(xmlNodeAddContent(NULL, NULL) == 1);
     assert(xmlNodeSetContent(NULL, NULL) == 1);
@@ -333,7 +421,9 @@ int main(void) {
     test_detached_lifetime();
     test_set_content();
     test_set_detached_lifetime();
+    test_construct_child();
 #ifndef XML3_REFERENCE_TEST
+    test_construct_child_failure_and_lifetime();
     test_set_rejection_is_transactional();
     test_set_namespace_borrower_lifetime();
     test_invalid_facade_and_document_noop();

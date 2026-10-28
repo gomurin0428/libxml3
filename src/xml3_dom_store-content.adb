@@ -10,6 +10,78 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    use type Native.Byte_Count;
    pragma Unevaluated_Use_Of_Old (Allow);
 
+   procedure New_Child
+     (S : in out Store; Parent, Ns : System.Address;
+      Name, Content : String; Result : out System.Address;
+      Status : out Operation_Status)
+   is
+      P : constant Node_Ref := Find_Node (S, Parent);
+      Selected_Ns : System.Address := Ns;
+      Element, Text, Ignored_Ns : System.Address := System.Null_Address;
+      Cleanup_Status : Operation_Status;
+      Decoded : String (1 .. Content'Length) := (others => Character'Val (0));
+      Decoded_Length : XML3_Text.Byte_Count := 0;
+      Decoded_Valid : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if P = Null_Node or else Node (S.Current.all, P).Kind not in
+        Element_Node | Document_Node
+      then
+         return;
+      end if;
+      if Content'Length > 0 then
+         if Content'First /= 1 or else Content'Last > XML3_Text.Max_Bytes then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+         XML3_Text.Decode
+           (Content, False, True, Decoded, Decoded_Length, Decoded_Valid,
+            Normalize_Line_Endings => False);
+         if not Decoded_Valid then
+            return;
+         end if;
+      end if;
+      if Selected_Ns = System.Null_Address
+        and then Node (S.Current.all, P).Kind = Element_Node
+        and then Node (S.Current.all, P).Namespace /= Null_Namespace
+      then
+         Selected_Ns := Namespace
+           (S.Current.all, Node (S.Current.all, P).Namespace).Facade;
+      end if;
+      Construct
+        (S, Element_Node, Name, "", False, Selected_Ns,
+         Element, Ignored_Ns, Status);
+      if Status /= Created then
+         return;
+      end if;
+      if Decoded_Length > 0 then
+         Construct
+           (S, Text_Node, "text", Decoded (1 .. Integer (Decoded_Length)),
+            True, System.Null_Address, Text, Ignored_Ns, Status);
+         if Status = Created then
+            Attach (S, Element, Text, False, Status);
+            if Status /= Created then
+               Release (S, Text, Content_Node, False, Cleanup_Status);
+               if Cleanup_Status /= Created then
+                  Status := Internal_Error;
+               end if;
+            end if;
+         end if;
+      end if;
+      if Status = Created then
+         Attach (S, Parent, Element, False, Status);
+      end if;
+      if Status = Created then
+         Result := Element;
+      else
+         Release (S, Element, Content_Node, False, Cleanup_Status);
+         if Cleanup_Status /= Created then
+            Status := Internal_Error;
+         end if;
+      end if;
+   end New_Child;
+
    procedure Replace_Content
      (S : in out Store; N : Node_Ref; Value : String;
       Append_Mode, Has_Content : Boolean; Status : out Operation_Status)

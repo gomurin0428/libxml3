@@ -62,6 +62,12 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure New_Child
+        (Parent, Ns : System.Address; Name, Content : String;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Add_Content
         (Facade : System.Address; Suffix : String;
          Status : out XML3_DOM_Store.Operation_Status)

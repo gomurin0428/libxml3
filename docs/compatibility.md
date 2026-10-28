@@ -15,7 +15,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
-  `xmlNodeAddContent`、`xmlNodeSetContent`、
+  `xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNewChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
@@ -65,7 +65,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlNewChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
@@ -95,6 +95,12 @@ element/attribute の入力に含まれる malformed/unknown references、invali
 characters は tree error 115 で拒否し、tree を変更しません。scalar node の入力は raw のまま
 保持し、その検証は serialization 時に行います。DTD/general entity node type は未対応です。
 これは安全側の拒否であり、upstream の無音動作や unbound namespace の修復を再現しません。
+`xmlNewChild` は element/document の末尾に子要素を追加します。namespace が NULL のときは
+element parent の namespace を継承し、明示指定時は登録済みの namespace を使います。
+内容は `xmlNodeSetContent` と同じ限定的な reference decoder を使い、NULL/empty は子を
+持たない要素になります。入力の検査・子要素と text の作成が完了してから親に接続し、
+失敗時には未公開の領域だけを片付けます。document fragment/HTML/DTD/general entity は
+未対応です。名前は `xmlNewNode` と同じくそのままコピーし、XML name 検査は出力時に行います。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。
