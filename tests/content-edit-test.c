@@ -589,6 +589,14 @@ static void test_bounded_content_guard_page(void) {
             assert(bounded->content != NULL && bounded->content[0] == 0);
             xmlFreeNode(bounded);
             assert(xmlNewDocTextLen(doc, mapping + page_size, -1) == NULL);
+            bounded = xmlNewCDataBlock(doc, buffer, 7);
+            assert(bounded && bounded->name == NULL && bounded->doc == doc);
+            assert_content(bounded, "A&amp;B");
+            xmlFreeNode(bounded);
+            bounded = xmlNewCDataBlock(doc, mapping + page_size, 0);
+            assert(bounded && bounded->content && bounded->content[0] == 0);
+            xmlFreeNode(bounded);
+            assert(xmlNewCDataBlock(doc, mapping + page_size, -1) == NULL);
             assert(doc->children == NULL);
             xmlFreeDoc(doc);
         }

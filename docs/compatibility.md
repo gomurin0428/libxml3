@@ -189,6 +189,10 @@ NULL contentのcommentは出力しません。`xmlNewDocComment` / `xmlNewDocPI`
 文書を指定できます。NULL doc は文書なしの作成、non-NULL doc は管理中の live document
 に限り、親への接続は行いません。所属文書の owner を保持し、文書先行解放後も独立した
 comment/PI とコピー済みの target/content は編集・解放できます。node登録callback は未対応です。
+`xmlNewCDataBlock` も同じ文書保持と bounded input conversion を使います。name は NULL、
+raw content はコピーされ、NULL/empty は区別します。non-NULL content の負の長さは拒否、
+長さ0では入力を読みません。最初のNULまでだけを保持し、後続の隠れたbytesは保持しません。
+UTF-8/XML文字の検査は出力時に行い、`]]>` は複数CDATAに分割して値を保持します。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて

@@ -290,10 +290,12 @@ int main(int argc, char **argv) {
     } else if (strcmp(operation, "dom-new-doc-text") == 0 ||
                strcmp(operation, "dom-new-doc-text-len") == 0 ||
                strcmp(operation, "dom-new-doc-comment") == 0 ||
-               strcmp(operation, "dom-new-doc-pi") == 0) {
+               strcmp(operation, "dom-new-doc-pi") == 0 ||
+               strcmp(operation, "dom-new-cdata") == 0) {
         int bounded = strcmp(operation, "dom-new-doc-text-len") == 0;
         int comment = strcmp(operation, "dom-new-doc-comment") == 0;
         int pi = strcmp(operation, "dom-new-doc-pi") == 0;
+        int cdata = strcmp(operation, "dom-new-cdata") == 0;
         static const xmlChar input[] = {'t', 'e', 'x', 't'};
         xmlDocPtr owner_doc = xmlNewDoc(NULL);
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
@@ -301,6 +303,7 @@ int main(int argc, char **argv) {
         assert(xmlDocSetRootElement(owner_doc, root) == NULL);
         xml3_oom_enable(fail_index);
         dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+            : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
             : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
             : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")
             : xmlNewDocText(owner_doc, BAD_CAST "text");
@@ -313,6 +316,7 @@ int main(int argc, char **argv) {
             assert(dom_node == NULL);
             require_oom_error();
             dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+                : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
                 : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
                 : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")
                 : xmlNewDocText(owner_doc, BAD_CAST "text");
@@ -321,6 +325,7 @@ int main(int argc, char **argv) {
         assert(dom_node->parent == NULL);
         xmlFreeDoc(owner_doc);
         if (pi) assert(strcmp((const char *)dom_node->name, "target") == 0);
+        if (cdata) assert(dom_node->name == NULL);
         assert(strcmp((const char *)dom_node->content, "text") == 0);
         assert(xmlNodeAddContent(dom_node, BAD_CAST "!") == 0);
         assert(strcmp((const char *)dom_node->content, "text!") == 0);

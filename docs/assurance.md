@@ -28,8 +28,8 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
 editing and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 10,862 checks
-(877 flow and 9,985 prover), no unproved or justified conditions, 0
+implementation are not proved. The refreshed aggregate has 10,892 checks
+(877 flow and 10,015 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 129 warnings; the representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -116,18 +116,22 @@ real facade/content updates, source-clear-before-free ordering, repeated-tail
 no-op, and final Store reclamation. `XML3_DOM_Runtime` owns the one private
 Store as SPARK abstract state. Public DOM wrappers serialize complete Runtime
 calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
-parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`, and
-`xmlNewDocPI` share `Runtime.New_Doc_Content` and
-`Store.Content.New_Doc_Content` with document-text construction. The private C
-`New_Content_Node` helper handles input conversion, locking, status reporting,
-and exception mapping for these constructors, replacing the separate document
-text adapter without adding a C ownership path. The Store operation is
-restricted to text, comment, and PI kinds; it maintains `Ready (S)`, relates
-the result address to `Created` status, and uses the existing
-`Set_Node_Projection` invariant to set document affiliation and owner pin.
-These contracts do not prove complete public API semantics or rollback.
-Raw comment/PI input is copied at construction, with lexical validity checked
-by serialization rather than claimed by the constructor contract.
+parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`,
+`xmlNewDocPI`, `xmlNewDocText`, `xmlNewDocTextLen`, and `xmlNewCDataBlock`
+share `Runtime.New_Doc_Content` and `Store.Content.New_Doc_Content`. The
+private C `New_Content_Node` helper handles input conversion, locking, status
+reporting, and exception mapping for these constructors, replacing the
+separate document-text adapter without adding a C ownership path. The Store
+operation is restricted to text, CDATA, comment, and PI kinds; it maintains
+`Ready (S)`, relates the result address to `Created` status, and uses the
+existing `Set_Node_Projection` invariant to set document affiliation and owner
+pin. The core `Create_Node` postcondition specifically guarantees a null name
+and zero name length for CDATA nodes. These contracts do not prove complete
+public API semantics or rollback. Raw comment/PI/CDATA content is copied at
+construction; lexical and UTF-8 validity and CDATA delimiter splitting are
+checked by serialization rather than claimed by the constructor contract.
+The CDATA bounded scan is in the trusted C boundary; guard-page tests are
+runtime evidence for pointer handling, not a pointer-safety proof.
 
 `XML3_Serialization.Render` reads an immutable Store state, validates and
 measures the supported XML 1.0 UTF-8 subset, then repeats the same iterative
@@ -137,7 +141,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,862-check aggregate proof; see
+new units are included in the successful 10,892-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -233,6 +237,14 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK
+`New_Doc_Content` を使います。C wrapper は non-NULL content の負の長さを走査前に拒否し、
+bounded prefix を作ります。NULL content は長さを問わず受け入れ、長さ 0 は pointer を読みません。
+core `Create_Node` の postcondition は CDATA の `Name` が NULL、`Name_Length` が 0 であることを
+保証します。これは限定された構造保証であり、API 全体の意味論証明ではありません。内容コピー、
+CDATA delimiter の出力分割、serialize/reparse、無効 UTF-8 の拒否と修復、document 先行解放後の
+編集・解放は実行テストで検査し、C pointer の validity は証明外です。
 
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.
