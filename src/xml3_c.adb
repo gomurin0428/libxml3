@@ -2361,6 +2361,21 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function UTF8_Char_Compare (Left, Right : System.Address) return Interfaces.C.int is
+      Result : Integer;
+      Invalid : Boolean;
+   begin
+      XML3_Text.Buffers.Compare_UTF8_Character (Left, Right, Result, Invalid);
+      if Invalid then
+         Report_Dom_Error (9);
+      end if;
+      return int (Result);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end UTF8_Char_Compare;
+
    function UTF8_Str_Location (Item, Pattern : System.Address) return Interfaces.C.int is
       use type XML3_Text.Buffers.Search_Status;
       Index : XML3_Text.Byte_Count;

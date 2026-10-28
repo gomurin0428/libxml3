@@ -151,6 +151,10 @@ int main(int argc, char **argv) {
         xmlFree(cur);
     } else if (strcmp(operation, "utf8-check") == 0) {
         xml3_oom_enable(0);
+        assert(xmlUTF8Charcmp(NULL, NULL) == 0);
+        assert(xmlUTF8Charcmp(BAD_CAST "名", BAD_CAST "名suffix") == 0);
+        assert(xmlUTF8Charcmp(BAD_CAST "a", BAD_CAST "z") == 'a' - 'z');
+        assert(xmlUTF8Charcmp(BAD_CAST "\xe2x", BAD_CAST "\xe3y") == -1);
         assert(xmlUTF8Size(NULL) == -1 && xmlUTF8Size(BAD_CAST "") == 1);
         assert(xmlUTF8Size(BAD_CAST "a") == 1 && xmlUTF8Size(BAD_CAST "名") == 3);
         assert(xmlUTF8Size(BAD_CAST "\xc2") == 2);
@@ -188,6 +192,22 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "utf8-charcmp-error") == 0) {
+        const xmlChar invalid[] = {0xe2, 'x', 0};
+        xml3_oom_enable(fail_index);
+        assert(xmlUTF8Charcmp(invalid, invalid) == -1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(injected && allocation_count >= 1);
+        require_oom_error();
+        assert(invalid[0] == 0xe2 && invalid[1] == 'x' && invalid[2] == 0);
+        xmlResetLastError();
+        assert(xmlUTF8Charcmp(invalid, invalid) == -1);
+        assert(xmlGetLastError() && xmlGetLastError()->code == XML_ERR_INVALID_CHAR);
+        xmlResetLastError();
+        assert(xmlUTF8Charcmp(BAD_CAST "名", BAD_CAST "名") == 0);
+        assert(!xmlGetLastError());
     } else if (strcmp(operation, "string-length") == 0) {
         xml3_oom_enable(0);
         assert(xmlStrlen(NULL) == 0);
@@ -1857,6 +1877,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "utf8-check") == 0) {
         puts("UTF-8 validation used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "utf8-charcmp-error") == 0) {
+        puts("UTF-8 comparison diagnostic OOM and retry passed");
         return 0;
     }
     if (strcmp(operation, "release-lists") == 0) {

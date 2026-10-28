@@ -53,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,478 checks
-(1,083 flow and 10,395 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,484 checks
+(1,088 flow and 10,396 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 137 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -178,7 +178,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,478-check aggregate proof; see
+new units are included in the current successful 11,484-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -836,6 +836,37 @@ byte, readable extent, pointer validity, C mapping/ABI, or complete API
 semantics. The guard-page loop places each of the 256 byte values at the final
 readable byte before `PROT_NONE`; standalone non-terminated one-byte inputs and
 no-allocation behavior are also tested.
+`xmlUTF8Charcmp` uses `XML3_Text.Buffers.Compare_UTF8_Character`. Both NULL
+pointers return 0; a NULL left or right pointer returns -1 or 1 respectively
+without reading the non-NULL pointer. Otherwise the helper classifies only the
+left lead byte, rejects an invalid lead before reading the right, then compares
+at most that lead's width (1..4, with NUL width 1) as unsigned bytes. The first
+nonzero byte difference returns immediately without decoding or validating
+either complete sequence; for example, `E2 x` versus `E3 y` returns -1 and
+`a` versus `0xff` returns -158 without a diagnostic. Only byte equality invokes
+`Get_UTF8_Char` to validate the left first scalar before returning 0, including
+same-pointer comparisons. Equal malformed, truncated, overlong, surrogate, or
+out-of-range prefixes therefore report invalid and return -1, deliberately
+differing from the pinned reference's 0. Valid first characters retain the
+reference byte difference; suffixes are ignored. There is no case folding,
+normalization, grapheme matching, or XML-character validation; controls and
+noncharacters are valid UTF-8. The C adapter maps invalid input through
+`Report_Dom_Error(9)` (`XML_FROM_TREE` / `XML_ERR_INVALID_CHAR`) and converts
+the result; diagnostic-allocation failure may instead report standard OOM
+error 2, while unexpected exceptions map to error 1 and -1. Comparisons
+normally allocate nothing and do not mutate either input; invalid diagnostics
+may allocate. Successful comparisons do not clear an earlier last error, so callers should reset and
+inspect it when distinguishing a diagnosed -1 from a legitimate byte result.
+There is no scan cap beyond the left character's maximum four bytes. Caller
+memory must remain readable and stable through bytes accessed; an equal prefix
+may require reading the complete first scalar or NUL even when pointers alias.
+GNATprove proves 1 check for the helper's -255..255 result range and
+`Invalid => -1` postcondition; it does not establish byte-order or complete
+Unicode equivalence, actual foreign bytes, pointer validity/readable extent/
+stability, or C ABI/error mapping. Tests cover the 169-pair valid-character matrix, first-scalar-only
+behavior, early differences without diagnostics, malformed equal prefixes
+against the reference, alias/distinct pointers, guard-page spans, and
+diagnostic-allocation failure/retry.
 `xmlUTF8Strloc` is implemented by `XML3_Text.Buffers.Find_UTF8_Character`.
 It measures and copies at most the first pattern scalar into a local buffer,
 then uses the shared `Scan_UTF8` loop, which validates each source scalar before

@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -79,6 +79,10 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
 `XML_CDATA_SECTION_NODE` (4)、`XML_PI_NODE` (7)、`XML_COMMENT_NODE` (8)、
 `XML_DOCUMENT_NODE` (9)、`XML_NAMESPACE_DECL` (18) を使用します。C++ からは
 `extern "C"` で利用できます。
+
+### UTF-8 文字比較
+
+`xmlUTF8Charcmp` は最初の文字幅だけをunsigned byteとして比較し、Unicode code pointを減算しません。両方NULLなら0、左だけNULLなら-1、右だけNULLなら1で、NULL分岐では非NULL側を読みません。両方nonNULLなら左leadを `UTF8_Lead_Size` で分類し、無効leadは右を読む前にerror 9 / -1です。幅1..4（NULは1）内で最初のbyte差を返し、差・NUL・幅で停止します。不一致は直ちに返し、全sequenceをdecode/validateしません（`E2 x` 対 `E3 y` は診断なし-1、`a` 対 `0xff` は診断なし-158）。byte一致時だけ `Get_UTF8_Char` が左のfirst scalarを検証してから0を返し、same-pointerでも検証します。malformed/truncated/overlong/surrogate/out-of-rangeなequal prefixはerror 9 / -1となり、pinned referenceの0とは異なります。有効なfirst character同士はreferenceと同じbyte差で、suffixは無視します。case folding、normalization、grapheme matching、XML character validationは行わず、control/noncharacterはUTF-8として許可します。C adapterは `Invalid` を `XML_FROM_TREE` / `XML_ERR_INVALID_CHAR` に写像しますが、diagnostic allocation失敗時は標準OOM error 2、予期しない例外はerror 1を報告し、結果はいずれも-1です。比較は通常allocationせず入力を変更しませんが診断はallocationすることがあります。成功比較は旧last errorを消しません。診断された-1を正当なbyte差-1と区別するには事前にlast errorをresetして確認してください。左文字幅の最大4 byte以外にcapはありません。入力は触れたbyte範囲でreadableかつ安定している必要があり、equal prefixの検証はaliasでもfirst scalar全体またはNULまで読む場合があります。SPARKの結果範囲・`Invalid => -1` contractとnative-call preconditionsは、native byte、readability、pointer validity/stability、C mapping/ABI、完全なUnicode意味論を証明しません。
 
 ## DOM と所有権
 

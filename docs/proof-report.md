@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,478 checks, 1,083 by flow analysis and 10,395 by provers;
+**11,484 checks, 1,088 by flow analysis and 10,396 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -249,6 +249,36 @@ inputs and no-allocation behavior are also tested. GNATprove proves 2
 `UTF8_Lead_Size` checks for its result/null contract and native-call precondition. These checks do
 not establish native bytes, readable extent/pointer validity, C mapping/ABI,
 or complete Unicode/API semantics.
+`xmlUTF8Charcmp` uses `XML3_Text.Buffers.Compare_UTF8_Character`, whose
+contract bounds the result to -255..255 and requires `Result = -1` when
+`Invalid`; these contracts do not prove byte-order equivalence or Unicode
+semantics. Both NULL pointers return 0; a single NULL returns -1 for a NULL
+left pointer or 1 for a NULL right pointer without reading the other pointer.
+For non-NULL pointers, only the left lead is classified first; an invalid lead
+returns invalid/-1 before reading right. The helper then compares at most the
+left lead width (1..4, including NUL width 1) as unsigned bytes and returns the
+first nonzero difference immediately, without decoding or validating either
+full sequence. Equal bytes alone trigger `Get_UTF8_Char` validation of the
+left first scalar before 0, including for aliased pointers. Equal malformed,
+truncated, overlong, surrogate, or out-of-range prefixes return invalid/-1
+instead of the pinned reference's 0. Thus `E2 x` versus `E3 y` is -1 without
+diagnosis and `a` versus `0xff` is -158 without diagnosis. Valid first
+characters retain the reference byte difference; suffixes are ignored, with no
+case folding, normalization, grapheme matching, or XML-character validation.
+The C adapter maps invalid to DOM error 9 (`XML_FROM_TREE` /
+`XML_ERR_INVALID_CHAR`) and returns the numeric result; diagnostic allocation
+failure may map to standard OOM error 2, and unexpected exceptions map to
+error 1 and -1. Normal comparisons allocate nothing and do not mutate either
+input, but diagnostics may
+allocate. Success preserves any old last error, so callers must reset/check it
+when distinguishing diagnosed failure from a legitimate -1. Caller memory
+must remain stable/readable through accessed bytes; equality can read the
+complete first scalar or NUL even for aliases. There is no cap beyond the
+four-byte left width. GNATprove does not establish actual native bytes,
+pointer validity/readability/stability, C mapping/ABI, or complete Unicode
+behavior. The C/reference tests include 169 valid-character pairs, early
+nonzero differences without diagnostics, malformed equal prefixes, aliases,
+guard-page boundaries, and diagnostic-allocation failure/retry.
 `xmlUTF8Strloc` delegates to `XML3_Text.Buffers.Find_UTF8_Character`, which
 measures the pattern's first scalar with `Measure_UTF8_Prefix` using a four-byte
 bound, copies that scalar to a local buffer, and passes it to the shared
@@ -385,7 +415,9 @@ constructor control flow; native reads/writes and allocation, C/native pointer
 validity and layout, ABI details, and complete public semantics remain outside.
 Reference comparison covers returned namespace values and links; the
 node-pin-lifetime scenario and OOM injection are libxml3-only tests.
-The QName proof includes 15 checks for `Build`, 8 for `Compare`, 10 for
+`Compare_UTF8_Character` proves 1 check for its result-range and invalid-status
+contract, not full byte-order or Unicode equivalence. The QName proof includes
+15 checks for `Build`, 8 for `Compare`, 10 for
 `Prefix_Length`, and 6 for `Split`; `XML3_Text.Buffers.Case_Map` has 1 check,
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
@@ -416,13 +448,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 293 |
-| Initialization | 640 |
+| Data dependencies | 294 |
+| Initialization | 644 |
 | Runtime checks | 5,092 |
 | Assertions | 1,493 |
-| Functional contracts | 3,754 |
+| Functional contracts | 3,755 |
 | Termination | 206 |
-| **Total** | **11,478** |
+| **Total** | **11,484** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -792,8 +824,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-46d8079ae8045e73eb3c8fdc5b8c8dacd7b245852dce678650850a5bf7b171d2  src/xml3_c.adb
-0b626181a54dcfb629d7eea47b7bb9346bdabefd9be1705371749365b88cf3eb  src/xml3_c.ads
+fd1b28d1e64dc9c11e5b4064f7f6a6e4243796a7bbbd6e69c8a2089234abeaa7  src/xml3_c.adb
+14f5484fff7965cac63f29c90de373b72bd3342aeb6081859498d724582f8e02  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -840,13 +872,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-436cf2f0f058d46f108830d425cf56e01576638c9417917ea7a33cd0f8635aed  src/xml3_text-buffers.adb
-8eb33834c79844c6e05f2cf95975859c1fa39e2740b8166a7acd8d0a5038856a  src/xml3_text-buffers.ads
+44be081902047013762e7829c965aa4f0f9fb2220c130a7aa68f9001ac94f02d  src/xml3_text-buffers.adb
+1d95450cfc92d4df20b941d008c50f55847f69f1dd0b87f7dcab65d1c12509ba  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-9ecf071f78b02387b6dc27c666d7f0f60e296cd51ea06ceb51a00dba0273eaa6  include/libxml/xmlstring.h
+dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-cd5c9a6f5356a8830e127526ff64eb397afb6623fcfc592ab52dc10ca012ac4c  Makefile
+a7ffdfdaba9f5c2b3b2a40cf164a36a70cb5b4c2290381e9e457780992763506  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
