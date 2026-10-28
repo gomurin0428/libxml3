@@ -577,6 +577,18 @@ only the copied prefix plus terminator. Tests compare defined contents only;
 spare capacity and allocation-size equivalence are not promised. C conversion,
 native pointer validity, allocation/writes, ABI, and complete semantics remain
 trusted.
+`xmlStrchr` calls the SPARK `XML3_Text.Buffers.Find_Byte` search. It returns a
+borrowed input pointer to the first matching non-NUL byte; NULL input and a
+zero search value return no match without reading, and NUL terminates the scan
+but is not itself searchable. The scan checks payload offsets below
+`Max_Bytes` and allows a NUL at the boundary offset; if there is no match or
+terminator by that boundary, the adapter records an error and returns NULL.
+An early match in a longer string succeeds, so this is a no-match scan cap,
+not rejection of every longer input. SPARK proves the bounded status/position
+contract. `Native.Byte_At`, foreign pointer validity, readable bounds, actual
+bytes, native address arithmetic, C diagnostic mapping, and complete public
+semantics remain trusted. The operation allocates nothing and does not modify
+or transcode the input.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded` for
 bounded byte-by-byte comparisons, early exit, and a result in -255 .. 255.
 The scan accepts the full nonnegative C `int` bound without a `Max_Input`

@@ -112,7 +112,17 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "char-strdup") == 0 || strcmp(operation, "char-strndup") == 0) {
+    if (strcmp(operation, "string-search") == 0) {
+        xmlChar source[] = "ab";
+        xml3_oom_enable(0);
+        assert(xmlStrchr(source, 'b') == source + 1);
+        assert(!xmlStrchr(source, 'z') && !xmlStrchr(source, 0));
+        assert(!xmlStrchr(NULL, 'b'));
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "char-strdup") == 0 || strcmp(operation, "char-strndup") == 0) {
         char source[] = {'a', (char)0xff, 0, 'z'};
         const xmlChar expected[] = {'a', 0xff, 0};
         int bounded = strcmp(operation, "char-strndup") == 0;
@@ -1617,6 +1627,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "string-search") == 0) {
+        puts("byte search used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "string-compare") == 0) {
         puts("bounded string comparisons used no native allocations");
         return 0;

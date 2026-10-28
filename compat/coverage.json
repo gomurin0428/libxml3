@@ -568,6 +568,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlStrchr": {
+    "implementation": "partial",
+    "scope": "Finds the first matching non-NUL byte in a NUL-terminated raw byte string and returns a borrowed pointer into the input. NULL input and search value zero return NULL without reading; NUL stops the scan and is not searchable. Scans payload offsets below Max_Bytes, allowing a terminator at offset Max_Bytes; a no-match string without that terminator returns NULL with a diagnostic. Early matches return immediately even for longer strings, so this is a scan cap, not rejection of every longer input. No allocation, mutation, or UTF-8 conversion. SPARK proves loop bounds and status/position contracts; native byte reads, pointer validity, readable bounds, actual contents, address arithmetic, C diagnostics, and full API semantics remain outside proof.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlStrcmp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

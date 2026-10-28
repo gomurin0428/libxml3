@@ -2,6 +2,32 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Find_Byte
+     (Item : System.Address; Value : Character;
+      Position : out Byte_Count; Status : out Search_Status)
+   is
+      Current : Character;
+   begin
+      Position := 0;
+      Status := No_Match;
+      if Item = System.Null_Address or else Value = Character'Val (0) then
+         return;
+      end if;
+      for Index in 0 .. Max_Bytes - 1 loop
+         Current := Native.Byte_At (Item, Index);
+         if Current = Character'Val (0) then
+            return;
+         elsif Current = Value then
+            Position := Index;
+            Status := Matched;
+            return;
+         end if;
+      end loop;
+      if Native.Byte_At (Item, Max_Bytes) /= Character'Val (0) then
+         Status := Search_Limit_Exceeded;
+      end if;
+   end Find_Byte;
+
    --  The pinned reference also maps '[' to '{'.
    function Case_Map (Item : Character) return Character is
      (if Item in 'A' .. 'Z' or else Item = '['

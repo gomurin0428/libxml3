@@ -5,6 +5,8 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    const xmlChar *(*str_character)(const xmlChar *, xmlChar) = xmlStrchr;
+    (void)str_character;
     xmlChar *(*char_duplicate)(const char *) = xmlCharStrdup;
     xmlChar *(*char_n_duplicate)(const char *, int) = xmlCharStrndup;
     (void)char_duplicate;
