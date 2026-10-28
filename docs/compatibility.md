@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -465,6 +465,23 @@ checkはlibxml3-onlyです。SPARKはloop bounds、result range、native precond
 合計上限超過では正の右側spanを読む前に拒否します。pinned reference build も共通の
 文字列テストを実行し、上限超過・OOM注入はlibxml3-onlyで検査します。
 native pointer、読み取り可能性、C conversion、allocation、byte writes、ABIは信頼境界です。
+`xmlStrcat` / `xmlStrncat` はno-op以外で `cur` を消費します。`cur` はNULLまたは呼び出し側所有の
+`xmlFree` 互換allocationの先頭に限り、literalやDOMから借りたpointerは渡せません。消費する呼び出し後に
+旧 `cur` を使ったり解放したりしてはいけません。`xmlStrcat` は `add` のNUL終端byte列を追加し、
+NULLの `add` は `cur` を返します。空 `add` は非NULL `cur` ならno-op、NULL `cur` なら所有可能な
+空文字列を作ります。`xmlStrncat` はNULL `add` または `len == 0` なら負の長さ判定前にno-opです。
+非NULL `add` で `len < 0` の場合は診断なしで `cur` を消費しNULLを返します。正の `len` は
+埋め込みNULを含む指定raw bytesを正確にcopyします。`xmlStrcat` は `add` を先に走査し、prefixは
+残りcap内で走査します。境界NULは受け入れ、NULなしでcapを超える場合はDOM error 115を診断します。
+`xmlStrncat` の正の長さが `Max_Bytes` を超える場合は両入力の読み取り前に拒否します。
+cap failureは診断付きNULL、OOMは既存OOM診断となり、いずれも既存 `cur` を消費します。
+結果はNUL終端の新しいallocationです。
+実装は新しいallocationを作ってcopyしてから旧 `cur` を解放するため、`add` が旧buffer内を指すaliasも
+安全に読み取ります。これはrealloc型参照実装の危険なalias経路を再現しない意図的な安全差であり、
+常時copyによりpeak memory/copy workが増え得ます。UTF-8/XML validationやtranscodingはしません。
+shared vectorsとguard-page casesはpinned referenceとlibxml3の両方で実行し、alias・cap・OOM/free-count
+testsはlibxml3-onlyです。SPARKのlength/bounds/status-result proofはactual native reads/writes/allocation/free、
+pointer validity、caller ownershipを証明しません。
 NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。
 `xml3ReadMemory` は `XML3_STATUS_*` を通じて理由を返します。

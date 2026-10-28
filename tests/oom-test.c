@@ -10,6 +10,8 @@ void xml3_oom_enable(long index);
 void xml3_oom_disable(void);
 long xml3_oom_count(void);
 int xml3_oom_was_injected(void);
+void xml3_oom_watch_free(const void *ptr);
+int xml3_oom_free_count(void);
 
 static char *copy_test_string(const char *value) {
     size_t length = strlen(value) + 1;
@@ -112,7 +114,42 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "full-string-compare") == 0) {
+    if (strcmp(operation, "strcat") == 0 || strcmp(operation, "strncat") == 0) {
+        int bounded = strcmp(operation, "strncat") == 0;
+        xmlChar *cur = xmlStrdup(BAD_CAST "consume");
+        assert(cur);
+        xml3_oom_watch_free(cur);
+        cur = xmlStrncat(cur, BAD_CAST "x", -1);
+        assert(!cur && xml3_oom_free_count() == 1);
+        xml3_oom_watch_free(NULL);
+        cur = xmlStrdup(BAD_CAST "pre");
+        assert(cur);
+        xml3_oom_watch_free(cur);
+        xml3_oom_enable(fail_index);
+        assert(xmlStrcat(cur, NULL) == cur);
+        assert(xmlStrcat(cur, BAD_CAST "") == cur);
+        assert(xmlStrncat(cur, cur, 0) == cur);
+        assert(xmlStrncat(cur, NULL, -1) == cur);
+        assert(xml3_oom_count() == 0 && xml3_oom_free_count() == 0);
+        cur = bounded ? xmlStrncat(cur, cur + 1, 2) : xmlStrcat(cur, cur + 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(xml3_oom_free_count() == 1);
+        xml3_oom_watch_free(NULL);
+        if (injected) {
+            assert(!cur);
+            require_oom_error();
+        } else {
+            assert(cur && xmlStrEqual(cur, BAD_CAST "prere"));
+        }
+        xmlFree(cur);
+        cur = xmlStrdup(BAD_CAST "pre");
+        assert(cur);
+        cur = bounded ? xmlStrncat(cur, BAD_CAST "re", 2) : xmlStrcat(cur, BAD_CAST "re");
+        assert(cur && xmlStrEqual(cur, BAD_CAST "prere"));
+        xmlFree(cur);
+    } else if (strcmp(operation, "full-string-compare") == 0) {
         xml3_oom_enable(0);
         assert(xmlStrcmp(BAD_CAST "abc", BAD_CAST "abd") == -1);
         assert(xmlStrcasecmp(BAD_CAST "aBc[", BAD_CAST "AbC{") == 0);

@@ -155,6 +155,25 @@ NULLの `str2` または有効長0なら `str1` の複製、それ以外は `str
 raw bytes（埋め込みNULを含む）の連結です。入力は変更されず、返却値は `xmlFree` で
 解放します。合計サイズ上限超過は拒否し、正の右側spanを読む前に上限を確認します。
 UTF-8検証は行いません。native pointerの有効性、allocation、byte writes、ABIは信頼境界です。
+`xmlStrcat` と `xmlStrncat` は no-op 以外では `cur` を消費するAPIです。`cur` はNULLか、
+呼び出し側が所有する `xmlFree` 互換allocationの先頭でなければならず、literalやDOMから借りた
+pointerを渡してはいけません。no-op 以外の呼び出し後、元の `cur` は成功・通常の失敗のいずれでも
+解放済みなので再利用・再解放しません。返却allocationは `xmlFree` で解放します。
+`xmlStrcat` は `add` のNUL終端byte列を追加し、NULLの `add` は `cur` をそのまま返します。
+空 `add` は非NULL `cur` なら読み取りなしでno-opですが、NULL `cur` なら所有可能な空文字列を作ります。
+`xmlStrncat` はNULL `add` または `len == 0` を負の長さ判定より先にno-opとして扱います。
+非NULL `add` に対する負の `len` は診断なしで `cur` を消費してNULLを返します。正の `len` は
+埋め込みNULを含む指定byte数を正確にコピーし、その後にNULを追加します。
+追加文字列と既存prefixの長さは `Max_Bytes` に制限します。`xmlStrncat` の正の長さが上限を超える場合は
+両入力の読み取り前に検出します。`xmlStrcat` は `add` を先に走査し、既存prefixの走査を残りcap内に
+制限します。境界位置のNULは受け入れ、NULなしでcapを超える場合はDOM error 115を診断します。
+allocation失敗は既存OOM診断となり、いずれのエラーでも `cur` は消費されます。
+入力のUTF-8/XML検証やtranscodingは行いません。
+実装は `cur` を `realloc` せず新しいallocationへcopyしてから旧 `cur` を解放するため、
+`add` が `cur` 内を指すaliasも読めます。常に新しいbufferを作るのでpeak memoryとcopy workが増え得ます。
+SPARKはbounded length、native call preconditions、status/result contractを証明しますが、native byte
+reads/writes、allocation/free、pointerの有効性と所有権は信頼境界です。shared ordinary/guard-page
+vectorsはpinned referenceとlibxml3の両方で実行し、alias/cap/OOM/free-count checksはlibxml3-onlyです。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。

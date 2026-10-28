@@ -10,6 +10,18 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Slice_Status is (Sliced, No_Slice, No_Memory, Slice_Limit_Exceeded);
 
+   type Append_Status is
+     (Unchanged, Appended, Invalid_Length, Append_No_Memory, Append_Limit_Exceeded);
+
+   procedure Append
+     (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
+      Result : out System.Address; Status : out Append_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Unchanged then Result = Item
+                elsif Status = Appended then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    procedure Compare_Terminated
      (Left, Right : System.Address; Ignore_Case : Boolean;
       Result : out Integer; Limit_Exceeded : out Boolean;
