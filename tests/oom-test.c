@@ -287,6 +287,36 @@ int main(int argc, char **argv) {
             dom_node = NULL;
             assert(xmlGetLastError() == NULL);
         }
+    } else if (strcmp(operation, "dom-new-doc-text") == 0 ||
+               strcmp(operation, "dom-new-doc-text-len") == 0) {
+        int bounded = strcmp(operation, "dom-new-doc-text-len") == 0;
+        static const xmlChar input[] = {'t', 'e', 'x', 't'};
+        xmlDocPtr owner_doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(owner_doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(owner_doc, root) == NULL);
+        xml3_oom_enable(fail_index);
+        dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+            : xmlNewDocText(owner_doc, BAD_CAST "text");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(owner_doc->children == root && owner_doc->last == root);
+        assert(root->parent == (xmlNodePtr)owner_doc && root->children == NULL);
+        if (injected) {
+            assert(dom_node == NULL);
+            require_oom_error();
+            dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+                : xmlNewDocText(owner_doc, BAD_CAST "text");
+        }
+        assert(dom_node != NULL && dom_node->doc == owner_doc);
+        assert(dom_node->parent == NULL);
+        xmlFreeDoc(owner_doc);
+        assert(strcmp((const char *)dom_node->content, "text") == 0);
+        assert(xmlNodeAddContent(dom_node, BAD_CAST "!") == 0);
+        assert(strcmp((const char *)dom_node->content, "text!") == 0);
+        xmlFreeNode(dom_node);
+        dom_node = NULL;
     } else if (strcmp(operation, "dom-new-text-len") == 0) {
         static const xmlChar input[] = {'t', 'e', 'x', 't'};
         xml3_oom_enable(fail_index);

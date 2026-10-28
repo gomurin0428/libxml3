@@ -2,6 +2,16 @@ with System;
 with XML3_Native_Memory;
 
 package XML3_DOM_Store.Content with SPARK_Mode is
+   procedure New_Doc_Text
+     (S : in out Store; Doc : System.Address;
+      Content : String; Has_Content : Boolean; Result : out System.Address;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Ready (S)
+         and then (if Status = XML3_DOM_Constructors.Created then
+           Result /= System.Null_Address else Result = System.Null_Address);
+
    procedure New_Child
      (S : in out Store; Parent, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;

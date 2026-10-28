@@ -14,7 +14,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
-  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、`xmlAddChild`、
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
@@ -64,7 +64,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 
 ### 限定的な作成・編集 API
 
-`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlDocSetRootElement`、
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
 `xmlNewDoc` は
@@ -120,6 +120,10 @@ SPARK 側です。UTF-8 の途中で区切られた raw byte も追記でき、�
 `xmlNewTextLen` は同じ bounded 変換で raw text を作ります。non-NULL content で負の長さなら
 NULL を返し、長さ 0 なら pointer を読まず空の文字列を持つ text を作ります。NULL content は
 長さによらず content pointer が NULL の text を作ります。NUL 後の見えない bytes は保存しません。
+`xmlNewDocText` / `xmlNewDocTextLen` は同じ raw text に所属文書を設定します。文書の children
+には接続せず、親は NULL のままです。NULL doc は文書なしの text を作り、non-NULL doc は
+管理中の live document に限ります。文書の owner を保持するため、接続前や unlink 後に
+`xmlFreeDoc` を呼んでも text を編集・解放できます。失敗時は未公開 text を取り除きます。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

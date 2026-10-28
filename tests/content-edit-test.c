@@ -329,6 +329,70 @@ static void test_invalid_comment_serialization(void) {
 }
 #endif
 
+static void test_document_text(void) {
+    static const xmlChar raw[] = {'<', 'B', 'X'};
+    const int null_lengths[] = {-1, 0, 3};
+    xmlDocPtr doc = xmlNewDoc(NULL), reparsed;
+    xmlNodePtr text, bounded, orphan, root;
+    xmlChar *memory = NULL;
+    int size = 0;
+    size_t i;
+    assert(doc != NULL);
+    text = xmlNewDocText(NULL, BAD_CAST "standalone");
+    assert(text != NULL && text->doc == NULL);
+    assert_content(text, "standalone");
+    xmlFreeNode(text);
+    bounded = xmlNewDocTextLen(NULL, raw, 2);
+    assert(bounded != NULL && bounded->doc == NULL);
+    assert_content(bounded, "<B");
+    xmlFreeNode(bounded);
+    for (i = 0; i < sizeof(null_lengths) / sizeof(null_lengths[0]); ++i) {
+        text = xmlNewDocTextLen(doc, NULL, null_lengths[i]);
+        assert(text != NULL && text->content == NULL && text->doc == doc);
+        assert(text->parent == NULL && doc->children == NULL);
+        xmlFreeNode(text);
+    }
+    assert(xmlNewDocTextLen(doc, raw, -1) == NULL);
+    text = xmlNewDocText(doc, BAD_CAST "A&");
+    bounded = xmlNewDocTextLen(doc, raw, 2);
+    orphan = xmlNewDocText(doc, BAD_CAST "orphan");
+    assert(text != NULL && bounded != NULL && orphan != NULL);
+    assert(text->doc == doc && bounded->doc == doc && orphan->doc == doc);
+    assert(text->parent == NULL && text->next == NULL && text->prev == NULL);
+    assert(doc->children == NULL && doc->last == NULL);
+    root = xmlNewNode(NULL, BAD_CAST "root");
+    assert(root != NULL && xmlDocSetRootElement(doc, root) == NULL);
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlNewDocText((xmlDocPtr)root, BAD_CAST "bad") == NULL);
+    assert(xmlNewDocTextLen((xmlDocPtr)root, NULL, 0) == NULL);
+#endif
+    assert(xmlAddChild(root, text) == text);
+    assert(xmlAddChild(root, bounded) == text);
+    assert(root->children == text && root->last == text);
+    assert_content(root, "A&<B");
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory != NULL && size > 0);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed != NULL);
+    assert_content(xmlDocGetRootElement(reparsed), "A&<B");
+    xmlFree(memory);
+    xmlFreeDoc(reparsed);
+#ifndef XML3_REFERENCE_TEST
+    xmlUnlinkNode(text);
+    xmlFreeDoc(doc);
+    assert(text->doc == doc && orphan->doc == doc);
+    assert(xmlNodeAddContent(text, BAD_CAST "!") == 0);
+    assert_content(text, "A&<B!");
+    assert(xmlNodeSetContent(orphan, BAD_CAST "repaired") == 0);
+    xmlFreeNode(text);
+    assert_content(orphan, "repaired");
+    xmlFreeNode(orphan);
+#else
+    xmlFreeNode(orphan);
+    xmlFreeDoc(doc);
+#endif
+}
+
 static void test_new_text_len(void) {
     static const xmlChar raw[] = {'A', '&', '<', 'X'};
     static const xmlChar terminated[] = {'z', 0, 'x'};
@@ -513,6 +577,21 @@ static void test_bounded_content_guard_page(void) {
         assert(bounded->content[0] == 0);
         xmlFreeNode(bounded);
         assert(xmlNewTextLen(mapping + page_size, -1) == NULL);
+        {
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            assert(doc != NULL);
+            bounded = xmlNewDocTextLen(doc, buffer, 7);
+            assert(bounded != NULL && bounded->doc == doc);
+            assert_content(bounded, "A&amp;B");
+            xmlFreeNode(bounded);
+            bounded = xmlNewDocTextLen(doc, mapping + page_size, 0);
+            assert(bounded != NULL && bounded->doc == doc);
+            assert(bounded->content != NULL && bounded->content[0] == 0);
+            xmlFreeNode(bounded);
+            assert(xmlNewDocTextLen(doc, mapping + page_size, -1) == NULL);
+            assert(doc->children == NULL);
+            xmlFreeDoc(doc);
+        }
     }
     assert(xmlNodeSetContentLen(element, buffer, 7) == 0);
     assert_content(element, "A&B");
@@ -739,6 +818,7 @@ int main(void) {
     test_set_content_len();
     test_add_content_len();
     test_new_text_len();
+    test_document_text();
 #if defined(__unix__)
     test_bounded_content_guard_page();
 #endif

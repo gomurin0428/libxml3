@@ -28,9 +28,10 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
 editing and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 10,831 checks, no
-unproved or justified conditions, 0 `pragma Assume` statements, and 128
-warnings; the representation-generation diagnostic is recorded separately.
+implementation are not proved. The refreshed aggregate has 10,862 checks
+(877 flow and 9,985 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 129 warnings; the representation-generation
+diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -130,7 +131,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,831-check aggregate proof; see
+new units are included in the successful 10,862-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -217,6 +218,15 @@ NUL-terminated 変換です。この pointer 走査は形式証明外で、正�
 `xmlNewTextLen` は bounded C string 変換から既存の Runtime/Store constructor を呼びます。
 長さ指定は C 境界だけの変更で、新しい所有権処理や証明範囲は追加しません。非終端入力・
 長さ 0 の guard page、NULL/空文字列の違い、接続と出力、確保失敗後の再試行を実行検査します。
+
+`xmlNewDocText` / `xmlNewDocTextLen` の document 検査・所属設定・失敗時の未公開 text の解放は
+Store.Content が行います。Store operation の契約は `Ready (S)` の維持と `Created` status /
+非 NULL `Result` の対応を保証します。`Set_Node_Projection` の既存契約を使って document と
+Doc_Pin を設定し、owner reference invariant を維持します。これは API 全体の意味論や完全な
+rollback の証明ではありません。C 境界では文字列変換と Runtime 呼び出しだけを行い、bounded
+pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
+serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
+API の実行テストで検査します。
 
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.
