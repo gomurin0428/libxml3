@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,441 checks, 1,061 by flow analysis and 10,380 by provers;
+**11,451 checks, 1,069 by flow analysis and 10,382 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -231,6 +231,29 @@ semantics or actual foreign bytes. Pointer validity/readable extent, actual
 bytes, and C mapping remain trusted. Shared malformed/reference and
 guard-page vectors run against both implementations; OOM/no-allocation checks
 are libxml3-only.
+`xmlUTF8Strndup` dispatches through `XML3_Text.Buffers.Copy_UTF8_Prefix`, which
+validates only the traversed strict-UTF-8 prefix before calling `Copy_Span` for
+an independent NUL-terminated allocation. NULL input or a negative count returns
+NULL without reads or allocation; a non-NULL zero count makes a new empty copy
+without reading input. Positive counts stop at the requested scalar count or
+first NUL, leaving the suffix unvalidated. A malformed, truncated, or
+noncanonical visited prefix fails before allocation with NULL, no partial copy,
+and no diagnostic. The returned buffer is caller-owned and must be freed with
+`xmlFree`; input is not mutated or freed. Cap exhaustion maps to error 115,
+allocation failure to the standard memory error 2, and unexpected exceptions to
+error 1. Controls and noncharacters are valid UTF-8 here, not XML-character
+validation; strict malformed-prefix rejection is an intentional difference from
+unspecified/permissive invalid-reference behavior. `Copy_Span` and `Slice`
+prove 6 checks each, while `Copy_UTF8_Prefix` proves 2; `Slice` delegates to
+`Copy_Span` without changing
+substring semantics. The shared C `Slice_Result` owns status/diagnostic mapping
+for both adapters, which remains outside SPARK proof. Proof covers scan/span
+control, bounds, contracts, and native-call preconditions, not native bytes,
+readable/stable extents, pointer validity, allocator behavior, C ABI/mapping, or
+complete Unicode API semantics. Reduced-`Last` Ada tests cover the cap; no huge
+public C string is constructed. Shared malformed/reference and guard-page
+vectors run against both implementations; OOM/no-allocation checks are
+libxml3-only.
 `xmlGetUTF8Char` delegates decoding to `XML3_Text.Buffers.Get_UTF8_Char`, which
 reads at most the caller's `*len` bytes and returns one strict UTF-8 scalar.
 NULL `utf`, NULL `len`, and `*len < 1` return -1; a writable length is zeroed
@@ -309,7 +332,7 @@ The QName proof includes 15 checks for `Build`, 8 for `Compare`, 10 for
 `Prefix_Length`, and 6 for `Split`; `XML3_Text.Buffers.Case_Map` has 1 check,
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
-`Find_Substring` has 8, `Fits` has 0, and `Slice` has 12.
+`Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
 The entity
 summaries report 0 flow errors, 137 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
@@ -336,13 +359,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 288 |
-| Initialization | 624 |
-| Runtime checks | 5,088 |
+| Data dependencies | 290 |
+| Initialization | 630 |
+| Runtime checks | 5,086 |
 | Assertions | 1,493 |
-| Functional contracts | 3,743 |
+| Functional contracts | 3,747 |
 | Termination | 205 |
-| **Total** | **11,441** |
+| **Total** | **11,451** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -712,8 +735,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-16000d3da973a2e093b7fedf1bd69155a19bc194f3ec5e4982b6bece8450bcca  src/xml3_c.adb
-ce82444ba6f27c87021cb842d2f36b28a802470ec26094c5358778b76364fac5  src/xml3_c.ads
+d7c87c443768c61b379777d30faca93ffdc6e183869a7655921fc261c3ae7fed  src/xml3_c.adb
+5f4eaa2c157b95927b99f7b42487246e6cfa6e57dd210488d936d19d6bfcf2aa  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -760,13 +783,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-95b48900d4146ea7c61c8636d8764a816576a3dd4c78251dd3ad0781b611df27  src/xml3_text-buffers.adb
-b7146e1be1f6611fd9dfefc338712a576d843e47cb0ed6d00730bc039413d4d7  src/xml3_text-buffers.ads
+1ce529f50bb15403122f9efc99eff070c10d81a757dcd6978967362d6f084f20  src/xml3_text-buffers.adb
+69ee3f17b85d707407638b21708f40527d0fe3de552094cc31ed7d13347a6b51  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-3c58e6324d1aee89b684e50cb234456be780c9c39b8208c0ccbdaaf9de10aa9c  include/libxml/xmlstring.h
+c7e824020ec72169369fdda7ff7a1491535588ef6595ed9b2a576a825f43702f  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-7d449731ad9d3ef2f8e099a3a0fb4227baaf6ced19d626af4ff2b4c64bdc5432  Makefile
+9434b27da74cdd37a67084a9e66db7fb63567c56de11b88d598394a865d908b4  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

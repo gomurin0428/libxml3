@@ -327,6 +327,10 @@ package XML3_C is
      (Item : System.Address; Characters : Interfaces.C.int) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlUTF8Strsize";
 
+   function UTF8_Str_N_Duplicate
+     (Item : System.Address; Characters : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlUTF8Strndup";
+
    function UTF8_Str_Position
      (Item : System.Address; Index : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlUTF8Strpos";

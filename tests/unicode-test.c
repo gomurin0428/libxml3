@@ -482,6 +482,60 @@ static void test_utf8_prefix_size(void) {
     xmlFree(copy);
 }
 
+static void test_utf8_prefix_copy(void) {
+    xmlResetLastError();
+    const xmlChar text[] = "A名\xf0\x9f\x98\x80Z";
+    const int sizes[] = {0, 1, 4, 8, 9, 9};
+    for (int count = 0; count < 6; ++count) {
+        xmlChar *copy = xmlUTF8Strndup(text, count);
+        assert(copy && copy != text);
+        assert(!memcmp(copy, text, (size_t)sizes[count]) && copy[sizes[count]] == 0);
+        xmlFree(copy);
+    }
+    assert(!xmlUTF8Strndup(NULL, 0) && !xmlUTF8Strndup(NULL, INT_MAX));
+    assert(!xmlUTF8Strndup(text, INT_MIN));
+    static const struct { const char *source; int count; const char *expected; } cases[] = {
+        {"", INT_MAX, ""}, {"e\xcc\x81x", 2, "e\xcc\x81"},
+        {"\x01\xef\xbf\xbe", INT_MAX, "\x01\xef\xbf\xbe"},
+        {"a\0\xff", INT_MAX, "a"}, {"a\xff", 1, "a"}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        xmlChar *copy = xmlUTF8Strndup((const xmlChar *)cases[i].source, cases[i].count);
+        assert(copy && xmlStrEqual(copy, (const xmlChar *)cases[i].expected));
+        xmlFree(copy);
+    }
+    static const char *malformed[] = {
+        "\x80", "\xc2x", "\xe2\x82", "\xc0\x80", "a\xed\xa0\x80",
+        "\xf4\x90\x80\x80", "\xf8\x88\x80\x80\x80"
+    };
+    for (size_t i = 0; i < sizeof(malformed) / sizeof(malformed[0]); ++i) {
+        xmlChar *copy = xmlUTF8Strndup((const xmlChar *)malformed[i], 2);
+#ifdef XML3_REFERENCE_VERSION
+        assert(copy && !strcmp((const char *)copy, malformed[i]));
+#else
+        assert(!copy);
+#endif
+        xmlFree(copy);
+    }
+    assert(!xmlGetLastError());
+    const char source[] = "<r>名\xf0\x9f\x98\x80tail</r>";
+    xmlDocPtr doc = xmlReadMemory(source, (int)sizeof(source) - 1, NULL, NULL, 0);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    xmlFreeDoc(doc);
+    assert(content);
+    xmlChar *copy = xmlUTF8Strndup(content, 2);
+    assert(copy && copy != content);
+    xmlFree(content);
+    xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "r");
+    assert(node && xmlNewTextChild(node, NULL, BAD_CAST "value", copy));
+    xmlFree(copy);
+    xmlChar *value = xmlNodeGetContent(node);
+    xmlFreeNode(node);
+    assert(value && xmlStrEqual(value, BAD_CAST "名\xf0\x9f\x98\x80"));
+    xmlFree(value);
+}
+
 static void test_string_length(void) {
     assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
     assert(xmlStrlen(BAD_CAST "abc") == 3);
@@ -913,16 +967,26 @@ static void test_string_duplicates(void) {
         assert(xmlUTF8Strpos(unreadable, 0) == unreadable);
         assert(xmlUTF8Strsize(unreadable, 0) == 0);
         assert(xmlUTF8Strsize(unreadable, -1) == 0);
+        xmlChar *prefix_copy = xmlUTF8Strndup(unreadable, 0);
+        assert(prefix_copy && prefix_copy[0] == 0);
+        xmlFree(prefix_copy);
+        assert(!xmlUTF8Strndup(unreadable, -1));
         assert(!xmlUTF8Strpos(unreadable, -1));
         source[2] = 'a';
         assert(xmlUTF8Strpos(source + 2, 1) == unreadable);
         assert(xmlUTF8Strsize(source + 2, 1) == 1);
+        prefix_copy = xmlUTF8Strndup(source + 2, 1);
+        assert(prefix_copy && prefix_copy[0] == 'a' && prefix_copy[1] == 0);
+        xmlFree(prefix_copy);
         source[1] = 0xc2;
         source[2] = 0;
         assert(!xmlUTF8Strpos(source + 1, 1));
         memcpy(utf, complete, 4);
         assert(xmlUTF8Strpos(utf, 1) == unreadable);
         assert(xmlUTF8Strsize(utf, 1) == 4);
+        prefix_copy = xmlUTF8Strndup(utf, 1);
+        assert(prefix_copy && !memcmp(prefix_copy, complete, 4) && prefix_copy[4] == 0);
+        xmlFree(prefix_copy);
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -1181,6 +1245,7 @@ int main(void) {
     test_utf8_length();
     test_utf8_position();
     test_utf8_prefix_size();
+    test_utf8_prefix_copy();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

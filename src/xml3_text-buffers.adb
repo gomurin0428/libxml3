@@ -2,6 +2,55 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Copy_Span
+     (Item : System.Address; Start, Length : Byte_Count;
+      Result : out System.Address; Status : out Slice_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Item /= System.Null_Address and then Length <= Max_Bytes - Start,
+       Post => Status in Sliced | No_Memory
+         and then (if Status = Sliced then Result /= System.Null_Address
+                   else Result = System.Null_Address);
+
+   procedure Copy_Span
+     (Item : System.Address; Start, Length : Byte_Count;
+      Result : out System.Address; Status : out Slice_Status)
+   is
+      Current : Character;
+   begin
+      Status := No_Memory;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Result);
+      if Result = System.Null_Address then
+         return;
+      end if;
+      for Index in 0 .. Length - 1 loop
+         Current := Native.Byte_At (Item, Start + Index);
+         Native.Write_Byte (Result, Index, Current);
+      end loop;
+      Native.Write_Byte (Result, Length, Character'Val (0));
+      Status := Sliced;
+   end Copy_Span;
+
+   procedure Copy_UTF8_Prefix
+     (Item : System.Address; Characters : Integer;
+      Result : out System.Address; Status : out Slice_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Size : Byte_Count;
+      Encoding : UTF8_Status;
+   begin
+      Result := System.Null_Address;
+      Status := No_Slice;
+      if Item = System.Null_Address or else Characters < 0 then
+         return;
+      end if;
+      Measure_UTF8_Prefix (Item, Characters, Size, Encoding, Last);
+      case Encoding is
+         when UTF8_Valid => Copy_Span (Item, 0, Size, Result, Status);
+         when UTF8_Invalid => null;
+         when UTF8_Limit_Exceeded => Status := Slice_Limit_Exceeded;
+      end case;
+   end Copy_UTF8_Prefix;
+
    procedure Scan_UTF8
      (Item : System.Address; Stop_After : Integer;
       Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)
@@ -302,7 +351,6 @@ package body XML3_Text.Buffers with SPARK_Mode is
      (Item : System.Address; Start, Length : Integer;
       Result : out System.Address; Status : out Slice_Status)
    is
-      Current : Character;
    begin
       Result := System.Null_Address;
       Status := No_Slice;
@@ -317,17 +365,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
             return;
          end if;
       end loop;
-      Status := No_Memory;
-      Native.Allocate (Native.Byte_Count (Length) + 1, Result);
-      if Result = System.Null_Address then
-         return;
-      end if;
-      for Index in 0 .. Length - 1 loop
-         Current := Native.Byte_At (Item, Start + Index);
-         Native.Write_Byte (Result, Index, Current);
-      end loop;
-      Native.Write_Byte (Result, Length, Character'Val (0));
-      Status := Sliced;
+      Copy_Span (Item, Start, Length, Result, Status);
    end Slice;
 
    procedure Find_Byte
