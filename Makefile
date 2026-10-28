@@ -320,6 +320,7 @@ test-oom: tests/oom-test
 	done
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-delete 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-attach 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test attr-unlink 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 
 test-fuzz: tests/fuzz-test
