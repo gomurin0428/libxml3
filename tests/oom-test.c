@@ -376,6 +376,43 @@ int main(int argc, char **argv) {
             dom_node = NULL;
             assert(xmlGetLastError() == NULL);
         }
+    } else if (strcmp(operation, "dom-text-merge") == 0) {
+        static const char input[] = "<r>left<!--gap-->right<x/></r>";
+        xmlNodePtr root, first, second, gap, last, merged;
+        xmlChar *first_content, *second_content;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        first = root->children;
+        gap = first->next;
+        second = gap->next;
+        last = root->last;
+        first_content = first->content;
+        second_content = second->content;
+        xml3_oom_enable(fail_index);
+        merged = xmlTextMerge(first, second);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(merged == NULL);
+            assert(root->children == first && root->last == last);
+            assert(first->parent == root && second->parent == root);
+            assert(first->next == gap && gap->prev == first);
+            assert(gap->next == second && second->prev == gap);
+            assert(second->next == last && last->prev == second);
+            assert(first->content == first_content && second->content == second_content);
+            assert(strcmp((const char *)first->content, "left") == 0);
+            assert(strcmp((const char *)second->content, "right") == 0);
+            require_oom_error();
+            xmlResetLastError();
+            merged = xmlTextMerge(first, second);
+        }
+        assert(merged == first && first->parent == root && first->doc == doc);
+        assert(root->children == first && root->last == last);
+        assert(first->next == gap && gap->next == last && last->prev == gap);
+        assert(strcmp((const char *)first->content, "leftright") == 0);
+        assert(xmlGetLastError() == NULL);
     } else if (strcmp(operation, "dom-merge") == 0) {
         xmlNodePtr root;
         doc = xmlNewDoc(NULL);

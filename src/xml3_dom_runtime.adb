@@ -82,6 +82,14 @@ is
          XML3_DOM_Store.Add_Child (Current, Parent, Child, Result, Status);
       end Add_Child;
 
+      procedure Merge_Text
+        (First, Second : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Merge_Text (Current, First, Second, Result, Status);
+      end Merge_Text;
+
       procedure New_Child
         (Parent, Ns : System.Address; Name, Content : String;
          Raw_Content, Has_Content : Boolean;

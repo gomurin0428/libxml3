@@ -331,6 +331,12 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlTextMerge": {
+    "implementation": "partial",
+    "scope": "SPARK Store merges distinct managed normal text nodes, allocates combined raw bytes before retiring the second node, and preserves both nodes on native allocation failure. NULL operand returns the other unchanged (including non-text); NULL second content preserves the first content pointer. Same document or documentless second node only; cross-document and no-escape variants unsupported. Shared path with xmlAddChild coalescing; native boundary and full public semantics not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlFirstElementChild": {
     "implementation": "partial",
     "scope": "SPARK Store selection of the first direct element child in the supported parsed/edited DOM subset, skipping non-elements. Shared thin C selector; full node-kind/API equivalence is not claimed.",

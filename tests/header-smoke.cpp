@@ -49,6 +49,7 @@ int main() {
     xmlNodePtr (*new_doc_raw_node)(xmlDocPtr, xmlNsPtr, const xmlChar *,
                                   const xmlChar *) = xmlNewDocRawNode;
     xmlNodePtr (*last_element_child)(xmlNodePtr) = xmlLastElementChild;
+    xmlNodePtr (*text_merge)(xmlNodePtr, xmlNodePtr) = xmlTextMerge;
     xmlNodePtr (*previous_element_sibling)(xmlNodePtr) = xmlPreviousElementSibling;
     xmlNodePtr (*new_text_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                                 const xmlChar *) = xmlNewTextChild;
@@ -88,6 +89,7 @@ int main() {
     (void)new_doc_node;
     (void)new_doc_raw_node;
     (void)last_element_child;
+    (void)text_merge;
     (void)previous_element_sibling;
     (void)new_text_child;
     (void)last_error;

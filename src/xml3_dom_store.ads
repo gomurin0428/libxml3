@@ -88,6 +88,16 @@ package XML3_DOM_Store with SPARK_Mode is
                   Result /= System.Null_Address
                 else Result = System.Null_Address);
 
+   procedure Merge_Text
+     (S : in out Store; First, Second : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Ready (S) and then
+         (if Status = XML3_DOM_Constructors.Created then
+         Result = (if First = System.Null_Address then Second else First)
+         else Result = System.Null_Address);
+
    procedure Set_Root
      (S : in out Store; Doc, Root : System.Address;
       Previous : out System.Address; Status : out Operation_Status)

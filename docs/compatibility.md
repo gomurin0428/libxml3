@@ -9,6 +9,17 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
+`xmlTextMerge` は通常の text node の内容を順に結合し、第一引数の位置を保ったまま
+第二引数を切り離して解放します。隣接している必要はなく、属性内の text にも対応します。
+片方の node が NULL なら他方を変更せず返します（この場合は node kind も検査しません）。
+両方 non-NULL なら同一 node・未登録 node・text 以外を拒否します。第二引数の content が
+NULL なら第一引数の content pointer を保ち、空文字列なら結合用の空バッファを確保します。
+同じ文書、または文書に属さない第二引数のみ対応し、異なる文書所属は変更せず拒否します。
+参照展開はせず、UTF-8/XML 検査は出力時です。no-escape text variant は未対応です。
+成功後の第二引数を再利用・再解放してはいけません。確保失敗では両方の内容・リンクを保持します。
+`xmlAddChild` の text 結合も同じ Store 処理を使い、NULL content の第二引数では
+第一引数の NULL/空文字列の違いを変えないようにしました。
+
 `xmlLastElementChild` / `xmlPreviousElementSibling` は要素・文書の末尾や直前の sibling から
 SPARK 管理状態のリンクをたどり、最初に見つかった element を返します。
 text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な node kind では NULL です。
