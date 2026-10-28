@@ -7,6 +7,19 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
    type Property_Filter is (Any_Namespace, No_Namespace, Exact_Namespace);
    type Namespace_Query_Kind is (Prefix_Search, Href_Search);
    type Node_Test_Kind is (Text_Test, Blank_Test);
+   type XML_Property_Kind is (Language_Property, Space_Property);
+   type Space_Policy is (Unspecified, Default_Space, Preserve_Space);
+
+   procedure Get_Inherited_XML_Property
+     (S : Store; Facade : System.Address; Mode : XML_Property_Kind;
+      Result : out System.Address; Space : out Space_Policy;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => (if Mode = Space_Property then Result = System.Null_Address)
+         and then (if Mode = Language_Property then Space = Unspecified)
+         and then (if Status /= XML3_DOM_Constructors.Created then
+           Result = System.Null_Address and then Space = Unspecified);
 
    procedure Test_Node
      (S : Store; Facade : System.Address; Mode : Node_Test_Kind;

@@ -28,11 +28,13 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
 editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
-through `Store.Queries.Test_Node`, reverse element navigation through
+through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
+through `Store.Queries.Get_Inherited_XML_Property` and mutation through
+`Store.Properties.Set_Qualified_Property`, reverse element navigation through
 `Store.Queries.Select_Element`, and explicit UTF-8 memory serialization. The C
 adapters and native ABI implementation are not proved. The refreshed aggregate
-has 10,944 checks (899 flow and 10,045 prover), no unproved or justified
-conditions, 0 `pragma Assume` statements, and 130 warnings; the
+has 10,980 checks (914 flow and 10,066 prover), no unproved or justified
+conditions, 0 `pragma Assume` statements, and 131 warnings; the
 representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -143,7 +145,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,944-check aggregate proof; see
+new units are included in the successful 10,980-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -245,6 +247,17 @@ API の実行テストで検査します。
 とも `Input` で、Store も読み取り専用です。管理中の content 長を走査上限とし、
 失敗時は False を返す契約です。C は mutex・結果・例外の変換だけを担当します。
 ネイティブ byte 読み取りの正しさは信頼境界に残り、完全な C API 意味論の証明ではありません。
+
+`xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use the read-only
+`Store.Queries.Get_Inherited_XML_Property` parent walk. Language returns a
+caller-owned copy; space frees each temporary content copy and matches only
+the exact `default` / `preserve` values. Kind checks, namespace filtering and
+ancestor fallback are in SPARK. Setters route through the existing
+`Store.Properties.Set_Qualified_Property` path for QName resolution and
+rollback. The C adapter handles string conversion, locking, and status mapping.
+Lookup/setter semantics, reparenting, serialization, copied-value lifetime,
+and OOM rollback have runtime coverage; this does not prove the complete C
+ABI, native pointer validity, or all public semantics.
 
 `xmlTextConcat` の scalar kind 制限は `Store.Content.Append` で行い、空入力の
 no-op 判定より先に検査します。内容の準備・pin 更新・確保失敗時の保持は既存の

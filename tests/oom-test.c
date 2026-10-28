@@ -787,6 +787,133 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)created->children->content, "ja") == 0);
         }
         xmlFreeNode(root);
+    } else if (strcmp(operation, "dom-get-lang") == 0) {
+        static const char input[] = "<r xml:lang='old'/>";
+        xmlDocPtr query_doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        xmlNodePtr root;
+        xmlChar *value;
+        assert(query_doc);
+        root = xmlDocGetRootElement(query_doc);
+        xml3_oom_enable(fail_index);
+        value = xmlNodeGetLang(root);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(value == NULL);
+            require_oom_error();
+            xmlResetLastError();
+            value = xmlNodeGetLang(root);
+        }
+        assert(value && strcmp((const char *)value, "old") == 0);
+        xmlFree(value);
+        xmlFreeDoc(query_doc);
+    } else if (strcmp(operation, "dom-get-space") == 0) {
+        static const char input[] = "<r xml:space='preserve'><c/></r>";
+        xmlDocPtr query_doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        xmlNodePtr root, child;
+        xmlNsPtr xml_ns;
+        xmlAttrPtr root_attr, child_attr;
+        xmlChar *root_content, *child_content;
+        assert(query_doc);
+        root = xmlDocGetRootElement(query_doc);
+        child = root->children;
+        xml_ns = xmlSearchNsByHref(query_doc, child, XML_XML_NAMESPACE);
+        assert(xml_ns);
+        root_attr = xmlHasNsProp(root, BAD_CAST "space", XML_XML_NAMESPACE);
+        child_attr = xmlSetNsProp(child, xml_ns, BAD_CAST "space", BAD_CAST "unknown");
+        assert(root_attr && child_attr);
+        root_content = root_attr->children->content;
+        child_content = child_attr->children->content;
+        xml3_oom_enable(fail_index);
+        result = xmlNodeGetSpacePreserve(child);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->properties == root_attr && child->properties == child_attr);
+            assert(root_attr->children->content == root_content);
+            assert(child_attr->children->content == child_content);
+            assert(strcmp((const char *)root_content, "preserve") == 0);
+            assert(strcmp((const char *)child_content, "unknown") == 0);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlNodeGetSpacePreserve(child);
+        }
+        assert(result == 1);
+        xmlFreeDoc(query_doc);
+    } else if (strcmp(operation, "dom-set-lang-new") == 0) {
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(root && root->nsDef == NULL && root->properties == NULL);
+        xml3_oom_enable(fail_index);
+        result = xmlNodeSetLang(root, BAD_CAST "new");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->nsDef == NULL && root->properties == NULL);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlNodeSetLang(root, BAD_CAST "new");
+        }
+        assert(result == 0);
+        assert(root->nsDef != NULL && root->properties != NULL);
+        assert(strcmp((const char *)root->properties->children->content, "new") == 0);
+        xmlFreeNode(root);
+    } else if (strcmp(operation, "dom-set-space-new") == 0) {
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(root && root->nsDef == NULL && root->properties == NULL);
+        xml3_oom_enable(fail_index);
+        result = xmlNodeSetSpacePreserve(root, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->nsDef == NULL && root->properties == NULL);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlNodeSetSpacePreserve(root, 1);
+        }
+        assert(result == 0);
+        assert(root->nsDef != NULL && root->properties != NULL);
+        assert(strcmp((const char *)root->properties->children->content,
+                      "preserve") == 0);
+        xmlFreeNode(root);
+    } else if (strcmp(operation, "dom-set-lang-update") == 0) {
+        static const char input[] = "<r xml:lang='old'/>";
+        xmlDocPtr query_doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        xmlNodePtr root;
+        xmlNsPtr original_ns, original_nsdef;
+        xmlAttrPtr original_attr;
+        xmlChar *original_content;
+        assert(query_doc);
+        root = xmlDocGetRootElement(query_doc);
+        original_attr = root->properties;
+        original_ns = original_attr->ns;
+        original_nsdef = root->nsDef;
+        original_content = original_attr->children->content;
+        xml3_oom_enable(fail_index);
+        result = xmlNodeSetLang(root, BAD_CAST "new");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->properties == original_attr && original_attr->ns == original_ns);
+            assert(root->nsDef == original_nsdef);
+            assert(original_attr->children->content == original_content);
+            assert(strcmp((const char *)original_content, "old") == 0);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlNodeSetLang(root, BAD_CAST "new");
+        }
+        assert(result == 0);
+        assert(root->properties == original_attr && original_attr->ns == original_ns);
+        assert(strcmp((const char *)original_attr->children->content, "new") == 0);
+        xmlFreeDoc(query_doc);
     } else if (strcmp(operation, "dom-content-replace") == 0 ||
                strcmp(operation, "dom-content-append-len") == 0 ||
                strcmp(operation, "dom-text-concat") == 0) {

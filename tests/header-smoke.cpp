@@ -53,6 +53,10 @@ int main() {
     int (*text_concat)(xmlNodePtr, const xmlChar *, int) = xmlTextConcat;
     int (*node_is_text)(const xmlNode *) = xmlNodeIsText;
     int (*is_blank_node)(const xmlNode *) = xmlIsBlankNode;
+    xmlChar *(*node_get_lang)(const xmlNode *) = xmlNodeGetLang;
+    int (*node_get_space_preserve)(const xmlNode *) = xmlNodeGetSpacePreserve;
+    int (*node_set_lang)(xmlNode *, const xmlChar *) = xmlNodeSetLang;
+    int (*node_set_space_preserve)(xmlNode *, int) = xmlNodeSetSpacePreserve;
     xmlNodePtr (*previous_element_sibling)(xmlNodePtr) = xmlPreviousElementSibling;
     xmlNodePtr (*new_text_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                                 const xmlChar *) = xmlNewTextChild;
@@ -96,6 +100,10 @@ int main() {
     (void)text_concat;
     (void)node_is_text;
     (void)is_blank_node;
+    (void)node_get_lang;
+    (void)node_get_space_preserve;
+    (void)node_set_lang;
+    (void)node_set_space_preserve;
     (void)previous_element_sibling;
     (void)new_text_child;
     (void)last_error;
