@@ -18,6 +18,40 @@
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 
+static void test_byte_search(void) {
+    xmlChar bytes[256];
+    for (unsigned value = 1; value < 256; ++value)
+        bytes[value - 1] = (xmlChar)value;
+    bytes[255] = 0;
+    for (unsigned value = 0; value < 256; ++value) {
+        assert(!xmlStrchr(NULL, (xmlChar)value));
+        assert(xmlStrchr(bytes, (xmlChar)value) == (value ? bytes + value - 1 : NULL));
+    }
+    xmlChar text[] = {'x', 'y', 'x', 0, 'z'};
+    assert(xmlStrchr(text, 'x') == text);
+    assert(xmlStrchr(text, 'y') == text + 1);
+    assert(!xmlStrchr(text, 'z') && !xmlStrchr(text, 0));
+    assert(!xmlStrchr(BAD_CAST "", 'x'));
+    const xmlChar *borrowed = xmlStrchr(text, 'y');
+    text[1] = 'q';
+    assert(*borrowed == 'q');
+    const xmlChar utf8[] = "名";
+    assert(xmlStrchr(utf8, 0x90) == utf8 + 1);
+
+    xmlChar *source = xmlCharStrdup("<r>名</r>");
+    assert(source);
+    const xmlChar *start = xmlStrchr(source, '>');
+    assert(start);
+    ++start;
+    const xmlChar *end = xmlStrchr(start, '<');
+    assert(end);
+    xmlChar *copy = xmlStrndup(start, (int)(end - start));
+    assert(copy);
+    xmlFree(source);
+    assert(xmlStrEqual(copy, BAD_CAST "名"));
+    xmlFree(copy);
+}
+
 static void test_char_string_duplicates(void) {
     char source[] = {'a', (char)0xff, 0, 'z'};
     const xmlChar expected[] = {'a', 0xff, 0};
@@ -256,6 +290,11 @@ static void test_string_duplicates(void) {
             source[2] = 0;
             assert(compare(source + 2, BAD_CAST "", INT_MAX) == 0);
         }
+        source[2] = 0;
+        assert(!xmlStrchr(source + 2, 'x'));
+        assert(!xmlStrchr(source + 2, 0));
+        source[2] = 0xff;
+        assert(xmlStrchr(source + 2, 0xff) == source + 2);
         source[2] = 'A';
         assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
         assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
@@ -502,6 +541,7 @@ static void test_ranges(void) {
 
 int main(void) {
     test_string_duplicates();
+    test_byte_search();
     test_char_string_duplicates();
     test_string_concatenation();
     test_bounded_string_comparisons();

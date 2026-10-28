@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -390,6 +390,14 @@ pinned reference は早いNULの後も `len+1` bytesを確保しますが、そ�
 libxml3はコピーしたprefixと末尾NULのみを確保し、余剰capacityやallocation-size equivalence
 は保証しません。テストは未規定tailを検査せず、定義済みの返却文字列だけを比較します。
 native pointerの有効性、C conversion、allocation、byte writes、ABIは信頼境界です。
+`xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
+pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
+読み取りなしでNULLを返し、NUL byte自体は
+検索できません。payload offset `0..Max_Bytes-1` を走査し、offset `Max_Bytes` のNULは
+許容します。一致がなければここまでの検索で終端を確認し、終端なしなら診断を記録してNULLを
+返します。早い一致は即座に返るので、この上限は長い入力を一律拒否するものではありません。
+allocation・書き込み・UTF-8変換は行いません。native byte読み取り、読み取り可能範囲、
+pointer validity/address arithmetic、C診断mapping、完全なAPI意味論は信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
 正の全範囲（早期停止時の `INT_MAX` を含む）までraw byteを比較し、
 不一致・NUL・上限で停止します。`len <= 0` はpointer判定より先に0を返し、同一pointerは0、

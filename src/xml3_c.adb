@@ -2341,6 +2341,30 @@ package body XML3_C is
          return 0;
    end Str_Equal;
 
+   function Str_Character
+     (Item : System.Address; Value : Interfaces.C.unsigned_char)
+      return System.Address
+   is
+      Position : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_Byte
+        (Item, Character'Val (Value), Position, Status);
+      case Status is
+         when XML3_Text.Buffers.Matched =>
+            return Item + Storage_Offset (Position);
+         when XML3_Text.Buffers.No_Match =>
+            return System.Null_Address;
+         when XML3_Text.Buffers.Search_Limit_Exceeded =>
+            Report_Dom_Error (115);
+            return System.Null_Address;
+      end case;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Str_Character;
+
    function Compare_Bounded_Strings
      (Left, Right : System.Address; Length : Interfaces.C.int;
       Ignore_Case : Boolean) return Interfaces.C.int

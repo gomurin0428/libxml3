@@ -6,6 +6,17 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Concatenate_Status is (Copied, No_Input, No_Memory, Limit_Exceeded);
 
+   type Search_Status is (No_Match, Matched, Search_Limit_Exceeded);
+
+   procedure Find_Byte
+     (Item : System.Address; Value : Character;
+      Position : out Byte_Count; Status : out Search_Status)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Matched then
+         Item /= System.Null_Address and then Value /= Character'Val (0)
+           and then Position < Max_Bytes
+         else Position = 0);
+
    function Compare_Bounded
      (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean)
       return Integer
