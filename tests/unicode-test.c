@@ -7,6 +7,55 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <limits.h>
+
+typedef int (*validate_name_fn)(const xmlChar *, int);
+static const validate_name_fn validators[] = {
+    xmlValidateName, xmlValidateNCName, xmlValidateQName, xmlValidateNMToken
+};
+
+static void test_validation(void) {
+    static const struct { const char *value; unsigned valid; } cases[] = {
+        {"a", 15}, {"_x-1.z", 15}, {"名", 15}, {"e\xcc\x81", 15},
+        {"p:名", 13}, {":a", 9}, {"a:", 9}, {":", 9}, {"a:b:c", 9},
+        {"a:1", 9}, {"1a", 8}, {"-", 8}, {".", 8}, {"\xcc\x81", 8},
+        {"", 0}, {"a b", 0}, {"a\tb", 0}, {"a/b", 0}, {"a&b", 0},
+        {"\xc0\xaf", 0}, {"\xe3\x81", 0}, {"\x80", 0},
+        {"\xf4\x90\x80\x80", 0}, {"a\xe2\x28\xa1", 0},
+        {"\xc2\xa0", 0}, {"\v", 0}, {"\f", 0}
+    };
+    static const int space_flags[] = {0, 1, -1, INT_MIN};
+    char padded[128];
+    for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f) {
+        assert(validators[f](NULL, 0) == -1);
+        assert(validators[f](NULL, 1) == -1);
+        for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+            int expected = (cases[i].valid & (1u << f)) ? 0 : 1;
+            for (size_t s = 0; s < sizeof(space_flags) / sizeof(*space_flags); ++s) {
+                int space = space_flags[s];
+                assert(validators[f](BAD_CAST cases[i].value, space) == expected);
+                snprintf(padded, sizeof(padded), " \t\r\n%s\n\r\t ", cases[i].value);
+                assert(validators[f](BAD_CAST padded, space) == (space ? expected : 1));
+            }
+        }
+        assert(validators[f](BAD_CAST "a\0:ignored", 0) == 0);
+        assert(validators[f](BAD_CAST " \t\r\n", 1) == 1);
+    }
+    {
+        size_t length = 262168;
+        char *name = malloc(length + 1);
+        assert(name);
+        memset(name, 'a', length);
+        name[length] = 0;
+        for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f)
+            assert(validators[f](BAD_CAST name, 0) == 0);
+        name[length - 1] = '/';
+        for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f)
+            assert(validators[f](BAD_CAST name, 0) == 1);
+        free(name);
+    }
+}
 
 static xmlDocPtr parse(const char *input) {
     return xmlReadMemory(input, (int)strlen(input), NULL, NULL,
@@ -79,6 +128,11 @@ static void test_ranges(void) {
                 xmlDocPtr doc = parse(input);
                 assert((doc != NULL) == (group == 0 || (group == 1 && !initial)));
                 xmlFreeDoc(doc);
+                snprintf(input, sizeof(input), "%s%s", initial ? "" : "a", name);
+                for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f) {
+                    int valid = group == 0 || (group == 1 && (!initial || f == 3));
+                    assert(validators[f](BAD_CAST input, 0) == (valid ? 0 : 1));
+                }
             }
         }
     }
@@ -96,5 +150,6 @@ int main(void) {
 #endif
     test_names();
     test_ranges();
+    test_validation();
     puts("Unicode name tests passed");
 }

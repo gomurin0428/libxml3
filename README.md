@@ -98,6 +98,8 @@ href による expanded name で行い、接続成功後に一致属性を置き
 残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。
 `xmlNodeGetAttrValue` は名前空間付き属性の取得を、成功・属性なし・確保/上限/変換/内部エラーの戻り値で区別します。
 名前空間検索は文書のない要素の `xml` 宣言も必要時にSPARK側で作成し、再利用します。
+`xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
+はUnicodeを含むXML名を、コロン・先頭文字・前後のXML空白の規則に従って検査します。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

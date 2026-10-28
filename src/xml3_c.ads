@@ -303,6 +303,22 @@ package XML3_C is
    function Str_Length (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlStrlen";
 
+   function Validate_Name (Value : System.Address; Space : Interfaces.C.int)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateName";
+
+   function Validate_NCName (Value : System.Address; Space : Interfaces.C.int)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNCName";
+
+   function Validate_QName (Value : System.Address; Space : Interfaces.C.int)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateQName";
+
+   function Validate_NMToken (Value : System.Address; Space : Interfaces.C.int)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNMToken";
+
    procedure Free (Item : System.Address)
      with Export, Convention => C, External_Name => "xmlFree";
 

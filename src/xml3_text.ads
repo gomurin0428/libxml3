@@ -2,6 +2,12 @@ package XML3_Text with SPARK_Mode is
    Max_Bytes : constant := Integer'Last - 16;
    subtype Byte_Count is Natural range 0 .. Max_Bytes;
    type Text_Error_Kind is (No_Text_Error, Invalid_UTF8, Invalid_XML_Character);
+   type Name_Kind is (XML_Name, NCName, QName, NMToken);
+
+   function Valid_Name
+     (Input : String; Kind : Name_Kind; Allow_Space : Boolean) return Boolean
+     with Global => null,
+       Pre => Input'First = 1 and then Input'Last in 0 .. Max_Bytes;
 
    function XML_Char (C : Natural) return Boolean with Global => null;
 

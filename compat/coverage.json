@@ -600,6 +600,30 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlValidateName": {
+    "implementation": "partial",
+    "scope": "SPARK Text.Valid_Name/Name_Width checks XML 1.0 fifth-edition Name characters, including colon and UTF-8. Optional leading/trailing XML whitespace for any nonzero space. Returns 0 valid, 1 invalid, -1 NULL/conversion limit/internal exception. Leaves last error unchanged. C pointer/ABI and complete lexical equivalence are outside proof.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlValidateNCName": {
+    "implementation": "partial",
+    "scope": "Shared pure SPARK name validator in NCName mode rejects colon and enforces a NameStartChar. Optional XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlValidateQName": {
+    "implementation": "partial",
+    "scope": "Shared pure SPARK validator accepts an NCName or two nonempty NCNames separated by one colon; it does not resolve bindings. XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlValidateNMToken": {
+    "implementation": "partial",
+    "scope": "Shared pure SPARK validator accepts nonempty NameChar sequences including colon, digits and combining characters at the start. XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlUnsetNsProp": {
     "implementation": "partial",
     "scope": "namespace URI と local name で属性を照合して削除。欠落時は -1。",

@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,116 checks, 943 by flow analysis and 10,173 by provers;
+**11,143 checks, 947 by flow analysis and 10,196 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -20,8 +20,12 @@ attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 `xmlPreviousElementSibling`, and `xmlGetLastChild` through the SPARK
 Store/Runtime. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
-its C status/output-pointer mapping is outside the proof. Public
-`xmlSearchNs` / `xmlSearchNsByHref` route through
+its C status/output-pointer mapping is outside the proof. The public
+`xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
+`xmlValidateNMToken` adapters call the analyzed pure `XML3_Text.Valid_Name`;
+its character traversal, bounds, and termination are proved. C pointer
+validity, string conversion, and return-code mapping remain outside the proof.
+Namespace searches through `xmlSearchNs` / `xmlSearchNsByHref` route through
 `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`, which composes
 the pure `Search_Namespace` query with lazy XML-binding creation for
 documentless managed nodes. The pure query remains the qualified-property
@@ -47,18 +51,19 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 259 |
-| Initialization | 541 |
-| Runtime checks | 4,996 |
-| Assertions | 1,474 |
-| Functional contracts | 3,651 |
-| Termination | 195 |
-| **Total** | **11,116** |
+| Data dependencies | 260 |
+| Initialization | 542 |
+| Runtime checks | 5,009 |
+| Assertions | 1,480 |
+| Functional contracts | 3,652 |
+| Termination | 200 |
+| **Total** | **11,143** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
-`Decode_UTF16` have explicit `Always_Terminates` aspects. Termination is not a
-wall-clock or resource bound.
+`Decode_UTF16` have explicit `Always_Terminates` aspects; the implicit
+termination of `XML3_Text.Valid_Name` is also proved from its loop variants.
+Termination is not a wall-clock or resource bound.
 
 ## Reproduction
 
@@ -422,8 +427,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-0892e2020e3b6564e8aa8c331b1f94b761cc10c1b3fb3239ee27b15a676e88a4  src/xml3_c.adb
-377babb9cd7db1723832e32fe66b73f1625aca7be01e389942914ed971d8514f  src/xml3_c.ads
+99878278a74bfd8487e479eff2df9422a14a012e43abdbe602458a207136c345  src/xml3_c.adb
+2c792d336755e8359c0a334c036f34c91e53b33389f492926560ab285b2349a1  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -466,12 +471,12 @@ cd9bcad78d7dfd418e27a8237dd47b7e0c2aef4d9826324206b5fdcd93d8ba9e  src/xml3_nativ
 b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_serialization.adb
 4a3c84a0b7ee2b7b1a0129b63f37e36b1547c8e75152c7463e06d3f019d0f217  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
-03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
-0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-e5fc981e6883d371779001f62925692f7f817871000dad63cb833b94957d4eae  include/libxml/tree.h
+0540786136c12dbfd2829c2f46a43a0f6a8f6be7ed117f54116c91c8cf6aa631  src/xml3_text.adb
+fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
+1f293ea5c10399eeabfcbed6f5215eb1084aa5264cd6b1030524194de95cd25e  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-08385072249ac2bc9cb5fa0fdde86e8b8fdbb1e545da6c3055d6a6890570e9ed  Makefile
+584537a00e31edeccec85af82fc5d5f2d41831470024d5b6e5e59e3853e71943  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

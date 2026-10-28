@@ -169,6 +169,16 @@ attribute にも対応し、namespace 宣言や残る利用者の参照は保持
 参照版テストはこのリンクだけを呼び出し側で修復し、解放済み pointer を利用しません。
 一覧の走査・解放・寿命判断はSPARK側で行い、最後に一度 native facade を同期します。
 
+`xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
+はXML 1.0第五版の名前文字をUTF-8で検査します。Nameはコロンを許可し、NCNameは禁止、
+QNameは任意のprefixと必須のlocal nameをそれぞれNCNameとして検査します。
+NMTokenは非空の名前文字列で、数字・結合文字なども先頭に置けます。
+`space` が非0なら前後のXML空白（space/tab/CR/LF）だけを許可し、内部空白は禁止です。
+正常は0、不正な名前・UTF-8は1、NULL・変換上限・内部例外は-1です。
+NUL終端までが対象で、名前空間の束縛は検査せず、既存のlast errorも変更しません。
+文字の走査はSPARKの `Text.Valid_Name` / `Name_Width` が担当し、C側は変換と戻り値のみです。
+native allocationは不要ですが、C文字列のAda表現への変換は証明外の境界です。
+
 `xmlNodeGetAttrValue` は名前空間URIを指定して属性値の独立コピーを取得します。
 成功は `0`、属性なしは `1`、確保・上限・文字列変換・内部エラーは `-1` で、失敗時の出力は NULL です。
 NULL URI は「名前空間なし」で、`xmlGetProp` の「名前空間不問」とは異なります。
