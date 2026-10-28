@@ -4,7 +4,8 @@ with XML3_Native_Memory;
 package XML3_DOM_Store.Content with SPARK_Mode is
    procedure New_Child
      (S : in out Store; Parent, Ns : System.Address;
-      Name, Content : String; Result : out System.Address;
+      Name, Content : String; Raw_Content, Has_Content : Boolean;
+      Result : out System.Address;
       Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),

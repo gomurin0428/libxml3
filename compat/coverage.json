@@ -109,6 +109,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewTextChild": {
+    "implementation": "partial",
+    "scope": "SPARK-owned raw-text child construction for element/document parents, with explicit or inherited namespace. References are not decoded. NULL content creates no text child; empty content creates an empty text child. Raw bytes are retained like xmlNewText, with XML/UTF-8 validation and escaping at serialization. Unpublished nodes are retired on failure. Fragment/HTML/DTD support and namespace repair remain excluded.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewNode": {
     "implementation": "partial",
     "scope": "要素 node と library-owned namespace borrowing。raw name string をコピーし XML name/UTF-8 検証なし。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",

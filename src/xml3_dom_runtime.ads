@@ -64,6 +64,7 @@ is
 
       procedure New_Child
         (Parent, Ns : System.Address; Name, Content : String;
+         Raw_Content, Has_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
