@@ -117,11 +117,11 @@ is
       procedure Add_Content
         (Facade : System.Address; Suffix : String;
          Status : out XML3_DOM_Store.Operation_Status;
-         Has_Input : Boolean := False)
+         Has_Input : Boolean := False; Text_Only : Boolean := False)
       is
       begin
          XML3_DOM_Store.Content.Append
-           (Current, Facade, Suffix, Status, Has_Input);
+           (Current, Facade, Suffix, Status, Has_Input, Text_Only);
       end Add_Content;
 
       procedure Set_Content

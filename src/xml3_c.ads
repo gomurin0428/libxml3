@@ -131,6 +131,11 @@ package XML3_C is
      (Node, Content : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeAddContent";
 
+   function Text_Concat
+     (Node, Content : System.Address; Length : Interfaces.C.int)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlTextConcat";
+
    function Node_Add_Content_Len
      (Node, Content : System.Address; Length : Interfaces.C.int)
      return Interfaces.C.int

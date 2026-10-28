@@ -788,15 +788,19 @@ int main(int argc, char **argv) {
         }
         xmlFreeNode(root);
     } else if (strcmp(operation, "dom-content-replace") == 0 ||
-               strcmp(operation, "dom-content-append-len") == 0) {
-        int bounded = strcmp(operation, "dom-content-append-len") == 0;
+               strcmp(operation, "dom-content-append-len") == 0 ||
+               strcmp(operation, "dom-text-concat") == 0) {
+        int concat = strcmp(operation, "dom-text-concat") == 0;
+        int bounded = concat || strcmp(operation, "dom-content-append-len") == 0;
+        int (*append)(xmlNodePtr, const xmlChar *, int) =
+            concat ? xmlTextConcat : xmlNodeAddContentLen;
         xmlNodePtr text = xmlNewText(BAD_CAST "old");
         xmlChar *original_content;
         assert(text != NULL);
         original_content = text->content;
         xml3_oom_enable(fail_index);
         result = bounded
-            ? xmlNodeAddContentLen(text, BAD_CAST "-new-ignored", 4)
+            ? append(text, BAD_CAST "-new-ignored", 4)
             : xmlNodeAddContent(text, BAD_CAST "-new");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
@@ -807,7 +811,7 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)text->content, "old") == 0);
             require_oom_error();
             assert((bounded
-                ? xmlNodeAddContentLen(text, BAD_CAST "-new-ignored", 4)
+                ? append(text, BAD_CAST "-new-ignored", 4)
                 : xmlNodeAddContent(text, BAD_CAST "-new")) == 0);
             assert(strcmp((const char *)text->content, "old-new") == 0);
         } else {

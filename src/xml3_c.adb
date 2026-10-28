@@ -1099,11 +1099,14 @@ package body XML3_C is
 
    function Node_Append_Content
      (Node, Content : System.Address; Length : Interfaces.C.int;
-      Bounded : Boolean) return Interfaces.C.int
+      Bounded : Boolean; Text_Only : Boolean := False) return Interfaces.C.int
    is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
+      if Text_Only and then Node = System.Null_Address then
+         return -1;
+      end if;
       declare
          Suffix : constant String :=
            (if Bounded then C_String_Prefix (Content, int'Max (Length, 0))
@@ -1113,29 +1116,39 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Add_Content
            (Node, Suffix, Status,
-            Has_Input => Bounded and then Length > 0
-              and then Content /= System.Null_Address);
+            Has_Input => Content /= System.Null_Address
+              and then (Text_Only or else (Bounded and then Length > 0)),
+            Text_Only => Text_Only);
       end;
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
       end if;
       return (if Status = XML3_DOM_Constructors.Created then 0
-              elsif Status = XML3_DOM_Constructors.No_Memory then -1
+              elsif Text_Only or else Status = XML3_DOM_Constructors.No_Memory
+                then -1
               else 1);
    exception
       when Invalid_C_String =>
          Report_Dom_Error (115);
-         return 1;
+         return (if Text_Only then -1 else 1);
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
-         return 1;
+         return (if Text_Only then -1 else 1);
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return -1;
       when others =>
          Report_Dom_Error (1);
-         return 1;
+         return (if Text_Only then -1 else 1);
    end Node_Append_Content;
+
+   function Text_Concat
+     (Node, Content : System.Address; Length : Interfaces.C.int)
+     return Interfaces.C.int
+   is
+   begin
+      return Node_Append_Content (Node, Content, Length, Length >= 0, True);
+   end Text_Concat;
 
    function Node_Add_Content
      (Node, Content : System.Address) return Interfaces.C.int

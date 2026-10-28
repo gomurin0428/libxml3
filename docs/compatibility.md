@@ -9,6 +9,16 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
+`xmlTextConcat` は text・CDATA・comment・PI のみに追記し、成功で 0、失敗で -1 を返します。
+要素・属性・document・未登録 node は内容を変えず拒否し、NULL content でも kind を検査します。
+非負の長さは読み取り上限、0 では入力を読みません。負の長さ（-1 以外も固定版と同様）は
+NUL 終端文字列として読みます。NULL content は無変更ですが、非NULLの空入力は
+NULL content を空文字列へ変えます。既存 content と重なる入力にも対応します。
+固定版と違い、正の長さでも最初の NUL で読み取りを止め、その後のバイトを保持しません。
+XML参照の展開はせず、UTF-8・comment/PI delimiter の検査は出力時に行います。
+確保失敗では既存 content・リンク・所属を保ちます。`xmlNodeAddContent[Len]` の
+対象 kind・長さ・戻り値の規約は変更していません。
+
 `xmlTextMerge` は通常の text node の内容を順に結合し、第一引数の位置を保ったまま
 第二引数を切り離して解放します。隣接している必要はなく、属性内の text にも対応します。
 片方の node が NULL なら他方を変更せず返します（この場合は node kind も検査しません）。
