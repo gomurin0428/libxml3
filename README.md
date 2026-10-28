@@ -99,7 +99,8 @@ pointer、読み取り可能性、allocation、ABI は信頼境界です。
 返却値は `xmlFree` で解放します。pinned reference はNULが早期にあっても `len+1` bytesを
 allocationしますが、余剰tailは未規定です。libxml3はコピーprefix+NULだけを確保し、
 余剰capacityもallocation-size equivalenceも保証しません。テストは定義済み文字列内容のみを比較します。
-`xmlStrchr` は最初の一致した非NUL byteの入力内pointerを借用して返し、個別のfreeは不要です。
+`xmlStrchr` は最初の一致した非NUL byteの入力内pointerを借用して返します。
+元の入力が有効な間だけ利用でき、借用ポインタ自体は解放しません。
 NULL入力、
 検索値0、またはNUL以前に一致がなければNULLです。検索値0でもNUL terminatorは返しません。
 payload offset `0..Max_Bytes-1` を調べ、境界offset `Max_Bytes` のNULは許容します。
