@@ -331,6 +331,12 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlTextConcat": {
+    "implementation": "partial",
+    "scope": "SPARK scalar-only append to managed text, CDATA, comment and PI nodes; content ownership/rollback reuse Store.Content.Replace_Content. Nonnegative length is bounded, zero reads no bytes, negative length consumes a NUL-terminated string. NULL content is a no-op after kind validation; non-NULL empty input materializes empty content. Returns 0 or -1. Stops at first NUL instead of retaining/reading trailing bytes. Native boundary and full public semantics not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlTextMerge": {
     "implementation": "partial",
     "scope": "SPARK Store merges distinct managed normal text nodes, allocates combined raw bytes before retiring the second node, and preserves both nodes on native allocation failure. NULL operand returns the other unchanged (including non-text); NULL second content preserves the first content pointer. Same document or documentless second node only; cross-document and no-escape variants unsupported. Shared path with xmlAddChild coalescing; native boundary and full public semantics not proved.",

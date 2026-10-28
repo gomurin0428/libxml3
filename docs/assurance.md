@@ -27,10 +27,10 @@ foreign-pointer validity remain trusted.
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
-editing, `xmlTextMerge`, reverse element navigation through
+editing, `xmlTextMerge`, `xmlTextConcat`, reverse element navigation through
 `Store.Queries.Select_Element`, and explicit UTF-8 memory serialization. The C
 adapters and native ABI implementation are not proved. The refreshed aggregate
-has 10,929 checks (893 flow and 10,036 prover), no unproved or justified
+has 10,931 checks (893 flow and 10,038 prover), no unproved or justified
 conditions, 0 `pragma Assume` statements, and 130 warnings; the
 representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -142,7 +142,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,929-check aggregate proof; see
+new units are included in the successful 10,931-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -238,6 +238,12 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlTextConcat` の scalar kind 制限は `Store.Content.Append` で行い、空入力の
+no-op 判定より先に検査します。内容の準備・pin 更新・確保失敗時の保持は既存の
+`Replace_Content` 契約を再利用します。C は既存の文字列変換・mutex・戻り値変換を共用し、
+node をたどりません。新しい入口の全意味論を証明したという主張ではなく、kind・長さ・
+NULL/空・alias・guard page・文書先行解放・出力・確保失敗後の再試行を C テストで検査します。
 
 `xmlTextMerge` は `Runtime.Merge_Text` / `Store.Merge_Text` を通り、`Add_Child` の
 text 結合と共通です。C は引数の受け渡し・mutex・エラー変換のみで、kind・文書所属・

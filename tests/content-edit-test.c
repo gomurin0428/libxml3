@@ -621,6 +621,21 @@ static void test_bounded_content_guard_page(void) {
     assert(xmlNodeSetContentLen(text, mapping + page_size, 0) == 0);
     assert(text->content != NULL && text->content[0] == 0);
 #endif
+    {
+        xmlNodePtr concat = xmlNewText(NULL);
+        assert(concat);
+        assert(xmlTextConcat(NULL, mapping + page_size, -1) == -1);
+        assert(xmlTextConcat(concat, mapping + page_size, 0) == 0);
+        assert(concat->content && concat->content[0] == 0);
+        assert(xmlTextConcat(concat, buffer, 7) == 0);
+        assert_content(concat, "A&amp;B");
+#ifndef XML3_REFERENCE_TEST
+        buffer[6] = 0;
+        assert(xmlTextConcat(concat, buffer + 6, 7) == 0);
+        assert_content(concat, "A&amp;B");
+#endif
+        xmlFreeNode(concat);
+    }
     assert(munmap(mapping, (size_t)page_size * 2) == 0);
     xmlFreeNode(text);
     xmlFreeNode(element);
@@ -716,6 +731,78 @@ static void test_construct_doc_node(int raw) {
     xmlFreeNode(survivor);
     xmlFreeDoc(doc);
 #endif
+}
+
+static void test_text_concat(void) {
+    static const char input[] = "<r a='old'>t<![CDATA[c]]><!--n--><?p v?></r>";
+    static const xmlChar suffix[] = {'<', '&'};
+    static const xmlChar embedded[] = {'x', 0, 'y'};
+    static const char *expected[] = {"t<&", "c<&", "n<&", "v<&"};
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, nodes[4], text;
+    xmlChar *memory = NULL;
+    xmlDocPtr reparsed;
+    int size = 0;
+    size_t i;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    nodes[0] = root->children;
+    for (i = 1; i < 4; i++) nodes[i] = nodes[i - 1]->next;
+    assert(xmlTextConcat(NULL, NULL, 0) == -1);
+    assert(xmlTextConcat(root, NULL, 0) == -1);
+    assert(xmlTextConcat(root, suffix, 2) == -1);
+    assert(xmlTextConcat((xmlNodePtr)root->properties, suffix, 2) == -1);
+    assert(xmlTextConcat((xmlNodePtr)doc, NULL, -1) == -1);
+    assert_content((xmlNodePtr)root->properties, "old");
+    for (i = 0; i < 4; i++) {
+        xmlChar *before = nodes[i]->content;
+        assert(xmlTextConcat(nodes[i], NULL, -1) == 0);
+        assert(nodes[i]->content == before);
+        assert(xmlTextConcat(nodes[i], suffix, 2) == 0);
+        assert_content(nodes[i], expected[i]);
+        assert(nodes[i]->parent == root && nodes[i]->doc == doc);
+        assert(nodes[i]->prev == (i ? nodes[i - 1] : NULL));
+        assert(nodes[i]->next == (i < 3 ? nodes[i + 1] : NULL));
+    }
+    assert(root->children == nodes[0] && root->last == nodes[3]);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size > 0);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    assert_content(xmlDocGetRootElement(reparsed), "t<&c<&");
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+    xmlUnlinkNode(root);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    assert(xmlTextConcat(nodes[0], BAD_CAST "!", -1) == 0);
+    assert_content(root, "t<&!c<&");
+    xmlFreeNode(root);
+#ifdef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    text = xmlNewText(NULL);
+    assert(text && xmlTextConcat(text, NULL, 100) == 0 && text->content == NULL);
+    assert(xmlTextConcat(text, BAD_CAST "ignored", 0) == 0);
+    assert(text->content && text->content[0] == 0);
+    assert(xmlTextConcat(text, BAD_CAST "abX", 2) == 0);
+    assert(xmlTextConcat(text, text->content, 2) == 0);
+    assert_content(text, "abab");
+    assert(xmlTextConcat(text, BAD_CAST "!", -1) == 0);
+    assert(xmlTextConcat(text, BAD_CAST "?", -2) == 0);
+    assert(xmlTextConcat(text, embedded, 3) == 0);
+    assert_content(text, "abab!?x");
+    assert(xmlTextConcat(text, BAD_CAST "s", 1) == 0);
+    assert_content(text, "abab!?xs");
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlNode invalid = {0};
+        assert(xmlTextConcat(&invalid, suffix, 2) == -1);
+    }
+#endif
+    xmlFreeNode(text);
+    xmlResetLastError();
 }
 
 static void test_text_merge(void) {
@@ -1121,6 +1208,7 @@ int main(void) {
     test_construct_doc_node(1);
     test_reverse_element_navigation();
     test_text_merge();
+    test_text_concat();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();

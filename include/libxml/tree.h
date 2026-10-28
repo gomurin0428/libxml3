@@ -108,6 +108,7 @@ xmlNodePtr xmlNewDocPI(xmlDocPtr doc, const xmlChar *name, const xmlChar *conten
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 xmlNodePtr xmlTextMerge(xmlNodePtr first, xmlNodePtr second);
+int xmlTextConcat(xmlNodePtr node, const xmlChar *content, int len);
 int xmlNodeAddContent(xmlNodePtr cur, const xmlChar *content);
 int xmlNodeAddContentLen(xmlNodePtr cur, const xmlChar *content, int len);
 int xmlNodeSetContent(xmlNodePtr cur, const xmlChar *content);

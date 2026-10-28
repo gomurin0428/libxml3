@@ -84,6 +84,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。
 同じ文書のノード、または文書に属さない第二引数に対応します。
+`xmlTextConcat` は text・CDATA・comment・PI に限定した長さ指定追記です。
+要素・属性は変更せず拒否し、負の長さでは NUL 終端文字列を読みます。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、

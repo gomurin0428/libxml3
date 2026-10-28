@@ -8,14 +8,14 @@ Data Dependencies               247         247                                 
 Flow Dependencies                 .           .                                       .           .          .
 Initialization                  503         503                                       .           .          .
 Non-Aliasing                      .           .                                       .           .          .
-Run-time Checks                4932           .      4932 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
+Run-time Checks                4933           .      4933 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
 Assertions                     1468           .    1468 (CVC5 67%, Trivial 11%, Z3 21%)           .          .
-Functional Contracts           3584           .     3584 (CVC5 70%, Trivial 2%, Z3 28%)           .          .
+Functional Contracts           3585           .     3585 (CVC5 70%, Trivial 2%, Z3 27%)           .          .
 LSP Verification                  .           .                                       .           .          .
 Termination                     195         143                    52 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .           .                                       .           .          .
 --------------------------------------------------------------------------------------------------------------
-Total                         10929    893 (8%)                             10036 (92%)           .          .
+Total                         10931    893 (8%)                             10038 (92%)           .          .
 
 
 max steps used for successful proof: 47922
@@ -279,12 +279,12 @@ in unit xml3_dom_store, 20 subprograms and packages out of 20 analyzed
   XML3_DOM_Store.Unlink at xml3_dom_store.ads:108 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
 in unit xml3_dom_store-content, 7 subprograms and packages out of 7 analyzed
   XML3_DOM_Store.Content at xml3_dom_store-content.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Content.Append at xml3_dom_store-content.ads:36 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (32 checks)
+  XML3_DOM_Store.Content.Append at xml3_dom_store-content.ads:36 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
   XML3_DOM_Store.Content.New_Child at xml3_dom_store-content.ads:25 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (19 checks)
   XML3_DOM_Store.Content.New_Doc_Content at xml3_dom_store-content.ads:5 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_DOM_Store.Content.New_Doc_Node at xml3_dom_store-content.ads:15 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (18 checks)
   XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:181 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (71 checks)
-  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:43 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
+  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
 in unit xml3_dom_store-documents, 3 subprograms and packages out of 3 analyzed
   XML3_DOM_Store.Documents at xml3_dom_store-documents.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Store.Documents.Discard_Arena at xml3_dom_store-documents.adb:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (27 checks)

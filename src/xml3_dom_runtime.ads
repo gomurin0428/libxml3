@@ -77,7 +77,7 @@ is
       procedure Add_Content
         (Facade : System.Address; Suffix : String;
          Status : out XML3_DOM_Store.Operation_Status;
-         Has_Input : Boolean := False)
+         Has_Input : Boolean := False; Text_Only : Boolean := False)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure New_Doc_Content
