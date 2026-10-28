@@ -149,6 +149,16 @@ int main(int argc, char **argv) {
         cur = bounded ? xmlStrncat(cur, BAD_CAST "re", 2) : xmlStrcat(cur, BAD_CAST "re");
         assert(cur && xmlStrEqual(cur, BAD_CAST "prere"));
         xmlFree(cur);
+    } else if (strcmp(operation, "string-length") == 0) {
+        xml3_oom_enable(0);
+        assert(xmlStrlen(NULL) == 0);
+        assert(xmlStrlen(BAD_CAST "") == 0);
+        assert(xmlStrlen(BAD_CAST "名é") == 5);
+        assert(xmlStrlen(BAD_CAST "a\0tail") == 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "full-string-compare") == 0) {
         xml3_oom_enable(0);
         assert(xmlStrcmp(BAD_CAST "abc", BAD_CAST "abd") == -1);
@@ -1740,6 +1750,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "full-string-compare") == 0) {
         puts("full string comparisons used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "string-length") == 0) {
+        puts("string length used no native allocations");
         return 0;
     }
     if (strcmp(operation, "release-lists") == 0) {

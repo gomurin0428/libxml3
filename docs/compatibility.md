@@ -385,14 +385,24 @@ colon を含む name、無効または未対応の参照は拒否し、失敗時
 その arena backing も保持され、node の解放には `xmlFreeNode`、detached attribute
 の解放には `xmlFreeProp` を使います。
 `xmlFreeDoc` 後の document handle は使用できません。`xmlNodeGetContent` と
-`xmlGetProp` の返却値は
-`xmlFree` で解放してください。`xmlStrlen` は C `int` に収まらない長さに
-対して `-1` を返します。`xmlStrdup` は NUL 終端 byte 列を上限内で複製し、
+`xmlGetProp` の返却値は `xmlFree` で解放してください。`xmlStrlen` は最初のNULまでの
+raw byte数を返し、NULLなら0です。不正UTF-8 byteもdecodeせずbyteとして数えます。
+SPARK `Read_Length` は `0..Max_Bytes` を走査し、境界位置のNULを受け入れます。
+その範囲にNULがなければDOM error 115を記録して-1を返します。これはempty stringを
+意味しないerror sentinelなので、呼び出し側はdiagnosticを確認してください。
+予期しないC-side exceptionはDOM error 1を記録して-1を返します。
+pinned referenceは `INT_MAX` を超える長さを0にしますが、このsubsetは `Max_Bytes`
+(`Integer'Last - 16`) で走査を制限し、未終端のcap超過を診断します。早期に終端する長い文字列を一律拒否する
+ものではありません。cap動作は小さい `Last` を渡すAda helper testで確認し、巨大な公開C
+stringは動的に構築していません。allocation・mutation・transcoding・UTF-8/XML validation
+はありません。`xmlStrdup` は NUL 終端 byte 列を上限内で複製し、
 `xmlStrndup` は指定長の raw bytes を埋め込みNULも含めて複製します。長さ0では
 入力を読み取らず所有権付き空文字列を返し、負または上限超過の長さは拒否します。
 どちらも NULL 入力なら NULL を返し、返却値は `xmlFree` で解放してください。
-UTF-8検証は行わず、native pointer の有効性・読み取り可能性、allocation、C ABI は
-信頼境界です。`xmlCharStrdup` は `char *` 入力をNUL終端byte列として複製し、
+SPARKは scan bounds、result range、status contractを検証しますが、native read、
+pointerの有効性・読み取り可能範囲・実byte内容、C diagnostic mapping、完全なAPI意味論は
+信頼境界です。raw-byte、Unicode byte count、guard-page vectorsはreferenceとlibxml3の両方で、
+no-allocation testはlibxml3のみで実行します。`xmlCharStrdup` は `char *` 入力をNUL終端byte列として複製し、
 `xmlStrdup` と同じ内容を返します。`xmlCharStrndup` はNULL入力または負長でNULLを返し、
 非NULL・非負入力では最大 `len` bytesを読み、早いNULで止まります。これは指定長のraw spanを
 埋め込みNUL込みで複製する `xmlStrndup` とは異なります。長さ0は読み取りなしで所有権付き

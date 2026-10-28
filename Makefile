@@ -336,6 +336,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test validate-name 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-compare 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test full-string-compare 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test string-length 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test substring-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0

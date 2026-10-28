@@ -47,6 +47,24 @@ procedure Text_Buffers_Test is
                      and XML3_Native_Memory.Byte_At (Output, 2) = Character'Val (0));
       XML3_Native_Memory.Free (Output);
    end Check_Append;
+
+   procedure Check_Measure is
+      Text : aliased String := "ab" & Character'Val (0);
+      Length : XML3_Text.Byte_Count;
+      Success : Boolean;
+   begin
+      XML3_Text.Buffers.Measure (System.Null_Address, Length, Success, 0);
+      pragma Assert (Success and Length = 0);
+      XML3_Text.Buffers.Measure (Text'Address, Length, Success, 0);
+      pragma Assert (not Success and Length = 0);
+      XML3_Text.Buffers.Measure (Text'Address, Length, Success, 1);
+      pragma Assert (not Success and Length = 0);
+      XML3_Text.Buffers.Measure (Text'Address, Length, Success, 2);
+      pragma Assert (Success and Length = 2);
+      Text (1) := Character'Val (0);
+      XML3_Text.Buffers.Measure (Text'Address, Length, Success, 0);
+      pragma Assert (Success and Length = 0);
+   end Check_Measure;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -61,5 +79,6 @@ begin
      (Left'Address, Left'Address, False, Result, Limit_Flag, 0);
    pragma Assert (Result = 0 and not Limit_Flag);
    Check_Append;
+   Check_Measure;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

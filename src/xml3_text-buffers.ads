@@ -13,6 +13,12 @@ package XML3_Text.Buffers with SPARK_Mode is
    type Append_Status is
      (Unchanged, Appended, Invalid_Length, Append_No_Memory, Append_Limit_Exceeded);
 
+   procedure Measure
+     (Item : System.Address; Length : out Byte_Count; Success : out Boolean;
+      Last : Byte_Count := Max_Bytes)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Length <= Last and then (if not Success then Length = 0);
+
    procedure Append
      (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
       Result : out System.Address; Status : out Append_Status;

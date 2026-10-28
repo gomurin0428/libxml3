@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,369 checks, 1,030 by flow analysis and 10,339 by provers;
+**11,374 checks, 1,033 by flow analysis and 10,341 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -135,6 +135,19 @@ semantics remain trusted. Shared byte-pair and guard-page cases run against
 both libxml3 and the pinned reference; OOM/no-allocation checks are
 libxml3-only. The cap-specific test invokes the Ada helper with a small `Last`;
 no public C string near the cap is dynamically constructed.
+`xmlStrlen` delegates to `XML3_Text.Buffers.Measure`, using `Read_Length` to
+scan through the inclusive bound and accept a NUL at `Last`. NULL succeeds
+with length zero. An unresolved scan returns failure with length zero; the C
+adapter records DOM error 115 and returns -1, not a reliable empty-string
+result. Unexpected C-side exceptions map to DOM error 1 and -1. This bounded
+subset uses `Max_Bytes` (`Integer'Last - 16`) and intentionally differs from the pinned reference's zero for lengths
+above `INT_MAX`. A reduced `Last` tests this path without constructing a huge
+public C string. SPARK proves `Read_Length` (2 checks) and `Measure` (2
+checks), including scan bounds, result/status contracts, and native-call
+preconditions. Actual native reads/bytes, pointer validity and readable
+bounds, C diagnostics/mapping, exception behavior, and complete semantics
+remain trusted. Shared raw-byte, Unicode-byte-count, and guard-page tests run
+against both implementations; the no-allocation test is libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` for a bounded
 sum and status/result contract. The adapter checks a positive right-hand span
 before converting it, and maps the reference's negative-length and NULL-input
@@ -222,13 +235,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 281 |
-| Initialization | 600 |
+| Data dependencies | 282 |
+| Initialization | 602 |
 | Runtime checks | 5,068 |
 | Assertions | 1,486 |
-| Functional contracts | 3,730 |
+| Functional contracts | 3,732 |
 | Termination | 204 |
-| **Total** | **11,369** |
+| **Total** | **11,374** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -598,7 +611,7 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-3175f410cfb783f4b59e8c9b2f566104cb48f2e0041720488d10132ed2f1a18c  src/xml3_c.adb
+6c1200ca5ca86c17c65d89fb4621ef5cd79f7130e8970a7771a48b20aab09de4  src/xml3_c.adb
 71d9b69f8a9b1535c609428de55539c7cd212ed1519ca932ced7c3da2a4a45c4  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
@@ -646,13 +659,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-7f2e85508d5f8e8692950fca54eae3a7df01f4b025e107c6954c7e70225c1960  src/xml3_text-buffers.adb
-f9e93dafb5cd8f9387af9825ec4935082db8045c3ff132ef3afc1813964ac439  src/xml3_text-buffers.ads
+5b44939229237858db06943bde9c6a546f426559fa26ba4c696c10cc04413713  src/xml3_text-buffers.adb
+9f95cf7790ed4b23c90a375ef6694ff00f9a46ed1ab325043089f2614b08ba8f  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
 55a0b26ab36142a82b44dc7cb13789fda99806bd267bddcb8a74dc3f1a63a4a6  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-88e131054556f89ee1f0043f0e97b6042f9ebaa973374ec08249c305596143d7  Makefile
+a522bbb54c76653eeb785342c295e85f448dd7dde9b8d8231e2e4958991b643e  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

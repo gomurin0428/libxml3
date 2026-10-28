@@ -140,6 +140,19 @@ scan は offset `0..Max_Bytes` を調べ、不一致またはNULで終了しま�
 上限より前に終了できます。小さな `Last` を使う Ada helper test と形式検証で上限動作を確認し、
 公開C APIの巨大文字列で上限を動的に試してはいません。foreign pointerの有効性、読み取り可能範囲・
 実際のbyte内容、address計算、完全なAPI意味論は信頼境界です。
+`xmlStrlen` は最初のNULまでのraw byte数を返し、NULLなら0です。不正UTF-8 byteもdecodeせず
+byteとして数えます。SPARK `Read_Length` はoffset `0..Max_Bytes` を調べ、境界位置のNULを
+受け入れます。範囲内にNULがなければDOM error 115を記録して-1を返します。この値はempty string
+を意味する結果ではないので、呼び出し側はdiagnosticを確認してください。予期しないC-side例外は
+DOM error 1を記録して-1を返します。pinned referenceは
+`INT_MAX` を超える長さを0にしますが、このsubsetは `Max_Bytes` でscanを制限し、未終端の
+cap超過を診断します。早期に終端する長い文字列を一律拒否するものではありません。
+`Max_Bytes` は `Integer'Last - 16` です。
+cap動作は小さい `Last` を渡すAda helper testで確認し、巨大な公開C stringは動的に構築していません。
+allocation・mutation・transcoding・UTF-8/XML validationは行いません。SPARKはscan bounds、
+result range、status contractを証明しますが、native reads、pointerの有効性・読み取り可能範囲・
+実byte内容、C diagnostic mapping、完全なAPI意味論は信頼境界です。raw-byte、Unicode byte count、
+guard-page vectorsはreferenceとlibxml3の両方で、no-allocation testはlibxml3のみで実行します。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
