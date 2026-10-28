@@ -2341,6 +2341,27 @@ package body XML3_C is
          return 0;
    end Str_Equal;
 
+   function Str_Q_Equal
+     (Prefix, Name, Value : System.Address) return Interfaces.C.int
+   is
+      Status : XML3_Text.QNames.Comparison_Status;
+   begin
+      XML3_Text.QNames.Compare (Prefix, Name, Value, Status);
+      case Status is
+         when XML3_Text.QNames.Same =>
+            return 1;
+         when XML3_Text.QNames.Different =>
+            return 0;
+         when XML3_Text.QNames.Comparison_Limit_Exceeded =>
+            Report_Dom_Error (115);
+            return 0;
+      end case;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return 0;
+   end Str_Q_Equal;
+
    function Str_Character
      (Item : System.Address; Value : Interfaces.C.unsigned_char)
       return System.Address
