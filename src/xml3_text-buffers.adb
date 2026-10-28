@@ -33,6 +33,59 @@ package body XML3_Text.Buffers with SPARK_Mode is
      (if Item in 'A' .. 'Z' or else Item = '['
       then Character'Val (Character'Pos (Item) + 32) else Item);
 
+   procedure Find_Substring
+     (Item, Pattern : System.Address; Ignore_Case : Boolean;
+      Position : out Byte_Count; Status : out Search_Status)
+   is
+      First, Current, Expected : Character;
+   begin
+      Position := 0;
+      Status := No_Match;
+      if Item = System.Null_Address or else Pattern = System.Null_Address then
+         return;
+      end if;
+      First := Native.Byte_At (Pattern, 0);
+      if First = Character'Val (0) then
+         Status := Matched;
+         return;
+      elsif Ignore_Case then
+         First := Case_Map (First);
+      end if;
+      for Start in 0 .. Max_Bytes - 1 loop
+         Current := Native.Byte_At (Item, Start);
+         if Current = Character'Val (0) then
+            return;
+         elsif Ignore_Case then
+            Current := Case_Map (Current);
+         end if;
+         if Current = First then
+            for Index in 1 .. Max_Bytes - Start loop
+               Expected := Native.Byte_At (Pattern, Index);
+               if Expected = Character'Val (0) then
+                  Position := Start;
+                  Status := Matched;
+                  return;
+               end if;
+               Current := Native.Byte_At (Item, Start + Index);
+               if Current = Character'Val (0) then
+                  return;
+               elsif Start + Index = Max_Bytes then
+                  Status := Search_Limit_Exceeded;
+                  return;
+               end if;
+               if Ignore_Case then
+                  Current := Case_Map (Current);
+                  Expected := Case_Map (Expected);
+               end if;
+               exit when Current /= Expected;
+            end loop;
+         end if;
+      end loop;
+      if Native.Byte_At (Item, Max_Bytes) /= Character'Val (0) then
+         Status := Search_Limit_Exceeded;
+      end if;
+   end Find_Substring;
+
    function Compare_Bounded
      (Left, Right : System.Address; Length : Integer; Ignore_Case : Boolean)
       return Integer

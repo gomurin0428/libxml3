@@ -2362,15 +2362,12 @@ package body XML3_C is
          return 0;
    end Str_Q_Equal;
 
-   function Str_Character
-     (Item : System.Address; Value : Interfaces.C.unsigned_char)
+   function Search_Result
+     (Item : System.Address; Position : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status)
       return System.Address
    is
-      Position : XML3_Text.Byte_Count;
-      Status : XML3_Text.Buffers.Search_Status;
    begin
-      XML3_Text.Buffers.Find_Byte
-        (Item, Character'Val (Value), Position, Status);
       case Status is
          when XML3_Text.Buffers.Matched =>
             return Item + Storage_Offset (Position);
@@ -2380,11 +2377,50 @@ package body XML3_C is
             Report_Dom_Error (115);
             return System.Null_Address;
       end case;
+   end Search_Result;
+
+   function Str_Character
+     (Item : System.Address; Value : Interfaces.C.unsigned_char)
+      return System.Address
+   is
+      Position : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_Byte
+        (Item, Character'Val (Value), Position, Status);
+      return Search_Result (Item, Position, Status);
    exception
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
    end Str_Character;
+
+   function Find_Substring
+     (Item, Pattern : System.Address; Ignore_Case : Boolean)
+      return System.Address
+   is
+      Position : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_Substring
+        (Item, Pattern, Ignore_Case, Position, Status);
+      return Search_Result (Item, Position, Status);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Find_Substring;
+
+   function Str_Substring (Item, Pattern : System.Address) return System.Address is
+   begin
+      return Find_Substring (Item, Pattern, False);
+   end Str_Substring;
+
+   function Str_Case_Substring
+     (Item, Pattern : System.Address) return System.Address is
+   begin
+      return Find_Substring (Item, Pattern, True);
+   end Str_Case_Substring;
 
    function Compare_Bounded_Strings
      (Left, Right : System.Address; Length : Interfaces.C.int;

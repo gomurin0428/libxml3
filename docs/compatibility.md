@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -411,6 +411,19 @@ pointerを返します。返却値は `xmlFree` で個別に解放しません�
 返します。早い一致は即座に返るので、この上限は長い入力を一律拒否するものではありません。
 allocation・書き込み・UTF-8変換は行いません。native byte読み取り、読み取り可能範囲、
 pointer validity/address arithmetic、C診断mapping、完全なAPI意味論は信頼境界です。
+`xmlStrstr` と `xmlStrcasestr` は NUL 終端 raw byte 列の最初の substring を探し、
+一致した haystack 内 pointer を借用して返します。どちらかが NULL なら NULL、非NULL
+haystack と空 needle なら haystack pointer を読み取りなしで返します。haystack と pattern は
+最初の NUL で終端し、重なった入力、UTF-8 の途中 byte、その他の raw bytes をそのまま扱い、
+XML name/UTF-8 validation や transcode は行いません。`xmlStrcasestr` は A-Z に加えて
+pinned reference の `[` -> `{` byte-map quirk を使い、Unicode case folding ではありません。
+最初の一致を返し、`Max_Bytes` 未満の payload と境界の NUL を調べます。境界より先の
+non-NUL byte が必要なら diagnostic を記録して NULL を返しますが、早い一致と空 needle は
+全体を走査しないため、長い入力の一律拒否ではありません。結果は入力の lifetime 中だけ
+有効な borrowed pointer で、個別に `xmlFree` しません。allocation・書き込みは行わず、
+native pointer/読み取り範囲/byte内容/address arithmetic、C status mapping、完全なAPI意味論は
+信頼境界です。共有 substring vectors と全非NUL byte pair の比較は libxml3 と pinned
+reference の両方で実行し、guard-page safety と OOM/no-allocation 検査は libxml3-only です。
 `xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
 正の全範囲（早期停止時の `INT_MAX` を含む）までraw byteを比較し、
 不一致・NUL・上限で停止します。`len <= 0` はpointer判定より先に0を返し、同一pointerは0、

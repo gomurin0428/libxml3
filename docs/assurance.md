@@ -45,12 +45,13 @@ namespace-list traversal through
 `Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Prefix_Length`
 and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
 bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
-QName building through `XML3_Text.QNames.Build`, and explicit UTF-8 memory
-serialization. The buffer helpers check bounded lengths, allocation sizing,
+QName building through `XML3_Text.QNames.Build`, raw substring search through
+`XML3_Text.Buffers.Find_Substring`, and explicit UTF-8 memory serialization.
+The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,299 checks
-(999 flow and 10,300 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,313 checks
+(1,005 flow and 10,308 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -172,7 +173,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,299-check aggregate proof; see
+new units are included in the current successful 11,313-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -602,6 +603,22 @@ contract. `Native.Byte_At`, foreign pointer validity, readable bounds, actual
 bytes, native address arithmetic, C diagnostic mapping, and complete public
 semantics remain trusted. The operation allocates nothing and does not modify
 or transcode the input.
+`xmlStrstr` and `xmlStrcasestr` use `XML3_Text.Buffers.Find_Substring` and
+return the first matching borrowed haystack pointer. NULL arguments return no
+match; a non-NULL haystack with an empty needle returns position zero without
+reading the haystack. NUL terminates both raw-byte inputs, so overlapping
+haystack/pattern pointers, UTF-8 fragments, and invalid bytes are not converted
+or validated. The case-insensitive operation uses the pinned byte map,
+including the `[` to `{` quirk, not Unicode case folding. The scan permits
+payload offsets below `Max_Bytes` and a boundary NUL; a match ending at that
+boundary succeeds, while required non-NUL data beyond the cap maps to
+`Search_Limit_Exceeded` and then diagnostic plus NULL. Early matches and empty
+needles return without scanning the whole source, so the cap is not blanket
+rejection of long strings. SPARK proves the status/position postcondition and
+loop bounds. The borrowed pointer lifetime, native reads, foreign pointer
+validity/bounds, actual bytes, address arithmetic, C mapping, and full public
+semantics remain trusted. The operation allocates nothing and performs no
+writes.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded` for
 bounded byte-by-byte comparisons, early exit, and a result in -255 .. 255.
 The scan accepts the full nonnegative C `int` bound without a `Max_Input`
