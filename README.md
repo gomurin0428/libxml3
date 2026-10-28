@@ -97,7 +97,7 @@ NUL終端allocationへコピーします。負の `len` は `str2` のNUL終端�
 NULLの `str2` または有効長0なら `str1` の複製、それ以外は `str1` と `str2` の
 raw bytes（埋め込みNULを含む）の連結です。入力は変更されず、返却値は `xmlFree` で
 解放します。合計サイズ上限超過は拒否し、正の右側spanを読む前に上限を確認します。
-UTF-8検証、native pointerの有効性、allocation、byte writes、ABIは信頼境界です。
+UTF-8検証は行いません。native pointerの有効性、allocation、byte writes、ABIは信頼境界です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
