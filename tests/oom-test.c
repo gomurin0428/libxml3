@@ -199,6 +199,28 @@ int main(int argc, char **argv) {
         copy = xmlStrncatNew(left, right, sizeof(right));
         assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
         xmlFree(copy);
+    } else if (strcmp(operation, "strsub") == 0) {
+        const xmlChar source[] = {'x', 'a', 0, 'b', 0xff};
+        xml3_oom_enable(fail_index);
+        assert(!xmlStrsub(NULL, 0, 0));
+        assert(!xmlStrsub(source, -1, 1) && !xmlStrsub(source, 0, -1));
+        assert(!xmlStrsub(source, 2, 0) && xml3_oom_count() == 0);
+        xmlChar *copy = xmlStrsub(source, 1, 4);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy && !memcmp(copy, source + 1, 4) && copy[4] == 0);
+        }
+        xmlFree(copy);
+        assert(source[0] == 'x' && source[1] == 'a' && source[2] == 0 &&
+               source[3] == 'b' && source[4] == 0xff);
+        copy = xmlStrsub(source, 1, 4);
+        assert(copy && !memcmp(copy, source + 1, 4) && copy[4] == 0);
+        xmlFree(copy);
     } else if (strcmp(operation, "strdup") == 0 || strcmp(operation, "strndup") == 0) {
         const xmlChar source[] = {'a', 0, 'b', 0xff};
         int bounded = strcmp(operation, "strndup") == 0;

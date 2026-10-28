@@ -2539,6 +2539,32 @@ package body XML3_C is
       return Str_N_Concat_New (System.Null_Address, Item, Length);
    end Str_N_Duplicate;
 
+   function Str_Sub_Copy
+     (Item : System.Address; Start, Length : Interfaces.C.int)
+      return System.Address
+   is
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Slice_Status;
+   begin
+      XML3_Text.Buffers.Slice
+        (Item, Integer (Start), Integer (Length), Result, Status);
+      case Status is
+         when XML3_Text.Buffers.No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Slice_Limit_Exceeded =>
+            Report_Dom_Error (115);
+         when others => null;
+      end case;
+      return Result;
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Str_Sub_Copy;
+
    function Str_Length (Item : System.Address) return Interfaces.C.int is
       Length : size_t;
    begin

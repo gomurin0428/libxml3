@@ -20,6 +20,53 @@ static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncase
 typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
 static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
 
+static void test_string_slice(void) {
+    xmlResetLastError();
+    assert(!xmlStrsub(NULL, 0, 0));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(NULL, -1, -1));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(BAD_CAST "abc", -1, 1));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(BAD_CAST "abc", 0, -1));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(BAD_CAST "", 0, 0));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(BAD_CAST "abc", 3, 0));
+    assert(!xmlGetLastError());
+    assert(!xmlStrsub(BAD_CAST "abc", 4, 1));
+    assert(!xmlGetLastError());
+    const xmlChar bytes[] = {'x', 'a', 0, 'b', 0xff, 0};
+    xmlChar *copy = xmlStrsub(bytes, 1, 4);
+    assert(copy && copy != bytes + 1 && !memcmp(copy, bytes + 1, 4) && copy[4] == 0);
+    xmlFree(copy);
+    assert(!xmlStrsub(bytes, 3, 1));
+    copy = xmlStrsub(BAD_CAST "abc", 2, 0);
+    assert(copy && copy[0] == 0);
+    xmlFree(copy);
+    copy = xmlStrsub(BAD_CAST "abc", 1, 2);
+    assert(copy && xmlStrEqual(copy, BAD_CAST "bc"));
+    xmlFree(copy);
+    const xmlChar utf8[] = "名";
+    copy = xmlStrsub(utf8, 1, 1);
+    assert(copy && copy[0] == 0x90 && copy[1] == 0);
+    xmlFree(copy);
+    xmlChar *source = xmlCharStrdup("prefix:<r>名</r>");
+    assert(source);
+    const xmlChar *xml = xmlStrstr(source, BAD_CAST "<r>");
+    assert(xml);
+    copy = xmlStrsub(source, (int)(xml - source), xmlStrlen(xml));
+    assert(copy);
+    xmlFree(source);
+    xmlDocPtr doc = xmlReadMemory((const char *)copy, xmlStrlen(copy), NULL, NULL, 0);
+    xmlFree(copy);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(content && xmlStrEqual(content, BAD_CAST "名"));
+    xmlFree(content);
+    xmlFreeDoc(doc);
+}
+
 static void test_qname_equality(void) {
     static const struct { const char *prefix, *name, *value; int equal; } cases[] = {
         {NULL, NULL, NULL, 1}, {NULL, NULL, "", 0}, {NULL, "", NULL, 0},
@@ -417,6 +464,28 @@ static void test_string_duplicates(void) {
             source[2] = 'x';
             assert(search(source + 2, BAD_CAST "x") == source + 2);
         }
+        assert(!xmlStrsub(unreadable, -1, 0));
+        assert(!xmlStrsub(unreadable, 0, -1));
+#ifndef XML3_REFERENCE_VERSION
+        assert(!xmlStrsub(unreadable, INT_MAX, 0));
+        assert(xmlGetLastError());
+        xmlResetLastError();
+        assert(!xmlStrsub(unreadable, 0, INT_MAX));
+        assert(xmlGetLastError());
+        xmlResetLastError();
+        assert(!xmlStrsub(unreadable, 1, INT_MAX - 16));
+        assert(xmlGetLastError());
+        xmlResetLastError();
+#endif
+        source[0] = 'a'; source[1] = 'b'; source[2] = 'c';
+        copy = xmlStrsub(source, 1, 2);
+        assert(copy && !memcmp(copy, "bc", 3));
+        xmlFree(copy);
+        copy = xmlStrsub(source + 2, 0, 0);
+        assert(copy && copy[0] == 0);
+        xmlFree(copy);
+        source[2] = 0;
+        assert(!xmlStrsub(source, 3, 1));
         source[2] = 'A';
         assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
         assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
@@ -664,6 +733,7 @@ static void test_ranges(void) {
 int main(void) {
     test_string_duplicates();
     test_byte_search();
+    test_string_slice();
     test_substring_search();
     test_qname_equality();
     test_char_string_duplicates();

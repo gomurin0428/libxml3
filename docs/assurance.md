@@ -46,12 +46,13 @@ namespace-list traversal through
 and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
 bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
-`XML3_Text.Buffers.Find_Substring`, and explicit UTF-8 memory serialization.
+`XML3_Text.Buffers.Find_Substring`, raw slicing through
+`XML3_Text.Buffers.Slice`, and explicit UTF-8 memory serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,313 checks
-(1,005 flow and 10,308 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,329 checks
+(1,009 flow and 10,320 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -173,7 +174,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,313-check aggregate proof; see
+new units are included in the current successful 11,329-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -619,6 +620,22 @@ loop bounds. The borrowed pointer lifetime, native reads, foreign pointer
 validity/bounds, actual bytes, address arithmetic, C mapping, and full public
 semantics remain trusted. The operation allocates nothing and performs no
 writes.
+Shared substring vectors and guard-page cases run against both the pinned
+reference and libxml3; OOM/no-allocation checks are libxml3-only.
+`xmlStrsub` uses `XML3_Text.Buffers.Slice` to validate the start and copy an
+exact raw-byte span into an independent `xmlFree`-owned allocation. NULL input
+or negative indices return NULL without a diagnostic. The scan rejects a NUL at any position from
+zero through `start`, including for zero-length slices; a valid zero-length
+slice still allocates an empty string. It does not clamp the requested length
+at a later NUL, so callers must provide a readable span of `len` bytes.
+`start < Max_Bytes` and `len <= Max_Bytes - start` are checked before reading;
+limit violations map to diagnostic plus NULL. SPARK proves the scalar
+status/result contract, checked bounds and native-call preconditions. Pointer
+validity, readable bounds and actual bytes, fresh allocation and writes,
+address arithmetic, C mapping, and complete public semantics remain trusted.
+No XML-name or UTF-8 validation or transcoding occurs. Shared slice vectors
+and guard-page cases run against both the pinned reference and libxml3;
+upper-cap and OOM checks are libxml3-only.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded` for
 bounded byte-by-byte comparisons, early exit, and a result in -255 .. 255.
 The scan accepts the full nonnegative C `int` bound without a `Max_Input`

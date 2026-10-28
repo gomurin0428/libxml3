@@ -580,7 +580,7 @@
   },
   "function:xmlstring.h:xmlStrstr": {
     "implementation": "partial",
-    "scope": "Finds the first raw-byte substring in a NUL-terminated haystack and returns a borrowed pointer into it. NULL haystack or pattern returns NULL; a non-NULL haystack with an empty pattern returns the original pointer without reading the haystack. Inputs stop at their first NUL, so overlapping aliases, embedded-NUL termination, and UTF-8 fragments are byte behavior with no validation or transcoding. Payload offsets below Max_Bytes and a boundary NUL are scanned; a match ending at the boundary succeeds, while required non-NUL data beyond the cap returns NULL with a diagnostic. Early matches and empty patterns avoid a full scan, so the cap is not blanket rejection of long strings. No allocation or writes. Shared substring vectors run against both libxml3 and the pinned reference; guard-page safety and OOM/no-allocation tests are libxml3-only. SPARK proves status/position contracts and loop bounds; native reads, pointer validity/bounds, actual bytes, address arithmetic, C mapping, borrowed lifetime, and full semantics remain outside proof.",
+    "scope": "Finds the first raw-byte substring in a NUL-terminated haystack and returns a borrowed pointer into it. NULL haystack or pattern returns NULL; a non-NULL haystack with an empty pattern returns the original pointer without reading the haystack. Inputs stop at their first NUL, so overlapping aliases, embedded-NUL termination, and UTF-8 fragments are byte behavior with no validation or transcoding. Payload offsets below Max_Bytes and a boundary NUL are scanned; a match ending at the boundary succeeds, while required non-NUL data beyond the cap returns NULL with a diagnostic. Early matches and empty patterns avoid a full scan, so the cap is not blanket rejection of long strings. No allocation or writes. Shared substring vectors, byte-pair comparisons, and guard-page cases run against both libxml3 and the pinned reference; OOM/no-allocation tests are libxml3-only. SPARK proves status/position contracts and loop bounds; native reads, pointer validity/bounds, actual bytes, address arithmetic, C mapping, borrowed lifetime, and full semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",
@@ -590,7 +590,17 @@
   },
   "function:xmlstring.h:xmlStrcasestr": {
     "implementation": "partial",
-    "scope": "Same raw-byte substring search and borrowed-pointer behavior as xmlStrstr, using the pinned byte map for A-Z plus '[' to '{'. This is a reference byte-map quirk, not Unicode case folding. NULL/empty inputs, NUL termination, overlapping aliases, UTF-8 fragments, boundary NUL, Search_Limit_Exceeded diagnostics, and trusted native pointer/read/write boundaries follow xmlStrstr; no allocation, mutation, validation, or transcoding occurs. Shared substring vectors run against both libxml3 and the pinned reference; guard-page safety and OOM/no-allocation tests are libxml3-only.",
+    "scope": "Same raw-byte substring search and borrowed-pointer behavior as xmlStrstr, using the pinned byte map for A-Z plus '[' to '{'. This is a reference byte-map quirk, not Unicode case folding. NULL/empty inputs, NUL termination, overlapping aliases, UTF-8 fragments, boundary NUL, Search_Limit_Exceeded diagnostics, and trusted native pointer/read/write boundaries follow xmlStrstr; no allocation, mutation, validation, or transcoding occurs. Shared substring vectors, byte-pair comparisons, and guard-page cases run against both libxml3 and the pinned reference; OOM/no-allocation tests are libxml3-only.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrsub": {
+    "implementation": "partial",
+    "scope": "Returns an independent xmlFree-owned raw-byte slice after validating that offsets 0 through start contain no NUL. NULL input or negative start/len returns NULL without a diagnostic; even len=0 validates start and allocates an empty result only for a valid start. Copies exactly len bytes, including embedded NUL and bytes after it, then appends NUL; this requires the caller to provide a readable span and does not clamp at the source terminator. Before reading, the implementation requires start < Max_Bytes and len <= Max_Bytes - start; limit violations report an error and return NULL. It performs no UTF-8/XML-name validation or transcoding. Shared vectors and guard-page cases run against the pinned reference and libxml3; cap and OOM checks are libxml3-only. SPARK proves status/result, checked bounds, and native-call preconditions; pointer validity, readable memory, actual bytes, allocation freshness/writes, address arithmetic, C mapping, and complete semantics remain trusted.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",

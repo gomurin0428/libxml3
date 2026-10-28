@@ -2,6 +2,38 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Slice
+     (Item : System.Address; Start, Length : Integer;
+      Result : out System.Address; Status : out Slice_Status)
+   is
+      Current : Character;
+   begin
+      Result := System.Null_Address;
+      Status := No_Slice;
+      if Item = System.Null_Address or else Start < 0 or else Length < 0 then
+         return;
+      elsif Start >= Max_Bytes or else Length > Max_Bytes - Start then
+         Status := Slice_Limit_Exceeded;
+         return;
+      end if;
+      for Index in 0 .. Start loop
+         if Native.Byte_At (Item, Index) = Character'Val (0) then
+            return;
+         end if;
+      end loop;
+      Status := No_Memory;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Result);
+      if Result = System.Null_Address then
+         return;
+      end if;
+      for Index in 0 .. Length - 1 loop
+         Current := Native.Byte_At (Item, Start + Index);
+         Native.Write_Byte (Result, Index, Current);
+      end loop;
+      Native.Write_Byte (Result, Length, Character'Val (0));
+      Status := Sliced;
+   end Slice;
+
    procedure Find_Byte
      (Item : System.Address; Value : Character;
       Position : out Byte_Count; Status : out Search_Status)

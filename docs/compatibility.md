@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -423,7 +423,18 @@ non-NUL byte が必要なら diagnostic を記録して NULL を返しますが�
 有効な borrowed pointer で、個別に `xmlFree` しません。allocation・書き込みは行わず、
 native pointer/読み取り範囲/byte内容/address arithmetic、C status mapping、完全なAPI意味論は
 信頼境界です。共有 substring vectors と全非NUL byte pair の比較は libxml3 と pinned
-reference の両方で実行し、guard-page safety と OOM/no-allocation 検査は libxml3-only です。
+reference の両方で実行し、substring guard-page ケースも両方で実行します。OOM/no-allocation
+検査のみ libxml3-only です。
+`xmlStrsub` は検証済みstartから独立した `xmlFree` 所有のsliceを返します。NULLまたは負の
+start/lenは診断なしでNULLです。startの妥当性は byte 0 から start inclusive までNULがないことを調べて
+判定するため、start byte がNULなら `len == 0` でも失敗します。有効なstartは `len == 0` でも
+空allocationを返します。正の長さでは NUL で切り詰めず指定された `len` raw bytesをコピーし、
+コピー範囲内の埋め込みNULやUTF-8断片も保持します。呼び出し側は指定span全体を読める必要が
+あります。`start < Max_Bytes` と `len <= Max_Bytes - start` は読み取り前に検査し、上限超過は
+診断とNULLになります。UTF-8/XML-name validationやtranscodeは行いません。共有slice vectorsと
+guard-pageケースはreferenceとlibxml3の両方で実行し、OOM検査と上限専用ケースはlibxml3-onlyです。
+native pointer/読み取り可能範囲/実byte内容、allocation freshness・writes、address計算、C mapping、
+完全なAPI意味論は信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
 正の全範囲（早期停止時の `INT_MAX` を含む）までraw byteを比較し、
 不一致・NUL・上限で停止します。`len <= 0` はpointer判定より先に0を返し、同一pointerは0、
