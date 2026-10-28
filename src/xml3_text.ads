@@ -14,7 +14,8 @@ package XML3_Text with SPARK_Mode is
    procedure Validate_UTF8
      (Input : String;
       Kind : out Text_Error_Kind;
-      Error_Position : out Natural)
+      Error_Position : out Natural;
+      XML_Only : Boolean := True)
      with Global => null,
        Pre => Input'First >= 1
          and then Input'Last in 0 .. Max_Bytes

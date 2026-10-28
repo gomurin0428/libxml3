@@ -687,6 +687,17 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlCheckUTF8": {
+    "implementation": "partial",
+    "scope": "Streams a NUL-terminated byte string with a four-byte stack buffer and validates strict UTF-8 only. NULL, malformed, truncated, overlong, surrogate, and out-of-range encodings return 0; empty input returns 1. NUL stops scanning and bytes after it are not read. ASCII controls and Unicode noncharacters are valid UTF-8 here; this does not check XML character validity. Unlike the pinned reference's permissive acceptance of noncanonical encodings, this subset rejects them deliberately for safety. Invalid input returns 0 without a diagnostic; if no NUL is found through the inclusive Max_Bytes boundary, DOM error 115 is recorded and 0 returned; unexpected exceptions map to error 1 and 0. A boundary NUL is accepted. The scan performs no allocation, mutation, or transcoding. Reduced-Last Ada tests cover cap behavior; no huge public C string is constructed. GNATprove covers loop/index bounds and native-call preconditions, not actual foreign bytes, pointer validity/readable bounds, C mapping, or full Unicode API semantics. Shared normal/malformed and guard-page tests run against the reference and libxml3; reference-permissive vectors expect differing results, and no-allocation/OOM testing is libxml3-only.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "macro:xmlmemory.h:xmlFree": {
     "implementation": "partial",
     "scope": "通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。",

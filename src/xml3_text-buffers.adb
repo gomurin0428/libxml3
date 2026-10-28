@@ -2,6 +2,62 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Check_UTF8
+     (Item : System.Address; Status : out UTF8_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Position : Natural := 0;
+      Bytes : String (1 .. 4) := (others => Character'Val (0));
+      B : Natural;
+      Width : Positive range 1 .. 4;
+      Kind : Text_Error_Kind;
+      Error_Position : Natural;
+   begin
+      Status := UTF8_Invalid;
+      if Item = System.Null_Address then
+         return;
+      end if;
+      while Position <= Last loop
+         pragma Loop_Invariant (Position <= Last + 4);
+         pragma Loop_Variant (Increases => Position);
+         Bytes (1) := Native.Byte_At (Item, Position);
+         B := Character'Pos (Bytes (1));
+         if B = 0 then
+            Status := UTF8_Valid;
+            return;
+         elsif B < 128 then
+            Width := 1;
+         elsif B in 16#C2# .. 16#DF# then
+            Width := 2;
+         elsif B in 16#E0# .. 16#EF# then
+            Width := 3;
+         elsif B in 16#F0# .. 16#F4# then
+            Width := 4;
+         else
+            return;
+         end if;
+         for Offset in 1 .. Width - 1 loop
+            if Offset > Last - Position then
+               Status := UTF8_Limit_Exceeded;
+               return;
+            end if;
+            pragma Assert (Position + Offset <= Last);
+            Bytes (Offset + 1) := Native.Byte_At (Item, Position + Offset);
+            if Character'Pos (Bytes (Offset + 1)) not in 16#80# .. 16#BF# then
+               return;
+            end if;
+         end loop;
+         if Width > 1 then
+            Validate_UTF8 (Bytes (1 .. Width), Kind, Error_Position, XML_Only => False);
+            if Kind /= No_Text_Error then
+               return;
+            end if;
+         end if;
+         Position := Position + Width;
+      end loop;
+      Status := UTF8_Limit_Exceeded;
+   end Check_UTF8;
+
    procedure Read_Length
      (Item : System.Address; Last : Byte_Count;
       Length : out Byte_Count; Found : out Boolean)

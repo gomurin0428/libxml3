@@ -53,9 +53,9 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,374 checks
-(1,033 flow and 10,341 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 136 warnings. The representation-generation
+proved. The refreshed aggregate has 11,395 checks
+(1,038 flow and 10,357 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 137 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -176,7 +176,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,374-check aggregate proof; see
+new units are included in the current successful 11,395-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -680,6 +680,25 @@ C-side mapping/exception behavior, and full semantics remain trusted. No
 allocation, mutation, transcoding, or UTF-8/XML validation occurs. Shared
 raw-byte, UTF-8-byte-count, and guard-page vectors run against both
 implementations; the no-allocation OOM-shim check is libxml3-only.
+`xmlCheckUTF8` streams at most one UTF-8 scalar at a time using a four-byte
+stack buffer and calls `XML3_Text.Validate_UTF8` with `XML_Only => False`.
+It accepts ASCII control bytes and Unicode noncharacters as well-formed UTF-8,
+while rejecting overlong encodings, surrogates, out-of-range scalars, malformed
+and truncated sequences. This checks UTF-8 encoding, not XML character validity.
+Existing XML parsing and name/content validation retain their XML-character
+checks.
+Unlike the pinned reference's permissive acceptance of noncanonical encodings,
+the strict rejection is intentional. NULL returns 0, an empty string returns 1,
+malformed input returns 0 without a diagnostic, and a scan unresolved through
+`Max_Bytes` records error 115 and returns 0; unexpected exceptions map to
+error 1 and 0. A NUL at the inclusive boundary is accepted. The operation
+allocates nothing, mutates nothing, and does not transcode. Reduced-cap Ada
+tests cover the scan limit; no enormous public C string is constructed.
+GNATprove covers loop/index bounds and native-call preconditions, not actual
+foreign bytes, pointer validity/readable bounds, C diagnostic mapping, or full
+Unicode API semantics. Shared normal/malformed and guard-page tests compare
+with the reference; expected noncanonical-input results differ deliberately,
+and the no-allocation OOM test is libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum

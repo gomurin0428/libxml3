@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,374 checks, 1,033 by flow analysis and 10,341 by provers;
+**11,395 checks, 1,038 by flow analysis and 10,357 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -148,6 +148,26 @@ preconditions. Actual native reads/bytes, pointer validity and readable
 bounds, C diagnostics/mapping, exception behavior, and complete semantics
 remain trusted. Shared raw-byte, Unicode-byte-count, and guard-page tests run
 against both implementations; the no-allocation test is libxml3-only.
+`xmlCheckUTF8` uses `XML3_Text.Buffers.Check_UTF8` to stream NUL-terminated
+input through a four-byte stack buffer, validating each scalar with
+`XML3_Text.Validate_UTF8 (XML_Only => False)`. This rejects malformed,
+truncated, overlong, surrogate, and out-of-range encodings, while accepting
+ASCII controls and Unicode noncharacters; XML character validity is separate.
+Existing XML parsing and name/content validation retain their XML-character
+checks.
+The stricter result intentionally differs from the pinned reference's
+permissive acceptance of noncanonical encodings. NULL/malformed input returns
+0 without a diagnostic, empty input returns 1, and a boundary NUL is accepted.
+If no NUL is found within `Max_Bytes`, DOM error 115 is recorded and 0 returned;
+unexpected exceptions map to error 1 and 0. No allocation, mutation, or
+transcoding occurs. `Check_UTF8` is proved for 16 checks and
+`Validate_UTF8` for 21 checks, covering control/index safety and native-call
+preconditions rather than actual foreign bytes, readable bounds, pointer
+validity, C diagnostics, or complete API semantics. The reduced-cap Ada test
+avoids constructing a huge public C string. Shared ordinary/malformed and
+guard-page vectors run against the pinned reference and libxml3, with
+noncanonical expectations deliberately differing; the no-allocation test is
+libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` for a bounded
 sum and status/result contract. The adapter checks a positive right-hand span
 before converting it, and maps the reference's negative-length and NULL-input
@@ -210,7 +230,7 @@ The QName proof includes 15 checks for `Build`, 8 for `Compare`, 10 for
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` has 12.
 The entity
-summaries report 0 flow errors, 136 warnings, and 0 `pragma Assume`
+summaries report 0 flow errors, 137 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -241,7 +261,7 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Assertions | 1,486 |
 | Functional contracts | 3,732 |
 | Termination | 204 |
-| **Total** | **11,374** |
+| **Total** | **11,395** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -611,8 +631,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-6c1200ca5ca86c17c65d89fb4621ef5cd79f7130e8970a7771a48b20aab09de4  src/xml3_c.adb
-71d9b69f8a9b1535c609428de55539c7cd212ed1519ca932ced7c3da2a4a45c4  src/xml3_c.ads
+0f3dabf0b057b6686c1837b7cf80011c69a8cdf3792a56397a3c93a7e0c10786  src/xml3_c.adb
+8a15622ac590fd0d4b587b39e97744efc8d67717b8c6a01c5822807f2e9b5d7b  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -655,17 +675,17 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_serialization.adb
 4a3c84a0b7ee2b7b1a0129b63f37e36b1547c8e75152c7463e06d3f019d0f217  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
-0540786136c12dbfd2829c2f46a43a0f6a8f6be7ed117f54116c91c8cf6aa631  src/xml3_text.adb
-fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
+1c7ab0d6e5a4588ed61292e2d89bed80fb1ead008c31cfe648b9a9d326bdc000  src/xml3_text.adb
+5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-5b44939229237858db06943bde9c6a546f426559fa26ba4c696c10cc04413713  src/xml3_text-buffers.adb
-9f95cf7790ed4b23c90a375ef6694ff00f9a46ed1ab325043089f2614b08ba8f  src/xml3_text-buffers.ads
+f7267a5d9844834ac20d4f34189fed8541e1a9e30594e624bf5b3c43a162cf4b  src/xml3_text-buffers.adb
+fc8d65d5eaf487547a685ad6541efcb436daff71848c7f679f734b5f126ca684  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-55a0b26ab36142a82b44dc7cb13789fda99806bd267bddcb8a74dc3f1a63a4a6  include/libxml/xmlstring.h
+dccce23fdb67411fdea78a3e9ae373c9106e2b700e2ae8d667a92daf02af3390  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-a522bbb54c76653eeb785342c295e85f448dd7dde9b8d8231e2e4958991b643e  Makefile
+ba6f47627a7af4d37d3e55aec655bbd226023e55aa087fcc5accc001c95b4e62  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

@@ -2299,6 +2299,21 @@ package body XML3_C is
          return 0;
    end Child_Element_Count;
 
+   function Check_UTF8 (Item : System.Address) return Interfaces.C.int is
+      Status : XML3_Text.Buffers.UTF8_Status;
+      use type XML3_Text.Buffers.UTF8_Status;
+   begin
+      XML3_Text.Buffers.Check_UTF8 (Item, Status);
+      if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
+         Report_Dom_Error (115);
+      end if;
+      return (if Status = XML3_Text.Buffers.UTF8_Valid then 1 else 0);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return 0;
+   end Check_UTF8;
+
    function Append_String
      (Item, Addition : System.Address; Length : Interfaces.C.int;
       Terminated : Boolean) return System.Address
