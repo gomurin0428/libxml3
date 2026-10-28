@@ -18,6 +18,42 @@
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 
+static void test_char_string_duplicates(void) {
+    char source[] = {'a', (char)0xff, 0, 'z'};
+    const xmlChar expected[] = {'a', 0xff, 0};
+    assert(!xmlCharStrdup(NULL));
+    assert(!xmlCharStrndup(NULL, 0) && !xmlCharStrndup(NULL, INT_MAX));
+    assert(!xmlCharStrndup(source, -1) && !xmlCharStrndup(source, INT_MIN));
+    xmlChar *copy = xmlCharStrdup(source);
+    assert(copy && copy != (xmlChar *)source && memcmp(copy, expected, sizeof(expected)) == 0);
+    source[0] = 'b';
+    assert(copy[0] == 'a');
+    source[0] = 'a';
+    xmlFree(copy);
+    for (int length = 0; length <= (int)sizeof(source); ++length) {
+        size_t copied = length < 2 ? (size_t)length : 2;
+        copy = xmlCharStrndup(source, length);
+        assert(copy && copy != (xmlChar *)source);
+        assert(memcmp(copy, expected, copied) == 0 && copy[copied] == 0);
+        xmlFree(copy);
+    }
+    copy = xmlCharStrdup("");
+    assert(copy && copy[0] == 0);
+    xmlFree(copy);
+    copy = xmlCharStrndup("", 7);
+    assert(copy && copy[0] == 0);
+    xmlFree(copy);
+    copy = xmlCharStrdup("<r>名</r>");
+    assert(copy);
+    xmlDocPtr doc = xmlReadMemory((const char *)copy, xmlStrlen(copy), NULL, NULL, 0);
+    xmlFree(copy);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(content && strcmp((const char *)content, "名") == 0);
+    xmlFree(content);
+    xmlFreeDoc(doc);
+}
+
 static unsigned reference_case_map(unsigned value) {
     return (value >= 'A' && value <= 'Z') || value == '[' ? value + 32 : value;
 }
@@ -188,6 +224,24 @@ static void test_string_duplicates(void) {
         assert(!xmlStrndup(unreadable, INT_MAX));
         xmlResetLastError();
 #endif
+        copy = xmlCharStrdup((const char *)source);
+        assert(copy && strcmp((const char *)copy, "ab") == 0);
+        xmlFree(copy);
+        copy = xmlCharStrndup((const char *)source, 100);
+        assert(copy && strcmp((const char *)copy, "ab") == 0);
+        xmlFree(copy);
+        copy = xmlCharStrndup((const char *)unreadable, 0);
+        assert(copy && copy[0] == 0);
+        xmlFree(copy);
+        assert(!xmlCharStrndup((const char *)unreadable, INT_MIN));
+#ifndef XML3_REFERENCE_VERSION
+        assert(!xmlCharStrndup((const char *)unreadable, INT_MAX));
+        xmlResetLastError();
+#endif
+        source[2] = 0xff;
+        copy = xmlCharStrndup((const char *)source, 3);
+        assert(copy && memcmp(copy, source, 3) == 0 && copy[3] == 0);
+        xmlFree(copy);
         for (size_t i = 0; i < sizeof(bounded_comparisons) / sizeof(*bounded_comparisons); ++i) {
             bounded_compare_fn compare = bounded_comparisons[i];
             assert(compare(unreadable, unreadable, INT_MAX) == 0);
@@ -448,6 +502,7 @@ static void test_ranges(void) {
 
 int main(void) {
     test_string_duplicates();
+    test_char_string_duplicates();
     test_string_concatenation();
     test_bounded_string_comparisons();
 #ifdef XML3_REFERENCE_VERSION

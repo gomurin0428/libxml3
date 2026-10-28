@@ -91,6 +91,14 @@ raw bytes を埋め込みNULを含めて正確に複製して末尾NULを付加�
 入力を読み取らず、所有権付きの空文字列を返し、負または上限超過の長さは拒否します。
 NULL入力はNULLを返し、返却値は `xmlFree` で解放します。UTF-8検証は行わず、native
 pointer、読み取り可能性、allocation、ABI は信頼境界です。
+`xmlCharStrdup` は `char *` 版の `xmlStrdup` で、`xmlCharStrndup` は `char *` 入力を
+最大 `len` bytes 読み、先にNULがあればそこで止まります。後者は `xmlStrndup` と異なり
+指定長の埋め込みNUL以降をコピーしません。0長は入力を読まず、NULLまたは負長はNULLを返し、
+両APIは `Max_Input` 上限を適用し、`xmlCharStrndup` の `len` 超過は読み取り前に拒否します。
+入力byteは高位bitも含め変換・UTF-8検証せず保持し、
+返却値は `xmlFree` で解放します。pinned reference はNULが早期にあっても `len+1` bytesを
+allocationしますが、余剰tailは未規定です。libxml3はコピーprefix+NULだけを確保し、
+余剰capacityもallocation-size equivalenceも保証しません。テストは定義済み文字列内容のみを比較します。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

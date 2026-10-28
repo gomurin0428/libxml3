@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlStrncatNew`
+* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -379,7 +379,18 @@ colon を含む name、無効または未対応の参照は拒否し、失敗時
 入力を読み取らず所有権付き空文字列を返し、負または上限超過の長さは拒否します。
 どちらも NULL 入力なら NULL を返し、返却値は `xmlFree` で解放してください。
 UTF-8検証は行わず、native pointer の有効性・読み取り可能性、allocation、C ABI は
-信頼境界です。`xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
+信頼境界です。`xmlCharStrdup` は `char *` 入力をNUL終端byte列として複製し、
+`xmlStrdup` と同じ内容を返します。`xmlCharStrndup` はNULL入力または負長でNULLを返し、
+非NULL・非負入力では最大 `len` bytesを読み、早いNULで止まります。これは指定長のraw spanを
+埋め込みNUL込みで複製する `xmlStrndup` とは異なります。長さ0は読み取りなしで所有権付き
+空文字列を返します。両APIは `Max_Input` 上限を適用し、`xmlCharStrndup` の `len` 超過は
+読み取り前に拒否します。高位bitを含む入力byteを変更・
+transcodeせず、UTF-8検証も行いません。返却値は `xmlFree` で解放してください。
+pinned reference は早いNULの後も `len+1` bytesを確保しますが、そのtailは未規定です。
+libxml3はコピーしたprefixと末尾NULのみを確保し、余剰capacityやallocation-size equivalence
+は保証しません。テストは未規定tailを検査せず、定義済みの返却文字列だけを比較します。
+native pointerの有効性、C conversion、allocation、byte writes、ABIは信頼境界です。
+`xmlStrncmp` と `xmlStrncasecmp` は `Max_Input` cutoffなしでC `int` の
 正の全範囲（早期停止時の `INT_MAX` を含む）までraw byteを比較し、
 不一致・NUL・上限で停止します。`len <= 0` はpointer判定より先に0を返し、同一pointerは0、
 NULLの左辺は-1、NULLの右辺は+1です。`xmlStrncmp` はunsigned byte差を返します。
