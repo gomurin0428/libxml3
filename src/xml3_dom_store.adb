@@ -1,5 +1,6 @@
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
+with XML3_DOM_Store.Properties;
 
 package body XML3_DOM_Store with SPARK_Mode is
    use XML3_DOM;
@@ -402,6 +403,11 @@ package body XML3_DOM_Store with SPARK_Mode is
       Result := System.Null_Address;
       Status := Invalid_Argument;
       if P = Null_Node or else C = Null_Node then
+         return;
+      end if;
+      if Node (S.Current.all, C).Kind = Attribute_Node then
+         XML3_DOM_Store.Properties.Add_Property
+           (S, Parent, Child, Result, Status);
          return;
       end if;
       if Node (S.Current.all, P).Kind not in Element_Node | Document_Node

@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,980 checks, 914 by flow analysis and 10,066 by provers;
+**11,050 checks, 927 by flow analysis and 10,123 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -12,17 +12,20 @@ memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetLang`, `xmlNodeSetSpacePreserve`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
 `xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`,
-`xmlNewDocProp`, `xmlNewCDataBlock`, `xmlLastElementChild`, and
-`xmlPreviousElementSibling`
+`xmlNewDocProp`, managed-attribute attachment through `xmlAddChild`,
+`xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
 through the SPARK Store/Runtime. The entity summaries report
-0 flow errors, 131 warnings, and 0 `pragma Assume`
+0 flow errors, 132 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
 `xml3_dom_allocation.ads` spec failed (`cannot generate code for file ...
 (package spec)`); GNATprove continued with partial representation data. This
 warning is not resolved by the successful proof. Native representation/layout
-is outside the claim. Trusted external-termination warnings also remain.
+is outside the claim. One additional benign warning reports that the
+initialization of `Existing` in `Store.Properties.Add_Property` has no effect,
+because `Find_Matching_Property` initializes that `out` parameter before use.
+Trusted external-termination warnings also remain.
 
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a proof of the selected SPARK units and their written contracts, not
@@ -32,13 +35,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 252 |
-| Initialization | 519 |
-| Runtime checks | 4,942 |
+| Data dependencies | 254 |
+| Initialization | 530 |
+| Runtime checks | 4,971 |
 | Assertions | 1,470 |
-| Functional contracts | 3,602 |
+| Functional contracts | 3,630 |
 | Termination | 195 |
-| **Total** | **10,980** |
+| **Total** | **11,050** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -201,9 +204,21 @@ path owns document affiliation, value-reference decoding, child construction,
 and failure cleanup; the C adapter selects the mode, converts inputs, locks,
 and maps statuses/errors without traversing DOM fields.
 The tested NULL/empty behavior, document-first attribute lifetime, rejected
-invalid references/names, and OOM preservation are runtime evidence. Attribute
-attachment and standalone serialization are unsupported, and the API's complete
-C semantics, native pointer validity, and ABI are not formally proved.
+invalid references/names, and OOM preservation are runtime evidence. Managed
+attributes can be attached to an element through `xmlAddChild`, subject to the
+same-document/documentless restriction; the API's complete C semantics, native
+pointer validity, and ABI are not formally proved.
+
+`Store.Add_Child` dispatches managed attributes to
+`Store.Properties.Add_Property`; `Store.Queries.Find_Matching_Property` compares
+local-name bytes and namespace-href bytes. A null namespace is distinct from a
+namespace object, and a non-null namespace with a null href is rejected.
+Re-adding the parent's last attribute is a no-op even when an earlier duplicate
+exists. Otherwise the matching attribute is released only after the incoming
+attribute attaches successfully. Core attachment still rejects cross-document
+moves, preserving both attributes. Namespace reconciliation, attribute unlink,
+and detached-attribute serialization remain unsupported. These Store checks do
+not establish full public C semantics or native-boundary safety.
 
 `xmlNewCDataBlock` selects `CData_Node` in the same C/Runtime/Store path. The
 core `Create_Node` postcondition explicitly guarantees a null `Name` address
@@ -397,13 +412,13 @@ f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_s
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
-bc71cab53c16e4f4b9bcc59ab5e2a83a0c33b1c4f8c44adbf768024acc3ebb2d  src/xml3_dom_store-properties.adb
-4d598d091c912dbb6f909efd12fcd8fe556b51ff2fc02754d8b314aa61666750  src/xml3_dom_store-properties.ads
-72b207939cdd77285e860704a65e4200b7d8050a7c22794d72b49f28cc0c1f5b  src/xml3_dom_store-queries.adb
-ec83b494219adf3df84b4bcc01a4cbe10a295d5abc87dad2af0a4390eb254efd  src/xml3_dom_store-queries.ads
+2c5f2910bde31cda9af6496a4760dfbfeb3db5b7b50f606340bc915a569b92f6  src/xml3_dom_store-properties.adb
+75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
+73d29d01ece7304e4758a8b8f9c4c66e1ec7566489801becadf2c696560fe7db  src/xml3_dom_store-queries.adb
+ca1bce9284fdbaf9673ba55c57ebd91db2cea5637179aa6f0a364fec5316a1e4  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
-ea64a3ca261c74cb4c0472d38d0994846e64c76ffee67f0b887b9eb47d8e9974  src/xml3_dom_store.adb
+f76482032cfa1d60166d6cd13b0aa71f406d84dfb6341fe8b3233247d62905e4  src/xml3_dom_store.adb
 d9b827c14c465ff57025dd6b2ef07326287abcb093ce0fde1f498ecfa136816b  src/xml3_dom_store.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
 095e4c527eced72f9fe7d7cf91f4fe637358beb094a53b9bde84bf3c2f6a904d  src/xml3_encoding.ads
@@ -423,7 +438,7 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 b29125a455f4c3c638c9702ac4a6626e62d4b8a81a51cbea56d0de59a2a32476  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-1c4ef2376df1d47ce15f5f2e24d10efe51de439a71de1d3671f500aef45172e4  Makefile
+d076dd960c654c0aba694e26bdac00f7dda6c01750b3f438d6a450c46e4fc994  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

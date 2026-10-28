@@ -82,8 +82,11 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
 値の文字参照は展開し、NULL/空文字列はいずれも text child を作りません。
-属性は `xmlFreeProp` で解放でき、文書先行解放後も保持されます。属性の接続や単独の
-シリアライズはこのサブセットではサポートしません。
+属性は `xmlFreeProp` で解放でき、文書先行解放後も保持されます。`xmlAddChild` で
+同一文書または文書なしの要素へ接続できます。既存属性との照合は local name と namespace
+href による expanded name で行い、接続成功後に一致属性を置き換えます。既に最後の属性なら
+重複があっても no-op です。namespace reconciliation と detached attribute の単独シリアライズは
+このサブセットではサポートしません。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

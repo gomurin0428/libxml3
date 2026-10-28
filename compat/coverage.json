@@ -180,8 +180,8 @@
   },
   "function:tree.h:xmlNewDocProp": {
     "implementation": "partial",
-    "scope": "Detached unnamespaced attribute created through the shared SPARK document-node path. Optional document must be managed/live and is retained for lifetime; NULL document is allowed. Predefined/numeric references are decoded, invalid/unsupported references are rejected transactionally; NULL/empty value creates no text child. NULL and colon-containing names are rejected. Attribute attachment and standalone serialization are unsupported; XML-name completeness, native pointers/ABI, and full C semantics are not proved.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "Detached unnamespaced attribute created through the shared SPARK document-node path. Optional document must be managed/live and is retained for lifetime; NULL document is allowed. Predefined/numeric references are decoded, invalid/unsupported references are rejected transactionally; NULL/empty value creates no text child. NULL and colon-containing names are rejected. A managed attribute can be attached to an element by xmlAddChild under the same-document/documentless restriction, replacing a matching expanded name only after attachment succeeds. Standalone serialization is unsupported; XML-name completeness, native pointers/ABI, and full C semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/attribute-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewCDataBlock": {
@@ -234,9 +234,10 @@
   },
   "function:tree.h:xmlAddChild": {
     "implementation": "partial",
-    "scope": "限定 node types と same-document/documentless subtree。document parent は text/CDATA 直下と second root を拒否。adjacent text merge。cross-document move と属性追加は未対応。",
+    "scope": "限定 node types と same-document/documentless subtree。document parent は text/CDATA 直下と second root を拒否。adjacent text merge。element parent は managed attribute を expanded name (local-name bytes + namespace-href bytes) で照合して追加し、既存一致属性を新属性の Attach 成功後に解放。namespace object が異なっても href 一致で matching、null namespace は区別し、non-null namespace with null href は拒否。最後の属性を再追加すると earlier duplicate があっても no-op。cross-document move は拒否。namespace reconciliation、attribute unlink、standalone attribute serialization は未対応。",
     "tests": [
       "tests/dom-test.c",
+      "tests/attribute-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"

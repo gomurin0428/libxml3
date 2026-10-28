@@ -120,7 +120,178 @@ static void test_standalone_attributes(void) {
     xmlResetLastError();
 }
 
+static void assert_round_trip(xmlDocPtr doc, const char *name,
+                              const char *uri, const char *value) {
+    xmlChar *bytes = NULL;
+    int size = 0;
+    xmlDocPtr parsed;
+    xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+    assert(bytes && size > 0);
+    parsed = xmlReadMemory((const char *)bytes, size, NULL, NULL, 0);
+    assert(parsed);
+    assert_value(xmlHasNsProp(xmlDocGetRootElement(parsed), BAD_CAST name,
+                             BAD_CAST uri), value);
+    xmlFreeDoc(parsed);
+    xmlFree(bytes);
+}
+
+static void test_attach_attributes(void) {
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr other;
+    xmlAttrPtr first, old, last, replacement, source, empty;
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    other = xmlNewChild(root, NULL, BAD_CAST "other", NULL);
+    first = xmlNewProp(root, BAD_CAST "first", BAD_CAST "keep");
+    old = xmlNewProp(root, BAD_CAST "a", BAD_CAST "old");
+    last = xmlNewProp(root, BAD_CAST "last", BAD_CAST "last");
+    replacement = xmlNewDocProp(doc, BAD_CAST "a", BAD_CAST "new&amp;value");
+    assert(other && first && old && last && replacement);
+    assert(xmlAddChild(root, (xmlNodePtr)replacement) == (xmlNodePtr)replacement);
+    assert(root->children == other && root->last == other);
+    assert(root->properties == first && first->next == last && last->prev == first);
+    assert(last->next == replacement && replacement->prev == last);
+    assert(replacement->next == NULL && replacement->parent == root);
+    assert_value(replacement, "new&value");
+    assert_round_trip(doc, "a", NULL, "new&value");
+
+    assert(xmlAddChild(root, (xmlNodePtr)replacement) == (xmlNodePtr)replacement);
+    assert(replacement->prev == last && replacement->next == NULL);
+    assert(xmlAddChild(root, (xmlNodePtr)first) == (xmlNodePtr)first);
+    assert(root->properties == last && last->prev == NULL);
+    assert(last->next == replacement && replacement->next == first);
+    assert(first->prev == replacement && first->next == NULL);
+
+    source = xmlNewProp(other, BAD_CAST "a", BAD_CAST "moved");
+    assert(source);
+    assert(xmlAddChild(root, (xmlNodePtr)source) == (xmlNodePtr)source);
+    assert(other->properties == NULL);
+    assert(last->next == first && first->prev == last);
+    assert(first->next == source && source->prev == first && source->next == NULL);
+    assert(source->doc == doc && source->parent == root);
+    assert_value(source, "moved");
+    empty = xmlNewDocProp(NULL, BAD_CAST "empty", NULL);
+    assert(empty && xmlAddChild(other, (xmlNodePtr)empty) == (xmlNodePtr)empty);
+    assert(empty->doc == doc && empty->parent == other && empty->children == NULL);
+    assert_round_trip(doc, "a", NULL, "moved");
+    xmlFreeDoc(doc);
+}
+
+static void test_attach_namespace_attributes(void) {
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNsPtr p, q, z;
+    xmlAttrPtr plain, old, different, replacement;
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    p = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "p");
+    q = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "q");
+    z = xmlNewNs(root, BAD_CAST "urn:other", BAD_CAST "z");
+    assert(p && q && z);
+    plain = xmlNewProp(root, BAD_CAST "id", BAD_CAST "plain");
+    old = xmlNewNsProp(root, p, BAD_CAST "id", BAD_CAST "old");
+    different = xmlNewNsProp(root, z, BAD_CAST "id", BAD_CAST "other");
+    replacement = xmlNewNsProp(NULL, q, BAD_CAST "id", BAD_CAST "new");
+    assert(plain && old && different && replacement);
+    assert(xmlAddChild(root, (xmlNodePtr)replacement) == (xmlNodePtr)replacement);
+    assert(root->properties == plain && plain->next == different);
+    assert(different->prev == plain && different->next == replacement);
+    assert(replacement->prev == different && replacement->next == NULL);
+    assert(replacement->ns == q && replacement->doc == doc);
+    assert(xmlHasNsProp(root, BAD_CAST "id", BAD_CAST "urn:same") == replacement);
+    assert(xmlHasNsProp(root, BAD_CAST "id", NULL) == plain);
+    assert_value(different, "other");
+    assert_round_trip(doc, "id", "urn:same", "new");
+    xmlFreeDoc(doc);
+}
+
+static void test_attach_duplicate_tail(void) {
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlAttrPtr first, last;
+    assert(root);
+    first = xmlNewProp(root, BAD_CAST "a", BAD_CAST "first");
+    last = xmlNewProp(root, BAD_CAST "a", BAD_CAST "last");
+    assert(first && last);
+    assert(xmlAddChild(root, (xmlNodePtr)last) == (xmlNodePtr)last);
+    assert(root->properties == first && first->next == last && last->prev == first);
+    assert(xmlAddChild(root, (xmlNodePtr)first) == (xmlNodePtr)first);
+    assert(root->properties == last && last->next == first && first->prev == last);
+    assert(last->prev == NULL && first->next == NULL);
+    xmlFreeNode(root);
+}
+
 #ifndef XML3_REFERENCE_TEST
+static void test_attach_cross_document_rejection(void) {
+    static const char input[] = "<source a='copied'><left/></source>";
+    xmlDocPtr source_doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlDocPtr target_doc = xmlNewDoc(NULL);
+    xmlNodePtr target = xmlNewNode(NULL, BAD_CAST "target");
+    xmlNodePtr source;
+    xmlAttrPtr attr, old, tail;
+    assert(source_doc && target_doc && target);
+    assert(xmlDocSetRootElement(target_doc, target) == NULL);
+    source = xmlDocGetRootElement(source_doc);
+    attr = source->properties;
+    old = xmlNewProp(target, BAD_CAST "a", BAD_CAST "old");
+    tail = xmlNewProp(target, BAD_CAST "tail", BAD_CAST "keep");
+    assert(attr && old && tail);
+    assert(xmlAddChild(target, (xmlNodePtr)attr) == NULL);
+    assert(source->properties == attr && source->children != NULL);
+    assert(target->properties == old && old->next == tail && tail->prev == old);
+    assert(attr->parent == source && attr->prev == NULL && attr->next == NULL);
+    assert(attr->doc == source_doc && attr->children->doc == source_doc);
+    assert_value(attr, "copied");
+    assert_value(old, "old");
+    xmlFreeDoc(source_doc);
+    assert_round_trip(target_doc, "a", NULL, "old");
+    xmlFreeDoc(target_doc);
+}
+
+static void test_attach_rejections_and_namespace_lifetime(void) {
+    xmlDocPtr target_doc = xmlNewDoc(NULL);
+    xmlNodePtr target = xmlNewNode(NULL, BAD_CAST "target");
+    xmlNodePtr text = xmlNewText(BAD_CAST "unchanged");
+    xmlNode unmanaged = {0};
+    xmlNodePtr source;
+    xmlAttrPtr attr, old;
+    xmlNsPtr ns, source_ns;
+    assert(target_doc && target && text);
+    assert(xmlDocSetRootElement(target_doc, target) == NULL);
+    source = xmlNewChild(target, NULL, BAD_CAST "source", NULL);
+    assert(source);
+    source_ns = xmlNewNs(source, BAD_CAST "urn:move", BAD_CAST "p");
+    ns = xmlNewNs(target, BAD_CAST "urn:move", BAD_CAST "p");
+    assert(source_ns && ns);
+    attr = xmlNewNsProp(source, source_ns, BAD_CAST "a", BAD_CAST "kept");
+    old = xmlNewNsProp(target, ns, BAD_CAST "a", BAD_CAST "old");
+    assert(attr && old);
+    assert(xmlAddChild(NULL, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddChild((xmlNodePtr)target_doc, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddChild(text, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddChild((xmlNodePtr)old, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddChild(&unmanaged, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddChild(target, &unmanaged) == NULL);
+    assert(source->properties == attr && attr->parent == source);
+    assert(attr->prev == NULL && attr->next == NULL && attr->doc == target_doc);
+    assert(target->properties == old && old->parent == target && old->next == NULL);
+    assert_value(attr, "kept");
+    assert(strcmp((const char *)text->content, "unchanged") == 0);
+    xmlFreeNode(text);
+    assert(xmlAddChild(target, (xmlNodePtr)attr) == (xmlNodePtr)attr);
+    assert(target->properties == attr && attr->ns == source_ns);
+    assert(source->properties == NULL);
+    xmlFreeNode(source);
+    assert(strcmp((const char *)attr->ns->href, "urn:move") == 0);
+    assert_value(attr, "kept");
+    assert_round_trip(target_doc, "a", "urn:move", "kept");
+    xmlUnlinkNode(target);
+    xmlFreeDoc(target_doc);
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "after&amp;free") == 0);
+    assert_value(attr, "after&free");
+    assert(strcmp((const char *)attr->ns->href, "urn:move") == 0);
+    xmlFreeNode(target);
+    xmlResetLastError();
+}
+
 static void assert_tree_error(void) {
     assert(xmlGetLastError() != NULL);
     assert(xmlGetLastError()->domain == XML_FROM_TREE);
@@ -209,7 +380,12 @@ int main(void) {
     test_edit_flow();
     test_parsed_attributes();
     test_standalone_attributes();
+    test_attach_attributes();
+    test_attach_namespace_attributes();
+    test_attach_duplicate_tail();
 #ifndef XML3_REFERENCE_TEST
+    test_attach_cross_document_rejection();
+    test_attach_rejections_and_namespace_lifetime();
     test_rejections_and_safe_free();
     test_detached_lifetime_and_errors();
 #endif

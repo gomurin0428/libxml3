@@ -10,6 +10,14 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
    type XML_Property_Kind is (Language_Property, Space_Property);
    type Space_Policy is (Unspecified, Default_Space, Preserve_Space);
 
+   procedure Find_Matching_Property
+     (S : Store; Element, Attribute : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => (if Status /= XML3_DOM_Constructors.Created then
+         Result = System.Null_Address);
+
    procedure Get_Inherited_XML_Property
      (S : Store; Facade : System.Address; Mode : XML_Property_Kind;
       Result : out System.Address; Space : out Space_Policy;

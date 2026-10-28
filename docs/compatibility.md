@@ -60,7 +60,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
-  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、`xmlAddChild`、
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
@@ -110,7 +110,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 
 ### 限定的な作成・編集 API
 
-`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`,
 `xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、
@@ -123,11 +123,16 @@ XML name/UTF-8 の妥当性検証は行いません。`xmlNewText(NULL)` は con
 の text node を作ります。
 
 `xmlAddChild` は document/element 親と element、text、comment、CDATA、PI 子を
-扱います。element 親ではこの子型を受け入れますが、document 親への text/CDATA
-直下追加と、すでに root がある document への別 element 追加は拒否します。
-隣接 text は入力内容を先に確保してから既存末尾に結合し、既存末尾のポインターを
-返します。`xmlAddChild` による属性追加、`xmlUnlinkNode` による attribute unlink、
-未対応 node type の編集は拒否します。
+扱い、element 親には managed attribute も追加できます。document 親への text/CDATA
+直下追加と、すでに root がある document への別 element 追加は拒否します。隣接 text は
+入力内容を先に確保してから既存末尾に結合し、既存末尾のポインターを返します。
+attribute の接続は同一文書または文書なしの subtree に限り、cross-document move は
+属性と親の状態を変えず拒否します。既存属性との照合は local-name bytes と namespace-href
+bytes による expanded name で行い、namespace object が異なっても href が同じなら一致します。
+null namespace は namespace object と区別し、non-null namespace の null href は拒否します。
+最初の一致属性は新属性の Attach 成功後に解放されます。既に最後の属性を再追加する場合は、
+先行する重複があっても no-op です。namespace reconciliation は行いません。
+`xmlUnlinkNode` による attribute unlink と未対応 node type の編集は拒否します。
 
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を
@@ -251,13 +256,14 @@ UTF-8/XML文字の検査は出力時に行い、`]]>` は複数CDATAに分割し
 raw の空文字列は空 text child を作り、NULL は作りません。文書・namespace の寿命、
 要素作成後に text 確保が失敗した場合の後始末は SPARK Store/Runtime が管理します。
 dictionary interning、登録callback、一般実体の展開は未対応です。
-`xmlNewDocProp` は未接続の無namespace属性を作成します。NULL doc では文書なし、
+`xmlNewDocProp` は未接続の無namespace属性を作成します。作成後は `xmlAddChild` で
+同一文書または文書なしの element parent に接続できます。NULL doc では文書なし、
 non-NULL doc は管理中の live document に限り、属性はその owner を保持するため
 文書先行解放後も `xmlFreeProp` まで存続します。値は `xmlNewDocNode` と同じ範囲で
 文字参照を展開し、NULL/空文字列はどちらも text child を作りません。NULL name と
 colon を含む name、無効または未対応の参照は拒否し、失敗時に未公開属性を残しません。
-namespace付き属性、`xmlAddChild` による接続、detached attribute 単独のシリアライズは
-このサブセットの対象外です。native pointer と C ABI は信頼境界です。
+この constructor 自体は namespace付き属性を作成しません。detached attribute 単独の
+シリアライズは対象外です。native pointer と C ABI は信頼境界です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
