@@ -17,6 +17,8 @@
 
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
+typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
+static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
 
 static void test_qname_equality(void) {
     static const struct { const char *prefix, *name, *value; int equal; } cases[] = {
@@ -131,6 +133,58 @@ static void test_char_string_duplicates(void) {
 
 static unsigned reference_case_map(unsigned value) {
     return (value >= 'A' && value <= 'Z') || value == '[' ? value + 32 : value;
+}
+
+static void test_substring_search(void) {
+    static const struct { const char *text, *pattern; int position[2]; } cases[] = {
+        {NULL, NULL, {-1, -1}}, {NULL, "x", {-1, -1}}, {"x", NULL, {-1, -1}},
+        {"", "", {0, 0}}, {"", "x", {-1, -1}}, {"abc", "", {0, 0}},
+        {"abc", "abc", {0, 0}}, {"abc", "bc", {1, 1}}, {"abc", "c", {2, 2}},
+        {"ababa", "aba", {0, 0}}, {"aaab", "aab", {1, 1}},
+        {"abc", "abcd", {-1, -1}}, {"abcd", "bd", {-1, -1}},
+        {"xAbCabc", "abc", {4, 1}}, {"x[YZ", "{yz", {-1, 1}},
+        {"A", "a", {-1, 0}}, {"x名y", "名", {1, 1}},
+        {"x\0ab", "ab", {-1, -1}}, {"abcd", "bc\0z", {1, 1}},
+    };
+    for (size_t f = 0; f < sizeof(substring_searches) / sizeof(*substring_searches); ++f) {
+        substring_fn search = substring_searches[f];
+        for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+            const xmlChar *text = BAD_CAST cases[i].text;
+            int position = cases[i].position[f];
+            assert(search(text, BAD_CAST cases[i].pattern) ==
+                   (position < 0 ? NULL : text + position));
+        }
+        xmlChar alias[] = "aaaab";
+        assert(search(alias, alias + 2) == alias + 2);
+        assert(search(alias, alias) == alias);
+        xmlChar mutable[] = "left right";
+        const xmlChar *borrowed = search(mutable, BAD_CAST "right");
+        assert(borrowed == mutable + 5);
+        mutable[5] = 'R';
+        assert(*borrowed == 'R');
+        const xmlChar utf8[] = "名";
+        const xmlChar partial[] = {0x90, 0};
+        assert(search(utf8, partial) == utf8 + 1);
+    }
+    for (unsigned a = 1; a < 256; ++a) {
+        for (unsigned b = 1; b < 256; ++b) {
+            xmlChar text[] = {(xmlChar)a, 0}, pattern[] = {(xmlChar)b, 0};
+            assert(xmlStrstr(text, pattern) == (a == b ? text : NULL));
+            assert(xmlStrcasestr(text, pattern) ==
+                   (reference_case_map(a) == reference_case_map(b) ? text : NULL));
+        }
+    }
+    xmlChar *source = xmlCharStrdup("<r>Sample</r>");
+    assert(source);
+    const xmlChar *start = xmlStrcasestr(source, BAD_CAST "sample");
+    assert(start);
+    const xmlChar *end = xmlStrstr(start, BAD_CAST "</r>");
+    assert(end);
+    xmlChar *copy = xmlStrndup(start, (int)(end - start));
+    assert(copy);
+    xmlFree(source);
+    assert(xmlStrEqual(copy, BAD_CAST "Sample"));
+    xmlFree(copy);
 }
 
 static void test_bounded_string_comparisons(void) {
@@ -348,6 +402,21 @@ static void test_string_duplicates(void) {
 #ifndef XML3_REFERENCE_VERSION
         assert(xmlStrQEqual(source + 2, BAD_CAST "", source + 2) == 0);
 #endif
+        for (size_t i = 0; i < sizeof(substring_searches) / sizeof(*substring_searches); ++i) {
+            substring_fn search = substring_searches[i];
+            assert(search(NULL, unreadable) == NULL);
+            assert(search(unreadable, NULL) == NULL);
+            assert(search(unreadable, BAD_CAST "") == unreadable);
+            source[0] = 'a'; source[1] = 'b'; source[2] = 0;
+            assert(search(source, BAD_CAST "ab") == source);
+            assert(search(source, BAD_CAST "abcd") == NULL);
+            assert(search(source + 2, BAD_CAST "x") == NULL);
+            source[1] = 'x';
+            const xmlChar text[] = "ax";
+            assert(search(text, source + 1) == text + 1);
+            source[2] = 'x';
+            assert(search(source + 2, BAD_CAST "x") == source + 2);
+        }
         source[2] = 'A';
         assert(xmlStrncasecmp(source + 2, BAD_CAST "a", 1) == 0);
         assert(xmlStrncasecmp(source + 2, BAD_CAST "B", INT_MAX) == -1);
@@ -595,6 +664,7 @@ static void test_ranges(void) {
 int main(void) {
     test_string_duplicates();
     test_byte_search();
+    test_substring_search();
     test_qname_equality();
     test_char_string_duplicates();
     test_string_concatenation();

@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,299 checks, 999 by flow analysis and 10,300 by provers;
+**11,313 checks, 1,005 by flow analysis and 10,308 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -78,6 +78,19 @@ readable memory bounds, actual contents, address arithmetic, C diagnostics,
 and full public semantics remain trusted. Tests cover byte values, NUL
 termination, borrowed-pointer behavior, guard-page boundaries, and no native
 allocations.
+`xmlStrstr` and `xmlStrcasestr` use `XML3_Text.Buffers.Find_Substring` and the
+shared C `Search_Result` mapping. The SPARK contract proves that a match has
+non-NULL inputs and a position below `Max_Bytes`, while non-matches leave the
+position at zero; loop/read preconditions are discharged. NULL arguments return
+no match, and an empty needle returns the non-NULL haystack pointer without
+reading the haystack. The scan handles raw bytes through the first NUL,
+overlapping aliases, and UTF-8 fragments without validation or transcoding.
+The case-insensitive path retains the pinned `[` to `{` byte-map quirk rather
+than Unicode case folding. A boundary NUL is accepted, matches ending there
+can succeed, and required non-NUL data beyond the cap maps to diagnostic plus
+NULL. Early matches avoid a full scan. Native reads, foreign pointer validity
+and bounds, actual contents, address arithmetic, C error mapping, borrowed
+lifetime, and complete API equivalence remain trusted.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded`.
 SPARK proves bounded loop control and the -255 .. 255 result contract; the
 scan accepts the full nonnegative C `int` bound without a `Max_Input` cutoff,
@@ -135,7 +148,8 @@ is outside the claim. One additional benign warning reports that the
 initialization of `Existing` in `Store.Properties.Add_Property` has no effect,
 because `Find_Matching_Property` initializes that `out` parameter before use.
 Trusted external-termination warnings also remain. The string-duplicate,
-namespace-list, namespace-copy, and QName paths include trusted termination
+namespace-list, namespace-copy, QName, and substring-search paths include
+trusted termination
 diagnostics for native reads, allocation, writes and frees; an unreachable/no-effect
 diagnostic also remains for the portable pointer-array size guard on this 64-bit
 host.
@@ -148,13 +162,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 274 |
-| Initialization | 576 |
-| Runtime checks | 5,055 |
+| Data dependencies | 275 |
+| Initialization | 581 |
+| Runtime checks | 5,057 |
 | Assertions | 1,486 |
-| Functional contracts | 3,704 |
+| Functional contracts | 3,710 |
 | Termination | 204 |
-| **Total** | **11,299** |
+| **Total** | **11,313** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -524,8 +538,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-abea3908a7e3e5399e2d3440893ae65d352a45ea37ce3e6907b16eb40b84c2d0  src/xml3_c.adb
-140c1eb6b8ec5d902cb84a72225907d36e343a110b666fa1ccbe601157167b1d  src/xml3_c.ads
+1a629fad856ef73993eff0c9da06aa83a4ebcd46b4a47e7952302d1ca7f8e21a  src/xml3_c.adb
+07c1399f39bb56c0149b3ce6545cd5bfbf859a5cbb16c961b243655755810786  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -572,13 +586,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-0eed62d970e71ed86f9698ad0d2021dcb506511d1ebe44b249e5d97bc48acacc  src/xml3_text-buffers.adb
-8321e454f05e5fc9fb9273d87d4bee0ed22b2421b84cbe76862b0051326df2f0  src/xml3_text-buffers.ads
+bf5335fe9422e7c735b10be253f865b92f8cd233145bf5035b7b68271d2be45e  src/xml3_text-buffers.adb
+d594b7f8cd758e1aec59e63293dc99373e870ec8c8290ff1f1b355f88fea2bde  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-73082f7cf18fb96b4440bd6f744b4be239cc42af52bff93fa189cc91b981ffe1  include/libxml/xmlstring.h
+969b14e99979683ed13337f7f326bbfbb7136b05fbf38cb26643f3778ce9aa82  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-36f9d8e8941ff30c33ca8cbd943888ddcb936884796b0a00cd8f86aa7bae5c72  Makefile
+0fdf77eb0605dec5e484af121f93a497414f13948b088227c8e49a1fac90d4a7  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

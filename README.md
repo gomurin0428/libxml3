@@ -108,6 +108,17 @@ payload offset `0..Max_Bytes-1` を調べ、境界offset `Max_Bytes` のNULは�
 それ以降を読まず成功するため、長い文字列を一律拒否する上限ではありません。allocation、
 書き込み、UTF-8変換は行わず、実際のnative読み取り可能範囲、pointer、byte内容、address計算は
 信頼境界です。
+`xmlStrstr` と `xmlStrcasestr` は NUL 終端の raw byte 列から最初の substring を探し、
+一致した入力内 pointer を借用して返します。どちらかの入力が NULL なら NULL、非NULL
+haystack の空 needle は haystack pointer をそのまま返し、haystack を読みません。入力と
+pattern は最初の NUL で終端し、重なった入力、UTF-8 の途中 byte、その他の raw bytes を
+そのまま扱います。`xmlStrcasestr` は `A`–`Z` と pinned reference の `[` -> `{` を
+byte-map しますが、Unicode case folding や XML/UTF-8 検証は行いません。早い一致や空
+needle は全体を走査せず、`Max_Bytes` 未満の payload と境界の NUL を調べます。境界より
+先の non-NUL byte が必要なら診断を記録して NULL を返しますが、長い文字列を一律拒否する
+上限ではありません。返却 pointer は入力が有効な間だけ使い、`xmlFree` せず、allocation・
+書き込み・transcodeも行いません。native pointer、読み取り可能範囲、byte内容、address
+計算、完全なAPI意味論は信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

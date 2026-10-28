@@ -112,7 +112,20 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "qname-equal") == 0) {
+    if (strcmp(operation, "substring-search") == 0) {
+        xmlChar source[] = "aB[aB";
+        xml3_oom_enable(0);
+        assert(xmlStrstr(source, BAD_CAST "aB") == source);
+        assert(xmlStrcasestr(source, BAD_CAST "ab") == source);
+        assert(xmlStrcasestr(source, BAD_CAST "{") == source + 2);
+        assert(!xmlStrstr(source, BAD_CAST "missing"));
+        assert(xmlStrstr(source, BAD_CAST "") == source);
+        assert(!xmlStrcasestr(NULL, BAD_CAST "x"));
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "qname-equal") == 0) {
         xml3_oom_enable(0);
         assert(xmlStrQEqual(BAD_CAST "p", BAD_CAST "名", BAD_CAST "p:名") == 1);
         assert(xmlStrQEqual(BAD_CAST "p", BAD_CAST "n", BAD_CAST "p:x") == 0);
@@ -1637,6 +1650,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "substring-search") == 0) {
+        puts("substring search used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "qname-equal") == 0) {
         puts("QName equality used no native allocations");
         return 0;

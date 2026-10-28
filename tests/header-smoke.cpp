@@ -5,6 +5,10 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    const xmlChar *(*str_substring)(const xmlChar *, const xmlChar *) = xmlStrstr;
+    const xmlChar *(*str_case_substring)(const xmlChar *, const xmlChar *) = xmlStrcasestr;
+    (void)str_substring;
+    (void)str_case_substring;
     int (*str_q_equal)(const xmlChar *, const xmlChar *, const xmlChar *) = xmlStrQEqual;
     (void)str_q_equal;
     const xmlChar *(*str_character)(const xmlChar *, xmlChar) = xmlStrchr;

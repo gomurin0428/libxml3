@@ -15,6 +15,8 @@ typedef xmlChar *xmlCharPtr;
 
 int xmlStrcmp(const xmlChar *str1, const xmlChar *str2);
 const xmlChar *xmlStrchr(const xmlChar *str, xmlChar val);
+const xmlChar *xmlStrstr(const xmlChar *str, const xmlChar *val);
+const xmlChar *xmlStrcasestr(const xmlChar *str, const xmlChar *val);
 int xmlStrncmp(const xmlChar *str1, const xmlChar *str2, int len);
 int xmlStrncasecmp(const xmlChar *str1, const xmlChar *str2, int len);
 int xmlStrEqual(const xmlChar *str1, const xmlChar *str2);

@@ -325,6 +325,13 @@ package XML3_C is
      (Prefix, Name, Value : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlStrQEqual";
 
+   function Str_Substring (Item, Pattern : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlStrstr";
+
+   function Str_Case_Substring
+     (Item, Pattern : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlStrcasestr";
+
    function Char_Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCharStrdup";
 
