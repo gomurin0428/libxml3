@@ -14,6 +14,11 @@ int main() {
         xmlNsPtr (*)(xmlDocPtr, xmlNodePtr, const xmlChar *);
     const SearchNsFunction search_ns = xmlSearchNs;
     const SearchNsFunction search_ns_by_href = xmlSearchNsByHref;
+    using SearchNsSafeFunction = int (*)(xmlNodePtr, const xmlChar *, xmlNsPtr *);
+    const SearchNsSafeFunction search_ns_safe = xmlSearchNsSafe;
+    const SearchNsSafeFunction search_ns_by_href_safe = xmlSearchNsByHrefSafe;
+    (void)search_ns_safe;
+    (void)search_ns_by_href_safe;
     xmlAttrPtr (*new_prop)(xmlNodePtr, const xmlChar *, const xmlChar *) =
         xmlNewProp;
     xmlAttrPtr (*new_doc_prop)(xmlDocPtr, const xmlChar *, const xmlChar *) =

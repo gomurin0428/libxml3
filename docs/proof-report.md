@@ -25,7 +25,9 @@ its C status/output-pointer mapping is outside the proof. Public
 `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`, which composes
 the pure `Search_Namespace` query with lazy XML-binding creation for
 documentless managed nodes. The pure query remains the qualified-property
-rollback path. C adapters and libxml2 semantic equivalence, including
+rollback path. `xmlSearchNsSafe` and `xmlSearchNsByHrefSafe` reuse the same
+shared C lookup helper; clearing the output and mapping status to the C ABI are
+outside the proof. C adapters and libxml2 semantic equivalence, including
 append-versus-prepend declaration ordering, remain outside the proof. The
 entity summaries report 0 flow errors, 130 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
@@ -34,10 +36,9 @@ statements; warnings are not counted as discharged verification conditions.
 `xml3_dom_allocation.ads` spec failed (`cannot generate code for file ...
 (package spec)`); GNATprove continued with partial representation data. This
 warning is not resolved by the successful proof. Native representation/layout
-is outside the claim. One additional benign warning reports that the
-initialization of `Existing` in `Store.Properties.Add_Property` has no effect,
-because `Find_Matching_Property` initializes that `out` parameter before use.
-Trusted external-termination warnings also remain.
+is outside the claim. Remaining analyzer warnings include an ineffective
+initialization of `Facade` in `Store.Content.Append`, ignored outputs, and
+trusted external-termination warnings.
 
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a proof of the selected SPARK units and their written contracts, not
@@ -422,8 +423,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-0892e2020e3b6564e8aa8c331b1f94b761cc10c1b3fb3239ee27b15a676e88a4  src/xml3_c.adb
-377babb9cd7db1723832e32fe66b73f1625aca7be01e389942914ed971d8514f  src/xml3_c.ads
+a2a425b69e797a5e943a98aec62054a42104f4e4816d10559ae3c945616ec986  src/xml3_c.adb
+4564b7cef851725eb7c8bea641212fcaf651291a3a4470b81d9ba1113ffb9879  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -468,10 +469,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-e5fc981e6883d371779001f62925692f7f817871000dad63cb833b94957d4eae  include/libxml/tree.h
+3b419fe0348c9e6e4d36e0aac22940ee42f62f66dc5e06a90df43bdc45082846  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-08385072249ac2bc9cb5fa0fdde86e8b8fdbb1e545da6c3055d6a6890570e9ed  Makefile
+2e030a8354ba8795f07ea1be033ed408e71a53f1623d3322eaa6b3a0d397538a  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

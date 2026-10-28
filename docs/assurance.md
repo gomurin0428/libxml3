@@ -339,6 +339,11 @@ mutex・Runtime 呼び出し・status/exception 変換のみで、native の `ne
 属性更新内部では純粋な検索を維持し、更新失敗時の宣言の巻き戻し処理は変えていません。
 固定版比較・作成失敗後の再試行・既存宣言の保持・再検索の確保不要を実行検査します。
 
+`xmlSearchNsSafe` / `xmlSearchNsByHrefSafe` は同じ Runtime/Store 処理を使い、
+従来の検索も C 側の文字列変換・mutex・status 変換 helper を共有します。
+出力 pointer の初期化・status の C ABI への写像は証明外で、固定版比較・確保失敗・
+header/symbol テストで検査します。探索・作成・所有権の判断を C 側へ移していません。
+
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。
 文書・namespace の保持は `New_Doc_Content`、text 子の接続は既存の `Attach`、

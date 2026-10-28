@@ -1231,37 +1231,64 @@ int main(int argc, char **argv) {
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
     } else if (strcmp(operation, "ns-search-prefix") == 0 ||
-               strcmp(operation, "ns-search-href") == 0) {
+               strcmp(operation, "ns-search-href") == 0 ||
+               strcmp(operation, "ns-search-prefix-safe") == 0 ||
+               strcmp(operation, "ns-search-href-safe") == 0) {
         const xmlChar *uri = BAD_CAST "http://www.w3.org/XML/1998/namespace";
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
         xmlNsPtr existing, result;
-        int by_href = strcmp(operation, "ns-search-href") == 0;
+        int by_href = strstr(operation, "href") != NULL;
+        int safe = strstr(operation, "safe") != NULL;
+        int status = 0;
         assert(root);
         existing = xmlNewNs(root, BAD_CAST "urn:p", BAD_CAST "p");
         assert(existing);
         xml3_oom_enable(0);
         assert(!xmlSearchNs(NULL, root, BAD_CAST "missing"));
+        if (safe) {
+            result = existing;
+            assert(xmlSearchNsSafe(root, BAD_CAST "missing", &result) == 0);
+            assert(!result);
+        }
         assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
         xml3_oom_disable();
         xml3_oom_enable(fail_index);
-        result = by_href ? xmlSearchNsByHref(NULL, root, uri)
-                         : xmlSearchNs(NULL, root, BAD_CAST "xml");
+        if (safe) {
+            result = existing;
+            status = by_href ? xmlSearchNsByHrefSafe(root, uri, &result)
+                             : xmlSearchNsSafe(root, BAD_CAST "xml", &result);
+        } else {
+            result = by_href ? xmlSearchNsByHref(NULL, root, uri)
+                             : xmlSearchNs(NULL, root, BAD_CAST "xml");
+        }
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         if (injected) {
             assert(!result && root->nsDef == existing && !existing->next);
+            assert(!safe || status == -1);
             require_oom_error();
         } else {
-            assert(result && xmlStrEqual(result->href, uri));
+            assert(status == 0 && result && xmlStrEqual(result->href, uri));
         }
         xmlResetLastError();
-        result = xmlSearchNs(NULL, root, BAD_CAST "xml");
+        if (safe) {
+            status = by_href ? xmlSearchNsByHrefSafe(root, uri, &result)
+                             : xmlSearchNsSafe(root, BAD_CAST "xml", &result);
+            assert(status == 0);
+        } else {
+            result = xmlSearchNs(NULL, root, BAD_CAST "xml");
+        }
         assert(result && xmlStrEqual(result->href, uri));
         assert(xmlSearchNs(NULL, root, BAD_CAST "p") == existing);
         xml3_oom_enable(0);
         assert(xmlSearchNsByHref(NULL, root, uri) == result);
         assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == result);
+        if (safe) {
+            xmlNsPtr cached = NULL;
+            assert(xmlSearchNsByHrefSafe(root, uri, &cached) == 0);
+            assert(cached == result);
+        }
         assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
         xml3_oom_disable();
         assert(xmlGetLastError() == NULL);

@@ -255,6 +255,14 @@ package XML3_C is
      (Doc, Node, Href : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlSearchNsByHref";
 
+   function Search_Ns_Safe
+     (Node, Prefix, Output : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSearchNsSafe";
+
+   function Search_Ns_By_Href_Safe
+     (Node, Href, Output : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSearchNsByHrefSafe";
+
    function Has_Ns_Prop
      (Node, Name, Href : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlHasNsProp";

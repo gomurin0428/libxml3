@@ -1982,31 +1982,34 @@ package body XML3_C is
          return System.Null_Address;
    end Has_Prop;
 
-   function Search_Ns
-     (Doc, Node, Prefix : System.Address) return System.Address
+   function Search_Namespace_Value
+     (Node, Query : System.Address;
+      Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind;
+      Code : out Interfaces.C.int) return System.Address
    is
-      pragma Unreferenced (Doc);
       Result : System.Address := System.Null_Address;
-      Has_Value : constant Boolean := Prefix /= System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
+      Code := 1;
       if Node = System.Null_Address then
          return System.Null_Address;
       end if;
       declare
-         Value : constant String :=
-           (if Prefix = System.Null_Address then "" else C_String_Value (Prefix));
+         Value : constant String := C_String_Value (Query);
       begin
          declare
             Guard : XML3_DOM_Lock.Guard;
          begin
             XML3_DOM_Lock.Acquire (Guard);
             XML3_DOM_Runtime.Search_Namespace
-              (Node, XML3_DOM_Store.Queries.Prefix_Search,
-               Has_Value, Value, Result, Status);
+              (Node, Mode, Query /= System.Null_Address, Value, Result, Status);
          end;
          Report_Operation_Status (Status, Validation_Error => False);
+         Code := (case Status is
+                    when XML3_DOM_Constructors.Created => 0,
+                    when XML3_DOM_Constructors.No_Memory => -1,
+                    when others => 1);
          return Result;
       end;
    exception
@@ -2018,53 +2021,69 @@ package body XML3_C is
          return System.Null_Address;
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Code := -1;
          return System.Null_Address;
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end Search_Namespace_Value;
+
+   function Search_Ns
+     (Doc, Node, Prefix : System.Address) return System.Address
+   is
+      pragma Unreferenced (Doc);
+      Code : Interfaces.C.int;
+   begin
+      return Search_Namespace_Value
+        (Node, Prefix, XML3_DOM_Store.Queries.Prefix_Search, Code);
    end Search_Ns;
 
    function Search_Ns_By_Href
      (Doc, Node, Href : System.Address) return System.Address
    is
       pragma Unreferenced (Doc);
-      Result : System.Address := System.Null_Address;
-      Has_Value : constant Boolean := Href /= System.Null_Address;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
+      Code : Interfaces.C.int;
    begin
-      if Node = System.Null_Address then
-         return System.Null_Address;
+      return Search_Namespace_Value
+        (Node, Href, XML3_DOM_Store.Queries.Href_Search, Code);
+   end Search_Ns_By_Href;
+
+   function Search_Namespace_With_Status
+     (Node, Query, Output : System.Address;
+      Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind)
+      return Interfaces.C.int
+   is
+      Result : System.Address;
+      Code : Interfaces.C.int;
+   begin
+      Set_Address (Output, System.Null_Address);
+      if Output = System.Null_Address then
+         return 1;
       end if;
-      declare
-         Value : constant String :=
-           (if Href = System.Null_Address then "" else C_String_Value (Href));
-      begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Search_Namespace
-              (Node, XML3_DOM_Store.Queries.Href_Search,
-               Has_Value, Value, Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         return Result;
-      end;
+      Result := Search_Namespace_Value (Node, Query, Mode, Code);
+      Set_Address (Output, Result);
+      return Code;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
       when others =>
          Report_Dom_Error (1);
-         return System.Null_Address;
-   end Search_Ns_By_Href;
+         return 1;
+   end Search_Namespace_With_Status;
+
+   function Search_Ns_Safe
+     (Node, Prefix, Output : System.Address) return Interfaces.C.int
+   is
+   begin
+      return Search_Namespace_With_Status
+        (Node, Prefix, Output, XML3_DOM_Store.Queries.Prefix_Search);
+   end Search_Ns_Safe;
+
+   function Search_Ns_By_Href_Safe
+     (Node, Href, Output : System.Address) return Interfaces.C.int
+   is
+   begin
+      return Search_Namespace_With_Status
+        (Node, Href, Output, XML3_DOM_Store.Queries.Href_Search);
+   end Search_Ns_By_Href_Safe;
 
    function Has_Ns_Prop
      (Node, Name, Href : System.Address) return System.Address

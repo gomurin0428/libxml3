@@ -146,6 +146,8 @@ xmlNsPtr xmlSearchNs(xmlDocPtr doc, xmlNodePtr node,
                      const xmlChar *nameSpace);
 xmlNsPtr xmlSearchNsByHref(xmlDocPtr doc, xmlNodePtr node,
                            const xmlChar *href);
+int xmlSearchNsSafe(xmlNodePtr node, const xmlChar *prefix, xmlNsPtr *out);
+int xmlSearchNsByHrefSafe(xmlNodePtr node, const xmlChar *href, xmlNsPtr *out);
 xmlAttrPtr xmlHasNsProp(const xmlNode *node, const xmlChar *name,
                         const xmlChar *href);
 xmlChar *xmlGetNsProp(const xmlNode *node, const xmlChar *name,

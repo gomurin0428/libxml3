@@ -378,6 +378,101 @@ static void test_null_namespace_uri_lookup(void) {
     xmlFreeNode(root);
 }
 
+#ifndef XML3_REFERENCE_TEST
+typedef int (*ns_search_fn)(xmlNodePtr, const xmlChar *, xmlNsPtr *);
+
+static void assert_ns_status(ns_search_fn search, xmlNodePtr node,
+                             const xmlChar *query, int expected,
+                             xmlNsPtr expected_ns) {
+    xmlNs marker = {0};
+    xmlNsPtr result = &marker;
+    assert(search(node, query, &result) == expected);
+    assert(result == expected_ns);
+}
+
+static void test_namespace_status(void) {
+    const char input[] = "<root xmlns='urn:def' xmlns:p='urn:one'>"
+                         "<child xmlns:p='urn:two' a='1'>text</child>"
+                         "<target xmlns:p='urn:three'/></root>";
+    const xmlChar *xml_uri = BAD_CAST "http://www.w3.org/XML/1998/namespace";
+    xmlDocPtr doc = xmlReadMemory(input, sizeof(input) - 1, NULL, NULL, 0);
+    xmlNodePtr root, child, target;
+    xmlNsPtr p, result;
+    xmlChar *dump = NULL;
+    int size = 0;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    child = root->children;
+    target = child->next;
+    p = child->nsDef;
+    assert_ns_status(xmlSearchNsSafe, child, BAD_CAST "p", 0, p);
+    assert_ns_status(xmlSearchNsByHrefSafe, child, BAD_CAST "urn:two", 0, p);
+    assert_ns_status(xmlSearchNsByHrefSafe, child, BAD_CAST "urn:one", 0, NULL);
+    assert_ns_status(xmlSearchNsSafe, child, BAD_CAST "missing", 0, NULL);
+    assert_ns_status(xmlSearchNsSafe, child, NULL, 0, root->nsDef);
+    assert_ns_status(xmlSearchNsByHrefSafe, (xmlNodePtr)child->properties,
+                     BAD_CAST "urn:def", 0, NULL);
+    assert_ns_status(xmlSearchNsSafe, child->children, BAD_CAST "p", 0, p);
+    assert_ns_status(xmlSearchNsSafe, NULL, BAD_CAST "p", 1, NULL);
+    assert_ns_status(xmlSearchNsByHrefSafe, NULL, BAD_CAST "urn:two", 1, NULL);
+    assert_ns_status(xmlSearchNsSafe, (xmlNodePtr)p, BAD_CAST "p", 1, NULL);
+    assert_ns_status(xmlSearchNsByHrefSafe, (xmlNodePtr)p, NULL, 1, NULL);
+    assert_ns_status(xmlSearchNsSafe, (xmlNodePtr)doc, BAD_CAST "p", 0, NULL);
+    assert(xmlSearchNsSafe(child, BAD_CAST "p", NULL) == 1);
+    assert(xmlSearchNsByHrefSafe(child, xml_uri, NULL) == 1);
+    xmlUnlinkNode(child);
+    assert(xmlAddChild(target, child) == child);
+    assert_ns_status(xmlSearchNsSafe, child, BAD_CAST "p", 0, p);
+    assert_ns_status(xmlSearchNsByHrefSafe, child, BAD_CAST "urn:three", 0, NULL);
+    assert(xmlNewNsProp(child, p, BAD_CAST "added", BAD_CAST "value"));
+    xmlDocDumpMemoryEnc(doc, &dump, &size, "UTF-8");
+    assert(dump && size > 0);
+    {
+        xmlDocPtr parsed = xmlReadMemory((const char *)dump, size, NULL, NULL, 0);
+        xmlNodePtr moved;
+        assert(parsed);
+        moved = xmlDocGetRootElement(parsed)->children->children;
+        assert_ns_status(xmlSearchNsByHrefSafe, moved, BAD_CAST "urn:two",
+                         0, moved->nsDef);
+        xmlFreeDoc(parsed);
+    }
+    xmlFree(dump);
+#ifndef XML3_REFERENCE_TEST
+    xmlUnlinkNode(child);
+    xmlFreeDoc(doc);
+    assert_ns_status(xmlSearchNsSafe, child, BAD_CAST "p", 0, p);
+    assert(xmlSearchNsByHrefSafe(child, xml_uri, &result) == 0 && result);
+    xmlFreeNode(child);
+    {
+        xmlNode unmanaged = {0};
+        assert_ns_status(xmlSearchNsSafe, &unmanaged, BAD_CAST "p", 1, NULL);
+    }
+#else
+    xmlFreeDoc(doc);
+#endif
+    for (int by_href = 0; by_href < 2; ++by_href) {
+        ns_search_fn search = by_href ? xmlSearchNsByHrefSafe : xmlSearchNsSafe;
+        const xmlChar *query = by_href ? xml_uri : BAD_CAST "xml";
+        root = xmlNewNode(NULL, BAD_CAST "standalone");
+        assert(root && !root->nsDef);
+        assert(search(root, query, NULL) == 1 && !root->nsDef);
+        assert(search(root, query, &result) == 0 && result);
+        assert(root->nsDef == result && xmlStrEqual(result->href, xml_uri));
+        assert_ns_status(search, root, query, 0, result);
+        assert(xmlNewNsProp(root, result, BAD_CAST "lang", BAD_CAST "ja"));
+        xmlFreeNode(root);
+    }
+    root = xmlNewNode(NULL, BAD_CAST "null-uri");
+    assert(root);
+    p = xmlNewNs(root, NULL, BAD_CAST "p");
+    assert(p);
+    assert_ns_status(xmlSearchNsByHrefSafe, root, NULL, 0, p);
+    assert_ns_status(xmlSearchNsByHrefSafe, root, BAD_CAST "", 0, NULL);
+    assert_ns_status(xmlSearchNsSafe, root, BAD_CAST "p", 0, NULL);
+    xmlFreeNode(root);
+}
+#endif
+
 int main(void) {
 #ifdef XML3_REFERENCE_TEST
     assert(LIBXML_VERSION == 21504);
@@ -386,6 +481,9 @@ int main(void) {
     test_namespace_property_flow();
     test_docless_namespace_lookup();
     test_null_namespace_uri_lookup();
+#ifndef XML3_REFERENCE_TEST
+    test_namespace_status();
+#endif
     test_docless_xml_namespace();
     test_standalone_and_parsed_namespaces();
 #ifndef XML3_REFERENCE_TEST

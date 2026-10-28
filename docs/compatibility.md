@@ -116,6 +116,12 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 prefix 検索は NULL href の宣言を飛ばしますが、href 検索は NULL と空文字列を区別します。
 NULL href 宣言も同じ prefix の祖先宣言を href 検索で隠す、という固定版の扱いを保ちます。
 
+`xmlSearchNsSafe` / `xmlSearchNsByHrefSafe` は同じ検索を status と出力 pointer で返します。
+正常な検索は結果の有無に関係なく `0`、確保失敗は `-1`、その他のエラーは `1` です。
+結果なし・失敗時は出力 NULL、NULL out は入力を検索せず `1` になります。
+NULL node・namespace facade・未登録 node も `1` です。返却 namespace は借用で、
+呼び出し元へ所有権を移しません。宣言の追加順など、従来の検索の対応範囲を引き継ぎます。
+
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
