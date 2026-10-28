@@ -18,6 +18,7 @@ int xmlStrEqual(const xmlChar *str1, const xmlChar *str2);
 int xmlStrlen(const xmlChar *str);
 xmlChar *xmlStrdup(const xmlChar *cur);
 xmlChar *xmlStrndup(const xmlChar *cur, int len);
+xmlChar *xmlStrncatNew(const xmlChar *str1, const xmlChar *str2, int len);
 
 #ifdef __cplusplus
 }

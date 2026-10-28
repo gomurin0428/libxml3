@@ -91,6 +91,13 @@ raw bytes を埋め込みNULを含めて正確に複製して末尾NULを付加�
 入力を読み取らず、所有権付きの空文字列を返し、負または上限超過の長さは拒否します。
 NULL入力はNULLを返し、返却値は `xmlFree` で解放します。UTF-8検証は行わず、native
 pointer、読み取り可能性、allocation、ABI は信頼境界です。
+`xmlStrncatNew` は `str1` のNUL終端部分と `str2` の指定byte spanを新しい
+NUL終端allocationへコピーします。負の `len` は `str2` のNUL終端長として扱い、
+`str1 == NULL` なら `xmlStrndup` 相当のコピーになります。非NULLの `str1` では
+NULLの `str2` または有効長0なら `str1` の複製、それ以外は `str1` と `str2` の
+raw bytes（埋め込みNULを含む）の連結です。入力は変更されず、返却値は `xmlFree` で
+解放します。合計サイズ上限超過は拒否し、正の右側spanを読む前に上限を確認します。
+UTF-8検証、native pointerの有効性、allocation、byte writes、ABIは信頼境界です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。

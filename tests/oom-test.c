@@ -112,7 +112,28 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "strdup") == 0 || strcmp(operation, "strndup") == 0) {
+    if (strcmp(operation, "strncat-new") == 0) {
+        xmlChar left[] = "L", right[] = {'a', 0, 'b', 0xff};
+        const xmlChar expected[] = {'L', 'a', 0, 'b', 0xff, 0};
+        xml3_oom_enable(fail_index);
+        assert(!xmlStrncatNew(NULL, NULL, -1) && xml3_oom_count() == 0);
+        xmlChar *copy = xmlStrncatNew(left, right, sizeof(right));
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+        }
+        xmlFree(copy);
+        assert(left[0] == 'L' && left[1] == 0);
+        assert(right[0] == 'a' && right[1] == 0 && right[2] == 'b' && right[3] == 0xff);
+        copy = xmlStrncatNew(left, right, sizeof(right));
+        assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+        xmlFree(copy);
+    } else if (strcmp(operation, "strdup") == 0 || strcmp(operation, "strndup") == 0) {
         const xmlChar source[] = {'a', 0, 'b', 0xff};
         int bounded = strcmp(operation, "strndup") == 0;
         size_t length = bounded ? sizeof(source) : 1;

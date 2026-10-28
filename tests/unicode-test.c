@@ -15,6 +15,69 @@
 #include <unistd.h>
 #endif
 
+static void test_string_concatenation(void) {
+    static const struct {
+        const char *left, *right;
+        int length;
+        const char *expected;
+        size_t size;
+    } cases[] = {
+        {NULL, NULL, -1, NULL, 0},
+        {NULL, NULL, INT_MAX, NULL, 0},
+        {NULL, "", 0, "", 0},
+        {"", NULL, INT_MAX, "", 0},
+        {"L", NULL, -1, "L", 1},
+        {"L", NULL, INT_MAX, "L", 1},
+        {NULL, "abc", -3, "abc", 3},
+        {NULL, "abc", 2, "ab", 2},
+        {"L", "abc", 0, "L", 1},
+        {"L", "abc", 2, "Lab", 3},
+        {"L", "a\0b\xff", 4, "La\0b\xff", 5},
+        {"L", "a\0b\xff", -1, "La", 2},
+        {"\xff", "\xc0", -1, "\xff\xc0", 2},
+        {"\xe5\x90", "\x8d", 1, "名", 3},
+        {"日", "本", -1, "日本", 6}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        const xmlChar *left = BAD_CAST cases[i].left, *right = BAD_CAST cases[i].right;
+        xmlChar *copy = xmlStrncatNew(left, right, cases[i].length);
+        if (!cases[i].expected) {
+            assert(!copy);
+        } else {
+            assert(copy && copy != left && copy != right);
+            assert(memcmp(copy, cases[i].expected, cases[i].size) == 0);
+            assert(copy[cases[i].size] == 0);
+        }
+        xmlFree(copy);
+    }
+    {
+        xmlChar source[] = "abc";
+        xmlChar *copy = xmlStrncatNew(source, source + 1, 2);
+        assert(copy && strcmp((const char *)copy, "abcbc") == 0);
+        assert(strcmp((const char *)source, "abc") == 0);
+        source[0] = 'x';
+        copy[1] = 'y';
+        assert(copy[0] == 'a' && source[1] == 'b');
+        xmlFree(copy);
+    }
+    {
+        xmlChar *head = xmlStrdup(BAD_CAST "<r>名");
+        xmlChar *tail = xmlStrdup(BAD_CAST "</r>");
+        assert(head && tail);
+        xmlChar *copy = xmlStrncatNew(head, tail, -1);
+        assert(copy);
+        xmlFree(head);
+        xmlFree(tail);
+        xmlDocPtr doc = xmlReadMemory((const char *)copy, xmlStrlen(copy), NULL, NULL, 0);
+        xmlFree(copy);
+        assert(doc);
+        xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+        assert(content && strcmp((const char *)content, "名") == 0);
+        xmlFree(content);
+        xmlFreeDoc(doc);
+    }
+}
+
 static void test_string_duplicates(void) {
     static const char *cases[] = {"", "abc", "名", "\xff\xc0", "p:a:b"};
     assert(!xmlStrdup(NULL));
@@ -61,11 +124,26 @@ static void test_string_duplicates(void) {
         xmlChar *copy = xmlStrndup(source, 3);
         assert(copy && memcmp(copy, "abc\0", 4) == 0);
         xmlFree(copy);
+        copy = xmlStrncatNew(BAD_CAST "L", source, 3);
+        assert(copy && memcmp(copy, "Labc\0", 5) == 0);
+        xmlFree(copy);
+        copy = xmlStrncatNew(BAD_CAST "L", unreadable, 0);
+        assert(copy && copy[0] == 'L' && copy[1] == 0);
+        xmlFree(copy);
+        copy = xmlStrncatNew(NULL, unreadable, 0);
+        assert(copy && copy[0] == 0);
+        xmlFree(copy);
+        assert(!xmlStrncatNew(BAD_CAST "01234567890123456789012345678901", unreadable,
+                             INT_MAX - 16));
+        xmlResetLastError();
         copy = xmlStrndup(unreadable, 0);
         assert(copy && copy[0] == 0);
         xmlFree(copy);
         assert(!xmlStrndup(unreadable, -1));
         source[2] = 0;
+        copy = xmlStrncatNew(BAD_CAST "L", source, -1);
+        assert(copy && strcmp((const char *)copy, "Lab") == 0);
+        xmlFree(copy);
         copy = xmlStrdup(source);
         assert(copy && strcmp((const char *)copy, "ab") == 0);
         xmlFree(copy);
@@ -316,6 +394,7 @@ static void test_ranges(void) {
 
 int main(void) {
     test_string_duplicates();
+    test_string_concatenation();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

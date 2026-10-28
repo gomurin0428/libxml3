@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`
+* `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`、`xmlStrdup`、`xmlStrndup`、`xmlStrncatNew`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -379,8 +379,15 @@ colon を含む name、無効または未対応の参照は拒否し、失敗時
 入力を読み取らず所有権付き空文字列を返し、負または上限超過の長さは拒否します。
 どちらも NULL 入力なら NULL を返し、返却値は `xmlFree` で解放してください。
 UTF-8検証は行わず、native pointer の有効性・読み取り可能性、allocation、C ABI は
-信頼境界です。pinned reference build も共通の文字列テストを実行し、上限超過・OOM注入は
-libxml3-only で検査します。NULL 入力、サイズ不正、非対応オプション、
+信頼境界です。`xmlStrncatNew` は負の `len` を `str2` のNUL終端長として扱い、
+`str1 == NULL` なら `xmlStrndup` 相当、非NULLの `str1` ではNULLの `str2` または
+有効長0なら `str1` の複製、それ以外では `str1` と `str2` の指定byte spanを連結します。
+正の長さでは埋め込みNULや部分UTF-8もそのままコピーし、入力は変更しません。
+返却値は `xmlFree` で解放してください。変換入力と合計長は `Max_Input` 以下に制限し、
+合計上限超過では正の右側spanを読む前に拒否します。pinned reference build も共通の
+文字列テストを実行し、上限超過・OOM注入はlibxml3-onlyで検査します。
+native pointer、読み取り可能性、C conversion、allocation、byte writes、ABIは信頼境界です。
+NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。
 `xml3ReadMemory` は `XML3_STATUS_*` を通じて理由を返します。
 NUL 終端の `xmlReadDoc`/`xmlParseDoc` は呼び出し側が提供する有効な C 文字列を
