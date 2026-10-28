@@ -2352,6 +2352,15 @@ package body XML3_C is
          return -1;
    end UTF8_Str_Size;
 
+   function UTF8_Size (Item : System.Address) return Interfaces.C.int is
+   begin
+      return int (XML3_Text.Buffers.UTF8_Lead_Size (Item));
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end UTF8_Size;
+
    function Get_UTF8_Char
      (Item : System.Address; Length : System.Address) return Interfaces.C.int
    is

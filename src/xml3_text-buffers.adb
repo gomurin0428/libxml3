@@ -2,6 +2,20 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function UTF8_Lead_Size (Item : System.Address) return Integer is
+   begin
+      if Item = System.Null_Address then
+         return -1;
+      end if;
+      case Character'Pos (Native.Byte_At (Item, 0)) is
+         when 0 .. 16#7F# => return 1;
+         when 16#C2# .. 16#DF# => return 2;
+         when 16#E0# .. 16#EF# => return 3;
+         when 16#F0# .. 16#F4# => return 4;
+         when others => return -1;
+      end case;
+   end UTF8_Lead_Size;
+
    procedure Copy_Span
      (Item : System.Address; Start, Length : Byte_Count;
       Result : out System.Address; Status : out Slice_Status)

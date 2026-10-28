@@ -151,6 +151,12 @@ int main(int argc, char **argv) {
         xmlFree(cur);
     } else if (strcmp(operation, "utf8-check") == 0) {
         xml3_oom_enable(0);
+        assert(xmlUTF8Size(NULL) == -1 && xmlUTF8Size(BAD_CAST "") == 1);
+        assert(xmlUTF8Size(BAD_CAST "a") == 1 && xmlUTF8Size(BAD_CAST "名") == 3);
+        assert(xmlUTF8Size(BAD_CAST "\xc2") == 2);
+        assert(xmlUTF8Size(BAD_CAST "\xf4") == 4);
+        assert(xmlUTF8Size(BAD_CAST "\xf5") == -1);
+        assert(xmlUTF8Size(BAD_CAST "\xc0\x80") == -1);
         assert(xmlCheckUTF8(NULL) == 0 && xmlCheckUTF8(BAD_CAST "") == 1);
         assert(xmlCheckUTF8(BAD_CAST "ASCII名é") == 1);
         assert(xmlCheckUTF8(BAD_CAST "\x01\xef\xbf\xbe") == 1);
