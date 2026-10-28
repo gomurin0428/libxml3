@@ -139,6 +139,14 @@ namespace と owner pin は保持します。NULL と既に未接続の node は
 属性は文書を先に解放しても利用でき、`xmlFreeProp` で解放します。この保持は安全性のための
 固定版との差異です。切り離しても cross-document move や namespace reconciliation は許可しません。
 
+`xmlAddSibling` は、親に接続された管理中 node を基準に、兄弟列の末尾へ追加します。
+Store で親と node 種別を検査して `Add_Child` を再利用し、通常 child と属性の混在は拒否します。
+同じ node を両引数に渡す場合は NULL、別 node を基準に既存末尾を再指定する場合は no-op です。
+element/document 親の通常 child と、element 親の属性に対応します。テキスト結合時は末尾を返し、
+入力 node を解放します。確保失敗では両 node の内容とリンクを保持します。属性では expanded name
+が一致する旧属性を接続成功後に解放します。親のない兄弟列・属性値内部への兄弟追加は未対応です。
+文書所属・循環・document 直下の text/CDATA・複数 root の制約は `xmlAddChild` と同じです。
+
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を
 保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を

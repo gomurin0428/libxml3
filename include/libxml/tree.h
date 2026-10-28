@@ -107,6 +107,7 @@ xmlNodePtr xmlNewCDataBlock(xmlDocPtr doc, const xmlChar *content, int len);
 xmlNodePtr xmlNewDocPI(xmlDocPtr doc, const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
+xmlNodePtr xmlAddSibling(xmlNodePtr node, xmlNodePtr cur);
 xmlNodePtr xmlTextMerge(xmlNodePtr first, xmlNodePtr second);
 int xmlTextConcat(xmlNodePtr node, const xmlChar *content, int len);
 int xmlNodeIsText(const xmlNode *node);

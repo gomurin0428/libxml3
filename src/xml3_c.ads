@@ -127,6 +127,10 @@ package XML3_C is
      (Parent, Child : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlAddChild";
 
+   function Add_Sibling
+     (Sibling, Child : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlAddSibling";
+
    function Text_Merge
      (First, Second : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlTextMerge";

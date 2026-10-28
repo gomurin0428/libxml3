@@ -204,6 +204,29 @@ static void test_attach_namespace_attributes(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_add_attribute_sibling(void) {
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNsPtr p, q;
+    xmlAttrPtr plain, old, incoming;
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    p = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "p");
+    q = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "q");
+    assert(p && q);
+    plain = xmlNewProp(root, BAD_CAST "id", BAD_CAST "plain");
+    old = xmlNewNsProp(root, p, BAD_CAST "id", BAD_CAST "old");
+    incoming = xmlNewNsProp(NULL, q, BAD_CAST "id", BAD_CAST "new");
+    assert(plain && old && incoming);
+    assert(xmlAddSibling((xmlNodePtr)plain, (xmlNodePtr)incoming) == (xmlNodePtr)incoming);
+    assert(root->properties == plain && plain->next == incoming && incoming->prev == plain);
+    assert(incoming->parent == root && incoming->next == NULL && incoming->ns == q);
+    assert(xmlAddSibling((xmlNodePtr)plain, (xmlNodePtr)incoming) == (xmlNodePtr)incoming);
+    assert(xmlAddSibling((xmlNodePtr)incoming, (xmlNodePtr)incoming) == NULL);
+    assert_value(plain, "plain");
+    assert_round_trip(doc, "id", "urn:same", "new");
+    xmlFreeDoc(doc);
+}
+
 static void test_unlink_attributes(void) {
     static const char input[] =
         "<root xmlns:p='urn:attrs' first='1' p:middle='2' last='3'><target/></root>";
@@ -500,6 +523,7 @@ int main(void) {
     test_attach_namespace_attributes();
     test_attach_duplicate_tail();
     test_unlink_attributes();
+    test_add_attribute_sibling();
 #ifndef XML3_REFERENCE_TEST
     test_unlinked_attribute_lifetime();
     test_unlink_rejections();
