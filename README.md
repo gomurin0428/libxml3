@@ -104,7 +104,7 @@ href による expanded name で行い、接続成功後に一致属性を置き
 `xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
 はUnicodeを含むXML名を、コロン・先頭文字・前後のXML空白の規則に従って検査します。
 `xmlSplitQName2` / `xmlSplitQName3` は名前検証を行わず、NUL終端の raw byte 列を最初の
-コロンだけで分割します。前後のコロンやコロンなしでは NULL、後続のコロン・空白・不正な
+コロンだけで分割します。最初のコロンが先頭・末尾にある場合や、コロンなしでは NULL、後続のコロン・空白・不正な
 UTF-8 はそのまま扱います。QName2 は prefix/local の独立コピーを返し `xmlFree` で解放し、
 QName3 は入力内の local suffix を借用して prefix の byte length を返します。失敗時は QName2
 の prefix 出力を NULL にし、QName3 の length 出力を変更しません。
