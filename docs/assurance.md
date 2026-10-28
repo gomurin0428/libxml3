@@ -28,8 +28,8 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including namespace editing and explicit
 UTF-8 memory serialization. The C adapters and native ABI implementation are
-not proved. The recorded aggregate has 10,508 checks, no unproved or justified
-conditions, and 128 warnings; the representation-generation diagnostic
+not proved. The recorded aggregate has 10,793 checks, no unproved or justified
+conditions, and 126 warnings; the representation-generation diagnostic
 is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -130,7 +130,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,508-check aggregate proof; see
+new units are included in the successful 10,793-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -179,6 +179,16 @@ scalar replacement は新 buffer を登録・投影してから旧 buffer を同
 element/attribute に text child がない場合は SPARK が text node を作成して core の
 `Attach_Child` に渡します。XML 構文の妥当性検査と escaping は serialization が担当します。
 入力中の文字参照は解釈・展開せず、raw の `&` は出力時に escaping します。
+
+`xmlNodeSetContent` も node-kind 分岐、XML reference decoder、subtree retirement、
+owner/pin lifetime は SPARK Store/Runtime に置きます。predefined/numeric references は
+element/attribute setter 入力でのみ decode し、literal whitespace は保持します。
+malformed/unknown references と不正 UTF-8/XML scalar は element/attribute setter で mutation
+前に拒否します。scalar Text/CDATA/comment/PI の入力は raw のまま保持し、その検証は
+serialization 時に行われます。raw input reference は serializer で展開されず、XML syntax
+validation/escaping は serialization 時に行われます。new child は完全に準備して attach
+した後に旧 children を namespace-aware に retire し、失敗では旧 tree を保ちます。
+DTD/entity node types と namespace repair は未対応です。
 
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.

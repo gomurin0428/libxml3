@@ -84,6 +84,10 @@ package XML3_C is
      (Node, Content : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeAddContent";
 
+   function Node_Set_Content
+     (Node, Content : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeSetContent";
+
    procedure Unlink_Node (Node : System.Address)
      with Export, Convention => C, External_Name => "xmlUnlinkNode";
 

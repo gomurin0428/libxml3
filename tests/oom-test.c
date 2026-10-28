@@ -746,6 +746,78 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)root->last->content, "after") == 0);
         }
         xmlFreeDoc(content_doc);
+    } else if (strcmp(operation, "dom-content-set-scalar") == 0) {
+        xmlNodePtr text = xmlNewText(BAD_CAST "old");
+        xmlChar *original_content;
+        assert(text != NULL);
+        original_content = text->content;
+        xml3_oom_enable(fail_index);
+        result = xmlNodeSetContent(text, BAD_CAST "replacement");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(text->content == original_content);
+            assert(strcmp((const char *)text->content, "old") == 0);
+            require_oom_error();
+            assert(xmlNodeSetContent(text, BAD_CAST "replacement") == 0);
+            assert(strcmp((const char *)text->content, "replacement") == 0);
+        } else {
+            assert(result == 0);
+            assert(strcmp((const char *)text->content, "replacement") == 0);
+        }
+        xmlFreeNode(text);
+    } else if (strcmp(operation, "dom-content-set-tree") == 0) {
+        xmlDocPtr content_doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlNodePtr child = xmlNewNode(NULL, BAD_CAST "old");
+        xmlNodePtr nested = xmlNewNode(NULL, BAD_CAST "nested");
+        xmlNodePtr tail = xmlNewComment(BAD_CAST "tail");
+        xmlNodePtr borrower = xmlNewNode(NULL, BAD_CAST "borrower");
+        xmlNsPtr ns;
+        assert(content_doc != NULL && root != NULL && child != NULL &&
+               nested != NULL && tail != NULL && borrower != NULL);
+        assert(xmlDocSetRootElement(content_doc, root) == NULL);
+        assert(xmlAddChild(child, nested) == nested);
+        assert(xmlAddChild(root, child) == child);
+        assert(xmlAddChild(root, tail) == tail);
+        ns = xmlNewNs(child, BAD_CAST "urn:retired", BAD_CAST "p");
+        assert(ns != NULL);
+        xmlSetNs(borrower, ns);
+        assert(borrower->ns == ns);
+        xml3_oom_enable(fail_index);
+        result = xmlNodeSetContent(root, BAD_CAST "replacement");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            assert(root->children == child && root->last == tail);
+            assert(child->parent == root && child->next == tail);
+            assert(tail->parent == root && tail->prev == child);
+            assert(child->children == nested && nested->parent == child);
+            assert(child->nsDef == ns && borrower->ns == ns);
+            assert(strcmp((const char *)ns->href, "urn:retired") == 0);
+            require_oom_error();
+            assert(xmlNodeSetContent(root, BAD_CAST "replacement") == 0);
+            assert(root->children == root->last);
+            assert(root->children->type == XML_TEXT_NODE);
+            assert(strcmp((const char *)root->children->content,
+                          "replacement") == 0);
+        } else {
+            assert(result == 0);
+            assert(root->children == root->last);
+            assert(root->children->type == XML_TEXT_NODE);
+            assert(strcmp((const char *)root->children->content,
+                          "replacement") == 0);
+        }
+        assert(borrower->ns == ns);
+        assert(strcmp((const char *)ns->href, "urn:retired") == 0);
+        xmlFreeDoc(content_doc);
+        assert(borrower->ns == ns);
+        assert(strcmp((const char *)ns->href, "urn:retired") == 0);
+        xmlFreeNode(borrower);
     } else if (strcmp(operation, "serialization") == 0) {
         static const char input[] = "<r a='v'>text</r>";
         xmlNodePtr root;

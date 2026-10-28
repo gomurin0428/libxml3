@@ -90,6 +90,15 @@ is
          XML3_DOM_Store.Content.Append (Current, Facade, Suffix, Status);
       end Add_Content;
 
+      procedure Set_Content
+        (Facade : System.Address; Content : String; Has_Content : Boolean;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.Set
+           (Current, Facade, Content, Has_Content, Status);
+      end Set_Content;
+
       procedure Set_Root
         (Doc, Root : System.Address; Previous : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

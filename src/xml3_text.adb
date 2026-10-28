@@ -155,7 +155,8 @@ package body XML3_Text with SPARK_Mode is
       References : Boolean;
       Output     : out String;
       Length     : out Byte_Count;
-      Valid      : out Boolean)
+      Valid      : out Boolean;
+      Normalize_Line_Endings : Boolean := True)
    is
       I : Positive := Input'First;
       J : Positive;
@@ -263,7 +264,7 @@ package body XML3_Text with SPARK_Mode is
             Length := Length + Bytes;
             I := J + 1;
          else
-            if C = Character'Val (13) then
+            if Normalize_Line_Endings and then C = Character'Val (13) then
                if I < Input'Last and then Input (I + 1) = Character'Val (10) then
                   I := I + 1;
                end if;
