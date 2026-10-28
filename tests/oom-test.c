@@ -1230,6 +1230,21 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
+    } else if (strcmp(operation, "last-child") == 0) {
+        static const char input[] = "<root a='value'><one/>text<!--last--></root>";
+        xmlNodePtr root;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        xml3_oom_enable(0);
+        assert(xmlGetLastChild(root) == root->last);
+        assert(xmlGetLastChild((const xmlNode *)doc) == root);
+        assert(xmlGetLastChild((const xmlNode *)root->properties) == root->properties->last);
+        assert(xmlGetLastChild(root->children) == NULL);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "attr-unlink") == 0) {
         static const char input[] = "<root a='keep' b='detached' c='last'/>";
         xmlNodePtr root;
@@ -1324,6 +1339,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "last-child") == 0) {
+        puts("last-child queries used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "attr-unlink") == 0) {
         puts("attribute unlink used no native allocations");
         return 0;

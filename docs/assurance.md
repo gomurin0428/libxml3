@@ -31,7 +31,8 @@ editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
 through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
 through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Properties.Set_Qualified_Property`, reverse element navigation through
-`Store.Queries.Select_Element`, detached `xmlNewDocProp` construction through
+`Store.Queries.Select_Element` (including `xmlGetLastChild`), detached
+`xmlNewDocProp` construction through
 `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, managed attribute
 attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
@@ -308,6 +309,12 @@ Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NU
 走査は node 数で有界で、native field を C でたどりません。非 element のスキップ、
 編集後の順序、無接続 tree の文書先行解放後の走査は実行テストで検査します。
 「最も近い element を返す」完全な選択意味論までを契約で証明したという主張ではありません。
+
+`xmlGetLastChild` は同じ Store/Runtime 選択処理の `Last_Child_Node` mode を使い、
+kind で絞り込まず管理中の末尾 child facade を返します。文書と属性の値も対象です。
+C adapter は共通の入口を呼ぶだけで、native `last` field は読みません。切り離し・再接続・
+内容置換後の結果、文書先行解放後の利用、native allocation 不要を実行テストで検査します。
+戻り値の完全な公開意味論や native pointer validity を証明したという主張ではありません。
 
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。

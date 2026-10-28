@@ -151,6 +151,7 @@ xmlChar *xmlGetNsProp(const xmlNode *node, const xmlChar *name,
 xmlChar *xmlGetNoNsProp(const xmlNode *node, const xmlChar *name);
 xmlNodePtr xmlFirstElementChild(const xmlNode *parent);
 xmlNodePtr xmlLastElementChild(xmlNode *parent);
+xmlNodePtr xmlGetLastChild(const xmlNode *parent);
 xmlNodePtr xmlNextElementSibling(const xmlNode *node);
 xmlNodePtr xmlPreviousElementSibling(xmlNode *node);
 unsigned long xmlChildElementCount(const xmlNode *parent);

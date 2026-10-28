@@ -2176,6 +2176,13 @@ package body XML3_C is
         (Parent, XML3_DOM_Store.Queries.First_Element);
    end First_Element_Child;
 
+   function Get_Last_Child (Parent : System.Address) return System.Address
+   is
+   begin
+      return Select_Element_Node
+        (Parent, XML3_DOM_Store.Queries.Last_Child_Node);
+   end Get_Last_Child;
+
    function Last_Element_Child (Parent : System.Address) return System.Address
    is
    begin

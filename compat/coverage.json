@@ -407,6 +407,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlGetLastChild": {
+    "implementation": "partial",
+    "scope": "SPARK Store/Runtime returns the managed last child without filtering its kind, including a document child or attribute-value text. NULL, empty/scalar nodes, namespaces and unmanaged facades return NULL. Reuses the managed selection path and preserves sticky errors. No native allocation. Native pointer/ABI validity and full C semantics remain unproved.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlLastElementChild": {
     "implementation": "partial",
     "scope": "SPARK Store reverse scan from Last_Child for supported element/document parents. Returns the existing last direct element, skipping non-elements; NULL/invalid/unregistered/unsupported-kind input returns NULL. Edited/detached trees supported; fragment/HTML/DTD/entity kinds excluded. Native boundary and full selection semantics outside proof claim.",

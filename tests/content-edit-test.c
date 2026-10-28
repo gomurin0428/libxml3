@@ -1144,6 +1144,73 @@ static void test_text_merge(void) {
     xmlResetLastError();
 }
 
+static void test_last_child(void) {
+    static const char input[] =
+        "<r xmlns:p='urn:tail' p:a='value'><one/>tail<!--last--></r><!--after-->";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlDocPtr empty = xmlNewDoc(NULL);
+    xmlNodePtr root, tail, value;
+    xmlAttrPtr attr;
+    assert(doc && empty);
+    assert(xmlGetLastChild(NULL) == NULL);
+    assert(xmlGetLastChild((const xmlNode *)empty) == NULL);
+    xmlFreeDoc(empty);
+    root = xmlDocGetRootElement(doc);
+    attr = root->properties;
+    tail = xmlGetLastChild(root);
+    assert(tail && tail->type == XML_COMMENT_NODE && tail == root->last);
+    assert(xmlLastElementChild(root) == root->children);
+    assert(xmlGetLastChild(root->children) == NULL);
+    assert(xmlGetLastChild(tail) == NULL);
+    assert(xmlGetLastChild((const xmlNode *)doc) == doc->last);
+    assert(doc->last->type == XML_COMMENT_NODE);
+    assert(xmlGetLastChild((const xmlNode *)root->nsDef) == NULL);
+    assert(xmlGetLastChild((const xmlNode *)attr) == attr->last);
+    assert_content(xmlGetLastChild((const xmlNode *)attr), "value");
+    xmlUnlinkNode(tail);
+    assert(xmlGetLastChild(root) == root->last && root->last->type == XML_TEXT_NODE);
+    assert_content(xmlGetLastChild(root), "tail");
+    assert(xmlAddSibling(root->children, tail) == tail);
+    assert(xmlGetLastChild(root) == tail);
+    tail = xmlNewCDataBlock(doc, BAD_CAST "cdata", 5);
+    assert(tail && xmlAddSibling(root->children, tail) == tail);
+    assert(xmlGetLastChild(root) == tail && xmlGetLastChild(tail) == NULL);
+    tail = xmlNewPI(BAD_CAST "target", BAD_CAST "data");
+    assert(tail && xmlAddSibling(root->children, tail) == tail);
+    assert(xmlGetLastChild(root) == tail && xmlGetLastChild(tail) == NULL);
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "changed") == 0);
+    value = xmlGetLastChild((const xmlNode *)attr);
+    assert(value == attr->children && value == attr->last);
+    assert_content(value, "changed");
+    xmlUnlinkNode(value);
+    assert(xmlGetLastChild((const xmlNode *)attr) == NULL);
+    xmlFreeNode(value);
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "restored") == 0);
+    assert(xmlNodeSetContent(root, BAD_CAST "new&amp;content") == 0);
+    assert(xmlGetLastChild(root) == root->children);
+    assert_content(xmlGetLastChild(root), "new&content");
+    xmlUnlinkNode(root);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    assert(xmlGetLastChild(root) == root->last);
+    assert_content(xmlGetLastChild(root), "new&content");
+    assert_content(xmlGetLastChild((const xmlNode *)attr), "restored");
+    xmlFreeNode(root);
+#ifdef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#else
+    {
+        xmlNode unmanaged = {0};
+        unmanaged.type = XML_ELEMENT_NODE;
+        unmanaged.last = &unmanaged;
+        xmlResetLastError();
+        assert(xmlGetLastChild(&unmanaged) == NULL);
+        assert(xmlGetLastError() == NULL);
+    }
+#endif
+}
+
 static void test_reverse_element_navigation(void) {
     static const char input[] =
         "<!--before--><r a='v'>start<a/>mid<!--gap--><b/><?pi x?>"
@@ -1496,6 +1563,7 @@ int main(void) {
     test_construct_doc_node(0);
     test_construct_doc_node(1);
     test_reverse_element_navigation();
+    test_last_child();
     test_text_merge();
     test_text_concat();
     test_node_predicates();
