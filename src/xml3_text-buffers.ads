@@ -20,6 +20,11 @@ package XML3_Text.Buffers with SPARK_Mode is
        Post => UTF8_Lead_Size'Result in -1 | 1 .. 4
          and then (if Item = System.Null_Address then UTF8_Lead_Size'Result = -1);
 
+   procedure Compare_UTF8_Character
+     (Left, Right : System.Address; Result : out Integer; Invalid : out Boolean)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Result in -255 .. 255 and then (if Invalid then Result = -1);
+
    procedure Copy_UTF8_Slice
      (Item : System.Address; Start, Characters : Integer;
       Result : out System.Address; Status : out Slice_Status;

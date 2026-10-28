@@ -16,6 +16,38 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end case;
    end UTF8_Lead_Size;
 
+   procedure Compare_UTF8_Character
+     (Left, Right : System.Address; Result : out Integer; Invalid : out Boolean)
+   is
+      Width : Integer;
+      Code : Integer;
+      pragma Unreferenced (Code);
+      Decoded : Natural;
+   begin
+      Invalid := False;
+      if Left = System.Null_Address then
+         Result := (if Right = System.Null_Address then 0 else -1);
+         return;
+      elsif Right = System.Null_Address then
+         Result := 1;
+         return;
+      end if;
+      Width := UTF8_Lead_Size (Left);
+      if Width < 1 then
+         Result := -1;
+         Invalid := True;
+         return;
+      end if;
+      Result := Compare_Bounded (Left, Right, Width, Ignore_Case => False);
+      if Result = 0 then
+         Get_UTF8_Char (Left, Width, Code, Decoded);
+         if Decoded = 0 then
+            Result := -1;
+            Invalid := True;
+         end if;
+      end if;
+   end Compare_UTF8_Character;
+
    procedure Copy_Span
      (Item : System.Address; Start, Length : Byte_Count;
       Result : out System.Address; Status : out Slice_Status)

@@ -272,6 +272,37 @@ procedure Text_Buffers_Test is
       XML3_Text.Buffers.Find_UTF8_Character (Text'Address, Euro'Address, Index, Status, 3);
       pragma Assert (Status = XML3_Text.Buffers.No_Match and Index = 0);
    end Check_UTF8_Character;
+
+   procedure Check_UTF8_Comparison is
+      Text : aliased String := Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#);
+      Other : aliased String := Text;
+      A : aliased Character := 'a';
+      Empty : aliased Character := Character'Val (0);
+      Result : Integer;
+      Invalid : Boolean;
+   begin
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (Text'Address, Other'Address, Result, Invalid);
+      pragma Assert (Result = 0 and not Invalid);
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (System.Null_Address, A'Address, Result, Invalid);
+      pragma Assert (Result = -1 and not Invalid);
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (Empty'Address, Empty'Address, Result, Invalid);
+      pragma Assert (Result = 0 and not Invalid);
+      Text (2) := Character'Val (0);
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (Text'Address, Text'Address, Result, Invalid);
+      pragma Assert (Result = -1 and Invalid);
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (Text'Address, A'Address, Result, Invalid);
+      pragma Assert (Result = 16#E2# - Character'Pos ('a') and not Invalid);
+      Text (1) := Character'Val (16#80#);
+      XML3_Text.Buffers.Compare_UTF8_Character
+        (Text'Address, A'Address, Result, Invalid);
+      pragma Assert (Result = -1 and Invalid);
+   end Check_UTF8_Comparison;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -295,5 +326,6 @@ begin
    Check_UTF8_Slice;
    Check_UTF8_Lead_Size;
    Check_UTF8_Character;
+   Check_UTF8_Comparison;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

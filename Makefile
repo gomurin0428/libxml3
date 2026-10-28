@@ -338,6 +338,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test full-string-compare 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-length 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-check 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-charcmp-error 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test substring-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0
@@ -397,7 +398,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsList xmlGetNsListSafe \
 	xmlGetNsProp xmlGetNoNsProp xmlNodeGetAttrValue xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \
-	xmlChildElementCount xmlStrcmp xmlStrcasecmp xmlStrncmp xmlStrncasecmp xmlStrchr xmlStrstr xmlStrcasestr xmlStrsub xmlStrEqual xmlStrQEqual xmlStrlen xmlCheckUTF8 xmlUTF8Strlen xmlUTF8Strsize xmlUTF8Size xmlUTF8Strloc xmlUTF8Strndup xmlUTF8Strsub xmlUTF8Strpos xmlGetUTF8Char xmlStrdup xmlStrndup xmlCharStrdup xmlCharStrndup xmlStrncatNew xmlStrcat xmlStrncat xmlFree xml3ReadMemory \
+	xmlChildElementCount xmlStrcmp xmlStrcasecmp xmlStrncmp xmlStrncasecmp xmlStrchr xmlStrstr xmlStrcasestr xmlStrsub xmlStrEqual xmlStrQEqual xmlStrlen xmlCheckUTF8 xmlUTF8Strlen xmlUTF8Strsize xmlUTF8Size xmlUTF8Charcmp xmlUTF8Strloc xmlUTF8Strndup xmlUTF8Strsub xmlUTF8Strpos xmlGetUTF8Char xmlStrdup xmlStrndup xmlCharStrdup xmlCharStrndup xmlStrncatNew xmlStrcat xmlStrncat xmlFree xml3ReadMemory \
 	xmlValidateName xmlValidateNCName xmlValidateQName xmlValidateNMToken \
 	xmlSplitQName2 xmlSplitQName3 xmlBuildQName \
 	xmlGetLastError xmlResetLastError xmlResetError xmlCopyError; do \
