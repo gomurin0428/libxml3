@@ -202,6 +202,12 @@ API に対応する mode と content が NULL かどうかを渡すだけで、r
 作成判断は SPARK 側です。reference decoding はせず、XML/UTF-8 検査と escaping は出力時に
 行います。NULL/empty の違い、literal reference の往復、出力拒否後の内容修復を検査します。
 
+`xmlNodeSetContentLen` は C 境界で指定 byte 数内の文字列だけをコピーし、既存の
+`Runtime.Set_Content` に渡します。長さ 0 なら pointer を読まず、負の長さなら通常の
+NUL-terminated 変換です。この pointer 走査は形式証明外で、正の長さを指定した
+非終端バッファと長さ 0 の入力を guard page で検査します。置換・所有権・解放判断は
+既存の SPARK 実装のままです。新しい ABI entry の追加が証明範囲を広げる主張ではありません。
+
 Namespace editing extends the same Store/Runtime path. Constructed declarations
 own one explicit reservation; node namespace pins are accounted separately.
 Cross-owner attachment requires that retained reservation, and core invariants

@@ -782,13 +782,17 @@ int main(int argc, char **argv) {
         assert(strcmp((const char *)child->children->content,
                       raw ? "new&amp;text" : "new&text") == 0);
         xmlFreeDoc(content_doc);
-    } else if (strcmp(operation, "dom-content-set-scalar") == 0) {
+    } else if (strcmp(operation, "dom-content-set-scalar") == 0 ||
+               strcmp(operation, "dom-content-set-len") == 0) {
+        int bounded = strcmp(operation, "dom-content-set-len") == 0;
         xmlNodePtr text = xmlNewText(BAD_CAST "old");
         xmlChar *original_content;
         assert(text != NULL);
         original_content = text->content;
         xml3_oom_enable(fail_index);
-        result = xmlNodeSetContent(text, BAD_CAST "replacement");
+        result = bounded
+            ? xmlNodeSetContentLen(text, BAD_CAST "replacement-ignored", 11)
+            : xmlNodeSetContent(text, BAD_CAST "replacement");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -797,14 +801,18 @@ int main(int argc, char **argv) {
             assert(text->content == original_content);
             assert(strcmp((const char *)text->content, "old") == 0);
             require_oom_error();
-            assert(xmlNodeSetContent(text, BAD_CAST "replacement") == 0);
+            assert((bounded
+                ? xmlNodeSetContentLen(text, BAD_CAST "replacement-ignored", 11)
+                : xmlNodeSetContent(text, BAD_CAST "replacement")) == 0);
             assert(strcmp((const char *)text->content, "replacement") == 0);
         } else {
             assert(result == 0);
             assert(strcmp((const char *)text->content, "replacement") == 0);
         }
         xmlFreeNode(text);
-    } else if (strcmp(operation, "dom-content-set-tree") == 0) {
+    } else if (strcmp(operation, "dom-content-set-tree") == 0 ||
+               strcmp(operation, "dom-content-set-tree-len") == 0) {
+        int bounded = strcmp(operation, "dom-content-set-tree-len") == 0;
         xmlDocPtr content_doc = xmlNewDoc(NULL);
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
         xmlNodePtr child = xmlNewNode(NULL, BAD_CAST "old");
@@ -823,7 +831,9 @@ int main(int argc, char **argv) {
         xmlSetNs(borrower, ns);
         assert(borrower->ns == ns);
         xml3_oom_enable(fail_index);
-        result = xmlNodeSetContent(root, BAD_CAST "replacement");
+        result = bounded
+            ? xmlNodeSetContentLen(root, BAD_CAST "replacement-ignored", 11)
+            : xmlNodeSetContent(root, BAD_CAST "replacement");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -836,7 +846,9 @@ int main(int argc, char **argv) {
             assert(child->nsDef == ns && borrower->ns == ns);
             assert(strcmp((const char *)ns->href, "urn:retired") == 0);
             require_oom_error();
-            assert(xmlNodeSetContent(root, BAD_CAST "replacement") == 0);
+            assert((bounded
+                ? xmlNodeSetContentLen(root, BAD_CAST "replacement-ignored", 11)
+                : xmlNodeSetContent(root, BAD_CAST "replacement")) == 0);
             assert(root->children == root->last);
             assert(root->children->type == XML_TEXT_NODE);
             assert(strcmp((const char *)root->children->content,

@@ -99,6 +99,7 @@ xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 int xmlNodeAddContent(xmlNodePtr cur, const xmlChar *content);
 int xmlNodeSetContent(xmlNodePtr cur, const xmlChar *content);
+int xmlNodeSetContentLen(xmlNodePtr cur, const xmlChar *content, int len);
 void xmlUnlinkNode(xmlNodePtr cur);
 void xmlFreeNode(xmlNodePtr cur);
 void xmlFreeDoc(xmlDocPtr cur);
