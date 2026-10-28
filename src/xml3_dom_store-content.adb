@@ -10,19 +10,22 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    use type Native.Byte_Count;
    pragma Unevaluated_Use_Of_Old (Allow);
 
-   procedure New_Doc_Text
-     (S : in out Store; Doc : System.Address;
-      Content : String; Has_Content : Boolean; Result : out System.Address;
+   procedure New_Doc_Content
+     (S : in out Store; Doc : System.Address; Kind : Node_Kind;
+      Name, Content : String; Has_Content : Boolean; Result : out System.Address;
       Status : out Operation_Status)
    is
       D : Node_Ref := Find_Node (S, Doc);
       N : Node_Ref;
-      Text, Ignored_Ns : System.Address := System.Null_Address;
+      Facade, Ignored_Ns : System.Address := System.Null_Address;
       Changed : Boolean;
       Cleanup_Status : Operation_Status;
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
+      if Kind not in Text_Node | Comment_Node | Processing_Instruction_Node then
+         return;
+      end if;
       if Doc /= System.Null_Address
         and then (D = Null_Node
           or else Node (S.Current.all, D).Kind /= Document_Node)
@@ -30,14 +33,14 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          return;
       end if;
       Construct
-        (S, Text_Node, "text", Content, Has_Content, System.Null_Address,
-         Text, Ignored_Ns, Status);
+        (S, Kind, Name, Content, Has_Content, System.Null_Address,
+         Facade, Ignored_Ns, Status);
       if Status /= Created then
          return;
       end if;
       if Doc /= System.Null_Address then
          D := Find_Node (S, Doc);
-         N := Find_Node (S, Text);
+         N := Find_Node (S, Facade);
          if D = Null_Node or else N = Null_Node
            or else Node (S.Current.all, D).Kind /= Document_Node
          then
@@ -59,14 +62,14 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          end if;
       end if;
       if Status = Created then
-         Result := Text;
+         Result := Facade;
       else
-         Release (S, Text, Content_Node, False, Cleanup_Status);
+         Release (S, Facade, Content_Node, False, Cleanup_Status);
          if Cleanup_Status /= Created then
             Status := Internal_Error;
          end if;
       end if;
-   end New_Doc_Text;
+   end New_Doc_Content;
 
    procedure New_Child
      (S : in out Store; Parent, Ns : System.Address;

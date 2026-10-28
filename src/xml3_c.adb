@@ -874,10 +874,10 @@ package body XML3_C is
 
    function New_Content_Node
      (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address;
-      Length : Interfaces.C.int := -1)
+      Length : Interfaces.C.int := -1; Doc : System.Address := System.Null_Address)
      return System.Address
    is
-      Result, Implicit_Ns : System.Address := System.Null_Address;
+      Result : System.Address := System.Null_Address;
       Has_Content : constant Boolean := Content /= System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
@@ -890,9 +890,8 @@ package body XML3_C is
             Guard : XML3_DOM_Lock.Guard;
          begin
             XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Construct
-              (Kind, Name, Content_Text, Has_Content,
-               System.Null_Address, Result, Implicit_Ns, Status);
+            XML3_DOM_Runtime.New_Doc_Content
+              (Doc, Kind, Name, Content_Text, Has_Content, Result, Status);
          end;
          Report_Operation_Status (Status);
          return Result;
@@ -929,44 +928,11 @@ package body XML3_C is
       return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length);
    end New_Text_Len;
 
-   function New_Document_Text
-     (Doc, Content : System.Address; Length : Interfaces.C.int)
-     return System.Address
-   is
-      Result : System.Address := System.Null_Address;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
-   begin
-      declare
-         Value : constant String := C_String_Prefix (Content, Length);
-         Guard : XML3_DOM_Lock.Guard;
-      begin
-         XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.New_Doc_Text
-           (Doc, Value, Content /= System.Null_Address, Result, Status);
-      end;
-      Report_Operation_Status (Status);
-      return Result;
-   exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-   end New_Document_Text;
-
    function New_Doc_Text
      (Doc, Content : System.Address) return System.Address
    is
    begin
-      return New_Document_Text (Doc, Content, -1);
+      return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Doc => Doc);
    end New_Doc_Text;
 
    function New_Doc_Text_Len
@@ -978,7 +944,7 @@ package body XML3_C is
          Report_Dom_Error (115);
          return System.Null_Address;
       end if;
-      return New_Document_Text (Doc, Content, Length);
+      return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length, Doc);
    end New_Doc_Text_Len;
 
    function New_Comment (Content : System.Address) return System.Address is
@@ -986,15 +952,31 @@ package body XML3_C is
       return New_Content_Node (XML3_DOM.Comment_Node, "comment", Content);
    end New_Comment;
 
+   function New_Doc_Comment
+     (Doc, Content : System.Address) return System.Address
+   is
+   begin
+      return New_Content_Node
+        (XML3_DOM.Comment_Node, "comment", Content, Doc => Doc);
+   end New_Doc_Comment;
+
    function New_PI
      (Name, Content : System.Address) return System.Address
+   is
+   begin
+      return New_Doc_PI (System.Null_Address, Name, Content);
+   end New_PI;
+
+   function New_Doc_PI
+     (Doc, Name, Content : System.Address) return System.Address
    is
    begin
       if Name = System.Null_Address then
          return System.Null_Address;
       end if;
       return New_Content_Node
-        (XML3_DOM.Processing_Instruction_Node, C_String_Value (Name), Content);
+        (XML3_DOM.Processing_Instruction_Node, C_String_Value (Name), Content,
+         Doc => Doc);
    exception
       when Invalid_C_String =>
          Report_Dom_Error (115);
@@ -1005,7 +987,7 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end New_PI;
+   end New_Doc_PI;
 
    function Doc_Set_Root_Element
      (Doc, Root : System.Address) return System.Address

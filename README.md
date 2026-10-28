@@ -84,7 +84,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 宣言には指定表記を保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
 namespaceは拒否します。source encoding/standalone metadata は保持されず宣言には
 出力しません。暗黙encoding、formatting、ファイル出力、DTD等は未対応です。
-`xmlNewComment` と `xmlNewPI` でコメント・処理命令も作成できます。
+`xmlNewComment` / `xmlNewPI` と文書付きの `xmlNewDocComment` / `xmlNewDocPI` で
+コメント・処理命令も作成できます。
 作成時はraw文字列をコピーし、XML構文・文字・予約PI名の検査は出力時に行います。
 NULLと空のcontentは区別し、NULL contentのコメントは出力しません。
 属性／namespace copy と文書間移動も未対応です。

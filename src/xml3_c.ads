@@ -94,6 +94,14 @@ package XML3_C is
    function New_PI (Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewPI";
 
+   function New_Doc_Comment
+     (Doc, Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewDocComment";
+
+   function New_Doc_PI
+     (Doc, Name, Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewDocPI";
+
    function Doc_Set_Root_Element
      (Doc, Root : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlDocSetRootElement";
