@@ -58,6 +58,60 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Status := UTF8_Limit_Exceeded;
    end Check_UTF8;
 
+   procedure Get_UTF8_Char
+     (Item : System.Address; Available : Integer;
+      Code : out Integer; Width : out Natural)
+   is
+      B : Natural;
+      C : Natural;
+      Minimum : Natural;
+      Needed : Positive range 2 .. 4;
+   begin
+      Code := -1;
+      Width := 0;
+      if Item = System.Null_Address or else Available < 1 then
+         return;
+      end if;
+      B := Character'Pos (Native.Byte_At (Item, 0));
+      if B < 128 then
+         Code := B;
+         Width := 1;
+         return;
+      elsif B in 16#C2# .. 16#DF# then
+         Needed := 2;
+         C := B - 16#C0#;
+         Minimum := 16#80#;
+      elsif B in 16#E0# .. 16#EF# then
+         Needed := 3;
+         C := B - 16#E0#;
+         Minimum := 16#800#;
+      elsif B in 16#F0# .. 16#F4# then
+         Needed := 4;
+         C := B - 16#F0#;
+         Minimum := 16#10000#;
+      else
+         return;
+      end if;
+      if Available < Needed then
+         return;
+      end if;
+      for J in 1 .. Needed - 1 loop
+         pragma Loop_Invariant (C <= 16#10FFFF#);
+         B := Character'Pos (Native.Byte_At (Item, J));
+         if B not in 16#80# .. 16#BF#
+           or else C > (16#10FFFF# - (B - 16#80#)) / 64
+         then
+            return;
+         end if;
+         C := C * 64 + B - 16#80#;
+      end loop;
+      if C < Minimum or else C in 16#D800# .. 16#DFFF# then
+         return;
+      end if;
+      Code := C;
+      Width := Needed;
+   end Get_UTF8_Char;
+
    procedure Read_Length
      (Item : System.Address; Last : Byte_Count;
       Length : out Byte_Count; Found : out Boolean)

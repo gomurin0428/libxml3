@@ -53,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,395 checks
-(1,038 flow and 10,357 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,414 checks
+(1,045 flow and 10,369 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 137 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -176,7 +176,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,395-check aggregate proof; see
+new units are included in the current successful 11,414-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -699,6 +699,25 @@ foreign bytes, pointer validity/readable bounds, C diagnostic mapping, or full
 Unicode API semantics. Shared normal/malformed and guard-page tests compare
 with the reference; expected noncanonical-input results differ deliberately,
 and the no-allocation OOM test is libxml3-only.
+`xmlGetUTF8Char` decodes one leading scalar with
+`XML3_Text.Buffers.Get_UTF8_Char`, reading no more than the caller-provided
+`*len` bytes. NULL input, NULL length pointer, or available length below one
+returns -1; when writable, `len` is zeroed on failure. NUL decodes as code
+point 0 with width 1, and ASCII controls and Unicode noncharacters are valid
+UTF-8 scalars. Invalid, truncated, overlong, surrogate, out-of-range, and
+unsupported lead bytes return -1 with width zero and no diagnostic. The C
+adapter maps unexpected exceptions to DOM error 1, zero length, and -1.
+Allocation, input mutation, transcoding, and XML character validation are absent.
+The implementation deliberately rejects the pinned reference's F8..FF
+lead-byte masking (for example, F8 90 80 80 and FC 80 80 80) and avoids its
+read of `utf[0]` before checking `*len < 1`. GNATprove proves 12 checks for
+`Get_UTF8_Char`, covering control/index/overflow safety, output width bounds,
+and native-call preconditions, not complete Unicode-decoding semantics.
+Pointer validity, readable extent, actual bytes, and C-side status/exception
+mapping remain trusted. Shared vectors, permissive reference cases with
+differing expectations, and exact-span guard-page tests run on both
+implementations; zero-length unreadable-pointer and OOM/no-allocation tests
+are libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum

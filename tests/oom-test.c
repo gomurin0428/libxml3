@@ -157,6 +157,10 @@ int main(int argc, char **argv) {
         assert(xmlCheckUTF8(BAD_CAST "\xc0\x80") == 0);
         assert(xmlCheckUTF8(BAD_CAST "\xed\xa0\x80") == 0);
         assert(xmlCheckUTF8(BAD_CAST "\xf4\x90\x80\x80") == 0);
+        int len = 4;
+        assert(xmlGetUTF8Char(BAD_CAST "\xf4\x8f\xbf\xbf", &len) == 0x10ffff && len == 4);
+        len = 4;
+        assert(xmlGetUTF8Char(BAD_CAST "\xfc\x80\x80\x80", &len) == -1 && len == 0);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();

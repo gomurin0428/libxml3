@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -427,6 +427,17 @@ cap testは小さい `Last` を使うAda helperで行い、巨大な公開C stri
 foreign pointer validity、C diagnostic mapping、完全なUnicode API意味論はtrusted boundaryです。
 通常・malformed・guard-page testsはpinned referenceとlibxml3の両方で比較します。
 permissive vectorsも両方で実行して期待値を分け、no-allocation/OOM testsはlibxml3-onlyです。
+`xmlGetUTF8Char` は `*len` bytes以内の先頭scalarだけをdecodeし、成功時はcode pointを返して `*len` を消費byte数に更新します。
+NULL `utf`、NULL `len`、または `*len < 1` は `-1`。`len` が有効ならNULL `utf` / invalid / truncated入力で `*len = 0` とし、
+`*len < 1` では何も読まず `*len = 0` にします。NUL byteはcode point 0、幅1として有効です。ASCII controlとUnicode
+noncharacterはvalid encodingなら許可しますが、XML character validationはしません。不正sequenceでは診断なしで
+`-1` / `*len = 0` を返し、unexpected C-side exceptionはDOM error 1を記録して同じ結果です。allocation、
+input mutation、transcoding、XML validationは行いません。strict decoderはoverlong、surrogate、U+10FFFF超過、
+不正lead/continuationを拒否します。pinned referenceが `F8`–`FF` leadをmaskする挙動（例: `F8 90 80 80`、
+`FC 80 80 80`）を再現しないこと、およびreferenceが `*len < 1` 確認前に `utf[0]` を読む挙動を再現しないことは、
+意図的な二つの安全差です。shared vectors、guard-page exact-span、permissive vectorsはreferenceとlibxml3の双方で
+実行し、期待値を分けます。zero-lengthのunreadable pointer testとOOM/no-allocation testはlibxml3-onlyです。
+native pointer validity、readable extent、実byte、C-side exception/status mappingは信頼境界です。
 `xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
 pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
 読み取りなしでNULLを返し、NUL byte自体は
