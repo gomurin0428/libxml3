@@ -23,6 +23,8 @@ package body XML3_C is
    use type XML3_Encoding.Conversion_Status;
    use type XML3_DOM_Constructors.Construction_Status;
    use type XML3_DOM_Store.Documents.Read_Status;
+   use type XML3_DOM_Store.Queries.XML_Property_Kind;
+   use type XML3_DOM_Store.Queries.Space_Policy;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
    Initial_Arena : constant := 2_048;
@@ -1344,6 +1346,135 @@ package body XML3_C is
          Report_Dom_Error (1);
          return System.Null_Address;
    end Node_Get_Content;
+
+   procedure Get_Inherited_XML_Property
+     (Node : System.Address;
+      Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
+      Result : out System.Address;
+      Space : out XML3_DOM_Store.Queries.Space_Policy)
+   is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      Result := System.Null_Address;
+      Space := XML3_DOM_Store.Queries.Unspecified;
+      if Node = System.Null_Address then
+         return;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Get_Inherited_XML_Property
+           (Node, Mode, Result, Space, Status);
+      end;
+      Report_Operation_Status (Status, Validation_Error => False);
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+      when Storage_Error =>
+         Result := System.Null_Address;
+         Space := XML3_DOM_Store.Queries.Unspecified;
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+      when others =>
+         Result := System.Null_Address;
+         Space := XML3_DOM_Store.Queries.Unspecified;
+         Report_Dom_Error (1);
+   end Get_Inherited_XML_Property;
+
+   function Node_Get_Lang (Node : System.Address) return System.Address is
+      Result : System.Address := System.Null_Address;
+      Space : XML3_DOM_Store.Queries.Space_Policy :=
+        XML3_DOM_Store.Queries.Unspecified;
+   begin
+      Get_Inherited_XML_Property
+        (Node, XML3_DOM_Store.Queries.Language_Property, Result, Space);
+      return Result;
+   end Node_Get_Lang;
+
+   function Node_Get_Space_Preserve
+     (Node : System.Address) return Interfaces.C.int
+   is
+      Result : System.Address := System.Null_Address;
+      Space : XML3_DOM_Store.Queries.Space_Policy :=
+        XML3_DOM_Store.Queries.Unspecified;
+   begin
+      Get_Inherited_XML_Property
+        (Node, XML3_DOM_Store.Queries.Space_Property, Result, Space);
+      case Space is
+         when XML3_DOM_Store.Queries.Unspecified =>
+            return -1;
+         when XML3_DOM_Store.Queries.Default_Space =>
+            return 0;
+         when XML3_DOM_Store.Queries.Preserve_Space =>
+            return 1;
+      end case;
+   end Node_Get_Space_Preserve;
+
+   function Set_XML_Property
+     (Element, Value : System.Address;
+      Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
+      Space_Value : Interfaces.C.int) return Interfaces.C.int
+   is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Element = System.Null_Address then
+         Report_Dom_Error (115);
+         return 1;
+      end if;
+      declare
+         Has_Value : constant Boolean :=
+           Mode = XML3_DOM_Store.Queries.Language_Property
+           and then Value /= System.Null_Address;
+         Value_Text : constant String :=
+           (if Has_Value then C_String_Value (Value) else "");
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Set_XML_Property
+           (Element, Mode, Value_Text, Has_Value, Integer (Space_Value), Status);
+      end;
+      Report_Operation_Status (Status);
+      if Status = XML3_DOM_Constructors.Created then
+         return 0;
+      elsif Status = XML3_DOM_Constructors.No_Memory then
+         return -1;
+      else
+         return 1;
+      end if;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return 1;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return 1;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return -1;
+      when others =>
+         Report_Dom_Error (1);
+         return 1;
+   end Set_XML_Property;
+
+   function Node_Set_Lang
+     (Node, Language : System.Address) return Interfaces.C.int
+   is
+   begin
+      return Set_XML_Property
+        (Node, Language, XML3_DOM_Store.Queries.Language_Property, 0);
+   end Node_Set_Lang;
+
+   function Node_Set_Space_Preserve
+     (Node : System.Address; Value : Interfaces.C.int)
+      return Interfaces.C.int
+   is
+   begin
+      return Set_XML_Property
+        (Node, System.Null_Address,
+         XML3_DOM_Store.Queries.Space_Property, Value);
+   end Node_Set_Space_Preserve;
 
    function Get_Prop
      (Node, Name : System.Address) return System.Address

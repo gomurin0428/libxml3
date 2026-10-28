@@ -726,6 +726,79 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       end if;
    end Copy_Content;
 
+   procedure Get_Inherited_XML_Property
+     (S : Store; Facade : System.Address; Mode : XML_Property_Kind;
+      Result : out System.Address; Space : out Space_Policy;
+      Status : out Operation_Status)
+   is
+      Current : Node_Ref := Find_Node (S, Facade);
+      Item : Node_View;
+      Property, Value : System.Address;
+      P : Node_Ref;
+      Length : Natural;
+   begin
+      Result := System.Null_Address;
+      Space := Unspecified;
+      Status := Invalid_Argument;
+      if Current = Null_Node then
+         return;
+      end if;
+      if Mode = Space_Property
+        and then Node (S.Current.all, Current).Kind /= Element_Node
+      then
+         return;
+      end if;
+      for Step in 1 .. Node_Count (S.Current.all) loop
+         pragma Loop_Invariant
+           (Result = System.Null_Address and then Space = Unspecified);
+         exit when Current = Null_Node;
+         if not Live_Node (S, Current) then
+            Status := Internal_Error;
+            return;
+         end if;
+         Item := Node (S.Current.all, Current);
+         if Item.Kind = Element_Node then
+            Find_Property
+              (S, Item.Facade,
+               (if Mode = Language_Property then "lang" else "space"),
+               Exact_Namespace, XML3_Namespaces.XML_URI, Property, Status);
+            if Status /= Created then
+               return;
+            end if;
+            if Property /= System.Null_Address then
+               if Mode = Language_Property then
+                  Get_Content (S, Property, Result, Status);
+                  return;
+               end if;
+               P := Find_Node (S, Property);
+               if P = Null_Node then
+                  Status := Internal_Error;
+                  return;
+               end if;
+               Measure_Content (S, P, Length, Status);
+               if Status /= Created then
+                  return;
+               end if;
+               Get_Content (S, Property, Value, Status);
+               if Status /= Created then
+                  return;
+               end if;
+               if Equal_Bytes (Value, Length, "preserve") then
+                  Space := Preserve_Space;
+               elsif Equal_Bytes (Value, Length, "default") then
+                  Space := Default_Space;
+               end if;
+               Native.Free (Value);
+               if Space /= Unspecified then
+                  return;
+               end if;
+            end if;
+         end if;
+         Current := Item.Parent;
+      end loop;
+      Status := (if Current = Null_Node then Created else Internal_Error);
+   end Get_Inherited_XML_Property;
+
    procedure Get_Content
      (S : Store; Facade : System.Address;
       Result : out System.Address; Status : out Operation_Status)

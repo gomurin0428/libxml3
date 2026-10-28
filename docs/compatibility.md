@@ -16,6 +16,17 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 追記・置換・結合後や文書先行解放後も同じ管理状態を使い、DOM・所有権を変更しません。
 外部で作った構造体や C 構造体フィールドの直接書換えは対象外です。
 
+`xmlNodeGetLang` は node 自身から parent をたどり、最寄りの XML namespace
+`lang` の値を独立した `xmlFree` 所有文字列として返します。空または NULL 値の属性も
+空文字列として継承を止めます。`xmlNodeGetSpacePreserve` は element のみを受け付け、
+XML namespace の `space` が `preserve` なら 1、`default` なら 0、それ以外や未指定なら
+ancestor を検索し、見つからなければ -1 です。`xml:lang` は text・attribute・comment
+などの node からも継承します。文書所属だけでは値を継承しません。
+`xmlNodeSetLang` / `xmlNodeSetSpacePreserve` は element のみを変更し、成功 0、
+不正引数 1、確保失敗 -1 です。NULL language は属性の削除でなく空値を設定し、
+space の 0 は `default`、その他の値は `preserve` です。QName の namespace 解決、
+親走査、値判定、所有権は SPARK Store/Runtime にあり、native pointer/ABI は信頼境界です。
+
 `xmlTextConcat` は text・CDATA・comment・PI のみに追記し、成功で 0、失敗で -1 を返します。
 要素・属性・document・未登録 node は内容を変えず拒否し、NULL content でも kind を検査します。
 非負の長さは読み取り上限、0 では入力を読みません。負の長さ（-1 以外も固定版と同様）は
@@ -50,7 +61,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、`xmlAddChild`、
-  `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNewChild`、`xmlNewTextChild`、
+  `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
@@ -101,7 +112,9 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
-`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
+`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`,
+`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、
+`xmlNodeSetSpacePreserve` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
 します。parser が受け付ける文書は XML 1.0 です。`xmlNewNode` の name と

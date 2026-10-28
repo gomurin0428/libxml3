@@ -88,6 +88,11 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 要素・属性は変更せず拒否し、負の長さでは NUL 終端文字列を読みます。
 `xmlNodeIsText` / `xmlIsBlankNode` は、SPARK 管理中の node の種別と XML 空白を
 読み取り専用で判定します。CDATA は後者の対象ですが、前者では text としません。
+`xmlNodeGetLang` は node と ancestor の最寄りの `xml:lang` を所有権付きで返し、
+空の値も継承を止めます。`xmlNodeGetSpacePreserve` は element のみを対象にし、
+`default` / `preserve` 以外の値は ancestor まで探索します。対応する setter は
+element に `xml:lang` / `xml:space` を設定し、NULL language は空値、space の
+0 は `default`、非0は `preserve` です。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、

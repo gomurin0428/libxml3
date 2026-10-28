@@ -343,6 +343,30 @@
     "tests": ["tests/content-edit-test.c"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeGetLang": {
+    "implementation": "partial",
+    "scope": "Read-only SPARK Store parent walk for managed nodes, matching only the XML namespace URI. Returns a caller-owned copy of the nearest xml:lang, including an empty value that stops inheritance; text, attributes, comments and PI inherit from parents. Document affiliation alone supplies no value. Unmanaged facades return NULL. Native pointers, ABI and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeGetSpacePreserve": {
+    "implementation": "partial",
+    "scope": "Read-only SPARK Store parent walk from managed elements only, matching the XML namespace URI. Exact preserve/default values return 1/0; empty, unknown or missing values continue to ancestors; no match, invalid node or unmanaged facade returns -1. Temporary copies are freed. Native pointers, ABI and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeSetLang": {
+    "implementation": "partial",
+    "scope": "SPARK Runtime/Store sets the XML-namespaced lang property on managed elements. NULL sets an empty value rather than removing the attribute. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Native ABI and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeSetSpacePreserve": {
+    "implementation": "partial",
+    "scope": "SPARK Runtime/Store sets the XML-namespaced space property on managed elements: zero maps to default and every nonzero integer to preserve. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Native ABI and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlTextConcat": {
     "implementation": "partial",
     "scope": "SPARK scalar-only append to managed text, CDATA, comment and PI nodes; content ownership/rollback reuse Store.Content.Replace_Content. Nonnegative length is bounded, zero reads no bytes, negative length consumes a NUL-terminated string. NULL content is a no-op after kind validation; non-NULL empty input materializes empty content. Returns 0 or -1. Stops at first NUL instead of retaining/reading trailing bytes. Native boundary and full public semantics not proved.",

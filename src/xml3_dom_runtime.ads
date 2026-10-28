@@ -170,6 +170,20 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Get_Inherited_XML_Property
+        (Facade : System.Address; Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
+         Result : out System.Address;
+         Space : out XML3_DOM_Store.Queries.Space_Policy;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global =>
+          (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
+
+      procedure Set_XML_Property
+        (Element : System.Address; Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
+         Value : String; Has_Value : Boolean; Space_Value : Integer;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Test_Node
         (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind;
          Result : out Boolean; Status : out XML3_DOM_Store.Operation_Status)

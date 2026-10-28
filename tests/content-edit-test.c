@@ -798,6 +798,175 @@ static void test_node_predicates(void) {
 #endif
 }
 
+static void test_inherited_xml_properties(void) {
+    static const char input[] =
+        "<root><child a='value'>text<!--note--></child><other/></root>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, child, other, text, comment, node, reparsed_child;
+    xmlAttrPtr attr;
+    xmlNsPtr xml_ns, wrong_ns;
+    xmlChar *value, *memory = NULL;
+    xmlDocPtr reparsed;
+    int size = 0;
+
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    child = root->children;
+    other = child->next;
+    text = child->children;
+    comment = text->next;
+    attr = child->properties;
+    assert(other && text && comment && attr);
+    assert(xmlNodeSetLang(root, BAD_CAST "en") == 0);
+    assert(xmlNodeSetSpacePreserve(root, 1) == 0);
+    xml_ns = xmlSearchNsByHref(doc, root, XML_XML_NAMESPACE);
+    assert(xml_ns);
+    wrong_ns = xmlNewNs(root, BAD_CAST "urn:wrong", BAD_CAST "w");
+    assert(wrong_ns);
+    assert(xmlSetProp(root, BAD_CAST "lang", BAD_CAST "unqualified"));
+    assert(xmlSetProp(root, BAD_CAST "space", BAD_CAST "default"));
+    assert(xmlSetNsProp(root, wrong_ns, BAD_CAST "lang", BAD_CAST "wrong"));
+    assert(xmlSetNsProp(root, wrong_ns, BAD_CAST "space", BAD_CAST "default"));
+    assert(xmlSetProp(child, BAD_CAST "lang", BAD_CAST "unqualified"));
+    assert(xmlSetNsProp(child, wrong_ns, BAD_CAST "lang", BAD_CAST "wrong"));
+    assert(xmlSetProp(child, BAD_CAST "space", BAD_CAST "default"));
+    assert(xmlSetNsProp(child, wrong_ns, BAD_CAST "space", BAD_CAST "default"));
+
+    value = xmlNodeGetLang(root);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang(text);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang((xmlNodePtr)attr);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang(comment);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    assert(xmlNodeGetLang((xmlNodePtr)doc) == NULL);
+    assert(xmlNodeGetSpacePreserve(root) == 1);
+    assert(xmlNodeGetSpacePreserve(child) == 1);
+    assert(xmlNodeGetSpacePreserve(text) == -1);
+    assert(xmlNodeGetSpacePreserve((xmlNodePtr)attr) == -1);
+    assert(xmlNodeGetSpacePreserve(comment) == -1);
+    assert(xmlNodeGetSpacePreserve((xmlNodePtr)doc) == -1);
+
+    assert(xmlNodeSetLang(child, BAD_CAST "fr") == 0);
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "fr") == 0);
+    xmlFree(value);
+    assert(xmlNodeSetLang(child, BAD_CAST "") == 0);
+    value = xmlNodeGetLang(child);
+    assert(value && value[0] == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang(text);
+    assert(value && value[0] == 0);
+    xmlFree(value);
+    assert(xmlUnsetNsProp(child, xml_ns, BAD_CAST "lang") == 0);
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+    assert(xmlNodeSetLang(child, NULL) == 0);
+    value = xmlNodeGetLang(child);
+    assert(value && value[0] == 0);
+    xmlFree(value);
+    value = xmlNodeGetLang(text);
+    assert(value && value[0] == 0);
+    xmlFree(value);
+    assert(xmlUnsetNsProp(child, xml_ns, BAD_CAST "lang") == 0);
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "en") == 0);
+    xmlFree(value);
+
+    assert(xmlSetNsProp(child, xml_ns, BAD_CAST "space", BAD_CAST "unknown"));
+    assert(xmlNodeGetSpacePreserve(child) == 1);
+    assert(xmlSetNsProp(child, xml_ns, BAD_CAST "space", BAD_CAST ""));
+    assert(xmlNodeGetSpacePreserve(child) == 1);
+    assert(xmlNodeSetSpacePreserve(child, 0) == 0);
+    assert(xmlNodeGetSpacePreserve(child) == 0);
+    assert(xmlNodeSetSpacePreserve(child, -7) == 0);
+    assert(xmlNodeGetSpacePreserve(child) == 1);
+
+    xmlUnlinkNode(child);
+    assert(child->doc == doc);
+    assert(xmlNodeGetLang(child) == NULL);
+    assert(xmlNodeSetSpacePreserve(child, 0) == 0);
+    assert(xmlNodeGetSpacePreserve(child) == 0);
+    assert(xmlNodeSetLang(other, BAD_CAST "branch") == 0);
+    assert(xmlAddChild(other, child) == child);
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "branch") == 0);
+    xmlFree(value);
+    assert(xmlNodeSetSpacePreserve(child, 0) == 0);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size > 0);
+    assert(strstr((const char *)memory, "xml:lang=\"branch\"") != NULL);
+    assert(strstr((const char *)memory, "xml:space=\"default\"") != NULL);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    node = xmlDocGetRootElement(reparsed)->children;
+    reparsed_child = node->children;
+    value = xmlNodeGetLang(reparsed_child);
+    assert(value && strcmp((const char *)value, "branch") == 0);
+    xmlFree(value);
+    assert(xmlNodeGetSpacePreserve(reparsed_child) == 0);
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+
+    value = xmlNodeGetLang(child);
+    assert(value && strcmp((const char *)value, "branch") == 0);
+    xmlFreeDoc(doc);
+    assert(strcmp((const char *)value, "branch") == 0);
+    xmlFree(value);
+
+    node = xmlNewNode(NULL, BAD_CAST "standalone");
+    assert(node);
+    assert(xmlNodeSetLang(node, BAD_CAST "local") == 0);
+    assert(xmlSearchNsByHref(NULL, node, XML_XML_NAMESPACE) != NULL);
+    value = xmlNodeGetLang(node);
+    assert(value && strcmp((const char *)value, "local") == 0);
+    xmlFree(value);
+    assert(xmlNodeSetSpacePreserve(node, -3) == 0);
+    assert(xmlNodeGetSpacePreserve(node) == 1);
+    assert(xmlNodeSetLang(NULL, BAD_CAST "invalid") == 1);
+    assert(xmlNodeSetSpacePreserve(NULL, 0) == 1);
+    text = xmlNewText(BAD_CAST "text");
+    assert(text);
+    assert(xmlNodeSetLang(text, BAD_CAST "invalid") == 1);
+    assert(xmlNodeSetSpacePreserve(text, 1) == 1);
+    xmlFreeNode(text);
+    xmlFreeNode(node);
+
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlDocPtr held_doc = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr held = xmlNewDocNode(held_doc, NULL, BAD_CAST "held", NULL);
+        xmlNode unregistered = {0};
+        assert(held_doc && held && held->parent == NULL);
+        xmlFreeDoc(held_doc);
+        assert(xmlNodeGetLang(held) == NULL);
+        assert(xmlNodeSetLang(held, BAD_CAST "after-free") == 0);
+        value = xmlNodeGetLang(held);
+        assert(value && strcmp((const char *)value, "after-free") == 0);
+        xmlFree(value);
+        assert(xmlNodeSetSpacePreserve(held, 1) == 0);
+        assert(xmlNodeGetSpacePreserve(held) == 1);
+        xmlFreeNode(held);
+
+        unregistered.type = XML_ELEMENT_NODE;
+        unregistered.parent = &unregistered;
+        xmlResetLastError();
+        assert(xmlNodeGetLang(&unregistered) == NULL);
+        assert(xmlNodeGetSpacePreserve(&unregistered) == -1);
+        assert(xmlGetLastError() == NULL);
+    }
+#endif
+}
+
 static void test_text_concat(void) {
     static const char input[] = "<r a='old'>t<![CDATA[c]]><!--n--><?p v?></r>";
     static const xmlChar suffix[] = {'<', '&'};
@@ -1275,6 +1444,7 @@ int main(void) {
     test_text_merge();
     test_text_concat();
     test_node_predicates();
+    test_inherited_xml_properties();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();

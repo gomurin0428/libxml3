@@ -178,6 +178,21 @@ package XML3_C is
    function Node_Get_Content (Node : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNodeGetContent";
 
+   function Node_Get_Lang (Node : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNodeGetLang";
+
+   function Node_Get_Space_Preserve
+     (Node : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeGetSpacePreserve";
+
+   function Node_Set_Lang
+     (Node, Language : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeSetLang";
+
+   function Node_Set_Space_Preserve
+     (Node : System.Address; Value : Interfaces.C.int) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeSetSpacePreserve";
+
    function Get_Prop
      (Node : System.Address;
       Name : System.Address) return System.Address
