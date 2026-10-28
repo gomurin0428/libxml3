@@ -185,7 +185,10 @@ policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び
 `xmlNewComment` / `xmlNewPI` は既存のSPARK作成・寿命管理を使って独立nodeを作成します。
 raw文字列はコピーし、NULLと空contentを区別します。NULL PI targetは拒否しますが、
 XML名・文字、予約target、comment/PIの構文はシリアライズ時に検査します。
-NULL contentのcommentは出力しません。文書付き作成APIとnode登録callbackは未対応です。
+NULL contentのcommentは出力しません。`xmlNewDocComment` / `xmlNewDocPI` は同じ処理で
+文書を指定できます。NULL doc は文書なしの作成、non-NULL doc は管理中の live document
+に限り、親への接続は行いません。所属文書の owner を保持し、文書先行解放後も独立した
+comment/PI とコピー済みの target/content は編集・解放できます。node登録callback は未対応です。
 
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて

@@ -116,12 +116,18 @@ real facade/content updates, source-clear-before-free ordering, repeated-tail
 no-op, and final Store reclamation. `XML3_DOM_Runtime` owns the one private
 Store as SPARK abstract state. Public DOM wrappers serialize complete Runtime
 calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
-parallel DOM graph. `xmlNewComment` and `xmlNewPI` use the same proved
-`Runtime.Construct` / `Store.Construct` path as text construction. The C
-wrappers only select the node kind and convert strings; they do not implement
-a separate allocation or ownership path. Raw comment/PI input is copied at
-construction, with lexical validity checked by serialization rather than
-claimed by the constructor contract.
+parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`, and
+`xmlNewDocPI` share `Runtime.New_Doc_Content` and
+`Store.Content.New_Doc_Content` with document-text construction. The private C
+`New_Content_Node` helper handles input conversion, locking, status reporting,
+and exception mapping for these constructors, replacing the separate document
+text adapter without adding a C ownership path. The Store operation is
+restricted to text, comment, and PI kinds; it maintains `Ready (S)`, relates
+the result address to `Created` status, and uses the existing
+`Set_Node_Projection` invariant to set document affiliation and owner pin.
+These contracts do not prove complete public API semantics or rollback.
+Raw comment/PI input is copied at construction, with lexical validity checked
+by serialization rather than claimed by the constructor contract.
 
 `XML3_Serialization.Render` reads an immutable Store state, validates and
 measures the supported XML 1.0 UTF-8 subset, then repeats the same iterative

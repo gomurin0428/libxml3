@@ -44,7 +44,7 @@ static void test_shared_lexical_cases(void) {
     expect_exact_output(representative_input, representative_expected);
 }
 
-static void test_constructed_comments_and_pi(void) {
+static void test_constructed_comments_and_pi(int affiliated) {
     static const char expected[] =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         "<!--before-->\n"
@@ -55,21 +55,33 @@ static void test_constructed_comments_and_pi(void) {
     char pi_content[] = "値";
     xmlDocPtr doc = xmlNewDoc(NULL);
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
-    xmlNodePtr comment = xmlNewComment(BAD_CAST comment_content);
-    xmlNodePtr pi = xmlNewPI(BAD_CAST target, BAD_CAST pi_content);
-    xmlNodePtr null_comment = xmlNewComment(NULL);
-    xmlNodePtr empty_comment = xmlNewComment(BAD_CAST "");
+    xmlNodePtr comment = affiliated
+        ? xmlNewDocComment(doc, BAD_CAST comment_content)
+        : xmlNewComment(BAD_CAST comment_content);
+    xmlNodePtr pi = affiliated
+        ? xmlNewDocPI(doc, BAD_CAST target, BAD_CAST pi_content)
+        : xmlNewPI(BAD_CAST target, BAD_CAST pi_content);
+    xmlNodePtr null_comment = affiliated
+        ? xmlNewDocComment(doc, NULL) : xmlNewComment(NULL);
+    xmlNodePtr empty_comment = affiliated
+        ? xmlNewDocComment(doc, BAD_CAST "") : xmlNewComment(BAD_CAST "");
     xmlChar *memory = NULL;
     int size = 0;
 
     assert(doc && root && comment && pi && null_comment && empty_comment);
     assert(comment->type == XML_COMMENT_NODE && pi->type == XML_PI_NODE);
-    assert(comment->parent == NULL && comment->doc == NULL);
-    assert(pi->parent == NULL && pi->doc == NULL && pi->ns == NULL);
+    assert(comment->parent == NULL && comment->doc == (affiliated ? doc : NULL));
+    assert(pi->parent == NULL && pi->doc == (affiliated ? doc : NULL));
+    assert(pi->ns == NULL && doc->children == NULL && doc->last == NULL);
     assert(strcmp((const char *)comment->name, "comment") == 0);
     assert(null_comment->content == NULL);
     assert(empty_comment->content && empty_comment->content[0] == 0);
     assert(xmlNewPI(NULL, BAD_CAST "data") == NULL);
+    assert(xmlNewDocPI(doc, NULL, BAD_CAST "data") == NULL);
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlNewDocComment((xmlDocPtr)root, BAD_CAST "bad") == NULL);
+    assert(xmlNewDocPI((xmlDocPtr)root, BAD_CAST "bad", NULL) == NULL);
+#endif
     comment_content[0] = 'X';
     target[0] = 'X';
     pi_content[0] = 'X';
@@ -79,8 +91,12 @@ static void test_constructed_comments_and_pi(void) {
     assert(xmlAddChild(root, pi) == pi);
     assert(xmlAddChild(root, null_comment) == null_comment);
     assert(xmlAddChild(root, empty_comment) == empty_comment);
-    assert(xmlAddChild(root, xmlNewPI(BAD_CAST "empty", BAD_CAST "")));
-    assert(xmlAddChild(root, xmlNewPI(BAD_CAST "bare", NULL)));
+    assert(xmlAddChild(root, affiliated
+        ? xmlNewDocPI(doc, BAD_CAST "empty", BAD_CAST "")
+        : xmlNewPI(BAD_CAST "empty", BAD_CAST "")));
+    assert(xmlAddChild(root, affiliated
+        ? xmlNewDocPI(doc, BAD_CAST "bare", NULL)
+        : xmlNewPI(BAD_CAST "bare", NULL)));
     assert(xmlAddChild(root, xmlNewPI(BAD_CAST "xml-stylesheet", BAD_CAST "type='x'")));
     assert(xmlAddChild((xmlNodePtr)doc, xmlNewPI(BAD_CAST "after", NULL)));
     assert(comment->doc == doc && pi->doc == doc);
@@ -102,6 +118,34 @@ static void test_constructed_comments_and_pi(void) {
     xmlFreeNode(pi);
     xmlFreeDoc(doc);
     xmlFree(memory);
+}
+
+static void test_document_misc_lifetime(void) {
+    xmlNodePtr comment = xmlNewDocComment(NULL, BAD_CAST "note");
+    xmlNodePtr pi = xmlNewDocPI(NULL, BAD_CAST "work", NULL);
+    assert(comment && pi && comment->doc == NULL && pi->doc == NULL);
+    assert(strcmp((const char *)comment->content, "note") == 0);
+    assert(strcmp((const char *)pi->name, "work") == 0 && pi->content == NULL);
+    xmlFreeNode(comment);
+    xmlFreeNode(pi);
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlDocPtr doc = xmlNewDoc(NULL);
+        assert(doc);
+        comment = xmlNewDocComment(doc, BAD_CAST "retained");
+        pi = xmlNewDocPI(doc, BAD_CAST "target", BAD_CAST "data");
+        assert(comment && pi && doc->children == NULL);
+        xmlFreeDoc(doc);
+        assert(comment->doc == doc && pi->doc == doc);
+        assert(xmlNodeSetContent(comment, BAD_CAST "fixed") == 0);
+        assert(xmlNodeAddContent(pi, BAD_CAST "!") == 0);
+        assert(strcmp((const char *)comment->content, "fixed") == 0);
+        xmlFreeNode(comment);
+        assert(strcmp((const char *)pi->name, "target") == 0);
+        assert(strcmp((const char *)pi->content, "data!") == 0);
+        xmlFreeNode(pi);
+    }
+#endif
 }
 
 #ifndef XML3_REFERENCE_TEST
@@ -196,7 +240,7 @@ static void test_round_trip(void) {
     xmlFree(memory);
 }
 
-static void test_misc_rejections_and_lifetime(void) {
+static void test_misc_rejections_and_lifetime(int affiliated) {
     static const struct { const char *target; const char *content; } cases[] = {
         {NULL, "bad--comment"}, {NULL, "trailing-"},
         {NULL, "\001"}, {NULL, "\xc3"},
@@ -209,8 +253,11 @@ static void test_misc_rejections_and_lifetime(void) {
         xmlDocPtr doc = xmlNewDoc(NULL);
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
         xmlNodePtr node = cases[i].target
-            ? xmlNewPI(BAD_CAST cases[i].target, BAD_CAST cases[i].content)
-            : xmlNewComment(BAD_CAST cases[i].content);
+            ? (affiliated
+               ? xmlNewDocPI(doc, BAD_CAST cases[i].target, BAD_CAST cases[i].content)
+               : xmlNewPI(BAD_CAST cases[i].target, BAD_CAST cases[i].content))
+            : (affiliated ? xmlNewDocComment(doc, BAD_CAST cases[i].content)
+               : xmlNewComment(BAD_CAST cases[i].content));
         xmlChar *memory = NULL;
         int size = 0;
         assert(doc && root && node);
@@ -228,8 +275,12 @@ static void test_misc_rejections_and_lifetime(void) {
     {
         xmlDocPtr doc = xmlNewDoc(NULL);
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
-        xmlNodePtr comment = xmlNewComment(BAD_CAST "retained comment");
-        xmlNodePtr pi = xmlNewPI(BAD_CAST "retained", BAD_CAST "PI data");
+        xmlNodePtr comment = affiliated
+            ? xmlNewDocComment(doc, BAD_CAST "retained comment")
+            : xmlNewComment(BAD_CAST "retained comment");
+        xmlNodePtr pi = affiliated
+            ? xmlNewDocPI(doc, BAD_CAST "retained", BAD_CAST "PI data")
+            : xmlNewPI(BAD_CAST "retained", BAD_CAST "PI data");
         xmlChar *content;
         assert(doc && root && comment && pi);
         assert(xmlDocSetRootElement(doc, root) == NULL);
@@ -600,15 +651,21 @@ static void test_serialization_oom(void) {
 
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "--misc") == 0) {
-        test_constructed_comments_and_pi();
-        test_misc_rejections_and_lifetime();
+        test_constructed_comments_and_pi(0);
+        test_constructed_comments_and_pi(1);
+        test_document_misc_lifetime();
+        test_misc_rejections_and_lifetime(0);
+        test_misc_rejections_and_lifetime(1);
         puts("comment and PI construction tests passed");
         return 0;
     }
     test_shared_lexical_cases();
     test_round_trip();
-    test_constructed_comments_and_pi();
-    test_misc_rejections_and_lifetime();
+    test_constructed_comments_and_pi(0);
+    test_constructed_comments_and_pi(1);
+    test_document_misc_lifetime();
+    test_misc_rejections_and_lifetime(0);
+    test_misc_rejections_and_lifetime(1);
     test_pointer_contracts();
     test_namespace_shadowing();
     test_namespace_escaping();
@@ -627,7 +684,9 @@ int main(int argc, char **argv) {
 #else
 int main(void) {
     test_shared_lexical_cases();
-    test_constructed_comments_and_pi();
+    test_constructed_comments_and_pi(0);
+    test_constructed_comments_and_pi(1);
+    test_document_misc_lifetime();
     puts("reference UTF-8 serializer lexical case passed");
     return 0;
 }
