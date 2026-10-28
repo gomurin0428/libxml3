@@ -63,7 +63,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、`xmlAddChild`、
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
-  `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
+  `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
@@ -131,7 +131,7 @@ namespace facade、未管理 node、または空の結果では 1、結果があ
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
-`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`,
+`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`,
 `xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、
 `xmlNodeSetSpacePreserve` を実装しています。
 `xmlNewDoc` は
@@ -300,6 +300,14 @@ element/attribute の namespace 参照のみを変更し、NULL で解除しま�
 の手動解放は拒否します。namespace が node から借用中であれば、その参照がなくなる
 まで native storage は保持されます。subtree 解放では宣言 chain を unlink してから
 element arena を解放し、独立作成宣言の reservation を一度だけ解放します。
+
+`xmlCopyNamespace` は管理中の live namespace facade だけを source として受け付け、
+href/prefix の byte 列を独立してコピーし、NULL と empty string の有無を保持した
+detached namespace を返します。source の `next`、`context`、`_private` はコピーせず、
+返却された reservation は呼び出し側が `xmlFreeNs` で解放します。node に設定した namespace
+は Store の pin で source 解放後も保持されます。foreign・stale pointer、namespace list の
+コピー、native pointer validity と ABI はこの実装の対象外で、完全な public semantics は
+証明していません。
 
 `xmlNewNsProp` は detached/attached attribute を作り、異なる namespace 内の同じ
 local name を許します。`xmlSetNsProp` と `xmlUnsetNsProp` は prefix/namespace pointer

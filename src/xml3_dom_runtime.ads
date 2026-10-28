@@ -47,6 +47,11 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Copy_Namespace
+        (Source : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Set_Namespace
         (Node, Ns : System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

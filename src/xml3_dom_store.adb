@@ -173,6 +173,35 @@ package body XML3_DOM_Store with SPARK_Mode is
       Status := Created;
    end Create_Namespace;
 
+   procedure Copy_Namespace
+     (S : in out Store; Source : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      N : constant Namespace_Ref := Find_Namespace (S, Source);
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if N = Null_Namespace then
+         return;
+      end if;
+      declare
+         Item : constant Namespace_View := Namespace (S.Current.all, N);
+         Href : String (1 .. Item.Href_Length) := (others => Character'Val (0));
+         Prefix : String (1 .. Item.Prefix_Length) := (others => Character'Val (0));
+      begin
+         if Item.Href /= System.Null_Address then
+            Native.Read_String (Item.Href, Href);
+         end if;
+         if Item.Prefix /= System.Null_Address then
+            Native.Read_String (Item.Prefix, Prefix);
+         end if;
+         Create_Namespace
+           (S, System.Null_Address, Href, Prefix,
+            Item.Href /= System.Null_Address, Item.Prefix /= System.Null_Address,
+            Result, Status);
+      end;
+   end Copy_Namespace;
+
    procedure Set_Namespace
      (S : in out Store; Node_Facade, Ns : System.Address;
       Status : out Operation_Status)
