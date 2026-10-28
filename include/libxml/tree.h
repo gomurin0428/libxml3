@@ -140,7 +140,9 @@ xmlChar *xmlGetNsProp(const xmlNode *node, const xmlChar *name,
                       const xmlChar *href);
 xmlChar *xmlGetNoNsProp(const xmlNode *node, const xmlChar *name);
 xmlNodePtr xmlFirstElementChild(const xmlNode *parent);
+xmlNodePtr xmlLastElementChild(xmlNode *parent);
 xmlNodePtr xmlNextElementSibling(const xmlNode *node);
+xmlNodePtr xmlPreviousElementSibling(xmlNode *node);
 unsigned long xmlChildElementCount(const xmlNode *parent);
 
 #ifdef __cplusplus

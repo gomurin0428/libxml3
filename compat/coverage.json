@@ -333,17 +333,31 @@
   },
   "function:tree.h:xmlFirstElementChild": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "SPARK Store selection of the first direct element child in the supported parsed/edited DOM subset, skipping non-elements. Shared thin C selector; full node-kind/API equivalence is not claimed.",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/content-edit-test.c"
     ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlLastElementChild": {
+    "implementation": "partial",
+    "scope": "SPARK Store reverse scan from Last_Child for supported element/document parents. Returns the existing last direct element, skipping non-elements; NULL/invalid/unregistered/unsupported-kind input returns NULL. Edited/detached trees supported; fragment/HTML/DTD/entity kinds excluded. Native boundary and full selection semantics outside proof claim.",
+    "tests": ["tests/content-edit-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlPreviousElementSibling": {
+    "implementation": "partial",
+    "scope": "SPARK Store reverse scan from Previous for supported element/text/CDATA/comment/PI nodes. Skips non-element siblings without allocation; document/attribute/NULL/unregistered inputs return NULL. Edited/detached trees supported; unsupported node kinds and full selection semantics excluded from proof claim.",
+    "tests": ["tests/content-edit-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNextElementSibling": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "SPARK Store selection of the next element sibling in the supported parsed/edited DOM subset, skipping non-elements. Shared thin C selector; full node-kind/API equivalence is not claimed.",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c",
+      "tests/content-edit-test.c"
     ],
     "proof": "not-proved"
   },

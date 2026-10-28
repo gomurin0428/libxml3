@@ -718,6 +718,77 @@ static void test_construct_doc_node(int raw) {
 #endif
 }
 
+static void test_reverse_element_navigation(void) {
+    static const char input[] =
+        "<!--before--><r a='v'>start<a/>mid<!--gap--><b/><?pi x?>"
+        "<![CDATA[tail]]>end</r><!--after-->";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, a, b, c;
+    xmlDocPtr empty = xmlNewDoc(NULL);
+    assert(doc && empty);
+    assert(xmlLastElementChild(NULL) == NULL);
+    assert(xmlPreviousElementSibling(NULL) == NULL);
+    assert(xmlLastElementChild((xmlNodePtr)empty) == NULL);
+    xmlFreeDoc(empty);
+    root = xmlDocGetRootElement(doc);
+    a = xmlFirstElementChild(root);
+    b = xmlNextElementSibling(a);
+    assert(a && b && strcmp((const char *)a->name, "a") == 0);
+    assert(strcmp((const char *)b->name, "b") == 0);
+    assert(xmlLastElementChild(root) == b && xmlChildElementCount(root) == 2);
+    assert(xmlPreviousElementSibling(root->last) == b);
+    assert(xmlPreviousElementSibling(b) == a);
+    assert(xmlPreviousElementSibling(a) == NULL);
+    assert(xmlLastElementChild(a) == NULL);
+    assert(xmlLastElementChild(root->last) == NULL);
+    assert(xmlLastElementChild((xmlNodePtr)doc) == root);
+    assert(xmlPreviousElementSibling(doc->last) == root);
+    assert(xmlPreviousElementSibling((xmlNodePtr)doc) == NULL);
+    assert(xmlLastElementChild((xmlNodePtr)root->properties) == NULL);
+    assert(xmlPreviousElementSibling((xmlNodePtr)root->properties) == NULL);
+    xmlUnlinkNode(b);
+    assert(xmlLastElementChild(root) == a);
+    assert(xmlPreviousElementSibling(b) == NULL);
+    c = xmlNewDocRawNode(doc, NULL, BAD_CAST "c", BAD_CAST "");
+    assert(c && xmlAddChild(root, c) == c);
+    assert(xmlLastElementChild(root) == c && xmlPreviousElementSibling(c) == a);
+    assert(xmlLastElementChild(c) == NULL);
+    assert(xmlAddChild(root, b) == b);
+    assert(xmlLastElementChild(root) == b && xmlPreviousElementSibling(b) == c);
+    assert(xmlNextElementSibling(c) == b && xmlChildElementCount(root) == 3);
+    xmlUnlinkNode(a);
+    xmlFreeNode(a);
+    assert(xmlPreviousElementSibling(c) == NULL);
+    xmlUnlinkNode(root);
+    assert(xmlLastElementChild((xmlNodePtr)doc) == NULL);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    assert(xmlLastElementChild(root) == b && xmlPreviousElementSibling(b) == c);
+    xmlUnlinkNode(b);
+    xmlFreeNode(b);
+    assert(xmlLastElementChild(root) == c);
+    xmlUnlinkNode(c);
+    xmlFreeNode(c);
+    assert(xmlLastElementChild(root) == NULL && xmlChildElementCount(root) == 0);
+    assert_content(root, "startmidtailend");
+    xmlFreeNode(root);
+#ifdef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#else
+    {
+        xmlNode unregistered = {0};
+        unregistered.type = XML_ELEMENT_NODE;
+        unregistered.last = &unregistered;
+        unregistered.prev = &unregistered;
+        xmlResetLastError();
+        assert(xmlLastElementChild(&unregistered) == NULL);
+        assert(xmlPreviousElementSibling(&unregistered) == NULL);
+        assert(xmlGetLastError() == NULL);
+    }
+#endif
+}
+
 static void test_construct_child(void) {
     static const char input[] =
         "<p:root xmlns:p='urn:parent' xmlns:q='urn:other'><!--before--></p:root>";
@@ -943,6 +1014,7 @@ int main(void) {
     test_construct_child();
     test_construct_doc_node(0);
     test_construct_doc_node(1);
+    test_reverse_element_navigation();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();

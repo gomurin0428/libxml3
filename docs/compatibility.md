@@ -9,6 +9,13 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
+`xmlLastElementChild` / `xmlPreviousElementSibling` は要素・文書の末尾や直前の sibling から
+SPARK 管理状態のリンクをたどり、最初に見つかった element を返します。
+text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な node kind では NULL です。
+切り離し・再接続後のリンクも同じ管理状態を参照します。結果は既存 node のポインタで、
+新しいノードや文字列を確保しません。fragment・HTML・DTD・entity node は未対応です。
+文書の末尾走査は対応しますが、文書や属性を起点とする previous-sibling 走査は NULL です。
+
 インストール対象ヘッダーは `libxml3.h` と次の五つです。
 
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、

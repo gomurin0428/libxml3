@@ -299,6 +299,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Start : Node_Ref;
       Current : Node_Ref;
       N : Node_View;
+      Backward : constant Boolean := Mode in Last_Element | Previous_Element;
    begin
       Result := System.Null_Address;
       Count := 0;
@@ -314,7 +315,18 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       if Mode = Document_Root and then N.Kind /= Document_Node then
          return;
       end if;
-      Current := (if Mode = Next_Element then N.Next else N.First_Child);
+      if (Mode = Last_Element and then N.Kind not in Element_Node | Document_Node)
+        or else (Mode = Previous_Element
+                 and then N.Kind in Document_Node | Attribute_Node)
+      then
+         Status := Created;
+         return;
+      end if;
+      Current := (case Mode is
+         when Next_Element => N.Next,
+         when Previous_Element => N.Previous,
+         when Last_Element => N.Last_Child,
+         when others => N.First_Child);
       for Step in 1 .. Node_Count (S.Current.all) loop
          exit when Current = Null_Node;
          if not Live_Node (S, Current) then
@@ -337,7 +349,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
                return;
             end if;
          end if;
-         Current := N.Next;
+         Current := (if Backward then N.Previous else N.Next);
       end loop;
       if Current /= Null_Node then
          Status := Internal_Error;
