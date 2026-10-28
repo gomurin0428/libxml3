@@ -2314,6 +2314,33 @@ package body XML3_C is
          return 0;
    end Check_UTF8;
 
+   function Get_UTF8_Char
+     (Item : System.Address; Length : System.Address) return Interfaces.C.int
+   is
+      Code : Integer;
+      Width : Natural;
+   begin
+      if Length = System.Null_Address then
+         return -1;
+      end if;
+      if Item = System.Null_Address then
+         Set_Status (Length, 0);
+         return -1;
+      end if;
+      declare
+         Slot : int with Import, Address => Length;
+      begin
+         XML3_Text.Buffers.Get_UTF8_Char (Item, Integer (Slot), Code, Width);
+         Slot := int (Width);
+         return int (Code);
+      end;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         Set_Status (Length, 0);
+         return -1;
+   end Get_UTF8_Char;
+
    function Append_String
      (Item, Addition : System.Address; Length : Interfaces.C.int;
       Terminated : Boolean) return System.Address

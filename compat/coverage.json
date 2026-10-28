@@ -698,6 +698,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlGetUTF8Char": {
+    "implementation": "partial",
+    "scope": "Decodes one strict UTF-8 scalar from at most *len readable bytes and returns its code point, updating *len to consumed width. NULL utf, NULL len, or *len < 1 returns -1; when len is non-NULL it is set to 0 for failure, and *len < 1 is handled without reading utf. NUL decodes as code point 0 with width 1; ASCII controls and Unicode noncharacters are accepted as UTF-8. Invalid, truncated, overlong, surrogate, out-of-range, or unsupported lead bytes return -1 with *len = 0 and no diagnostic; unexpected C-side exceptions map to DOM error 1, *len = 0, and -1. Unlike the pinned reference, the decoder rejects F8..FF lead-byte masking (including F8 90 80 80 and FC 80 80 80) and avoids the reference's utf[0] read before checking *len < 1. No allocation, input mutation, transcoding, or XML validation occurs. GNATprove covers scalar loop/index/overflow safety, width bounds, and native-call preconditions, not complete Unicode API semantics or actual foreign bytes. Pointer validity, *len-byte readable extent, and C mapping remain trusted. Shared vectors, reference-permissive vectors with differing expectations, and exact-span guard-page tests run against both reference and libxml3; the zero-length unreadable-pointer safety test and OOM/no-allocation checks are libxml3-only.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "macro:xmlmemory.h:xmlFree": {
     "implementation": "partial",
     "scope": "通常の解放呼び出しのみ。上流のallocator変数/マクロ差し替えは非互換。",

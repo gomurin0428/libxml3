@@ -167,6 +167,17 @@ allocation・mutation・transcodingを行いません。小さい `Last` のAda 
 preconditionsであり、native byteの実値や読み取り可能範囲、pointer妥当性、C mapping、完全な
 Unicode API意味論は信頼境界です。通常・malformed・guard-page vectorsはreferenceとlibxml3の両方で、
 referenceだけが受け入れる非canonical casesは期待値を分け、no-allocation testはlibxml3のみで実行します。
+`xmlGetUTF8Char` は `*len` bytes以内から先頭のUTF-8 scalarをdecodeし、成功時にcode pointと消費byte数を返します。
+`utf == NULL`、`len == NULL`、または `*len < 1` は `-1` です。`len` が非NULLなら無効入力では `*len = 0`、
+ただし `*len < 1` ではbyteを読みません。NULはcode point 0、幅1として返します。ASCII controlとUnicode
+noncharacterも有効なencodingなら受け入れ、XML character validityは検査しません。strict UTF-8として
+overlong、surrogate、U+10FFFF超過と不正・truncated sequenceは `-1` / `*len = 0` で、診断は記録しません。
+pinned referenceが `F8`–`FF` leadをmaskしてdecodeする差も再現せず、例として `F8 90 80 80` と
+`FC 80 80 80` は拒否します。またreferenceは `*len < 1` の確認前に `utf[0]` を読むため、このsubsetは
+その危険なreadを避けます。予期しないC-side例外はDOM error 1、`*len = 0`、`-1` です。
+allocationやinput mutation、transcodingはしません。shared vectorsとguard-page exact-span testはreferenceとlibxml3で実行し、
+referenceのpermissive vectorsは両方で期待値を分けます。`*len == 0` のunreadable-pointer安全testとOOM/no-allocation
+testはlibxml3のみです。native pointer validity、`*len` 分のreadable extent、actual bytes、C-side mappingは信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

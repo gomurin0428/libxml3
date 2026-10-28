@@ -21,6 +21,14 @@ package XML3_Text.Buffers with SPARK_Mode is
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Post => (if Item = System.Null_Address then Status = UTF8_Invalid);
 
+   procedure Get_UTF8_Char
+     (Item : System.Address; Available : Integer;
+      Code : out Integer; Width : out Natural)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => (Width = 0 and then Code = -1)
+         or else (Width in 1 .. 4 and then Width <= Available
+                  and then Code in 0 .. 16#10FFFF#);
+
    procedure Measure
      (Item : System.Address; Length : out Byte_Count; Success : out Boolean;
       Last : Byte_Count := Max_Bytes)
