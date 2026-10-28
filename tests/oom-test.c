@@ -157,6 +157,12 @@ int main(int argc, char **argv) {
         assert(xmlUTF8Size(BAD_CAST "\xf4") == 4);
         assert(xmlUTF8Size(BAD_CAST "\xf5") == -1);
         assert(xmlUTF8Size(BAD_CAST "\xc0\x80") == -1);
+        assert(xmlUTF8Strloc(BAD_CAST "A名名", BAD_CAST "名suffix") == 1);
+        assert(xmlUTF8Strloc(BAD_CAST "abc", BAD_CAST "z") == -1);
+        assert(xmlUTF8Strloc(BAD_CAST "\xc0\x80z", BAD_CAST "z") == -1);
+        assert(xmlUTF8Strloc(BAD_CAST "z", BAD_CAST "\xc0\x80") == -1);
+        assert(xmlUTF8Strloc(BAD_CAST "x", BAD_CAST "") == 0);
+        assert(xmlUTF8Strloc(BAD_CAST "", BAD_CAST "") == -1);
         assert(xmlCheckUTF8(NULL) == 0 && xmlCheckUTF8(BAD_CAST "") == 1);
         assert(xmlCheckUTF8(BAD_CAST "ASCII名é") == 1);
         assert(xmlCheckUTF8(BAD_CAST "\x01\xef\xbf\xbe") == 1);

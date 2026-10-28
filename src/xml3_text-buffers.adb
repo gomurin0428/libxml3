@@ -91,7 +91,8 @@ package body XML3_Text.Buffers with SPARK_Mode is
 
    procedure Scan_UTF8
      (Item : System.Address; Stop_After : Integer;
-      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)
+      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count;
+      Pattern : String := "")
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Post => Length <= Offset and then Offset <= Last
          and then (if Status /= UTF8_Valid then Length = 0 and Offset = 0)
@@ -155,9 +156,47 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end if;
    end Find_UTF8_Position;
 
+   procedure Find_UTF8_Character
+     (Item, Pattern : System.Address;
+      Index : out Byte_Count; Status : out Search_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Size, Length, Position : Byte_Count;
+      Encoding : UTF8_Status;
+      Bytes : String (1 .. 4) := (others => Character'Val (0));
+   begin
+      Index := 0;
+      Status := No_Match;
+      if Item = System.Null_Address or else Pattern = System.Null_Address then
+         return;
+      end if;
+      Measure_UTF8_Prefix (Pattern, 1, Size, Encoding, 4);
+      if Encoding /= UTF8_Valid then
+         return;
+      elsif Size = 0 then
+         if Native.Byte_At (Item, 0) /= Character'Val (0) then
+            Status := Matched;
+         end if;
+         return;
+      end if;
+      for J in 1 .. Size loop
+         Bytes (J) := Native.Byte_At (Pattern, J - 1);
+      end loop;
+      Scan_UTF8 (Item, -1, Length, Position, Encoding, Last, Bytes (1 .. Size));
+      if Encoding = UTF8_Valid
+        and then Native.Byte_At (Item, Position) /= Character'Val (0)
+      then
+         Index := Length;
+         Status := Matched;
+      elsif Encoding = UTF8_Limit_Exceeded then
+         Status := Search_Limit_Exceeded;
+      end if;
+   end Find_UTF8_Character;
+
    procedure Scan_UTF8
      (Item : System.Address; Stop_After : Integer;
-      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)
+      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count;
+      Pattern : String := "")
    is
       Position : Natural := 0;
       Count : Natural := 0;
@@ -217,6 +256,12 @@ package body XML3_Text.Buffers with SPARK_Mode is
             if Kind /= No_Text_Error then
                return;
             end if;
+         end if;
+         if Pattern'Length > 0 and then Bytes (1 .. Width) = Pattern then
+            Length := Count;
+            Offset := Position;
+            Status := UTF8_Valid;
+            return;
          end if;
          Position := Position + Width;
          Count := Count + 1;

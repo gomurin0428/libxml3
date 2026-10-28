@@ -55,6 +55,16 @@ package XML3_Text.Buffers with SPARK_Mode is
          and then (if Status = Matched then Item /= System.Null_Address
                    else Position = 0);
 
+   procedure Find_UTF8_Character
+     (Item, Pattern : System.Address;
+      Index : out Byte_Count; Status : out Search_Status;
+      Last : Byte_Count := Max_Bytes)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Index <= Last
+         and then (if Status = Matched then
+                      Item /= System.Null_Address and Pattern /= System.Null_Address
+                   else Index = 0);
+
    procedure Count_UTF8
      (Item : System.Address; Length : out Byte_Count; Status : out UTF8_Status;
       Last : Byte_Count := Max_Bytes)

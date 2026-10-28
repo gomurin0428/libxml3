@@ -2361,6 +2361,22 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function UTF8_Str_Location (Item, Pattern : System.Address) return Interfaces.C.int is
+      use type XML3_Text.Buffers.Search_Status;
+      Index : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_UTF8_Character (Item, Pattern, Index, Status);
+      if Status = XML3_Text.Buffers.Search_Limit_Exceeded then
+         Report_Dom_Error (115);
+      end if;
+      return (if Status = XML3_Text.Buffers.Matched then int (Index) else -1);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end UTF8_Str_Location;
+
    function Get_UTF8_Char
      (Item : System.Address; Length : System.Address) return Interfaces.C.int
    is
