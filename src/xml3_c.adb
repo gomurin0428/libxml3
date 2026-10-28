@@ -2302,6 +2302,39 @@ package body XML3_C is
          return 0;
    end Child_Element_Count;
 
+   function Append_String
+     (Item, Addition : System.Address; Length : Interfaces.C.int;
+      Terminated : Boolean) return System.Address
+   is
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Append_Status;
+   begin
+      XML3_Text.Buffers.Append
+        (Item, Addition, Integer (Length), Terminated, Result, Status);
+      case Status is
+         when XML3_Text.Buffers.Append_No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Append_Limit_Exceeded =>
+            Report_Dom_Error (115);
+         when others => null;
+      end case;
+      return Result;
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Append_String;
+
+   function Str_Append (Item, Addition : System.Address) return System.Address is
+     (Append_String (Item, Addition, 0, True));
+
+   function Str_N_Append
+     (Item, Addition : System.Address; Length : Interfaces.C.int) return System.Address is
+     (Append_String (Item, Addition, Length, False));
+
    function Compare_Strings
      (Left, Right : System.Address; Ignore_Case : Boolean) return Interfaces.C.int
    is

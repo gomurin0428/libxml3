@@ -5,6 +5,10 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    xmlChar *(*str_append)(xmlChar *, const xmlChar *) = xmlStrcat;
+    xmlChar *(*str_n_append)(xmlChar *, const xmlChar *, int) = xmlStrncat;
+    (void)str_append;
+    (void)str_n_append;
     int (*str_case_compare)(const xmlChar *, const xmlChar *) = xmlStrcasecmp;
     (void)str_case_compare;
     xmlChar *(*str_sub_copy)(const xmlChar *, int, int) = xmlStrsub;

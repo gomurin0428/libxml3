@@ -234,6 +234,60 @@ static void test_substring_search(void) {
     xmlFree(copy);
 }
 
+static void test_string_append(void) {
+    assert(!xmlStrcat(NULL, NULL));
+    assert(!xmlStrncat(NULL, NULL, -1));
+    assert(!xmlStrncat(NULL, BAD_CAST "x", 0));
+    xmlChar *cur = xmlStrcat(NULL, BAD_CAST "");
+    assert(cur && cur[0] == 0);
+    xmlFree(cur);
+    cur = xmlStrdup(BAD_CAST "head");
+    assert(cur);
+    assert(xmlStrcat(cur, NULL) == cur && xmlStrcat(cur, BAD_CAST "") == cur);
+    assert(xmlStrncat(cur, BAD_CAST "ignored", 0) == cur);
+    assert(xmlStrncat(cur, NULL, -1) == cur);
+    cur = xmlStrcat(cur, BAD_CAST ":");
+    assert(cur && xmlStrEqual(cur, BAD_CAST "head:"));
+    const xmlChar raw[] = {'a', 0, 'b', 0xff};
+    cur = xmlStrncat(cur, raw, 4);
+    assert(cur && !memcmp(cur, "head:", 5) && !memcmp(cur + 5, raw, 4) && cur[9] == 0);
+    xmlFree(cur);
+    cur = xmlStrncat(NULL, raw, 4);
+    assert(cur && !memcmp(cur, raw, 4) && cur[4] == 0);
+    xmlFree(cur);
+    cur = xmlStrdup(BAD_CAST "consumed");
+    assert(cur);
+    cur = xmlStrncat(cur, BAD_CAST "x", -1);
+    assert(!cur);
+    cur = xmlStrdup(BAD_CAST "<r>");
+    assert(cur);
+    cur = xmlStrcat(cur, BAD_CAST "名");
+    assert(cur);
+    cur = xmlStrncat(cur, BAD_CAST "</r>ignored", 4);
+    assert(cur);
+    xmlDocPtr doc = xmlReadMemory((const char *)cur, xmlStrlen(cur), NULL, NULL, 0);
+    xmlFree(cur);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(content && xmlStrEqual(content, BAD_CAST "名"));
+    xmlFree(content);
+    xmlFreeDoc(doc);
+#ifndef XML3_REFERENCE_VERSION
+    cur = xmlStrdup(BAD_CAST "ab");
+    assert(cur);
+    cur = xmlStrcat(cur, cur);
+    assert(cur && xmlStrEqual(cur, BAD_CAST "abab"));
+    cur = xmlStrncat(cur, cur + 1, 3);
+    assert(cur && xmlStrEqual(cur, BAD_CAST "ababbab"));
+    xmlFree(cur);
+    cur = xmlStrndup(raw, 4);
+    assert(cur);
+    cur = xmlStrncat(cur, cur + 2, 2);
+    assert(cur && !memcmp(cur, "ab\xff", 3) && cur[3] == 0);
+    xmlFree(cur);
+#endif
+}
+
 static void test_full_string_comparisons(void) {
     assert(xmlStrcmp(NULL, NULL) == 0 && xmlStrcasecmp(NULL, NULL) == 0);
     assert(xmlStrEqual(NULL, NULL) == 1);
@@ -534,6 +588,27 @@ static void test_string_duplicates(void) {
         assert(xmlStrcasecmp(source + 1, BAD_CAST "a") == 0);
         assert(xmlStrcmp(source + 1, BAD_CAST "A") == 0);
         assert(xmlStrEqual(source + 1, BAD_CAST "A") == 1);
+        assert(xmlStrcat((xmlChar *)unreadable, NULL) == unreadable);
+        assert(xmlStrcat((xmlChar *)unreadable, BAD_CAST "") == unreadable);
+        assert(xmlStrncat((xmlChar *)unreadable, unreadable, 0) == unreadable);
+        assert(xmlStrncat((xmlChar *)unreadable, NULL, -1) == unreadable);
+        xmlChar *appended = xmlStrcat(NULL, source + 1);
+        assert(appended && xmlStrEqual(appended, BAD_CAST "A"));
+        xmlFree(appended);
+        source[2] = 'x';
+        appended = xmlStrdup(BAD_CAST "p");
+        assert(appended);
+        appended = xmlStrncat(appended, source + 2, 1);
+        assert(appended && xmlStrEqual(appended, BAD_CAST "px"));
+        xmlFree(appended);
+#ifndef XML3_REFERENCE_VERSION
+        xmlResetLastError();
+        appended = xmlStrdup(BAD_CAST "consumed");
+        assert(appended);
+        appended = xmlStrncat(appended, unreadable, INT_MAX);
+        assert(!appended && xmlGetLastError() && xmlGetLastError()->code == XML_ERR_ARGUMENT);
+        xmlResetLastError();
+#endif
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -785,6 +860,7 @@ int main(void) {
     test_string_concatenation();
     test_bounded_string_comparisons();
     test_full_string_comparisons();
+    test_string_append();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

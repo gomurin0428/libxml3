@@ -2,6 +2,100 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Read_Length
+     (Item : System.Address; Last : Byte_Count;
+      Length : out Byte_Count; Found : out Boolean)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => Item /= System.Null_Address,
+       Post => Length <= Last
+   is
+   begin
+      Length := 0;
+      Found := False;
+      for Index in 0 .. Last loop
+         if Native.Byte_At (Item, Index) = Character'Val (0) then
+            Length := Index;
+            Found := True;
+            return;
+         end if;
+      end loop;
+   end Read_Length;
+
+   procedure Build_Append
+     (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
+      Result : out System.Address; Status : out Append_Status; Limit : Byte_Count)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Unchanged then Result = Item
+                elsif Status = Appended then Result /= System.Null_Address
+                else Result = System.Null_Address)
+   is
+      Prefix_Length : Byte_Count := 0;
+      Added_Length : Byte_Count;
+      Found : Boolean;
+      Current : Character;
+   begin
+      Result := System.Null_Address;
+      Status := Unchanged;
+      if Addition = System.Null_Address or else (not Terminated and then Length = 0) then
+         Result := Item;
+         return;
+      elsif not Terminated and then Length < 0 then
+         Status := Invalid_Length;
+         return;
+      end if;
+      Status := Append_Limit_Exceeded;
+      if Terminated then
+         Read_Length (Addition, Limit, Added_Length, Found);
+         if not Found then
+            return;
+         end if;
+      elsif Length > Limit then
+         return;
+      else
+         Added_Length := Length;
+      end if;
+      if Added_Length = 0 and then Item /= System.Null_Address then
+         Result := Item;
+         Status := Unchanged;
+         return;
+      end if;
+      if Item /= System.Null_Address then
+         Read_Length (Item, Limit - Added_Length, Prefix_Length, Found);
+         if not Found then
+            return;
+         end if;
+      end if;
+      Status := Append_No_Memory;
+      Native.Allocate (Native.Byte_Count (Prefix_Length + Added_Length) + 1, Result);
+      if Result = System.Null_Address then
+         return;
+      end if;
+      if Item /= System.Null_Address then
+         for Index in 0 .. Prefix_Length - 1 loop
+            Current := Native.Byte_At (Item, Index);
+            Native.Write_Byte (Result, Index, Current);
+         end loop;
+      end if;
+      for Index in 0 .. Added_Length - 1 loop
+         Current := Native.Byte_At (Addition, Index);
+         Native.Write_Byte (Result, Prefix_Length + Index, Current);
+      end loop;
+      Native.Write_Byte (Result, Prefix_Length + Added_Length, Character'Val (0));
+      Status := Appended;
+   end Build_Append;
+
+   procedure Append
+     (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
+      Result : out System.Address; Status : out Append_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+   begin
+      Build_Append (Item, Addition, Length, Terminated, Result, Status, Limit);
+      if Status /= Unchanged and then Item /= System.Null_Address then
+         Native.Free (Item);
+      end if;
+   end Append;
+
    procedure Slice
      (Item : System.Address; Start, Length : Integer;
       Result : out System.Address; Status : out Slice_Status)

@@ -29,6 +29,8 @@ xmlChar *xmlCharStrdup(const char *cur);
 xmlChar *xmlCharStrndup(const char *cur, int len);
 xmlChar *xmlStrndup(const xmlChar *cur, int len);
 xmlChar *xmlStrncatNew(const xmlChar *str1, const xmlChar *str2, int len);
+xmlChar *xmlStrcat(xmlChar *cur, const xmlChar *add);
+xmlChar *xmlStrncat(xmlChar *cur, const xmlChar *add, int len);
 
 #ifdef __cplusplus
 }

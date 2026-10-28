@@ -45,6 +45,7 @@ namespace-list traversal through
 `Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Prefix_Length`
 and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
 bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
+fresh-allocation appending through `XML3_Text.Buffers.Append`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
 `XML3_Text.Buffers.Slice`, terminated byte comparisons through
@@ -52,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,340 checks
-(1,018 flow and 10,322 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,369 checks
+(1,030 flow and 10,339 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -175,7 +176,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,340-check aggregate proof; see
+new units are included in the current successful 11,369-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -667,6 +668,31 @@ bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum
 before conversion. C-string conversion, pointer validity, allocation, native
 byte writes, and complete public semantics remain trusted.
+`xmlStrcat` and `xmlStrncat` use `XML3_Text.Buffers.Append`. `Read_Length`
+checks the NUL-terminated right side; `Build_Append` applies the bounded right
+length and current-prefix length, allocates a separate result, copies raw bytes,
+and appends NUL; `Append` consumes and frees `cur` unless the status is
+`Unchanged`. NULL `add` and `xmlStrncat` length zero are no-ops before negative
+length handling. A negative bounded length with non-NULL `add` returns NULL
+without a diagnostic and consumes `cur`. Positive bounded lengths copy exactly
+the requested span, including embedded NUL. Cap failures return diagnostic
+NULL and consume `cur` with DOM error 115; allocation failure uses the existing
+OOM diagnostic and also consumes `cur`. A non-NULL empty `xmlStrcat` source is
+a no-op for non-NULL `cur`, while NULL `cur` produces an owned empty buffer.
+Callers must pass NULL or the base of a caller-owned `xmlFree`-compatible
+allocation; literals and borrowed DOM pointers are invalid, and old `cur` must
+not be used after a consuming call.
+The fresh-allocation path avoids reallocating `cur` before reading an `add`
+pointer that aliases it, including a raw suffix after an embedded NUL. This is
+an intentional safety difference from the reference's realloc path; always
+copying can increase peak memory and copy work. SPARK proves bounded length and
+size arithmetic, native-call preconditions, and the status/result contract
+(`Read_Length`: 2 checks, `Build_Append`: 14, `Append`: 1). Native allocation
+freshness, actual reads/writes/free, pointer validity, correct caller
+ownership, C diagnostics/mapping, and complete API semantics remain trusted.
+Shared ordinary/null/empty/raw-span/negative/parse and guard-page cases run
+against both the pinned reference and libxml3. Alias/self/raw-tail cases,
+public cap rejection, and OOM/free-count checks are libxml3-only.
 UTF-8 validity and complete API
 equivalence are not proved; native pointers, allocation, byte writes, and C
 conversion remain trusted boundaries.

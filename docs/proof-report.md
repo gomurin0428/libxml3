@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,340 checks, 1,018 by flow analysis and 10,322 by provers;
+**11,369 checks, 1,030 by flow analysis and 10,339 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -142,6 +142,30 @@ cases. SPARK proves sizing, range checks and native-call preconditions; C
 conversion, native allocation, pointer validity, actual byte contents and ABI
 remain trusted. Raw-byte and edge-case comparisons run against the pinned
 reference; over-limit and OOM cases are libxml3-only.
+`xmlStrcat` and `xmlStrncat` use `XML3_Text.Buffers.Append`, whose
+`Read_Length`/`Build_Append` helpers scan bounded lengths, allocate a fresh
+result, copy the selected raw-byte spans and append NUL. `Append` frees the old
+`cur` unless the status is `Unchanged`. NULL `add` and bounded length zero are
+no-ops before negative-length handling; a negative length with non-NULL `add`
+returns NULL without a diagnostic and consumes `cur`. Positive bounded spans
+copy exactly the requested byte count, including embedded NUL. The append
+result is independent and `xmlFree`-owned; `cur` must be NULL or a caller-owned
+free-compatible allocation base, not a literal or borrowed DOM pointer, and
+must not be reused after a consuming call.
+Allocating before copying and freeing avoids the reference realloc alias
+hazard when `add` points into `cur`; always-copy can increase peak memory and
+copy work. `xmlStrcat` scans `add` first and bounds prefix scanning by the
+remaining `Max_Bytes`; a NUL at the boundary is accepted, while an unresolved
+scan reports DOM error 115. `xmlStrncat` rejects lengths above the cap before
+reading either source. Cap failures return diagnostic NULL and consume `cur`;
+OOM uses the existing diagnostic and also consumes `cur`. SPARK proves
+`Read_Length` (2 checks),
+`Build_Append` (14), `Append` (1), bounded arithmetic, native-call
+preconditions, and status/result contracts; actual native reads/writes,
+allocation freshness/free, pointer validity, caller ownership, C mapping, and
+complete API semantics remain trusted. Shared ordinary/null/empty/raw-span/
+negative/parse and guard-page cases run against the reference and libxml3;
+alias/cap/OOM/free-count cases are libxml3-only.
 Namespace searches through `xmlSearchNs` / `xmlSearchNsByHref` route through
 `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`, which composes
 the pure `Search_Namespace` query with lazy XML-binding creation for
@@ -198,13 +222,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 278 |
-| Initialization | 591 |
-| Runtime checks | 5,063 |
+| Data dependencies | 281 |
+| Initialization | 600 |
+| Runtime checks | 5,068 |
 | Assertions | 1,486 |
-| Functional contracts | 3,718 |
+| Functional contracts | 3,730 |
 | Termination | 204 |
-| **Total** | **11,340** |
+| **Total** | **11,369** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -574,8 +598,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-dc7270aa34cb7ffe25b71e837dc24f666f1a225c233b08ab6e49513e4e5e6d10  src/xml3_c.adb
-a44cad8baae5a96b212a1c30f65ddc8f251bd7b6723ffa0f491cc08261381a96  src/xml3_c.ads
+3175f410cfb783f4b59e8c9b2f566104cb48f2e0041720488d10132ed2f1a18c  src/xml3_c.adb
+71d9b69f8a9b1535c609428de55539c7cd212ed1519ca932ced7c3da2a4a45c4  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -622,13 +646,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-af172679b239a5cd61f7e9d75dd64895a15e5fb0c3a07603cb85710eddc7c2d0  src/xml3_text-buffers.adb
-ff113d04f26329cda67502de0bbabf785d9c3a9c1c4acfe97e5c39a8cb55199c  src/xml3_text-buffers.ads
+7f2e85508d5f8e8692950fca54eae3a7df01f4b025e107c6954c7e70225c1960  src/xml3_text-buffers.adb
+f9e93dafb5cd8f9387af9825ec4935082db8045c3ff132ef3afc1813964ac439  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-2dc3a68d51fea1a06a6bbd3561ce3594870b0d984e67e4e552c8b300c60815cd  include/libxml/xmlstring.h
+55a0b26ab36142a82b44dc7cb13789fda99806bd267bddcb8a74dc3f1a63a4a6  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-62fa9a75d2308f68cf8ed51c4f91ab25b302c97721689a04cd472adcb458904d  Makefile
+88e131054556f89ee1f0043f0e97b6042f9ebaa973374ec08249c305596143d7  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

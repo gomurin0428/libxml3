@@ -317,6 +317,13 @@ package XML3_C is
      (Left, Right : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlStrcasecmp";
 
+   function Str_Append (Item, Addition : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlStrcat";
+
+   function Str_N_Append
+     (Item, Addition : System.Address; Length : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlStrncat";
+
    function Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrdup";
 
