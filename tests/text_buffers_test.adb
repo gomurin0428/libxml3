@@ -151,6 +151,31 @@ procedure Text_Buffers_Test is
       XML3_Text.Buffers.Find_UTF8_Position (Text'Address, -1, Position, Status, 0);
       pragma Assert (Status = XML3_Text.Buffers.No_Match and Position = 0);
    end Check_UTF8_Position;
+
+   procedure Check_UTF8_Prefix_Size is
+      Text : aliased String := "a" & Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#) & Character'Val (0);
+      Status : XML3_Text.Buffers.UTF8_Status;
+      Size : XML3_Text.Byte_Count;
+   begin
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 0, Size, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Size = 0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (System.Null_Address, 1, Size, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Size = 0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, -1, Size, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Size = 0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 1, Size, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Limit_Exceeded and Size = 0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 1, Size, Status, 1);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Size = 1);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 2, Size, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Limit_Exceeded and Size = 0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 3, Size, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Size = 4);
+      Text (3) := Character'Val (0);
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 2, Size, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.UTF8_Invalid and Size = 0);
+   end Check_UTF8_Prefix_Size;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -169,5 +194,6 @@ begin
    Check_UTF8;
    Check_UTF8_Count;
    Check_UTF8_Position;
+   Check_UTF8_Prefix_Size;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

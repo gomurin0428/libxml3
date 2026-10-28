@@ -2314,21 +2314,43 @@ package body XML3_C is
          return 0;
    end Check_UTF8;
 
-   function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int is
-      Length : XML3_Text.Byte_Count;
-      Status : XML3_Text.Buffers.UTF8_Status;
+   function UTF8_Length_Result
+     (Length : XML3_Text.Byte_Count; Status : XML3_Text.Buffers.UTF8_Status)
+      return Interfaces.C.int
+   is
       use type XML3_Text.Buffers.UTF8_Status;
    begin
-      XML3_Text.Buffers.Count_UTF8 (Item, Length, Status);
       if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
          Report_Dom_Error (115);
       end if;
       return (if Status = XML3_Text.Buffers.UTF8_Valid then int (Length) else -1);
+   end UTF8_Length_Result;
+
+   function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int is
+      Length : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.UTF8_Status;
+   begin
+      XML3_Text.Buffers.Count_UTF8 (Item, Length, Status);
+      return UTF8_Length_Result (Length, Status);
    exception
       when others =>
          Report_Dom_Error (1);
          return -1;
    end UTF8_Str_Length;
+
+   function UTF8_Str_Size
+     (Item : System.Address; Characters : Interfaces.C.int) return Interfaces.C.int
+   is
+      Size : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.UTF8_Status;
+   begin
+      XML3_Text.Buffers.Measure_UTF8_Prefix (Item, Integer (Characters), Size, Status);
+      return UTF8_Length_Result (Size, Status);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end UTF8_Str_Size;
 
    function Get_UTF8_Char
      (Item : System.Address; Length : System.Address) return Interfaces.C.int

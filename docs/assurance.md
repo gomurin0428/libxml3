@@ -53,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,437 checks
-(1,058 flow and 10,379 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,441 checks
+(1,061 flow and 10,380 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 137 analyzer warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -176,7 +176,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,437-check aggregate proof; see
+new units are included in the current successful 11,441-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -730,17 +730,18 @@ out-of-range encodings and of two consecutive continuation bytes as a scalar.
 An unresolved scan through
 `Max_Bytes` records error 115 and returns -1; unexpected exceptions map to
 error 1 and -1. It performs no allocation, input mutation, or transcoding.
-The shared `Scan_UTF8` helper implements the streaming loop used by both
-`Count_UTF8` and `Check_UTF8`; `Check_UTF8` retains its whole-string validity
-result while `Count_UTF8` returns a scalar count. GNATprove proves 23 checks
-for `Scan_UTF8`, 1 each for `Count_UTF8` and `Check_UTF8`, and 21 for
-`Validate_UTF8`. These cover scalar counter/loop/index bounds, status/result
-contracts, and native-call preconditions, not full Unicode semantics or actual
-foreign bytes. Reduced-`Last` Ada tests exercise the cap; no huge public C
-string is constructed. Pointer validity/readable extent, C mapping, and
-complete API behavior remain trusted. Shared Unicode/reference and
-guard-page vectors run against both implementations; no-allocation/OOM checks
-are libxml3-only.
+`Scan_UTF8` implements the shared bounded streaming scan.
+`Count_UTF8` delegates to it, and `Check_UTF8` delegates to `Count_UTF8`,
+preserving whole-string validity and cap behavior. `Measure_UTF8_Prefix` uses the same `Scan_UTF8` loop and
+stops at the requested scalar count or first NUL. GNATprove proves 23 checks
+for `Scan_UTF8`, 1 each for `Count_UTF8`, `Check_UTF8`, and
+`Measure_UTF8_Prefix`, and 21 for `Validate_UTF8`. These cover scalar
+counter/loop/index and byte-offset bounds, status/result contracts, and
+native-call preconditions, not full Unicode semantics or actual foreign bytes.
+Reduced-`Last` Ada tests exercise the cap; no huge public C string is
+constructed. Pointer validity/readable extent, C mapping, and complete API
+behavior remain trusted. Shared Unicode/reference and guard-page vectors run
+against both implementations; no-allocation/OOM checks are libxml3-only.
 `xmlUTF8Strpos` uses `XML3_Text.Buffers.Find_UTF8_Position` and the shared
 `Scan_UTF8` helper to return a borrowed pointer to a zero-based Unicode scalar
 position. It validates only the traversed prefix; position zero returns the
@@ -760,6 +761,24 @@ preconditions, not full Unicode semantics, actual bytes, readable extent,
 pointer validity, or C mapping. Shared reference-permissive and guard-page
 vectors run against both implementations with differing expectations;
 OOM/no-allocation checks are libxml3-only.
+`xmlUTF8Strsize` returns the raw byte size of up to the requested number of
+Unicode scalars, excluding the terminating NUL. NULL input or a nonpositive
+count returns 0 without reading. A shorter string returns the bytes before
+NUL; when the requested scalar count is reached, the scan stops before
+inspecting the following scalar or suffix. A malformed, truncated, or
+noncanonical strict UTF-8 prefix returns -1 without a partial size or
+diagnostic. Reference behavior for invalid UTF-8 is not guaranteed; this
+implementation explicitly rejects malformed visited prefixes. ASCII controls
+and Unicode noncharacters are valid UTF-8, not XML-character validation.
+Unresolved scanning through inclusive `Max_Bytes` maps to DOM error 115 and -1;
+unexpected exceptions map to error 1 and -1. No allocation, input mutation, or
+normalization occurs. Reduced-`Last` Ada tests cover the cap; no huge public C
+string is constructed. GNATprove covers scan control, byte-offset bounds,
+status/result contracts, and native-call preconditions, not full Unicode
+semantics or actual foreign bytes. Pointer validity/readable extent, actual
+bytes, and C mapping remain trusted. Shared malformed/reference and
+guard-page vectors run against both implementations; OOM/no-allocation checks
+are libxml3-only.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum
