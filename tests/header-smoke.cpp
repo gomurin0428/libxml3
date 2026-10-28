@@ -51,6 +51,8 @@ int main() {
     xmlNodePtr (*last_element_child)(xmlNodePtr) = xmlLastElementChild;
     xmlNodePtr (*text_merge)(xmlNodePtr, xmlNodePtr) = xmlTextMerge;
     int (*text_concat)(xmlNodePtr, const xmlChar *, int) = xmlTextConcat;
+    int (*node_is_text)(const xmlNode *) = xmlNodeIsText;
+    int (*is_blank_node)(const xmlNode *) = xmlIsBlankNode;
     xmlNodePtr (*previous_element_sibling)(xmlNodePtr) = xmlPreviousElementSibling;
     xmlNodePtr (*new_text_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                                 const xmlChar *) = xmlNewTextChild;
@@ -92,6 +94,8 @@ int main() {
     (void)last_element_child;
     (void)text_merge;
     (void)text_concat;
+    (void)node_is_text;
+    (void)is_blank_node;
     (void)previous_element_sibling;
     (void)new_text_child;
     (void)last_error;

@@ -6,6 +6,14 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
       Next_Element, Previous_Element, Element_Count);
    type Property_Filter is (Any_Namespace, No_Namespace, Exact_Namespace);
    type Namespace_Query_Kind is (Prefix_Search, Href_Search);
+   type Node_Test_Kind is (Text_Test, Blank_Test);
+
+   procedure Test_Node
+     (S : Store; Facade : System.Address; Mode : Node_Test_Kind;
+      Result : out Boolean; Status : out Operation_Status)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => (if Status /= XML3_DOM_Constructors.Created then not Result);
 
    procedure Select_Element
      (S : Store; Facade : System.Address; Mode : Element_Query_Kind;

@@ -733,6 +733,71 @@ static void test_construct_doc_node(int raw) {
 #endif
 }
 
+static void test_node_predicates(void) {
+    static const char *values[] = {NULL, "", " \t\r\n", " \tx", "\v", "\f",
+                                   "\xc2\xa0", "\xe3\x80\x80"};
+    static const char input[] = "<r a=' '>\t<a/> \n<![CDATA[\t]]><!-- --><?p   ?></r>";
+    xmlDocPtr doc;
+    xmlNodePtr root, text, node;
+    size_t i;
+    assert(xmlNodeIsText(NULL) == 0 && xmlIsBlankNode(NULL) == 0);
+    for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+        xmlNodePtr cdata;
+        xmlChar *before;
+        int expected = i < 3;
+        text = xmlNewText(BAD_CAST values[i]);
+        cdata = xmlNewCDataBlock(NULL, BAD_CAST values[i],
+                                values[i] ? (int)strlen(values[i]) : 0);
+        assert(text && cdata);
+        before = text->content;
+        assert(xmlNodeIsText(text) == 1 && xmlNodeIsText(cdata) == 0);
+        assert(xmlIsBlankNode(text) == expected && xmlIsBlankNode(cdata) == expected);
+        assert(text->content == before && text->parent == NULL);
+        xmlFreeNode(text);
+        xmlFreeNode(cdata);
+    }
+    doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    text = root->children;
+    assert(xmlNodeIsText((xmlNodePtr)doc) == 0 && xmlIsBlankNode((xmlNodePtr)doc) == 0);
+    assert(xmlNodeIsText(root) == 0 && xmlIsBlankNode(root) == 0);
+    assert(xmlNodeIsText((xmlNodePtr)root->properties) == 0);
+    assert(xmlIsBlankNode((xmlNodePtr)root->properties) == 0);
+    for (node = root->children; node; node = node->next) {
+        assert(xmlNodeIsText(node) == (node->type == XML_TEXT_NODE));
+        assert(xmlIsBlankNode(node) == (node->type == XML_TEXT_NODE ||
+                                        node->type == XML_CDATA_SECTION_NODE));
+        assert(node->parent == root && node->doc == doc);
+    }
+    assert(xmlIsBlankNode(text) == 1);
+    assert(xmlTextConcat(text, BAD_CAST "x", 1) == 0);
+    assert(xmlIsBlankNode(text) == 0 && xmlNodeIsText(text) == 1);
+    assert(xmlNodeSetContent(text, BAD_CAST " \r\n") == 0);
+    assert(xmlIsBlankNode(text) == 1 && root->children == text);
+    xmlUnlinkNode(root);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#endif
+    assert(xmlNodeIsText(text) == 1 && xmlIsBlankNode(text) == 1);
+    node = xmlNewText(BAD_CAST "q");
+    assert(node && xmlTextMerge(text, node) == text);
+    assert(xmlIsBlankNode(text) == 0 && xmlNodeIsText(text) == 1);
+    xmlFreeNode(root);
+#ifdef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+#else
+    {
+        xmlNode invalid = {0};
+        invalid.type = XML_TEXT_NODE;
+        invalid.content = BAD_CAST " ";
+        xmlResetLastError();
+        assert(xmlNodeIsText(&invalid) == 0 && xmlIsBlankNode(&invalid) == 0);
+        assert(xmlGetLastError() == NULL);
+    }
+#endif
+}
+
 static void test_text_concat(void) {
     static const char input[] = "<r a='old'>t<![CDATA[c]]><!--n--><?p v?></r>";
     static const xmlChar suffix[] = {'<', '&'};
@@ -1209,6 +1274,7 @@ int main(void) {
     test_reverse_element_navigation();
     test_text_merge();
     test_text_concat();
+    test_node_predicates();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();

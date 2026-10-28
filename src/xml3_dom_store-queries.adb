@@ -7,6 +7,44 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Test_Node
+     (S : Store; Facade : System.Address; Mode : Node_Test_Kind;
+      Result : out Boolean; Status : out Operation_Status)
+   is
+      N : constant Node_Ref := Find_Node (S, Facade);
+   begin
+      Result := False;
+      Status := Invalid_Argument;
+      if N = Null_Node then
+         return;
+      end if;
+      declare
+         V : constant Node_View := Node (S.Current.all, N);
+      begin
+         Status := Created;
+         if Mode = Text_Test then
+            Result := V.Kind = Text_Node;
+            return;
+         elsif V.Kind not in Text_Node | CData_Node then
+            return;
+         end if;
+         if V.Content_Length > 0 then
+            if V.Content = System.Null_Address then
+               Status := Internal_Error;
+               return;
+            end if;
+            for I in 0 .. V.Content_Length - 1 loop
+               if Native.Byte_At (V.Content, I) not in
+                 ' ' | Character'Val (9) | Character'Val (10) | Character'Val (13)
+               then
+                  return;
+               end if;
+            end loop;
+         end if;
+         Result := True;
+      end;
+   end Test_Node;
+
    function Node_In_Range (S : Store; N : Node_Ref) return Boolean is
      (S.Current /= null
       and then N /= Null_Node

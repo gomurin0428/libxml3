@@ -131,6 +131,12 @@ package XML3_C is
      (Node, Content : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeAddContent";
 
+   function Node_Is_Text (Node : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeIsText";
+
+   function Is_Blank_Node (Node : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsBlankNode";
+
    function Text_Concat
      (Node, Content : System.Address; Length : Interfaces.C.int)
      return Interfaces.C.int

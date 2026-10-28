@@ -86,6 +86,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 同じ文書のノード、または文書に属さない第二引数に対応します。
 `xmlTextConcat` は text・CDATA・comment・PI に限定した長さ指定追記です。
 要素・属性は変更せず拒否し、負の長さでは NUL 終端文字列を読みます。
+`xmlNodeIsText` / `xmlIsBlankNode` は、SPARK 管理中の node の種別と XML 空白を
+読み取り専用で判定します。CDATA は後者の対象ですが、前者では text としません。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、

@@ -3,11 +3,12 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,931 checks, 893 by flow analysis and 10,038 by provers;
+**10,944 checks, 899 by flow analysis and 10,045 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
-`xmlNodeSetContent`, `xmlTextMerge`, `xmlTextConcat`,
+`xmlNodeSetContent`, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`,
+`xmlIsBlankNode`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
 `xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`, and
 `xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
@@ -29,13 +30,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 247 |
-| Initialization | 503 |
-| Runtime checks | 4,933 |
+| Data dependencies | 249 |
+| Initialization | 507 |
+| Runtime checks | 4,935 |
 | Assertions | 1,468 |
-| Functional contracts | 3,585 |
+| Functional contracts | 3,590 |
 | Termination | 195 |
-| **Total** | **10,931** |
+| **Total** | **10,944** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -203,6 +204,16 @@ NULL/empty distinction, CDATA delimiter splitting and serialization/reparse,
 invalid UTF-8 rejection and repair, document-first release, and OOM retry are
 runtime evidence for behavior rather than complete semantic proof.
 
+`xmlNodeIsText` / `xmlIsBlankNode` use `Runtime.Test_Node` / `Store.Queries.Test_Node`.
+Runtime declares both managed state and foreign memory as `Input`; the Store
+query does not mutate the graph or allocate content. Its failure postcondition
+requires a false result. Kind checks and XML-whitespace scanning occur in SPARK,
+bounded by managed content length. Native byte access remains trusted.
+Pinned-reference tests cover text versus CDATA, NULL/empty/XML-only whitespace,
+non-XML whitespace, other node kinds, mutation-driven classification changes,
+document-first release and rejection of unmanaged facades. These are runtime
+semantic checks, not a claim of complete C API proof.
+
 `xmlTextConcat` reuses `Runtime.Add_Content` / `Store.Content.Append` with a
 scalar-only policy checked before the empty-input no-op. Existing
 `Replace_Content` contracts preserve unrelated nodes and the target on failure,
@@ -340,8 +351,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-7e4b6ecb5043d98df6cb53cbb5920a02840adedcc888884d02c0226b6b1b4d55  src/xml3_c.adb
-f5230ed37b59d19696a8c44d38caccd06ae669e1a143100f5586d07c4a3ec694  src/xml3_c.ads
+9be32fd9b48eb7220032588b019136b1db7f9df67232b020ce01dc4566176289  src/xml3_c.adb
+ab9b06caaad1277b5bbd715fe118bbd98bdd566866946be5d60343ab7cc924fe  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -357,16 +368,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-6cbbd879ec210749fd2680c9c06efbe67583b3260409f748d0631a4309ce215a  src/xml3_dom_runtime.adb
-5352682f838afa01a0327bddba0148dc4b56fbbc03a4e2e5e03b330362735cd7  src/xml3_dom_runtime.ads
+5dcc2d5794c9821bf0c285339953332a2dcca45979374377e5b2ad94249da3b9  src/xml3_dom_runtime.adb
+7cd58fc627d5618aad6794f48beeaaf3abcb220e3ec393ebabc03811e3532d20  src/xml3_dom_runtime.ads
 06b75e8e84b3e13640cc32e59bffe08729aa1393d8e05a40f4fbb8c39c4c66cf  src/xml3_dom_store-content.adb
 012c7564561193975cc905af6a823dc52245d9506cf4cf388fae0606c556872a  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 bc71cab53c16e4f4b9bcc59ab5e2a83a0c33b1c4f8c44adbf768024acc3ebb2d  src/xml3_dom_store-properties.adb
 4d598d091c912dbb6f909efd12fcd8fe556b51ff2fc02754d8b314aa61666750  src/xml3_dom_store-properties.ads
-4706fafe1fa2ab8b8d9e829581c4e9de725aba31ebaeec21b96d25d7862d0487  src/xml3_dom_store-queries.adb
-d8e14df81a1a8b45a3f2f529cf048683d46a26c6af743029ce939d803d9c55ec  src/xml3_dom_store-queries.ads
+fc375e2bb686ac16952bf970446643ce4ae584e0e0a388ce56cb5324606d1b9f  src/xml3_dom_store-queries.adb
+0e091bea840af4ea1ebcfc91aef11beef3aee3fcc79c7d1d12118de1d2c690a6  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
 ea64a3ca261c74cb4c0472d38d0994846e64c76ffee67f0b887b9eb47d8e9974  src/xml3_dom_store.adb
@@ -386,10 +397,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-d184ee1d419f60b9b8b9a73081bf2e7c013b942023038c3661d1f029d06fea37  include/libxml/tree.h
+4812506daf52429b3f5b380ad3289fba0a906711dca3757eb4ecdeb23fc341f0  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-0106c9257a0c39c44c1e13673fa427c8feba7529ff1d6888cef5634c74486b19  Makefile
+051b30a8ec72cc448a9e30eb40122037367032b5aff0b711c4dbe98fc855dec0  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
