@@ -67,6 +67,10 @@ package XML3_C is
      (Parent, Ns, Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewChild";
 
+   function New_Text_Child
+     (Parent, Ns, Name, Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewTextChild";
+
    function New_Text (Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewText";
 

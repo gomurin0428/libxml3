@@ -12,7 +12,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
 
    procedure New_Child
      (S : in out Store; Parent, Ns : System.Address;
-      Name, Content : String; Result : out System.Address;
+      Name, Content : String; Raw_Content, Has_Content : Boolean;
+      Result : out System.Address;
       Status : out Operation_Status)
    is
       P : constant Node_Ref := Find_Node (S, Parent);
@@ -30,7 +31,14 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       then
          return;
       end if;
-      if Content'Length > 0 then
+      if Has_Content and then Raw_Content then
+         if Content'Length > XML3_Text.Max_Bytes then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+         Decoded := Content;
+         Decoded_Length := Content'Length;
+      elsif Has_Content and then Content'Length > 0 then
          if Content'First /= 1 or else Content'Last > XML3_Text.Max_Bytes then
             Status := Limit_Exceeded;
             return;
@@ -55,7 +63,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       if Status /= Created then
          return;
       end if;
-      if Decoded_Length > 0 then
+      if Decoded_Length > 0 or else (Raw_Content and then Has_Content) then
          Construct
            (S, Text_Node, "text", Decoded (1 .. Integer (Decoded_Length)),
             True, System.Null_Address, Text, Ignored_Ns, Status);

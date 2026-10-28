@@ -84,12 +84,14 @@ is
 
       procedure New_Child
         (Parent, Ns : System.Address; Name, Content : String;
+         Raw_Content, Has_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Content.New_Child
-           (Current, Parent, Ns, Name, Content, Result, Status);
+           (Current, Parent, Ns, Name, Content, Raw_Content, Has_Content,
+            Result, Status);
       end New_Child;
 
       procedure Add_Content

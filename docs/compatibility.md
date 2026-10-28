@@ -15,7 +15,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
-  `xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNewChild`、
+  `xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
@@ -65,7 +65,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlNewChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
@@ -101,6 +101,10 @@ element parent の namespace を継承し、明示指定時は登録済みの na
 持たない要素になります。入力の検査・子要素と text の作成が完了してから親に接続し、
 失敗時には未公開の領域だけを片付けます。document fragment/HTML/DTD/general entity は
 未対応です。名前は `xmlNewNode` と同じくそのままコピーし、XML name 検査は出力時に行います。
+`xmlNewTextChild` は同じ作成・接続処理を使いますが、内容を文字参照として解釈せずに
+そのまま text に保存します。`&amp;` も5文字のままで、出力時に `&amp;amp;` になります。
+NULL content は子を作らず、empty string は空の text 子を作る点も固定版と合わせています。
+`xmlNewText` と同様に raw bytes を保持し、不正な UTF-8/XML 文字は出力時に拒否します。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

@@ -90,6 +90,8 @@ void xmlDocDumpMemoryEnc(xmlDocPtr cur, xmlChar **mem, int *size,
 xmlNodePtr xmlNewNode(xmlNsPtr ns, const xmlChar *name);
 xmlNodePtr xmlNewChild(xmlNodePtr parent, xmlNsPtr ns,
                        const xmlChar *name, const xmlChar *content);
+xmlNodePtr xmlNewTextChild(xmlNodePtr parent, xmlNsPtr ns,
+                           const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlNewText(const xmlChar *content);
 xmlNodePtr xmlNewComment(const xmlChar *content);
 xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);

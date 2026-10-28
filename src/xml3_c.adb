@@ -802,8 +802,9 @@ package body XML3_C is
          return System.Null_Address;
    end New_Node;
 
-   function New_Child
-     (Parent, Ns, Name, Content : System.Address) return System.Address
+   function New_Child_Node
+     (Parent, Ns, Name, Content : System.Address; Raw_Content : Boolean)
+     return System.Address
    is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
@@ -820,7 +821,8 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.New_Child
-           (Parent, Ns, Name_Text, Content_Text, Result, Status);
+           (Parent, Ns, Name_Text, Content_Text, Raw_Content,
+            Content /= System.Null_Address, Result, Status);
       end;
       Report_Operation_Status (Status);
       return Result;
@@ -837,7 +839,21 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end New_Child_Node;
+
+   function New_Child
+     (Parent, Ns, Name, Content : System.Address) return System.Address
+   is
+   begin
+      return New_Child_Node (Parent, Ns, Name, Content, False);
    end New_Child;
+
+   function New_Text_Child
+     (Parent, Ns, Name, Content : System.Address) return System.Address
+   is
+   begin
+      return New_Child_Node (Parent, Ns, Name, Content, True);
+   end New_Text_Child;
 
    function New_Content_Node
      (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address)
