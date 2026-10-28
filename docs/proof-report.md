@@ -166,17 +166,22 @@ build runs the shared exact-output cases, including constructed comments/PIs.
 `make test-content-edit` passed for both the library and pinned libxml2 2.15.4
 reference builds.
 
-The following full regression command passed after the implementation and
-header fix, before the final proof-only edits:
+The following full regression command was run before the final proof-only
+edits:
 
 ```sh
 make -k test-development test-oom test-dom test-api test-serialization \
   test-sanitize check check-inventory
 ```
 
+It initially failed on an unused function pointer in the C++ header smoke
+test; the other targets passed. After fixing that test, `make test-api check`
+passed. The complete command was not rerun.
+
 This includes development and sanitizer content-edit tests; the serializer
 tests passed in both library and reference builds. `test-oom` walked one
-allocation site each for `dom-content-replace` and `dom-content-child`. The
+allocation site each for `dom-content-replace`, `dom-content-child`,
+`dom-content-set-scalar`, and `dom-content-set-tree`. The
 inventory check passed; its Python inventory suite reported five passing
 tests. Clang printed its existing deprecation warnings for `SAX.h`, `nanoftp.h`,
 and `xmlunicode.h`. After the final proof-only edits, `make test-content-edit
