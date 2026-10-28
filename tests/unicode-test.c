@@ -57,6 +57,55 @@ static void test_validation(void) {
     }
 }
 
+static void test_qname_splitting(void) {
+    static const struct {
+        const char *input, *prefix, *local;
+    } cases[] = {
+        {NULL, NULL, NULL}, {"", NULL, NULL}, {"name", NULL, NULL},
+        {":name", NULL, NULL}, {"name:", NULL, NULL}, {":", NULL, NULL},
+        {"p:name", "p", "name"}, {"名:値", "名", "値"},
+        {"p:a:b", "p", "a:b"}, {"a::b", "a", ":b"}, {"a:b:", "a", "b:"},
+        {"1:a b", "1", "a b"}, {"a: ", "a", " "},
+        {"\xff:\xc0", "\xff", "\xc0"}, {"p:one\0:two", "p", "one"},
+        {"p\0:ignored", NULL, NULL}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        const xmlChar *input = BAD_CAST cases[i].input;
+        xmlChar *prefix = (xmlChar *)1;
+        xmlChar *local = xmlSplitQName2(input, &prefix);
+        int length = -97;
+        const xmlChar *view = xmlSplitQName3(input, &length);
+        if (cases[i].prefix) {
+            assert(local && prefix);
+            assert(strcmp((const char *)prefix, cases[i].prefix) == 0);
+            assert(strcmp((const char *)local, cases[i].local) == 0);
+            assert(length == (int)strlen(cases[i].prefix));
+            assert(view == input + length + 1);
+            assert(strcmp((const char *)view, cases[i].local) == 0);
+        } else {
+            assert(!local && !prefix && !view && length == -97);
+        }
+        xmlFree(local);
+        xmlFree(prefix);
+    }
+    assert(!xmlSplitQName2(BAD_CAST "p:name", NULL));
+    assert(!xmlSplitQName3(BAD_CAST "p:name", NULL));
+    {
+        xmlChar input[] = "prefix:local";
+        xmlChar *prefix = NULL;
+        xmlChar *local = xmlSplitQName2(input, &prefix);
+        int length = 0;
+        const xmlChar *view = xmlSplitQName3(input, &length);
+        assert(local && prefix && view == input + 7 && length == 6);
+        memset(input, 'x', sizeof(input) - 1);
+        assert(strcmp((const char *)prefix, "prefix") == 0);
+        assert(strcmp((const char *)local, "local") == 0);
+        assert(strcmp((const char *)view, "xxxxx") == 0);
+        xmlFree(local);
+        xmlFree(prefix);
+    }
+}
+
 static xmlDocPtr parse(const char *input) {
     return xmlReadMemory(input, (int)strlen(input), NULL, NULL,
                          XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
@@ -151,5 +200,6 @@ int main(void) {
     test_names();
     test_ranges();
     test_validation();
+    test_qname_splitting();
     puts("Unicode name tests passed");
 }

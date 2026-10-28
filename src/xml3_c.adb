@@ -15,6 +15,7 @@ with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Text;
+with XML3_Text.QNames;
 
 package body XML3_C is
    use type System.Address;
@@ -2329,6 +2330,51 @@ package body XML3_C is
       when others =>
          return 0;
    end Str_Length;
+
+   function Split_QName2 (Name, Prefix : System.Address) return System.Address is
+      Prefix_Value, Local : System.Address;
+      Status : XML3_Text.QNames.Split_Status;
+      use type XML3_Text.QNames.Split_Status;
+   begin
+      Set_Address (Prefix, System.Null_Address);
+      if Name = System.Null_Address or else Prefix = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      XML3_Text.QNames.Split (C_String_Value (Name), Prefix_Value, Local, Status);
+      if Status = XML3_Text.QNames.No_Memory then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+      end if;
+      Set_Address (Prefix, Prefix_Value);
+      return Local;
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Split_QName2;
+
+   function Split_QName3 (Name, Length : System.Address) return System.Address is
+      Count : XML3_Text.Byte_Count;
+   begin
+      if Name = System.Null_Address or else Length = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Count := XML3_Text.QNames.Prefix_Length (C_String_Value (Name));
+      if Count = 0 then
+         return System.Null_Address;
+      end if;
+      Set_Status (Length, int (Count));
+      return Name + Storage_Offset (Count + 1);
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Split_QName3;
 
    function Validate_Name_Value
      (Value : System.Address; Space : int; Kind : XML3_Text.Name_Kind)

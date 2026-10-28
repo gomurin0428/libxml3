@@ -103,6 +103,11 @@ href による expanded name で行い、接続成功後に一致属性を置き
 名前空間検索は文書のない要素の `xml` 宣言も必要時にSPARK側で作成し、再利用します。
 `xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
 はUnicodeを含むXML名を、コロン・先頭文字・前後のXML空白の規則に従って検査します。
+`xmlSplitQName2` / `xmlSplitQName3` は名前検証を行わず、NUL終端の raw byte 列を最初の
+コロンだけで分割します。前後のコロンやコロンなしでは NULL、後続のコロン・空白・不正な
+UTF-8 はそのまま扱います。QName2 は prefix/local の独立コピーを返し `xmlFree` で解放し、
+QName3 は入力内の local suffix を借用して prefix の byte length を返します。失敗時は QName2
+の prefix 出力を NULL にし、QName3 の length 出力を変更しません。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

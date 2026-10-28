@@ -5,6 +5,10 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;
+    const xmlChar *(*split_view)(const xmlChar *, int *) = xmlSplitQName3;
+    (void)split_copy;
+    (void)split_view;
     int (*ns_list_safe)(const xmlDoc *, const xmlNode *, xmlNs ***) = xmlGetNsListSafe;
     xmlNs **(*ns_list)(const xmlDoc *, const xmlNode *) = xmlGetNsList;
     (void)ns_list_safe;

@@ -67,7 +67,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlUnsetNsProp`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
-  `xmlGetNsProp`、`xmlGetNoNsProp`、
+  `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`
 * `libxml/xmlmemory.h`: `xmlFree`
@@ -189,6 +189,23 @@ NMTokenは非空の名前文字列で、数字・結合文字なども先頭に�
 NUL終端までが対象で、名前空間の束縛は検査せず、既存のlast errorも変更しません。
 文字の走査はSPARKの `Text.Valid_Name` / `Name_Width` が担当し、C側は変換と戻り値のみです。
 native allocationは不要ですが、C文字列のAda表現への変換は証明外の境界です。
+
+`xmlSplitQName2` / `xmlSplitQName3` は QName の lexical validation や namespace 解決ではなく、
+NUL 終端 input の最初の `:` だけを探す raw-byte split です。埋め込み NUL より後は見ません。
+`:` がない、先頭にある、または
+最初の `:` が末尾なら split せず NULL を返し、後続の `:`、空白、不正 UTF-8 は local/raw
+byte の一部として保持します。`xmlSplitQName2` は prefix と local の独立した NUL 終端コピーを
+返し、各 pointer は `xmlFree` で解放します。prefix の out pointer は先に NULL にされ、split
+失敗時も NULL です。`xmlSplitQName3` は input 内の local suffix を借用して返し、prefix の
+byte length を成功時だけ `int` 出力します。失敗時は length を変更しません。borrowed pointer の
+有効期間は original input と同じで、入力を書き換えると参照先も変わります。QName3 の suffix は
+解放せず、input が生存する間だけ使います。どちらも DOM/Store 状態を変更せず、stateless な C
+adapter は mutex を使いません。
+既存の bounded C-string conversion の上限超過・非 memory conversion error は既存の DOM error
+diagnostic、`Storage_Error` と QName2 の native allocation failure は既存の memory diagnostic
+に写像されます。QName3 は native allocation を行いませんが、C conversion と pointer/array ABI は
+proof 範囲外です。Unicode test は library と
+固定版の両方で実行しますが、OOM allocation injection は libxml3 側だけで、固定版には実行しません。
 
 `xmlNodeGetAttrValue` は名前空間URIを指定して属性値の独立コピーを取得します。
 成功は `0`、属性なしは `1`、確保・上限・文字列変換・内部エラーは `-1` で、失敗時の出力は NULL です。
