@@ -9,6 +9,8 @@ int main() {
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;
     xmlChar *(*utf8_copy)(const xmlChar *, int) = xmlUTF8Strndup;
+    xmlChar *(*utf8_slice)(const xmlChar *, int, int) = xmlUTF8Strsub;
+    (void)utf8_slice;
     (void)utf8_copy;
     (void)utf8_size;
     const xmlChar *(*utf8_position)(const xmlChar *, int) = xmlUTF8Strpos;

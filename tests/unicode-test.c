@@ -536,6 +536,77 @@ static void test_utf8_prefix_copy(void) {
     xmlFree(value);
 }
 
+static void test_utf8_slice(void) {
+    xmlResetLastError();
+    const xmlChar text[] = "A名\xf0\x9f\x98\x80Z";
+    const int offsets[] = {0, 1, 4, 8, 9};
+    for (int start = 0; start <= 4; ++start) {
+        for (int count = 0; count <= 5; ++count) {
+            int end = start + count < 4 ? start + count : 4;
+            size_t bytes = (size_t)(offsets[end] - offsets[start]);
+            xmlChar *copy = xmlUTF8Strsub(text, start, count);
+            assert(copy && copy != text + offsets[start]);
+            assert(!memcmp(copy, text + offsets[start], bytes) && copy[bytes] == 0);
+            xmlFree(copy);
+        }
+    }
+    assert(!xmlUTF8Strsub(NULL, 0, 0));
+    assert(!xmlUTF8Strsub(text, -1, 1) && !xmlUTF8Strsub(text, 0, -1));
+    assert(!xmlUTF8Strsub(text, 5, 0) && !xmlUTF8Strsub(text, INT_MAX, 0));
+    assert(!xmlUTF8Strsub(BAD_CAST "\xe2\x82", 1, 0));
+    static const struct {
+        const char *source; int start, count; const char *expected;
+    } cases[] = {
+        {"", 0, INT_MAX, ""}, {"a\0\xff", 1, INT_MAX, ""},
+        {"a\xff", 1, 0, ""}, {"a名\xff", 1, 1, "名"},
+        {"e\xcc\x81x", 1, 1, "\xcc\x81"},
+        {"a\x01\xef\xbf\xbe", 1, INT_MAX, "\x01\xef\xbf\xbe"}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        xmlChar *copy = xmlUTF8Strsub((const xmlChar *)cases[i].source,
+                                     cases[i].start, cases[i].count);
+        assert(copy && xmlStrEqual(copy, (const xmlChar *)cases[i].expected));
+        xmlFree(copy);
+    }
+    static const char *malformed_prefix[] = {
+        "\x80x", "\xc2xx", "\xc0\x80x", "\xed\xa0\x80x",
+        "\xf4\x90\x80\x80x", "\xf8\x88\x80\x80\x80x"
+    };
+    for (size_t i = 0; i < sizeof(malformed_prefix) / sizeof(malformed_prefix[0]); ++i) {
+        xmlChar *copy = xmlUTF8Strsub((const xmlChar *)malformed_prefix[i], 1, 1);
+#ifdef XML3_REFERENCE_VERSION
+        assert(copy && xmlStrEqual(copy, BAD_CAST "x"));
+#else
+        assert(!copy);
+#endif
+        xmlFree(copy);
+    }
+    xmlChar *copy = xmlUTF8Strsub(BAD_CAST "a\xe2\x82", 1, 1);
+#ifdef XML3_REFERENCE_VERSION
+    assert(copy && !strcmp((const char *)copy, "\xe2\x82"));
+#else
+    assert(!copy);
+#endif
+    xmlFree(copy);
+    assert(!xmlGetLastError());
+    const char source[] = "<r>head名\xf0\x9f\x98\x80tail</r>";
+    xmlDocPtr doc = xmlReadMemory(source, (int)sizeof(source) - 1, NULL, NULL, 0);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    xmlFreeDoc(doc);
+    assert(content);
+    copy = xmlUTF8Strsub(content, 4, 2);
+    assert(copy);
+    xmlFree(content);
+    xmlNodePtr node = xmlNewText(copy);
+    xmlFree(copy);
+    assert(node);
+    xmlChar *value = xmlNodeGetContent(node);
+    xmlFreeNode(node);
+    assert(value && xmlStrEqual(value, BAD_CAST "名\xf0\x9f\x98\x80"));
+    xmlFree(value);
+}
+
 static void test_string_length(void) {
     assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
     assert(xmlStrlen(BAD_CAST "abc") == 3);
@@ -971,12 +1042,20 @@ static void test_string_duplicates(void) {
         assert(prefix_copy && prefix_copy[0] == 0);
         xmlFree(prefix_copy);
         assert(!xmlUTF8Strndup(unreadable, -1));
+        assert(!xmlUTF8Strsub(unreadable, -1, 0));
+        assert(!xmlUTF8Strsub(unreadable, 1, -1));
+        prefix_copy = xmlUTF8Strsub(unreadable, 0, 0);
+        assert(prefix_copy && prefix_copy[0] == 0);
+        xmlFree(prefix_copy);
         assert(!xmlUTF8Strpos(unreadable, -1));
         source[2] = 'a';
         assert(xmlUTF8Strpos(source + 2, 1) == unreadable);
         assert(xmlUTF8Strsize(source + 2, 1) == 1);
         prefix_copy = xmlUTF8Strndup(source + 2, 1);
         assert(prefix_copy && prefix_copy[0] == 'a' && prefix_copy[1] == 0);
+        xmlFree(prefix_copy);
+        prefix_copy = xmlUTF8Strsub(source + 2, 1, 0);
+        assert(prefix_copy && prefix_copy[0] == 0);
         xmlFree(prefix_copy);
         source[1] = 0xc2;
         source[2] = 0;
@@ -985,6 +1064,10 @@ static void test_string_duplicates(void) {
         assert(xmlUTF8Strpos(utf, 1) == unreadable);
         assert(xmlUTF8Strsize(utf, 1) == 4);
         prefix_copy = xmlUTF8Strndup(utf, 1);
+        assert(prefix_copy && !memcmp(prefix_copy, complete, 4) && prefix_copy[4] == 0);
+        xmlFree(prefix_copy);
+        utf[-1] = 'a';
+        prefix_copy = xmlUTF8Strsub(utf - 1, 1, 1);
         assert(prefix_copy && !memcmp(prefix_copy, complete, 4) && prefix_copy[4] == 0);
         xmlFree(prefix_copy);
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
@@ -1246,6 +1329,7 @@ int main(void) {
     test_utf8_position();
     test_utf8_prefix_size();
     test_utf8_prefix_copy();
+    test_utf8_slice();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

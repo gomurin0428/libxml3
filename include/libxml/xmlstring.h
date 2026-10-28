@@ -28,6 +28,7 @@ int xmlCheckUTF8(const unsigned char *utf);
 int xmlUTF8Strlen(const xmlChar *utf);
 int xmlUTF8Strsize(const xmlChar *utf, int len);
 xmlChar *xmlUTF8Strndup(const xmlChar *utf, int len);
+xmlChar *xmlUTF8Strsub(const xmlChar *utf, int start, int len);
 const xmlChar *xmlUTF8Strpos(const xmlChar *utf, int pos);
 int xmlGetUTF8Char(const unsigned char *utf, int *len);
 xmlChar *xmlStrdup(const xmlChar *cur);

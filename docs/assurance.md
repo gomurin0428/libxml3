@@ -53,10 +53,12 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,451 checks
-(1,069 flow and 10,382 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 137 analyzer warnings. The representation-generation
-diagnostic is recorded separately.
+proved. The refreshed aggregate has 11,458 checks
+(1,074 flow and 10,384 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 137 analyzer warnings. GNATprove failed to
+generate representation information for the trusted `xml3_dom_allocation.ads`
+package spec and continued with partial representation data; this caveat is
+detailed in the proof report.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -176,7 +178,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,451-check aggregate proof; see
+new units are included in the current successful 11,458-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -699,30 +701,43 @@ foreign bytes, pointer validity/readable bounds, C diagnostic mapping, or full
 Unicode API semantics. Shared normal/malformed and guard-page tests compare
 with the reference; expected noncanonical-input results differ deliberately,
 and the no-allocation OOM test is libxml3-only.
-`xmlUTF8Strndup` uses `XML3_Text.Buffers.Copy_UTF8_Prefix` to validate only the
-traversed strict-UTF-8 prefix and then make an independent, NUL-terminated
-owned copy. NULL input or a negative count returns NULL without reading,
-allocating, or recording a diagnostic; a non-NULL zero count allocates an empty
-copy without reading input. Positive counts stop at the requested scalar count
-or the first NUL, so unvisited suffix bytes are not validated. A malformed,
-truncated, or noncanonical visited prefix returns NULL before allocation with no
-partial copy or diagnostic. The returned copy is caller-owned and must be freed
-with `xmlFree`; the input is neither mutated nor freed. ASCII controls and
-Unicode noncharacters are accepted as UTF-8, not XML-character validation.
+`xmlUTF8Strndup` delegates through the C `UTF8_Str_Sub_Copy` adapter to
+`XML3_Text.Buffers.Copy_UTF8_Slice` at scalar start zero, which finds the
+position and delegates the selected prefix to `Copy_UTF8_Prefix` before
+`Copy_Span` makes an independent NUL-terminated owned copy. NULL input or a
+negative count returns NULL without reading, allocating, or recording a
+diagnostic; a non-NULL zero count allocates an empty copy without reading input.
+Positive counts stop at the requested scalar count or first NUL, leaving the
+suffix unvalidated. A malformed, truncated, or noncanonical visited prefix
+returns NULL before allocation with no partial copy or diagnostic. The result
+is caller-owned and freed with `xmlFree`; input is neither mutated nor freed.
 Unresolved scanning through `Max_Bytes` maps to error 115 and NULL, allocation
-failure uses the standard memory error 2 and NULL, and unexpected exceptions map
-to error 1 and NULL. The strict malformed-prefix rejection is an intentional
-difference from unspecified/permissive invalid-reference behavior. `Copy_Span`
-performs the bounded `Length + 1` allocation and byte copy; `Slice` delegates
-to it without changing its semantics, while the shared C `Slice_Result` handles
-status/diagnostic mapping for both substring and UTF-8 prefix-copy adapters.
-GNATprove proves 6 checks each for `Copy_Span` and `Slice`, and 2 for
-`Copy_UTF8_Prefix`, in addition to the shared scan and measurement checks; native bytes, readable and
-stable extents, pointer validity, allocator behavior, C ABI/mapping, and complete
-Unicode API semantics remain trusted. Reduced-`Last` Ada tests cover the cap;
-no huge public C string is constructed. Shared malformed/reference and
-guard-page vectors run against both implementations, and OOM/no-allocation
-checks are libxml3-only.
+failure uses standard memory error 2, and unexpected exceptions map to error 1.
+ASCII controls and Unicode noncharacters are valid UTF-8, not XML-character
+validation; strict malformed-prefix rejection is an intentional difference
+from unspecified/permissive invalid-reference behavior.
+`xmlUTF8Strsub` uses `Copy_UTF8_Slice` to validate skipped scalars with
+`Find_UTF8_Position`, then validate/copy only the selected prefix through
+`Copy_UTF8_Prefix` and `Copy_Span`. NULL input and negative arguments return
+NULL before input reads or allocation; an out-of-range start returns NULL.
+Count zero still validates a positive skipped prefix but does not read the
+target. Start zero/count zero performs no input read and returns a fresh empty
+copy; starting at the scalar length returns an empty copy even for positive
+count. The scan uses one global `Last` cap by passing the remaining cap after
+the skipped prefix; it is not reset at the slice start. Malformed skipped or
+selected input fails before allocation, while the unvisited tail is not
+validated. Returned memory is an independent caller-owned copy; the input is
+not modified or freed. The pinned reference can skip without checking
+non-NUL continuation values, so strict checking of that prefix is an
+intentional safety difference. Both UTF-8 adapters share C `Slice_Result`
+status/diagnostic mapping; native bytes, readable/stable extents, pointer and
+offset validity, allocator behavior, C ABI/mapping, and complete Unicode API
+semantics remain trusted. `Copy_Span` and existing `Slice` prove 6 checks each,
+`Copy_UTF8_Prefix` and `Copy_UTF8_Slice` prove 2 each, and
+`Find_UTF8_Position` proves 1, in addition to the shared scan and measurement
+checks. Reduced-`Last` Ada tests cover the global cap; no huge public C string
+is constructed. Shared malformed/reference and guard-page vectors run against
+both implementations, and OOM/no-allocation checks are libxml3-only.
 `xmlGetUTF8Char` decodes one leading scalar with
 `XML3_Text.Buffers.Get_UTF8_Char`, reading no more than the caller-provided
 `*len` bytes. NULL input, NULL length pointer, or available length below one
