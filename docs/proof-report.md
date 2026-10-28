@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,050 checks, 927 by flow analysis and 10,123 by provers;
+**11,048 checks, 925 by flow analysis and 10,123 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -12,7 +12,8 @@ memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetLang`, `xmlNodeSetSpacePreserve`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
 `xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`,
-`xmlNewDocProp`, managed-attribute attachment through `xmlAddChild`,
+`xmlNewDocProp`, managed-attribute attachment through `xmlAddChild`, managed
+attribute unlink through `xmlUnlinkNode`,
 `xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
 through the SPARK Store/Runtime. The entity summaries report
 0 flow errors, 132 warnings, and 0 `pragma Assume`
@@ -36,12 +37,12 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 254 |
-| Initialization | 530 |
+| Initialization | 528 |
 | Runtime checks | 4,971 |
 | Assertions | 1,470 |
 | Functional contracts | 3,630 |
 | Termination | 195 |
-| **Total** | **11,050** |
+| **Total** | **11,048** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -216,9 +217,11 @@ namespace object, and a non-null namespace with a null href is rejected.
 Re-adding the parent's last attribute is a no-op even when an earlier duplicate
 exists. Otherwise the matching attribute is released only after the incoming
 attribute attaches successfully. Core attachment still rejects cross-document
-moves, preserving both attributes. Namespace reconciliation, attribute unlink,
-and detached-attribute serialization remain unsupported. These Store checks do
-not establish full public C semantics or native-boundary safety.
+moves, preserving both attributes. `xmlUnlinkNode` also supports detaching a
+managed attribute while retaining its value, document affiliation, namespace,
+and owner pin. Namespace reconciliation and detached-attribute serialization
+remain unsupported. These Store checks do not establish full public C semantics
+or native-boundary safety.
 
 `xmlNewCDataBlock` selects `CData_Node` in the same C/Runtime/Store path. The
 core `Create_Node` postcondition explicitly guarantees a null `Name` address
@@ -406,7 +409,7 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-994eeabbb3015632b7bb2b37e772b4c6cff7d86db61b669769b0bb12c56b5354  src/xml3_dom_runtime.adb
+fe43da36dae78ef8678ba056b4b5c6d25d8f496acfba4c1a4331a49f892674b2  src/xml3_dom_runtime.adb
 f6382a46b5940d4483096ff256664645ba3f8e5ec671bbcc940a422d3cbd234c  src/xml3_dom_runtime.ads
 f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
@@ -438,7 +441,7 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 b29125a455f4c3c638c9702ac4a6626e62d4b8a81a51cbea56d0de59a2a32476  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-d076dd960c654c0aba694e26bdac00f7dda6c01750b3f438d6a450c46e4fc994  Makefile
+f31e792b79b195bae722d4f6a74df3757e122e42aa9b040f225244d5249dd962  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

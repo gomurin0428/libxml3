@@ -234,7 +234,7 @@
   },
   "function:tree.h:xmlAddChild": {
     "implementation": "partial",
-    "scope": "限定 node types と same-document/documentless subtree。document parent は text/CDATA 直下と second root を拒否。adjacent text merge。element parent は managed attribute を expanded name (local-name bytes + namespace-href bytes) で照合して追加し、既存一致属性を新属性の Attach 成功後に解放。namespace object が異なっても href 一致で matching、null namespace は区別し、non-null namespace with null href は拒否。最後の属性を再追加すると earlier duplicate があっても no-op。cross-document move は拒否。namespace reconciliation、attribute unlink、standalone attribute serialization は未対応。",
+    "scope": "限定 node types と same-document/documentless subtree。document parent は text/CDATA 直下と second root を拒否。adjacent text merge。element parent は managed attribute を expanded name (local-name bytes + namespace-href bytes) で照合して追加し、既存一致属性を新属性の Attach 成功後に解放。namespace object が異なっても href 一致で matching、null namespace は区別し、non-null namespace with null href は拒否。最後の属性を再追加すると earlier duplicate があっても no-op。cross-document move は拒否。namespace reconciliation と standalone attribute serialization は未対応。",
     "tests": [
       "tests/dom-test.c",
       "tests/attribute-test.c",
@@ -244,9 +244,11 @@
   },
   "function:tree.h:xmlUnlinkNode": {
     "implementation": "partial",
-    "scope": "通常 child unlink のみ。attribute unlink は拒否。",
+    "scope": "管理中の通常 child と attribute を切り離す。parent/prev/next をクリアし、文書所属・値・namespace・owner pin を保持する。NULL/既に未接続なら no-op。document/namespace/未登録 facade は拒否。SPARK Store/Runtime 経由、native pointer・ABI は信頼境界。",
     "tests": [
-      "tests/dom-test.c"
+      "tests/dom-test.c",
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
     ],
     "proof": "not-proved"
   },

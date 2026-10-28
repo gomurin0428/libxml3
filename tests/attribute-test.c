@@ -204,6 +204,56 @@ static void test_attach_namespace_attributes(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_unlink_attributes(void) {
+    static const char input[] =
+        "<root xmlns:p='urn:attrs' first='1' p:middle='2' last='3'><target/></root>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, target;
+    xmlAttrPtr first, middle, last;
+    int marker = 0;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    target = root->children;
+    first = root->properties;
+    middle = first->next;
+    last = middle->next;
+    middle->_private = &marker;
+    xmlUnlinkNode((xmlNodePtr)middle);
+    assert(root->properties == first && first->next == last && last->prev == first);
+    assert(middle->parent == NULL && middle->prev == NULL && middle->next == NULL);
+    assert(middle->doc == doc && middle->ns == root->nsDef);
+    assert(middle->_private == &marker);
+    assert_value(middle, "2");
+    xmlUnlinkNode((xmlNodePtr)middle);
+    assert(root->properties == first && first->next == last && last->prev == first);
+    assert(xmlNodeSetContent((xmlNodePtr)middle, BAD_CAST "changed&amp;value") == 0);
+    assert_value(middle, "changed&value");
+
+    xmlUnlinkNode((xmlNodePtr)first);
+    assert(root->properties == last && last->prev == NULL && last->next == NULL);
+    xmlUnlinkNode((xmlNodePtr)last);
+    assert(root->properties == NULL);
+    assert(first->parent == NULL && first->prev == NULL && first->next == NULL);
+    assert(last->parent == NULL && last->prev == NULL && last->next == NULL);
+    assert(root->children == target && root->last == target && target->parent == root);
+    assert(xmlAddChild(root, (xmlNodePtr)first) == (xmlNodePtr)first);
+    assert(xmlAddChild(root, (xmlNodePtr)last) == (xmlNodePtr)last);
+    assert(xmlAddChild(target, (xmlNodePtr)middle) == (xmlNodePtr)middle);
+    xmlUnlinkNode((xmlNodePtr)last);
+    assert(root->properties == first && first->next == NULL);
+    assert(xmlAddChild(target, (xmlNodePtr)last) == (xmlNodePtr)last);
+    assert(target->properties == middle && middle->next == last && last->prev == middle);
+    xmlUnlinkNode((xmlNodePtr)middle);
+    assert(target->properties == last && last->prev == NULL);
+    assert(xmlAddChild(root, (xmlNodePtr)middle) == (xmlNodePtr)middle);
+    assert(first->next == middle && middle->prev == first && middle->next == NULL);
+    assert(middle->_private == &marker && middle->doc == doc);
+    assert_value(first, "1");
+    assert_value(last, "3");
+    assert_round_trip(doc, "middle", "urn:attrs", "changed&value");
+    xmlFreeDoc(doc);
+}
+
 static void test_attach_duplicate_tail(void) {
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
     xmlAttrPtr first, last;
@@ -220,6 +270,72 @@ static void test_attach_duplicate_tail(void) {
 }
 
 #ifndef XML3_REFERENCE_TEST
+static void test_unlinked_attribute_lifetime(void) {
+    static const char input[] = "<root xmlns:p='urn:attrs' p:a='before'/>";
+    for (int parsed = 0; parsed < 2; ++parsed) {
+        xmlDocPtr doc;
+        xmlNodePtr root, text;
+        xmlAttrPtr attr;
+        if (parsed) {
+            doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+            assert(doc);
+            root = xmlDocGetRootElement(doc);
+            attr = root->properties;
+        } else {
+            xmlNsPtr ns;
+            doc = xmlNewDoc(NULL);
+            root = xmlNewNode(NULL, BAD_CAST "root");
+            assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+            ns = xmlNewNs(root, BAD_CAST "urn:attrs", BAD_CAST "p");
+            assert(ns);
+            attr = xmlNewNsProp(root, ns, BAD_CAST "a", BAD_CAST "before");
+        }
+        assert(attr);
+        xmlUnlinkNode((xmlNodePtr)attr);
+        assert(root->properties == NULL && attr->parent == NULL);
+        xmlFreeDoc(doc);
+        assert(strcmp((const char *)attr->ns->href, "urn:attrs") == 0);
+        assert(strcmp((const char *)attr->ns->prefix, "p") == 0);
+        assert_value(attr, "before");
+        assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "after&amp;free") == 0);
+        assert_value(attr, "after&free");
+        text = attr->children;
+        xmlUnlinkNode(text);
+        assert(attr->children == NULL && attr->last == NULL && text->parent == NULL);
+        xmlFreeProp(attr);
+        assert(xmlNodeAddContent(text, BAD_CAST "+tail") == 0);
+        assert(strcmp((const char *)text->content, "after&free+tail") == 0);
+        xmlFreeNode(text);
+    }
+}
+
+static void assert_tree_error(void);
+
+static void test_unlink_rejections(void) {
+    static const char input[] = "<root xmlns:p='urn:attrs' p:a='keep'/>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlAttrPtr attr;
+    xmlNode unmanaged = {0};
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    attr = root->properties;
+    xmlUnlinkNode((xmlNodePtr)doc);
+    assert_tree_error();
+    xmlUnlinkNode((xmlNodePtr)root->nsDef);
+    assert_tree_error();
+    xmlUnlinkNode(&unmanaged);
+    assert_tree_error();
+    assert(root->properties == attr && attr->parent == root);
+    assert_value(attr, "keep");
+    xmlResetLastError();
+    xmlUnlinkNode(NULL);
+    xmlUnlinkNode((xmlNodePtr)attr);
+    assert(xmlGetLastError() == NULL && root->properties == NULL);
+    xmlFreeProp(attr);
+    xmlFreeDoc(doc);
+}
+
 static void test_attach_cross_document_rejection(void) {
     static const char input[] = "<source a='copied'><left/></source>";
     xmlDocPtr source_doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
@@ -383,7 +499,10 @@ int main(void) {
     test_attach_attributes();
     test_attach_namespace_attributes();
     test_attach_duplicate_tail();
+    test_unlink_attributes();
 #ifndef XML3_REFERENCE_TEST
+    test_unlinked_attribute_lifetime();
+    test_unlink_rejections();
     test_attach_cross_document_rejection();
     test_attach_rejections_and_namespace_lifetime();
     test_rejections_and_safe_free();

@@ -158,17 +158,7 @@ is
         (Facade : System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
-         Item : XML3_DOM.Node_View;
-         Found : Boolean;
       begin
-         XML3_DOM_Store.Inspect (Current, Facade, Item, Found);
-         if not Found
-           or else Item.Kind = XML3_DOM.Document_Node
-           or else Item.Kind = XML3_DOM.Attribute_Node
-         then
-            Status := XML3_DOM_Constructors.Invalid_Argument;
-            return;
-         end if;
          XML3_DOM_Store.Unlink (Current, Facade, Status);
       end Unlink_Content;
 

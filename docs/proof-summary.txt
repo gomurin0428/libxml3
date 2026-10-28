@@ -6,7 +6,7 @@ SPARK Analysis results        Total        Flow                                 
 --------------------------------------------------------------------------------------------------------------
 Data Dependencies               254         254                                       .           .          .
 Flow Dependencies                 .           .                                       .           .          .
-Initialization                  530         530                                       .           .          .
+Initialization                  528         528                                       .           .          .
 Non-Aliasing                      .           .                                       .           .          .
 Run-time Checks                4971           .      4971 (CVC5 94%, Trivial 0%, Z3 5%)           .          .
 Assertions                     1470           .    1470 (CVC5 66%, Trivial 11%, Z3 23%)           .          .
@@ -15,7 +15,7 @@ LSP Verification                  .           .                                 
 Termination                     195         143                    52 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .           .                                       .           .          .
 --------------------------------------------------------------------------------------------------------------
-Total                         11050    927 (8%)                             10123 (92%)           .          .
+Total                         11048    925 (8%)                             10123 (92%)           .          .
 
 
 max steps used for successful proof: 47922

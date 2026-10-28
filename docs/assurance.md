@@ -35,7 +35,7 @@ through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, managed attribute
 attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 explicit UTF-8 memory serialization. The C adapters and native ABI implementation are not proved.
-The refreshed aggregate has 11,050 checks (927 flow and 10,123 prover), no
+The refreshed aggregate has 11,048 checks (925 flow and 10,123 prover), no
 unproved or justified conditions, 0 `pragma Assume` statements, and 132
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -157,7 +157,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 11,050-check aggregate proof; see
+new units are included in the successful 11,048-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -183,8 +183,12 @@ order and returns a fresh NUL-terminated allocation owned by the caller, not the
 Store. Regression tests cover mixed-document selection/property/namespace
 results, default-namespace shadowing, a detached namespaced attribute value,
 content ordering after a text move, and allocation failure followed by retry.
-The internal Store unlink operation now supports detaching an attribute for this
-topology case; the test reattaches it before release. Native byte comparison,
+The Store unlink operation supports detaching attributes and is exposed through
+`xmlUnlinkNode`. It updates property links while retaining document affiliation,
+namespace references, content children and owner pins. Runtime delegates directly
+to Store validation, with no native topology traversal in the C adapter. Public
+tests cover middle/head/tail/sole-property unlink, repeat unlink, editing and
+reattachment, namespace/document-first release, and no native allocation. Native byte comparison,
 copying, allocation/free and address correspondence remain trusted boundary
 operations. Public C getters route through these queries.
 
@@ -308,7 +312,8 @@ Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NU
 NULL/空値は text child なしです。`xmlAddChild` では、文書未所属の属性、または接続先と
 同じ文書に所属する属性を要素へ接続できます。既存属性とは local name と namespace href の expanded name で照合し、
 接続成功後に一致属性を解放します。既に最後の属性なら重複があっても no-op です。
-namespace reconciliation、attribute unlink、detached attribute の単独シリアライズは未対応です。
+`xmlUnlinkNode` で属性を切り離した後も文書・namespace を保持し、編集・再接続・解放ができます。
+namespace reconciliation と detached attribute の単独シリアライズは未対応です。
 API 全体の意味論や C pointer validity を証明した主張ではありません。
 
 `xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK

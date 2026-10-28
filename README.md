@@ -88,6 +88,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 href による expanded name で行い、接続成功後に一致属性を置き換えます。既に最後の属性なら
 重複があっても no-op です。namespace reconciliation と detached attribute の単独シリアライズは
 このサブセットではサポートしません。
+`xmlUnlinkNode` は属性も切り離せます。値・文書所属・namespace の保持は継続し、
+切り離した属性は編集・同一文書内での再接続・`xmlFreeProp` による解放ができます。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。
