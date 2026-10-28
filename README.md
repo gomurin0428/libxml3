@@ -110,7 +110,7 @@ QName3 は入力内の local suffix を借用して prefix の byte length を�
 の prefix 出力を NULL にし、QName3 の length 出力を変更しません。
 `xmlBuildQName` も raw byte 列を扱います。NULL prefix は入力 name を借用して返しますが、
 空 prefix は省略せず `:name` を構築します。十分な出力 buffer があればそこへ書き、足りなければ
-入力 buffer を変更せず `xmlFree` で解放する新規 allocation を返します。
+指定した出力 buffer を変更せず `xmlFree` で解放する新規 allocation を返します。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。
