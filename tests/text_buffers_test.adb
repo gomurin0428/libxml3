@@ -245,6 +245,33 @@ procedure Text_Buffers_Test is
       Byte := Character'Val (16#F5#);
       pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = -1);
    end Check_UTF8_Lead_Size;
+
+   procedure Check_UTF8_Character is
+      Text : aliased String := "a" & Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#) & Character'Val (0);
+      Euro : aliased String := Text (2 .. 4);
+      A : aliased String := "a";
+      Empty : aliased Character := Character'Val (0);
+      Index : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_UTF8_Character (Text'Address, A'Address, Index, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Index = 0);
+      XML3_Text.Buffers.Find_UTF8_Character (Text'Address, Euro'Address, Index, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.Search_Limit_Exceeded and Index = 0);
+      XML3_Text.Buffers.Find_UTF8_Character (Text'Address, Euro'Address, Index, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Index = 1);
+      XML3_Text.Buffers.Find_UTF8_Character (Text'Address, Empty'Address, Index, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Index = 0);
+      XML3_Text.Buffers.Find_UTF8_Character (Empty'Address, A'Address, Index, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Index = 0);
+      XML3_Text.Buffers.Find_UTF8_Character
+        (System.Null_Address, A'Address, Index, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Index = 0);
+      Text (3) := Character'Val (0);
+      XML3_Text.Buffers.Find_UTF8_Character (Text'Address, Euro'Address, Index, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Index = 0);
+   end Check_UTF8_Character;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -267,5 +294,6 @@ begin
    Check_UTF8_Prefix_Copy;
    Check_UTF8_Slice;
    Check_UTF8_Lead_Size;
+   Check_UTF8_Character;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

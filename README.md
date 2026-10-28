@@ -217,6 +217,17 @@ preconditionsを対象にし、foreign pointer validity/readable extent、actual
 結果の範囲・NULL時のcontract・native-callの前提を証明しますが、foreign byte、pointer validity/readable byte、C mapping、完全なAPI意味論はtrusted boundaryです。
 全256先頭byteをそれぞれPROT_NONE直前の最後のreadable byteに置くguard test、単独の非NUL終端1-byte input、
 allocationなしの挙動をtestします。
+`xmlUTF8Strloc` はpatternの最初のUnicode scalarと一致するsource内の最初のscalar indexを返し、byte offsetではありません。
+patternのsuffixは無視しますが、最初のpattern scalarとmatchまでのsource scalarはstrict UTF-8として検証します。
+malformed/truncated/overlong/surrogate/out-of-rangeな訪問prefixは診断なしで-1となり、match後のsuffixは検査しません。
+NULL pointerがどちらかなら他方を読まず-1です。無効なpattern scalarはsourceを読む前に拒否します。
+空patternは意図的に保持するreference互換の例外で、非empty sourceならbyte 0だけを読み0を返し、UTF-8検証はしません。
+empty sourceなら-1です。normalization、case folding、grapheme countingは行わず、control/noncharacterもUTF-8としては許可します。
+通常のmatch/no-match/malformed入力ではallocation・mutation・diagnosticはありません。inclusive `Max_Bytes` まで未解決なら
+DOM error 115と-1、予期しない例外ならDOM error 1と-1です。patternは最初のscalarまで、sourceはmatch scalarまたはNULまで
+readableかつ走査中に安定している必要があり、match scalarはNULなしでguard page直前に終わっても構いません。
+SPARKは走査・scalar index bounds、status/result contract、native-call preconditionsを対象としますが、native bytes、
+readable extent/pointer validity、stability、C ABI/mapping、完全なUTF-8 API意味論はtrusted boundaryです。
 `xmlUTF8Strndup` は最大 `len` 個のUnicode scalarを訪問prefixだけstrict UTF-8として検証し、
 そのraw bytesを新しいNUL終端allocationへコピーします。NULL inputまたは負の `len` は読み取り・allocation・
 診断なしでNULL、非NULL inputの `len == 0` はinputを読まずに新しい空文字列を返します。正の `len` は要求scalar数または

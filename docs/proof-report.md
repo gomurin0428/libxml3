@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,462 checks, 1,076 by flow analysis and 10,386 by provers;
+**11,478 checks, 1,083 by flow analysis and 10,395 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -164,7 +164,7 @@ transcoding occurs. `Scan_UTF8` implements the shared bounded streaming scan.
 `Count_UTF8` delegates to it, and `Check_UTF8` delegates to `Count_UTF8`,
 preserving whole-string validity and cap behavior. `Measure_UTF8_Prefix` uses the shared `Scan_UTF8`
 loop and stops at the requested scalar count or first NUL. `Scan_UTF8` is
-proved for 23 checks, `Count_UTF8`, `Check_UTF8`, and `Measure_UTF8_Prefix` for
+proved for 26 checks, `Count_UTF8`, `Check_UTF8`, and `Measure_UTF8_Prefix` for
 1 each, and `Validate_UTF8` for 21. These cover scan/counter control, scalar
 and byte-offset bounds, status/result contracts, and native-call preconditions,
 not actual foreign bytes, readable bounds, pointer validity, C diagnostics, or
@@ -184,7 +184,7 @@ two-continuation-byte sequences. Failure to find NUL through `Max_Bytes` records
 error 115 and returns -1; unexpected exceptions map to error 1 and -1. It
 allocates nothing, mutates no input, and does not transcode. Reduced-`Last`
 Ada tests cover the cap; no huge public C string is constructed. `Scan_UTF8`
-is proved for 23 checks and `Count_UTF8` for 1; these cover counter/loop/index
+is proved for 26 checks and `Count_UTF8` for 1; these cover counter/loop/index
 bounds, status/result contracts, and native-call preconditions, not complete
 Unicode API semantics or actual foreign bytes.
 Native pointer validity/readable extent and C-side diagnostic/exception
@@ -205,7 +205,7 @@ by the pinned reference. An unresolved scan through `Max_Bytes` records error
 115; unexpected exceptions map to error 1. No allocation, input mutation, or
 normalization occurs; the returned pointer is borrowed and must not be freed.
 Reduced-`Last` Ada tests cover the cap; no huge public C string is constructed.
-`Scan_UTF8` is proved for 23 checks and `Find_UTF8_Position` for 1; GNATprove
+`Scan_UTF8` is proved for 26 checks and `Find_UTF8_Position` for 1; GNATprove
 covers scan control, position/counter bounds, status/result contracts, and
 native-call preconditions, not complete Unicode semantics or actual foreign
 bytes. Pointer validity/readable extent and C mapping remain trusted.
@@ -249,6 +249,33 @@ inputs and no-allocation behavior are also tested. GNATprove proves 2
 `UTF8_Lead_Size` checks for its result/null contract and native-call precondition. These checks do
 not establish native bytes, readable extent/pointer validity, C mapping/ABI,
 or complete Unicode/API semantics.
+`xmlUTF8Strloc` delegates to `XML3_Text.Buffers.Find_UTF8_Character`, which
+measures the pattern's first scalar with `Measure_UTF8_Prefix` using a four-byte
+bound, copies that scalar to a local buffer, and passes it to the shared
+`Scan_UTF8`. The scanner strictly validates a source scalar before comparing
+it and returns the first match before advancing; other existing callers use
+the empty default pattern and retain their previous behavior. The C adapter
+only maps status, index, and diagnostics. The result is a zero-based Unicode
+scalar index for the first occurrence of the pattern's first scalar, not a
+byte offset. The pattern suffix and source suffix after a match are ignored.
+The first pattern scalar and every visited source scalar through the match are
+strictly validated; malformed/truncated/noncanonical prefixes and ordinary
+no-match return -1 without diagnostics. NULL either pointer returns -1 without
+reading the other. The preserved empty-pattern quirk returns 0 for a nonempty
+source after reading only byte zero, without validating it; empty source
+returns -1. Normal outcomes allocate nothing or mutate input. Inclusive
+`Max_Bytes` exhaustion maps to error 115/-1 and unexpected exceptions to
+error 1/-1. Inputs must remain readable and stable through the first pattern
+scalar and through the matched scalar or NUL; the matching scalar may end at a
+guard page without a terminator. GNATprove covers scan control, scalar-index
+bounds, status/result contracts, and native-call preconditions, not native
+bytes, readable extent, pointer validity/stability, C ABI/mapping, or complete
+UTF-8/API semantics. C/reference and Ada tests cover scalar indexing,
+first-scalar-only matching, malformed-prefix divergence, empty-pattern
+behavior, DOM lifetime, exact-span guard cases, and no allocation.
+GNATprove proves 6 checks for `Find_UTF8_Character` and 26 for `Scan_UTF8`;
+these cover result bounds/status and scanner control, not native bytes or
+complete UTF-8 behavior.
 `xmlUTF8Strndup` delegates through `UTF8_Str_Sub_Copy` to
 `XML3_Text.Buffers.Copy_UTF8_Slice` at start zero. That helper finds the start
 and delegates the selected prefix to `Copy_UTF8_Prefix`, which validates before
@@ -389,13 +416,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 292 |
-| Initialization | 634 |
-| Runtime checks | 5,087 |
+| Data dependencies | 293 |
+| Initialization | 640 |
+| Runtime checks | 5,092 |
 | Assertions | 1,493 |
-| Functional contracts | 3,750 |
+| Functional contracts | 3,754 |
 | Termination | 206 |
-| **Total** | **11,462** |
+| **Total** | **11,478** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -765,8 +792,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-180459852bb6a67d9e68355a741a70979b370abce7844f6f280fc1427ad88a69  src/xml3_c.adb
-ee767adffdc363821cb369831e40b63f9452dfc2a3af6a98ccccf988949982b6  src/xml3_c.ads
+46d8079ae8045e73eb3c8fdc5b8c8dacd7b245852dce678650850a5bf7b171d2  src/xml3_c.adb
+0b626181a54dcfb629d7eea47b7bb9346bdabefd9be1705371749365b88cf3eb  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -813,13 +840,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-96df6a738f5a51b552caa73bd6db8ef3bca32e54cefe5b6228574d85df6b44c0  src/xml3_text-buffers.adb
-8434369083043b2f131504c7d8259ca0063e5b745a4e546ec6c2ed6792cdd4f0  src/xml3_text-buffers.ads
+436cf2f0f058d46f108830d425cf56e01576638c9417917ea7a33cd0f8635aed  src/xml3_text-buffers.adb
+8eb33834c79844c6e05f2cf95975859c1fa39e2740b8166a7acd8d0a5038856a  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-2558ae32863da3bda121ad45bccf3bf0570b90beb3da1df937dc6fcecaa3e558  include/libxml/xmlstring.h
+9ecf071f78b02387b6dc27c666d7f0f60e296cd51ea06ceb51a00dba0273eaa6  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-c0b40ab82c6e8a887cec5c993904940312036c1649440ab5273d429ac2b0b0a5  Makefile
+cd5c9a6f5356a8830e127526ff64eb397afb6623fcfc592ab52dc10ca012ac4c  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

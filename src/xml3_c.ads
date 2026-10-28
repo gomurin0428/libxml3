@@ -330,6 +330,9 @@ package XML3_C is
    function UTF8_Size (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlUTF8Size";
 
+   function UTF8_Str_Location (Item, Pattern : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlUTF8Strloc";
+
    function UTF8_Str_N_Duplicate
      (Item : System.Address; Characters : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlUTF8Strndup";
