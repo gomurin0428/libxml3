@@ -1221,6 +1221,31 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
+    } else if (strcmp(operation, "attr-attach") == 0) {
+        static const char input[] =
+            "<root><source a='moved'/><target a='old' b='keep'/></root>";
+        xmlNodePtr root;
+        xmlNodePtr source, result;
+        xmlAttrPtr attr, old, tail;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        source = xmlDocGetRootElement(doc)->children;
+        root = source->next;
+        attr = source->properties;
+        old = root->properties;
+        tail = old->next;
+        assert(attr && old && tail);
+        xml3_oom_enable(0);
+        result = xmlAddChild(root, (xmlNodePtr)attr);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(result == (xmlNodePtr)attr && !injected && allocation_count == 0);
+        assert(source->properties == NULL && root->properties == tail);
+        assert(tail->next == attr && attr->prev == tail && attr->next == NULL);
+        assert(attr->parent == root && attr->doc == doc && attr->children->doc == doc);
+        xmlFreeNode(source);
+        assert(strcmp((const char *)attr->children->content, "moved") == 0);
     } else if (strcmp(operation, "attr-delete") == 0) {
         xmlNodePtr root;
         xmlAttrPtr first, second, third;
@@ -1268,6 +1293,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "attr-attach") == 0) {
+        puts("attribute attachment and replacement used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "attr-delete") == 0) {
         puts("attribute deletion used no allocations");
         return 0;

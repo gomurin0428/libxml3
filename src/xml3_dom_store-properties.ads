@@ -7,6 +7,16 @@ package XML3_DOM_Store.Properties with SPARK_Mode is
    use type System.Address;
    pragma Unevaluated_Use_Of_Old (Allow);
 
+   procedure Add_Property
+     (S : in out Store; Element, Attribute : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Ready (S)
+         and then (if Status = XML3_DOM_Constructors.Created
+           then Result = Attribute and then Result /= System.Null_Address
+           else Result = System.Null_Address);
+
    function Namespace_Attached
      (S : Store; Ns : System.Address) return Boolean
      with Ghost, Global => null, Pre => Ready (S),

@@ -7,6 +7,85 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Find_Matching_Property
+     (S : Store; Element, Attribute : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Node (S, Element);
+      N : constant Node_Ref := Find_Node (S, Attribute);
+      P : Node_Ref;
+      Source, Candidate : Node_View;
+      Source_Ns, Candidate_Ns : Namespace_View;
+      Matches : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if E = Null_Node or else N = Null_Node
+        or else Node (S.Current.all, E).Kind /= Element_Node
+        or else Node (S.Current.all, N).Kind /= Attribute_Node
+      then
+         return;
+      end if;
+      Source := Node (S.Current.all, N);
+      if Source.Name = System.Null_Address then
+         return;
+      end if;
+      if Source.Namespace /= Null_Namespace then
+         if Source.Namespace > Namespace_Ref (Namespace_Count (S.Current.all))
+           or else Namespace (S.Current.all, Source.Namespace).State /= Live
+         then
+            return;
+         end if;
+         Source_Ns := Namespace (S.Current.all, Source.Namespace);
+         if Source_Ns.Href = System.Null_Address then
+            return;
+         end if;
+      end if;
+      P := Node (S.Current.all, E).First_Prop;
+      for Step in 1 .. Node_Count (S.Current.all) loop
+         exit when P = Null_Node;
+         if P > Node_Ref (Node_Count (S.Current.all))
+           or else Node (S.Current.all, P).State /= Live
+         then
+            Status := Internal_Error;
+            return;
+         end if;
+         Candidate := Node (S.Current.all, P);
+         if Candidate.Kind /= Attribute_Node or else Candidate.Parent /= E
+           or else Candidate.Name = System.Null_Address
+         then
+            Status := Internal_Error;
+            return;
+         end if;
+         Matches := False;
+         if Candidate.Name_Length = Source.Name_Length
+           and then Native.Equal_Bytes
+             (Candidate.Name, Source.Name, Source.Name_Length)
+         then
+            if Source.Namespace = Null_Namespace then
+               Matches := Candidate.Namespace = Null_Namespace;
+            elsif Candidate.Namespace /= Null_Namespace
+              and then Candidate.Namespace <=
+                Namespace_Ref (Namespace_Count (S.Current.all))
+              and then Namespace (S.Current.all, Candidate.Namespace).State = Live
+            then
+               Candidate_Ns := Namespace (S.Current.all, Candidate.Namespace);
+               Matches := Candidate_Ns.Href /= System.Null_Address
+                 and then Candidate_Ns.Href_Length = Source_Ns.Href_Length
+                 and then Native.Equal_Bytes
+                   (Candidate_Ns.Href, Source_Ns.Href, Source_Ns.Href_Length);
+            end if;
+         end if;
+         if Matches then
+            Result := Candidate.Facade;
+            Status := Created;
+            return;
+         end if;
+         P := Candidate.Next;
+      end loop;
+      Status := (if P = Null_Node then Created else Internal_Error);
+   end Find_Matching_Property;
+
    procedure Test_Node
      (S : Store; Facade : System.Address; Mode : Node_Test_Kind;
       Result : out Boolean; Status : out Operation_Status)

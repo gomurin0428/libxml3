@@ -32,10 +32,11 @@ through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
 through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Properties.Set_Qualified_Property`, reverse element navigation through
 `Store.Queries.Select_Element`, detached `xmlNewDocProp` construction through
-`Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, and explicit UTF-8 memory
-serialization. The C adapters and native ABI implementation are not proved.
-The refreshed aggregate has 10,980 checks (914 flow and 10,066 prover), no
-unproved or justified conditions, 0 `pragma Assume` statements, and 131
+`Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, managed attribute
+attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
+explicit UTF-8 memory serialization. The C adapters and native ABI implementation are not proved.
+The refreshed aggregate has 11,050 checks (927 flow and 10,123 prover), no
+unproved or justified conditions, 0 `pragma Assume` statements, and 132
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -130,8 +131,10 @@ a C ownership path.
 
 `xmlNewDocProp` adapter uses `Runtime.New_Doc_Node` and
 `Store.Content.New_Doc_Node` with `Attribute_Mode`; it supports only detached,
-unnamespaced attributes. Attribute attachment and standalone serialization are
-not supported. Its complete public C semantics are not proved.
+unnamespaced attributes. A managed attribute can subsequently be attached to an
+element by `xmlAddChild` under the same-document/documentless restriction.
+Standalone attribute serialization is not supported. Its complete public C
+semantics are not proved.
 The `xmlNewDocProp` path uses the shared C `New_Container_Node` helper for
 marshalling, locking, and status mapping; graph and owner decisions stay in SPARK.
 The shared `Store.Content.New_Doc_Content` operation accepts text, CDATA,
@@ -154,7 +157,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 10,980-check aggregate proof; see
+new units are included in the successful 11,050-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -302,8 +305,11 @@ Store の事後条件は `Ready`、成功時の返却 pointer と失敗時の NU
 `Attribute_Mode` で使い、未接続・無namespaceの属性を作ります。文書所属と owner pin、
 値の参照展開、text child の作成、失敗時の解放は SPARK 側にあります。NULL doc と
 管理中の live document を受け入れ、文書先行解放後も属性は `xmlFreeProp` まで保持します。
-NULL/空値は text child なしです。`xmlAddChild` による属性接続と detached attribute の
-単独シリアライズは未対応であり、API 全体の意味論や C pointer validity を証明した主張ではありません。
+NULL/空値は text child なしです。`xmlAddChild` では、文書未所属の属性、または接続先と
+同じ文書に所属する属性を要素へ接続できます。既存属性とは local name と namespace href の expanded name で照合し、
+接続成功後に一致属性を解放します。既に最後の属性なら重複があっても no-op です。
+namespace reconciliation、attribute unlink、detached attribute の単独シリアライズは未対応です。
+API 全体の意味論や C pointer validity を証明した主張ではありません。
 
 `xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK
 `New_Doc_Content` を使います。C wrapper は non-NULL content の負の長さを走査前に拒否し、

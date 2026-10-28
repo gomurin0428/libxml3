@@ -18,6 +18,57 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
    use type System.Address;
    use type Construction_Status;
 
+   procedure Add_Property
+     (S : in out Store; Element, Attribute : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Node (S, Element);
+      A : constant Node_Ref := Find_Node (S, Attribute);
+      Existing : System.Address := System.Null_Address;
+      Old : Node_Ref;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if E = Null_Node or else A = Null_Node
+        or else Node (S.Current.all, E).Kind /= Element_Node
+        or else Node (S.Current.all, A).Kind /= Attribute_Node
+      then
+         return;
+      end if;
+      if Node (S.Current.all, A).Parent = E
+        and then Node (S.Current.all, E).Last_Prop = A
+      then
+         Result := Attribute;
+         Status := Created;
+         return;
+      end if;
+      Find_Matching_Property (S, Element, Attribute, Existing, Status);
+      if Status /= Created then
+         return;
+      end if;
+      if Existing /= System.Null_Address and then Existing /= Attribute then
+         Old := Find_Node (S, Existing);
+         if Old = Null_Node
+           or else Node (S.Current.all, Old).Kind /= Attribute_Node
+           or else Node (S.Current.all, Old).Parent /= E
+         then
+            Status := Internal_Error;
+            return;
+         end if;
+      end if;
+      Attach (S, Element, Attribute, True, Status);
+      if Status /= Created then
+         return;
+      end if;
+      if Existing /= System.Null_Address and then Existing /= Attribute then
+         Release (S, Existing, Plain_Attribute, False, Status);
+         if Status /= Created then
+            return;
+         end if;
+      end if;
+      Result := Attribute;
+   end Add_Property;
+
    function Attached_Entry
      (Current : State; Ns : System.Address; I : Namespace_Ref) return Boolean is
      (Ns /= System.Null_Address

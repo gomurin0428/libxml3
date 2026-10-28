@@ -319,6 +319,7 @@ test-oom: tests/oom-test
 		[ $$index -lt 128 ] || { echo "$$operation exceeded allocation cap" >&2; exit 1; }; \
 	done
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-delete 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test attr-attach 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 
 test-fuzz: tests/fuzz-test
