@@ -2419,6 +2419,36 @@ package body XML3_C is
       return Str_N_Concat_New (System.Null_Address, Item, -1);
    end Str_Duplicate;
 
+   function Char_Str_Duplicate (Item : System.Address) return System.Address is
+   begin
+      return Str_Duplicate (Item);
+   end Char_Str_Duplicate;
+
+   function Char_Str_N_Duplicate
+     (Item : System.Address; Length : Interfaces.C.int) return System.Address
+   is
+      Result : System.Address;
+   begin
+      if Item = System.Null_Address or else Length < 0 then
+         return System.Null_Address;
+      end if;
+      XML3_Text.Buffers.Duplicate (C_String_Prefix (Item, Length), Result);
+      if Result = System.Null_Address then
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+      end if;
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Char_Str_N_Duplicate;
+
    function Str_N_Duplicate
      (Item : System.Address; Length : Interfaces.C.int) return System.Address is
    begin

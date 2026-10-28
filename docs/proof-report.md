@@ -44,6 +44,14 @@ preconditions; C conversion, native allocation/writes, pointer validity and
 the actual native bytes remain trusted. Raw-byte cases, including embedded
 NUL and length-zero behavior, run in both library and pinned-reference test
 builds; over-limit rejection and OOM injection are libxml3-only.
+`xmlCharStrdup` and `xmlCharStrndup` are thin C adapters over the existing
+duplication helper; the latter converts a bounded NUL-terminated prefix rather
+than the exact raw span used by `xmlStrndup`. This addition makes no SPARK
+source changes. The reference's `len + 1` allocation can leave an unspecified
+tail after early NUL, whereas libxml3 allocates only the copied prefix and
+terminator; tests compare defined contents only and claim no spare capacity or
+allocation-size equivalence. C conversion, native pointers, allocation/writes,
+ABI and complete public semantics remain trusted.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded`.
 SPARK proves bounded loop control and the -255 .. 255 result contract; the
 scan accepts the full nonnegative C `int` bound without a `Max_Input` cutoff,
@@ -488,8 +496,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-71cdf573596025b7817b6d306333e479517b30b37e868f2b7c0da8b361d2b643  src/xml3_c.adb
-e560f8e4b11742177ce68fa6f0d46f446fd9d5192e679f3f7d60a03b68253f86  src/xml3_c.ads
+5aec6b8fd41c5e0fe0266591c977608de1dcf3fdc773209b9b8533013b0da4e2  src/xml3_c.adb
+7c214f22f28c8aa439d1e93d46b8be348d0a8d302872721379dbe0741de075d1  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -539,10 +547,10 @@ fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.
 e7ff7e33ab3d4f24a63cca4efb22c9707cca6a2f287ea932eaf0f8bba6d1fd9d  src/xml3_text-buffers.adb
 603bd665981310392499409998538f239c719e28d684d066dbb00ef806863646  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-b2eef980b0351671878e1066af7493f8707ea6ce99a55082931309ef09c6b26f  include/libxml/xmlstring.h
+a099f6be6f0d4d8e10504f1d55e42f936b187e98309d880eb08e844588f329fe  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-cb745d470b04acb3f22b4f4e4b9714472ca3d7ed936c04c5ec3fb00d9fff13f6  Makefile
+7975addd9ea024a72f6e8fa31d71a3fad0a77fcbcdec99fd14740ebe759a1395  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

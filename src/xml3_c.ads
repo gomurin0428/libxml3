@@ -316,6 +316,13 @@ package XML3_C is
    function Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrdup";
 
+   function Char_Str_Duplicate (Item : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCharStrdup";
+
+   function Char_Str_N_Duplicate
+     (Item : System.Address; Length : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlCharStrndup";
+
    function Str_N_Compare
      (Left, Right : System.Address; Length : Interfaces.C.int)
       return Interfaces.C.int

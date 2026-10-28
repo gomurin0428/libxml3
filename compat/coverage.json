@@ -518,6 +518,26 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlCharStrdup": {
+    "implementation": "partial",
+    "scope": "C char* wrapper over the bounded NUL-terminated byte duplication path. Copies high-bit bytes unchanged without transcoding or UTF-8 validation; NULL and over-Max_Input inputs return NULL. Result is xmlFree-owned. C conversion, native pointer validity, allocation/writes, ABI, and full semantics remain outside proof.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlCharStrndup": {
+    "implementation": "partial",
+    "scope": "For non-NULL input and nonnegative len, copies at most len C-string bytes and stops at an earlier NUL; len zero returns an owned empty string without reading input. NULL, negative, and over-Max_Input lengths return NULL; an over-limit length is rejected before reading input. Unlike xmlStrndup it does not copy bytes after an embedded NUL. Reference may allocate len+1 with unspecified tail after early NUL; libxml3 allocates only copied-prefix+terminator, so no spare capacity or allocation-size equivalence is promised. Tests compare defined contents only. C conversion, pointer validity, allocation/writes, ABI, and full semantics remain outside proof.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlStrncatNew": {
     "implementation": "partial",
     "scope": "Copies the NUL-terminated left prefix plus the effective right byte span into a new xmlFree-owned, NUL-terminated allocation. Negative length uses the right NUL-terminated length; NULL left delegates to bounded duplication, while NULL right or zero effective length with non-NULL left copies the left. Positive spans preserve embedded NUL and raw bytes. Combined-size limits are checked before reading a positive right span. C conversion, native pointer validity, allocation, writes, and full API semantics remain outside proof.",

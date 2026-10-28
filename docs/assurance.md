@@ -566,6 +566,17 @@ APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and
 `xmlStrdup` and `xmlStrndup` copy raw bytes into `xmlFree`-owned,
 NUL-terminated results; `xmlStrndup` copies exactly the requested length,
 including embedded NUL bytes, and length zero does not read its input.
+`xmlCharStrdup` delegates to the existing `xmlStrdup` adapter. `xmlCharStrndup`
+uses the C `char *` prefix conversion and the existing SPARK duplication helper:
+it stops at NUL within `len`, while raw `xmlStrndup` copies the exact span.
+Length zero performs no input read; NULL/negative and over-`Max_Input` inputs
+are rejected. Input bytes, including high-bit bytes, are copied without
+transcoding or UTF-8 validation. The pinned reference allocates `len + 1`
+even after an early NUL and leaves the tail unspecified; libxml3 allocates
+only the copied prefix plus terminator. Tests compare defined contents only;
+spare capacity and allocation-size equivalence are not promised. C conversion,
+native pointer validity, allocation/writes, ABI, and complete semantics remain
+trusted.
 `xmlStrncmp` and `xmlStrncasecmp` use `XML3_Text.Buffers.Compare_Bounded` for
 bounded byte-by-byte comparisons, early exit, and a result in -255 .. 255.
 The scan accepts the full nonnegative C `int` bound without a `Max_Input`
