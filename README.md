@@ -78,6 +78,9 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
+`xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
+列挙し、同じ prefix は最初の宣言だけを含めます。組み込み `xml` binding は追加せず、
+`doc` 引数は無視します。返却配列は `xmlFree` で解放し、各 namespace pointer は借用です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。

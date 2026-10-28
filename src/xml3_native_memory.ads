@@ -8,6 +8,8 @@ is
    use type System.Address;
    use type Interfaces.C.ptrdiff_t;
    subtype Byte_Count is Interfaces.C.ptrdiff_t range 0 .. Interfaces.C.ptrdiff_t'Last;
+   subtype Positive_Byte_Count is Byte_Count range 1 .. Byte_Count'Last;
+   Address_Bytes : constant Positive_Byte_Count;
 
    type Node_Projection is record
       Id : Natural := 0;
@@ -53,6 +55,11 @@ is
      with Global => (Input => Foreign_Memory), Pre => Base /= System.Null_Address;
    procedure Write_Byte (Base : System.Address; Index : Natural; Value : Character)
      with Global => (In_Out => Foreign_Memory), Pre => Base /= System.Null_Address;
+   procedure Write_Address
+     (Base : System.Address; Index : Natural; Value : System.Address)
+     with Global => (In_Out => Foreign_Memory),
+       Pre => Base /= System.Null_Address
+         and then Byte_Count (Index) <= Byte_Count'Last / Address_Bytes;
    procedure Read_String (Base : System.Address; Value : out String)
      with Global => (Input => Foreign_Memory), Pre => Base /= System.Null_Address;
    procedure Write_String (Base : System.Address; Index : Natural; Value : String)
@@ -69,6 +76,9 @@ is
 
 private
    pragma SPARK_Mode (Off);
+
+   Address_Bytes : constant Positive_Byte_Count :=
+     System.Address'Max_Size_In_Storage_Elements;
 
    type C_Node is record
       Private_Data : System.Address := System.Null_Address;

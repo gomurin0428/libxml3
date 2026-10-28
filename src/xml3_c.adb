@@ -1982,6 +1982,65 @@ package body XML3_C is
          return System.Null_Address;
    end Has_Prop;
 
+   function Namespace_List_Value
+     (Node : System.Address; Code : out int) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status;
+   begin
+      Code := 1;
+      if Node = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Get_Namespace_List (Node, Result, Status);
+      end;
+      Report_Operation_Status (Status, Validation_Error => False);
+      Code := (case Status is
+                 when XML3_DOM_Constructors.Created =>
+                   (if Result = System.Null_Address then 1 else 0),
+                 when XML3_DOM_Constructors.Invalid_Argument => 1,
+                 when others => -1);
+      return Result;
+   exception
+      when Storage_Error =>
+         Code := -1;
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Code := -1;
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Namespace_List_Value;
+
+   function Get_Ns_List (Doc, Node : System.Address) return System.Address is
+      pragma Unreferenced (Doc);
+      Code : int;
+   begin
+      return Namespace_List_Value (Node, Code);
+   end Get_Ns_List;
+
+   function Get_Ns_List_Safe (Doc, Node, Output : System.Address) return int is
+      pragma Unreferenced (Doc);
+      Result : System.Address;
+      Code : int;
+   begin
+      Set_Address (Output, System.Null_Address);
+      if Output = System.Null_Address then
+         return 1;
+      end if;
+      Result := Namespace_List_Value (Node, Code);
+      Set_Address (Output, Result);
+      return Code;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end Get_Ns_List_Safe;
+
    function Search_Ns
      (Doc, Node, Prefix : System.Address) return System.Address
    is

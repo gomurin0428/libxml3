@@ -431,6 +431,18 @@
     "tests": ["tests/namespace-test.c", "tests/namespace-edit-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlGetNsList": {
+    "implementation": "partial",
+    "scope": "SPARK Store/Runtime traverses managed declarations from node through element ancestors, nearest-first and declaration-order, retaining only the nearest declaration for each prefix including default. Includes NULL/empty href declarations; excludes implicit xml bindings and node.namespace-only references; ignores doc. Returns a caller-owned NULL-terminated array with borrowed namespace pointers. Native array representation, pointer validity, and complete public semantics remain outside proof.",
+    "tests": ["tests/namespace-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlGetNsListSafe": {
+    "implementation": "partial",
+    "scope": "Shares xmlGetNsList traversal. Clears output before lookup; NULL output, NULL/unmanaged/namespace node, and empty results return 1 with NULL; nonempty results return 0; allocation/internal failures return -1 with NULL. Caller frees the array with xmlFree; entries are borrowed. Native C pointer/array ABI and full semantic equivalence are outside proof.",
+    "tests": ["tests/namespace-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNodeGetAttrValue": {
     "implementation": "partial",
     "scope": "Namespace-aware attribute value lookup through existing SPARK Runtime.Get_Property / Store.Queries.Find_Property / Get_Content. Returns 0 plus an independent xmlFree-compatible copy, 1 plus NULL for missing/invalid node or name (NULL out also returns 1), and -1 plus NULL for allocation, limit, string-conversion, or internal failures. NULL URI means no namespace, not any namespace. C status/output-pointer mapping is shared with existing getters; DTD defaults remain unsupported. Native ABI/output pointer and full public semantics are not proved.",

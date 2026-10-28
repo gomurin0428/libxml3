@@ -247,6 +247,13 @@ package XML3_C is
       Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlHasProp";
 
+   function Get_Ns_List (Doc, Node : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetNsList";
+
+   function Get_Ns_List_Safe (Doc, Node, Output : System.Address)
+     return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlGetNsListSafe";
+
    function Search_Ns
      (Doc, Node, Prefix : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlSearchNs";

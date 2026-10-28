@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,143 checks, 947 by flow analysis and 10,196 by provers;
+**11,183 checks, 958 by flow analysis and 10,225 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -30,8 +30,17 @@ Namespace searches through `xmlSearchNs` / `xmlSearchNsByHref` route through
 the pure `Search_Namespace` query with lazy XML-binding creation for
 documentless managed nodes. The pure query remains the qualified-property
 rollback path. C adapters and libxml2 semantic equivalence, including
-append-versus-prepend declaration ordering, remain outside the proof. The
-entity summaries report 0 flow errors, 130 warnings, and 0 `pragma Assume`
+append-versus-prepend declaration ordering, remain outside the proof.
+Namespace-list collection through `xmlGetNsList` / `xmlGetNsListSafe` routes
+through `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` and
+`Collect_Namespaces`. Its bounded two-pass Store traversal selects explicit
+declarations from managed node ancestry, deduplicates prefixes nearest-first,
+and excludes implicit bindings and namespace references that are not declared
+in scope. It ignores `doc` and returns a caller-owned array of borrowed
+namespace pointers. The SPARK proof includes traversal, capacity, status and
+cleanup checks; native address allocation/writes, C array representation,
+pointer validity, and complete public semantics remain outside the proof. The
+entity summaries report 0 flow errors, 133 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -41,7 +50,10 @@ warning is not resolved by the successful proof. Native representation/layout
 is outside the claim. One additional benign warning reports that the
 initialization of `Existing` in `Store.Properties.Add_Property` has no effect,
 because `Find_Matching_Property` initializes that `out` parameter before use.
-Trusted external-termination warnings also remain.
+Trusted external-termination warnings also remain. The namespace-list path
+adds trusted termination warnings for native address writes/allocation/free
+and an unreachable/no-effect diagnostic for the portable pointer-array size
+guard on this 64-bit host.
 
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a proof of the selected SPARK units and their written contracts, not
@@ -51,13 +63,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 260 |
-| Initialization | 542 |
-| Runtime checks | 5,009 |
-| Assertions | 1,480 |
-| Functional contracts | 3,652 |
+| Data dependencies | 262 |
+| Initialization | 551 |
+| Runtime checks | 5,018 |
+| Assertions | 1,484 |
+| Functional contracts | 3,668 |
 | Termination | 200 |
-| **Total** | **11,143** |
+| **Total** | **11,183** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -427,8 +439,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-99878278a74bfd8487e479eff2df9422a14a012e43abdbe602458a207136c345  src/xml3_c.adb
-2c792d336755e8359c0a334c036f34c91e53b33389f492926560ab285b2349a1  src/xml3_c.ads
+374baf4f2fd9b5346297639a67b6b95c13c6aae0e09a93dd66a4ce82b36baad7  src/xml3_c.adb
+181fc33750f92915a3d4a27f32375085c7c55ddd350d8eefbbb2839dea6b5669  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -444,16 +456,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-9a246879d7d1e068287487b30e4cbe0842161f0f59048ca0ff8a4f32f0a43e68  src/xml3_dom_runtime.adb
-16732f7165d667e86e91f88c235e39634dcf4a61fb96cf8414903accc80b028d  src/xml3_dom_runtime.ads
+ba68e23b948aa8d03b5451324a0ace65447492ce3fcf10f75ea9ef521861be48  src/xml3_dom_runtime.adb
+900cefeff31e03854d9d138d709788a991e53d8ea3330f6a5ff811dc7fd35c49  src/xml3_dom_runtime.ads
 f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2c5f2910bde31cda9af6496a4760dfbfeb3db5b7b50f606340bc915a569b92f6  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-d66d1b6c549c87041813e43172da62d64860aaedf8f9b096d636509ba74d7905  src/xml3_dom_store-queries.adb
-4d8f23a5334705217c9fe752778dd70c5e4feec299c8c0d128d73c60774b26e7  src/xml3_dom_store-queries.ads
+0f46d1fe25d0fd4d853d49cea43cc5cf0a783eb1e6244f1b057dbc6e12a98ef1  src/xml3_dom_store-queries.adb
+62a887d71e298c5597b018f85ee46ac7d359e0b4a11954667292312121d04589  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
 3d429edf26b88a3392fada0e24319ec30455c0551a52636ba8d80a79fff3cb67  src/xml3_dom_store.adb
@@ -465,18 +477,18 @@ ea5fb0d9851f8262d8ced6e2b2d4319125ed28dbc93c1deedf308823214b6d01  src/xml3_error
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
-be25d8c69fe23913458e9a332740d1e2b500b4a86fb6efa58d374eac6d2652dc  src/xml3_native_memory.adb
-cd9bcad78d7dfd418e27a8237dd47b7e0c2aef4d9826324206b5fdcd93d8ba9e  src/xml3_native_memory.ads
+802bbc0d3a2ad887e38814c149d3e63d5f0ace9952c0a54821399164143e2fcb  src/xml3_native_memory.adb
+4aa72f5756913f1f58af134cf221972157f672054e1df4c3f64dd6e4432b3a56  src/xml3_native_memory.ads
 2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
 b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_serialization.adb
 4a3c84a0b7ee2b7b1a0129b63f37e36b1547c8e75152c7463e06d3f019d0f217  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 0540786136c12dbfd2829c2f46a43a0f6a8f6be7ed117f54116c91c8cf6aa631  src/xml3_text.adb
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
-1f293ea5c10399eeabfcbed6f5215eb1084aa5264cd6b1030524194de95cd25e  include/libxml/tree.h
+520a763c78f189e90801a0b44f04ca567ee3899dc7b0af71e2fe1cad256b9099  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-584537a00e31edeccec85af82fc5d5f2d41831470024d5b6e5e59e3853e71943  Makefile
+bf2d3851405645d99a252b0b2be3212c90ebf42d84e4e09055b0f0f5ffce4fd2  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
