@@ -381,6 +381,59 @@ static void test_utf8_length(void) {
     xmlFree(content);
 }
 
+static void test_utf8_position(void) {
+    xmlResetLastError();
+    const xmlChar text[] = "A名\xf0\x9f\x98\x80Z";
+    const int offsets[] = {0, 1, 4, 8, 9};
+    for (int i = 0; i < 5; ++i)
+        assert(xmlUTF8Strpos(text, i) == text + offsets[i]);
+    assert(!xmlUTF8Strpos(text, 5) && !xmlUTF8Strpos(text, INT_MAX));
+    assert(!xmlUTF8Strpos(text, -1) && !xmlUTF8Strpos(NULL, 0));
+    const xmlChar empty[] = "";
+    assert(xmlUTF8Strpos(empty, 0) == empty && !xmlUTF8Strpos(empty, 1));
+    const xmlChar combining[] = "e\xcc\x81x";
+    assert(xmlUTF8Strpos(combining, 1) == combining + 1);
+    assert(xmlUTF8Strpos(combining, 2) == combining + 3);
+    const xmlChar invalid_tail[] = "A\xff";
+    assert(xmlUTF8Strpos(invalid_tail, 1) == invalid_tail + 1);
+    assert(!xmlUTF8Strpos(invalid_tail, 2));
+    const xmlChar nonxml[] = "\x01\xef\xbf\xbe";
+    assert(xmlUTF8Strpos(nonxml, 2) == nonxml + 4);
+    const xmlChar truncated[] = "a\xe2\x82";
+    assert(!xmlUTF8Strpos(truncated, 2));
+    const xmlChar premature_nul[] = "a\0\xff";
+    assert(xmlUTF8Strpos(premature_nul, 1) == premature_nul + 1);
+    assert(!xmlUTF8Strpos(premature_nul, 2));
+    static const char *permissive[] = {
+        "\xc0\x80", "\xe0\x80\x80", "\xed\xa0\x80",
+        "\xf4\x90\x80\x80", "\xf8\x88\x80\x80\x80"
+    };
+    for (size_t i = 0; i < sizeof(permissive) / sizeof(permissive[0]); ++i) {
+        const xmlChar *input = (const xmlChar *)permissive[i];
+        assert(xmlUTF8Strpos(input, 0) == input);
+#ifdef XML3_REFERENCE_VERSION
+        assert(xmlUTF8Strpos(input, 1) == input + strlen(permissive[i]));
+#else
+        assert(!xmlUTF8Strpos(input, 1));
+#endif
+    }
+    assert(!xmlGetLastError());
+    const char source[] = "<r>A名\xf0\x9f\x98\x80Z</r>";
+    xmlDocPtr doc = xmlReadMemory(source, (int)sizeof(source) - 1, NULL, NULL, 0);
+    assert(doc);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    xmlFreeDoc(doc);
+    assert(content);
+    const xmlChar *start = xmlUTF8Strpos(content, 1);
+    const xmlChar *end = xmlUTF8Strpos(content, 3);
+    assert(start && end);
+    xmlChar *copy = xmlStrndup(start, (int)(end - start));
+    assert(copy);
+    xmlFree(content);
+    assert(xmlStrEqual(copy, BAD_CAST "名\xf0\x9f\x98\x80"));
+    xmlFree(copy);
+}
+
 static void test_string_length(void) {
     assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
     assert(xmlStrlen(BAD_CAST "abc") == 3);
@@ -809,6 +862,15 @@ static void test_string_duplicates(void) {
         len = 0;
         assert(xmlGetUTF8Char(unreadable, &len) == -1 && len == 0);
 #endif
+        assert(xmlUTF8Strpos(unreadable, 0) == unreadable);
+        assert(!xmlUTF8Strpos(unreadable, -1));
+        source[2] = 'a';
+        assert(xmlUTF8Strpos(source + 2, 1) == unreadable);
+        source[1] = 0xc2;
+        source[2] = 0;
+        assert(!xmlUTF8Strpos(source + 1, 1));
+        memcpy(utf, complete, 4);
+        assert(xmlUTF8Strpos(utf, 1) == unreadable);
         assert(munmap(mapping, (size_t)page_size * 2) == 0);
     }
 #endif
@@ -1065,6 +1127,7 @@ int main(void) {
     test_utf8_check();
     test_utf8_char();
     test_utf8_length();
+    test_utf8_position();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);

@@ -188,6 +188,16 @@ pinned referenceがoverlong、surrogate、範囲外scalar、また連続する2�
 小さい `Last` のAda helper testでcapを確認し、巨大な公開C stringは構築していません。
 SPARKは走査制御、scalar counter/bounds、status/result contract、native-call preconditionsを証明しますが、
 Unicode意味論全体、native bytes/readable extent、pointer validity、C mappingは信頼境界です。
+`xmlUTF8Strpos` は0-based Unicode scalar位置を探し、一致位置へのborrowed pointerを返します。NULL inputまたは負の位置は
+診断なしでNULL、位置0はinput pointerを読み取りなしで返します。位置が範囲内なら、そこまでのprefixだけをstrict UTF-8として
+検査し、target scalarとsuffixは読み取りも検証もしません。位置がscalar lengthと等しい場合はNULのaddressを読み取りなしで返し、
+それより先ならNULLです。したがって全文字列のvalidation oracleではありません。ASCII controlとUnicode noncharacterは許可されますが、
+XML character validationはしません。overlong、surrogate、U+10FFFF超過、およびpinned referenceが受け入れる5-byte sequenceは
+検査対象prefix内なら拒否し、これは意図的な安全差です。prefixがinclusive `Max_Bytes` まで未解決ならDOM error 115とNULL、
+予期しないC-side例外はDOM error 1とNULLです。allocation・input mutation・normalizationは行いません。
+返却pointerはinputのlifetime中だけ有効で、`xmlFree`しません。小さい `Last` のAda testでcapを検査し、巨大な公開C stringは
+構築していません。SPARKはscan control、index/offset bounds、status/result contractとnative-call preconditionsを対象にし、
+foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論はtrusted boundaryです。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

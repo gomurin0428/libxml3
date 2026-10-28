@@ -2,11 +2,20 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Scan_UTF8
+     (Item : System.Address; Stop_After : Integer;
+      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Length <= Offset and then Offset <= Last
+         and then (if Status /= UTF8_Valid then Length = 0 and Offset = 0)
+         and then (if Item = System.Null_Address then Status = UTF8_Invalid);
+
    procedure Check_UTF8
      (Item : System.Address; Status : out UTF8_Status;
       Last : Byte_Count := Max_Bytes)
    is
       Length : Byte_Count;
+      pragma Unreferenced (Length);
    begin
       Count_UTF8 (Item, Length, Status, Last);
    end Check_UTF8;
@@ -14,6 +23,38 @@ package body XML3_Text.Buffers with SPARK_Mode is
    procedure Count_UTF8
      (Item : System.Address; Length : out Byte_Count; Status : out UTF8_Status;
       Last : Byte_Count := Max_Bytes)
+   is
+      Offset : Byte_Count;
+      pragma Unreferenced (Offset);
+   begin
+      Scan_UTF8 (Item, -1, Length, Offset, Status, Last);
+   end Count_UTF8;
+
+   procedure Find_UTF8_Position
+     (Item : System.Address; Index : Integer;
+      Position : out Byte_Count; Status : out Search_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
+      Length, Offset : Byte_Count;
+      Result : UTF8_Status;
+   begin
+      Position := 0;
+      Status := No_Match;
+      if Index < 0 then
+         return;
+      end if;
+      Scan_UTF8 (Item, Index, Length, Offset, Result, Last);
+      if Result = UTF8_Valid and then Length = Index then
+         Position := Offset;
+         Status := Matched;
+      elsif Result = UTF8_Limit_Exceeded then
+         Status := Search_Limit_Exceeded;
+      end if;
+   end Find_UTF8_Position;
+
+   procedure Scan_UTF8
+     (Item : System.Address; Stop_After : Integer;
+      Length, Offset : out Byte_Count; Status : out UTF8_Status; Last : Byte_Count)
    is
       Position : Natural := 0;
       Count : Natural := 0;
@@ -24,6 +65,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Error_Position : Natural;
    begin
       Length := 0;
+      Offset := 0;
       Status := UTF8_Invalid;
       if Item = System.Null_Address then
          return;
@@ -32,10 +74,17 @@ package body XML3_Text.Buffers with SPARK_Mode is
          pragma Loop_Invariant (Position <= Last + 4);
          pragma Loop_Invariant (Count <= Position);
          pragma Loop_Variant (Increases => Position);
+         if Count = Stop_After then
+            Length := Count;
+            Offset := Position;
+            Status := UTF8_Valid;
+            return;
+         end if;
          Bytes (1) := Native.Byte_At (Item, Position);
          B := Character'Pos (Bytes (1));
          if B = 0 then
             Length := Count;
+            Offset := Position;
             Status := UTF8_Valid;
             return;
          elsif B < 128 then
@@ -49,14 +98,14 @@ package body XML3_Text.Buffers with SPARK_Mode is
          else
             return;
          end if;
-         for Offset in 1 .. Width - 1 loop
-            if Offset > Last - Position then
+         for Continuation in 1 .. Width - 1 loop
+            if Continuation > Last - Position then
                Status := UTF8_Limit_Exceeded;
                return;
             end if;
-            pragma Assert (Position + Offset <= Last);
-            Bytes (Offset + 1) := Native.Byte_At (Item, Position + Offset);
-            if Character'Pos (Bytes (Offset + 1)) not in 16#80# .. 16#BF# then
+            pragma Assert (Position + Continuation <= Last);
+            Bytes (Continuation + 1) := Native.Byte_At (Item, Position + Continuation);
+            if Character'Pos (Bytes (Continuation + 1)) not in 16#80# .. 16#BF# then
                return;
             end if;
          end loop;
@@ -70,7 +119,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
          Count := Count + 1;
       end loop;
       Status := UTF8_Limit_Exceeded;
-   end Count_UTF8;
+   end Scan_UTF8;
 
    procedure Get_UTF8_Char
      (Item : System.Address; Available : Integer;

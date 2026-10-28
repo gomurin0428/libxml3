@@ -8,6 +8,7 @@ procedure Text_Buffers_Test is
    use type System.Address;
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
+   use type XML3_Text.Buffers.Search_Status;
    use type XML3_Text.Text_Error_Kind;
    Left : aliased String := "aa" & Character'Val (0);
    Right : aliased String := "aa" & Character'Val (0);
@@ -123,6 +124,33 @@ procedure Text_Buffers_Test is
       XML3_Text.Buffers.Count_UTF8 (Text'Address, Length, Status, 0);
       pragma Assert (Status = XML3_Text.Buffers.UTF8_Valid and Length = 0);
    end Check_UTF8_Count;
+
+   procedure Check_UTF8_Position is
+      Text : aliased String := "a" & Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#) & Character'Val (0);
+      Status : XML3_Text.Buffers.Search_Status;
+      Position : XML3_Text.Byte_Count;
+   begin
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 0, Position, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Position = 0);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 1, Position, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Search_Limit_Exceeded and Position = 0);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 1, Position, Status, 1);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Position = 1);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 2, Position, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.Search_Limit_Exceeded and Position = 0);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 2, Position, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.Matched and Position = 4);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 3, Position, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Position = 0);
+      Text (3) := Character'Val (0);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, 2, Position, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Position = 0);
+      XML3_Text.Buffers.Find_UTF8_Position (System.Null_Address, 0, Position, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Position = 0);
+      XML3_Text.Buffers.Find_UTF8_Position (Text'Address, -1, Position, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Match and Position = 0);
+   end Check_UTF8_Position;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -140,5 +168,6 @@ begin
    Check_Measure;
    Check_UTF8;
    Check_UTF8_Count;
+   Check_UTF8_Position;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

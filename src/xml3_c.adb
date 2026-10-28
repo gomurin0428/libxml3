@@ -2458,6 +2458,20 @@ package body XML3_C is
       end case;
    end Search_Result;
 
+   function UTF8_Str_Position
+     (Item : System.Address; Index : Interfaces.C.int) return System.Address
+   is
+      Position : XML3_Text.Byte_Count;
+      Status : XML3_Text.Buffers.Search_Status;
+   begin
+      XML3_Text.Buffers.Find_UTF8_Position (Item, Integer (Index), Position, Status);
+      return Search_Result (Item, Position, Status);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end UTF8_Str_Position;
+
    function Str_Character
      (Item : System.Address; Value : Interfaces.C.unsigned_char)
       return System.Address
