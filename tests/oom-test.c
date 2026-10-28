@@ -287,6 +287,22 @@ int main(int argc, char **argv) {
             dom_node = NULL;
             assert(xmlGetLastError() == NULL);
         }
+    } else if (strcmp(operation, "dom-new-text-len") == 0) {
+        static const xmlChar input[] = {'t', 'e', 'x', 't'};
+        xml3_oom_enable(fail_index);
+        dom_node = xmlNewTextLen(input, 4);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(dom_node == NULL);
+            require_oom_error();
+            dom_node = xmlNewTextLen(input, 4);
+        }
+        assert(dom_node != NULL && dom_node->content != NULL);
+        assert(strcmp((const char *)dom_node->content, "text") == 0);
+        xmlFreeNode(dom_node);
+        dom_node = NULL;
     } else if (strcmp(operation, "dom-new-text") == 0 ||
                strcmp(operation, "dom-new-comment") == 0 ||
                strcmp(operation, "dom-new-pi") == 0) {

@@ -93,6 +93,7 @@ xmlNodePtr xmlNewChild(xmlNodePtr parent, xmlNsPtr ns,
 xmlNodePtr xmlNewTextChild(xmlNodePtr parent, xmlNsPtr ns,
                            const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlNewText(const xmlChar *content);
+xmlNodePtr xmlNewTextLen(const xmlChar *content, int len);
 xmlNodePtr xmlNewComment(const xmlChar *content);
 xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
