@@ -183,6 +183,9 @@ package XML3_C is
    procedure Set_Ns (Node, Ns : System.Address)
      with Export, Convention => C, External_Name => "xmlSetNs";
 
+   function Copy_Ns (Source : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyNamespace";
+
    procedure Free_Ns (Ns : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeNs";
 

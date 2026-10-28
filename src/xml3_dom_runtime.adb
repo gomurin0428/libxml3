@@ -59,6 +59,14 @@ is
            (Current, Element, Href, Prefix, Has_Href, Has_Prefix, Result, Status);
       end Create_Namespace;
 
+      procedure Copy_Namespace
+        (Source : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Copy_Namespace (Current, Source, Result, Status);
+      end Copy_Namespace;
+
       procedure Set_Namespace
         (Node, Ns : System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

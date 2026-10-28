@@ -5,6 +5,8 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    xmlNs *(*copy_namespace)(xmlNs *) = xmlCopyNamespace;
+    (void)copy_namespace;
     xmlChar *(*build_qname)(const xmlChar *, const xmlChar *, xmlChar *, int) = xmlBuildQName;
     (void)build_qname;
     xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;

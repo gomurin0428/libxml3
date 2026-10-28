@@ -488,6 +488,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlCopyNamespace": {
+    "implementation": "partial",
+    "scope": "Managed live namespace facades only. Copies href/prefix bytes into an independent detached reservation, preserving NULL versus empty fields; source next/context/_private links are not copied. The caller releases the returned reservation with xmlFreeNs, while node pins retain storage after reservation release. Foreign/stale pointers, namespace-list copying, native pointer validity, C representation/ABI, and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/namespace-edit-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlStrcmp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

@@ -378,6 +378,78 @@ static void test_null_namespace_uri_lookup(void) {
     xmlFreeNode(root);
 }
 
+static void test_namespace_copies(void) {
+    static const struct { const char *href, *prefix; } cases[] = {
+        {"urn:p", "p"}, {"urn:default", NULL}, {"", "p"},
+        {NULL, "p"}, {NULL, NULL}, {"", ""}, {"urn:名", "名"}
+    };
+    int marker = 42;
+    assert(!xmlCopyNamespace(NULL));
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        xmlNsPtr source = xmlNewNs(NULL, BAD_CAST cases[i].href, BAD_CAST cases[i].prefix);
+        assert(source);
+        source->_private = &marker;
+        xmlNsPtr copy = xmlCopyNamespace(source);
+        assert(copy && copy != source && !copy->next && !copy->_private);
+#ifndef XML3_REFERENCE_TEST
+        assert(!copy->context);
+#endif
+        assert(copy->type == XML_NAMESPACE_DECL && source->_private == &marker);
+        if (cases[i].href) assert(copy->href && copy->href != source->href);
+        else assert(!copy->href);
+        if (cases[i].prefix) assert(copy->prefix && copy->prefix != source->prefix);
+        else assert(!copy->prefix);
+        xmlFreeNs(source);
+        if (cases[i].href) assert(xmlStrEqual(copy->href, BAD_CAST cases[i].href));
+        if (cases[i].prefix) assert(xmlStrEqual(copy->prefix, BAD_CAST cases[i].prefix));
+        xmlFreeNs(copy);
+    }
+    {
+        xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc && root);
+        xmlDocSetRootElement(doc, root);
+        xmlNsPtr source = xmlNewNs(root, BAD_CAST "urn:p", BAD_CAST "p");
+        xmlNsPtr next = xmlNewNs(root, BAD_CAST "urn:q", BAD_CAST "q");
+        xmlNsPtr copy = xmlCopyNamespace(source);
+        assert(source && next && copy && !copy->next);
+#ifndef XML3_REFERENCE_TEST
+        assert(!copy->context);
+#endif
+        assert(root->nsDef == source && source->next == next && !next->next);
+        xmlNodePtr child = xmlNewNode(copy, BAD_CAST "child");
+        assert(child && xmlAddChild(root, child) == child && child->ns == copy);
+        xmlNodeSetContent(child, BAD_CAST "value");
+        xmlChar *bytes = NULL;
+        int size = -1;
+        xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+        assert(bytes && size > 0);
+        xmlDocPtr parsed = xmlReadMemory((const char *)bytes, size, NULL, NULL, 0);
+        assert(parsed);
+        xmlNodePtr parsed_child = xmlFirstElementChild(xmlDocGetRootElement(parsed));
+        assert(parsed_child && parsed_child->ns && xmlStrEqual(parsed_child->ns->href, BAD_CAST "urn:p"));
+        value_is(parsed_child, "value");
+        xmlFreeDoc(parsed);
+        xmlFree(bytes);
+#ifndef XML3_REFERENCE_TEST
+        xmlUnlinkNode(child);
+        xmlFreeDoc(doc);
+        xmlFreeNs(copy);
+        value_is(child, "value");
+        assert(xmlStrEqual(child->ns->href, BAD_CAST "urn:p"));
+        xmlNsPtr second_copy = xmlCopyNamespace(child->ns);
+        assert(second_copy && second_copy != child->ns);
+        xmlFreeNode(child);
+        assert(xmlStrEqual(second_copy->href, BAD_CAST "urn:p"));
+        xmlFreeNs(second_copy);
+#else
+        xmlFreeDoc(doc);
+        assert(xmlStrEqual(copy->href, BAD_CAST "urn:p"));
+        xmlFreeNs(copy);
+#endif
+    }
+}
+
 static void check_ns_list(xmlNodePtr node, xmlNsPtr *expected, size_t count) {
     xmlNsPtr *list = (xmlNsPtr *)1;
     assert(xmlGetNsListSafe(NULL, node, &list) == (count ? 0 : 1));
@@ -446,6 +518,7 @@ static void test_namespace_lists(void) {
 }
 
 int main(void) {
+    test_namespace_copies();
     test_namespace_lists();
 #ifdef XML3_REFERENCE_TEST
     assert(LIBXML_VERSION == 21504);

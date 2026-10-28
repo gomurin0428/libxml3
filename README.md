@@ -76,11 +76,16 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
-`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
+`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
 列挙し、同じ prefix は最初の宣言だけを含めます。組み込み `xml` binding は追加せず、
 `doc` 引数は無視します。返却配列は `xmlFree` で解放し、各 namespace pointer は借用です。
+`xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
+href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
+source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が
+`xmlFreeNs` で解放します。node から参照されている間は Store の pin が storage を保持します。
+foreign・stale pointer の検証、namespace list のコピー、native pointer/ABI の安全性は対象外です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。

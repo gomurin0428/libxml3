@@ -112,7 +112,34 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "qname-build") == 0) {
+    if (strcmp(operation, "ns-copy") == 0) {
+        dom_node = xmlNewNode(NULL, BAD_CAST "root");
+        assert(dom_node);
+        xmlNsPtr source = xmlNewNs(dom_node, BAD_CAST "urn:p", BAD_CAST "p");
+        xmlNsPtr next = xmlNewNs(dom_node, BAD_CAST "urn:q", BAD_CAST "q");
+        assert(source && next);
+        xml3_oom_enable(fail_index);
+        xmlNsPtr copy = xmlCopyNamespace(source);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(dom_node->nsDef == source && source->next == next && !next->next);
+        assert(xmlStrEqual(source->href, BAD_CAST "urn:p") && xmlStrEqual(source->prefix, BAD_CAST "p"));
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy && copy != source && !copy->next);
+            assert(xmlStrEqual(copy->href, source->href));
+            xmlFreeNs(copy);
+        }
+        copy = xmlCopyNamespace(source);
+        assert(copy && copy != source && !copy->next);
+        xmlFreeNode(dom_node);
+        dom_node = NULL;
+        assert(xmlStrEqual(copy->href, BAD_CAST "urn:p") && xmlStrEqual(copy->prefix, BAD_CAST "p"));
+        xmlFreeNs(copy);
+    } else if (strcmp(operation, "qname-build") == 0) {
         const xmlChar name[] = "name";
         xmlChar buffer[32], before[32];
         xml3_oom_enable(fail_index);
