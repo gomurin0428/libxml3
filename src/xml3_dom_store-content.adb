@@ -13,7 +13,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    procedure New_Doc_Content
      (S : in out Store; Doc : System.Address; Kind : Node_Kind;
       Name, Content : String; Has_Content : Boolean; Result : out System.Address;
-      Status : out Operation_Status)
+      Status : out Operation_Status; Ns : System.Address := System.Null_Address)
    is
       D : Node_Ref := Find_Node (S, Doc);
       N : Node_Ref;
@@ -23,8 +23,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if Kind not in Text_Node | CData_Node | Comment_Node |
+      if Kind not in Element_Node | Text_Node | CData_Node | Comment_Node |
         Processing_Instruction_Node
+        or else (Kind = Element_Node and then Has_Content)
       then
          return;
       end if;
@@ -35,7 +36,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          return;
       end if;
       Construct
-        (S, Kind, Name, Content, Has_Content, System.Null_Address,
+        (S, Kind, Name, Content, Has_Content, Ns,
          Facade, Ignored_Ns, Status);
       if Status /= Created then
          return;
@@ -73,14 +74,12 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
    end New_Doc_Content;
 
-   procedure New_Child
-     (S : in out Store; Parent, Ns : System.Address;
+   procedure New_Doc_Node
+     (S : in out Store; Doc, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;
       Result : out System.Address;
       Status : out Operation_Status)
    is
-      P : constant Node_Ref := Find_Node (S, Parent);
-      Selected_Ns : System.Address := Ns;
       Element, Text, Ignored_Ns : System.Address := System.Null_Address;
       Cleanup_Status : Operation_Status;
       Decoded : String (1 .. Content'Length) := (others => Character'Val (0));
@@ -89,11 +88,6 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if P = Null_Node or else Node (S.Current.all, P).Kind not in
-        Element_Node | Document_Node
-      then
-         return;
-      end if;
       if Has_Content and then Raw_Content then
          if Content'Length > XML3_Text.Max_Bytes then
             Status := Limit_Exceeded;
@@ -113,16 +107,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
             return;
          end if;
       end if;
-      if Selected_Ns = System.Null_Address
-        and then Node (S.Current.all, P).Kind = Element_Node
-        and then Node (S.Current.all, P).Namespace /= Null_Namespace
-      then
-         Selected_Ns := Namespace
-           (S.Current.all, Node (S.Current.all, P).Namespace).Facade;
-      end if;
-      Construct
-        (S, Element_Node, Name, "", False, Selected_Ns,
-         Element, Ignored_Ns, Status);
+      New_Doc_Content
+        (S, Doc, Element_Node, Name, "", False, Element, Status, Ns);
       if Status /= Created then
          return;
       end if;
@@ -141,8 +127,47 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          end if;
       end if;
       if Status = Created then
-         Attach (S, Parent, Element, False, Status);
+         Result := Element;
+      else
+         Release (S, Element, Content_Node, False, Cleanup_Status);
+         if Cleanup_Status /= Created then
+            Status := Internal_Error;
+         end if;
       end if;
+   end New_Doc_Node;
+
+   procedure New_Child
+     (S : in out Store; Parent, Ns : System.Address;
+      Name, Content : String; Raw_Content, Has_Content : Boolean;
+      Result : out System.Address;
+      Status : out Operation_Status)
+   is
+      P : constant Node_Ref := Find_Node (S, Parent);
+      Selected_Ns : System.Address := Ns;
+      Element : System.Address := System.Null_Address;
+      Cleanup_Status : Operation_Status;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if P = Null_Node or else Node (S.Current.all, P).Kind not in
+        Element_Node | Document_Node
+      then
+         return;
+      end if;
+      if Selected_Ns = System.Null_Address
+        and then Node (S.Current.all, P).Kind = Element_Node
+        and then Node (S.Current.all, P).Namespace /= Null_Namespace
+      then
+         Selected_Ns := Namespace
+           (S.Current.all, Node (S.Current.all, P).Namespace).Facade;
+      end if;
+      New_Doc_Node
+        (S, System.Null_Address, Selected_Ns, Name, Content,
+         Raw_Content, Has_Content, Element, Status);
+      if Status /= Created then
+         return;
+      end if;
+      Attach (S, Parent, Element, False, Status);
       if Status = Created then
          Result := Element;
       else

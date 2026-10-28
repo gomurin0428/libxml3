@@ -94,6 +94,18 @@ is
             Result, Status);
       end New_Child;
 
+      procedure New_Doc_Node
+        (Doc, Ns : System.Address; Name, Content : String;
+         Raw_Content, Has_Content : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.New_Doc_Node
+           (Current, Doc, Ns, Name, Content, Raw_Content, Has_Content,
+            Result, Status);
+      end New_Doc_Node;
+
       procedure Add_Content
         (Facade : System.Address; Suffix : String;
          Status : out XML3_DOM_Store.Operation_Status;

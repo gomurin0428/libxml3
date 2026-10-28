@@ -824,10 +824,17 @@ int main(int argc, char **argv) {
         }
         xmlFreeDoc(content_doc);
     } else if (strcmp(operation, "dom-new-child") == 0 ||
-               strcmp(operation, "dom-new-text-child") == 0) {
-        int raw = strcmp(operation, "dom-new-text-child") == 0;
+               strcmp(operation, "dom-new-text-child") == 0 ||
+               strcmp(operation, "dom-new-doc-node") == 0 ||
+               strcmp(operation, "dom-new-doc-raw-node") == 0) {
+        int raw = strcmp(operation, "dom-new-text-child") == 0 ||
+                  strcmp(operation, "dom-new-doc-raw-node") == 0;
+        int affiliated = strcmp(operation, "dom-new-doc-node") == 0 ||
+                         strcmp(operation, "dom-new-doc-raw-node") == 0;
         xmlNodePtr (*construct_child)(xmlNodePtr, xmlNsPtr, const xmlChar *,
                                       const xmlChar *) = raw ? xmlNewTextChild : xmlNewChild;
+        xmlNodePtr (*construct_doc)(xmlDocPtr, xmlNsPtr, const xmlChar *,
+                                    const xmlChar *) = raw ? xmlNewDocRawNode : xmlNewDocNode;
         xmlDocPtr content_doc = xmlNewDoc(NULL);
         xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
         xmlNodePtr old = xmlNewComment(BAD_CAST "before");
@@ -840,7 +847,9 @@ int main(int argc, char **argv) {
         assert(ns != NULL);
         xmlSetNs(root, ns);
         xml3_oom_enable(fail_index);
-        child = construct_child(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
+        child = affiliated
+            ? construct_doc(content_doc, ns, BAD_CAST "child", BAD_CAST "new&amp;text")
+            : construct_child(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -850,15 +859,28 @@ int main(int argc, char **argv) {
             assert(old->parent == root && old->next == NULL && old->prev == NULL);
             assert(strcmp((const char *)ns->href, "urn:parent") == 0);
             require_oom_error();
-            child = construct_child(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
+            child = affiliated
+                ? construct_doc(content_doc, ns, BAD_CAST "child", BAD_CAST "new&amp;text")
+                : construct_child(root, NULL, BAD_CAST "child", BAD_CAST "new&amp;text");
         }
-        assert(child != NULL && child->parent == root && child->doc == content_doc);
-        assert(child->ns == ns && root->last == child && child->prev == old);
-        assert(root->children == old && old->next == child && child->next == NULL);
+        assert(child != NULL && child->doc == content_doc && child->ns == ns);
+        if (affiliated) {
+            assert(child->parent == NULL && child->prev == NULL && child->next == NULL);
+            assert(root->children == old && root->last == old && old->next == NULL);
+        } else {
+            assert(child->parent == root && root->last == child && child->prev == old);
+            assert(root->children == old && old->next == child && child->next == NULL);
+        }
         assert(child->children != NULL && child->children->doc == content_doc);
         assert(strcmp((const char *)child->children->content,
                       raw ? "new&amp;text" : "new&text") == 0);
         xmlFreeDoc(content_doc);
+        if (affiliated) {
+            assert(strcmp((const char *)ns->href, "urn:parent") == 0);
+            assert(strcmp((const char *)child->children->content,
+                          raw ? "new&amp;text" : "new&text") == 0);
+            xmlFreeNode(child);
+        }
     } else if (strcmp(operation, "dom-content-set-scalar") == 0 ||
                strcmp(operation, "dom-content-set-len") == 0) {
         int bounded = strcmp(operation, "dom-content-set-len") == 0;

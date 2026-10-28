@@ -647,6 +647,77 @@ static void test_set_content_len_rejection(void) {
 }
 #endif
 
+static void test_construct_doc_node(int raw) {
+    static const char input[] = "<p:root xmlns:p='urn:p'><p:old/></p:root>";
+    char name[] = "child";
+    char value[] = "A&amp;&#x1F642;\r\n\t";
+    const char *expected = raw ? "A&amp;&#x1F642;\r\n\t" : "A&🙂\r\n\t";
+    xmlNodePtr (*create)(xmlDocPtr, xmlNsPtr, const xmlChar *, const xmlChar *) =
+        raw ? xmlNewDocRawNode : xmlNewDocNode;
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlDocPtr reparsed;
+    xmlNodePtr root, old, child, plain, empty, detached, survivor;
+    xmlNsPtr ns;
+    xmlChar *memory = NULL;
+    int size = 0;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    old = root->children;
+    ns = root->ns;
+    child = create(doc, ns, BAD_CAST name, BAD_CAST value);
+    plain = create(doc, NULL, BAD_CAST "plain", NULL);
+    empty = create(doc, NULL, BAD_CAST "empty", BAD_CAST "");
+    detached = create(NULL, NULL, BAD_CAST "free", BAD_CAST "&amp;");
+    survivor = create(doc, ns, BAD_CAST "survivor", BAD_CAST "A&amp;");
+    assert(child && plain && empty && detached && survivor);
+    assert(child->doc == doc && child->parent == NULL);
+    assert(child->next == NULL && child->prev == NULL && child->ns == ns);
+    assert(child->content == NULL && child->children == child->last);
+    assert(child->children->doc == doc && child->children->parent == child);
+    assert(child->children->type == XML_TEXT_NODE && child->children->ns == NULL);
+    assert(plain->ns == NULL && plain->children == NULL && plain->doc == doc);
+    assert((empty->children != NULL) == raw);
+    if (raw) {
+        assert(empty->children->doc == doc && empty->children->content);
+        assert(empty->children->content[0] == 0);
+    }
+    assert(detached->doc == NULL && detached->children->doc == NULL);
+    assert_content(detached, raw ? "&amp;" : "&");
+    xmlFreeNode(detached);
+    assert(create(doc, ns, NULL, BAD_CAST "x") == NULL);
+    assert(doc->children == root && root->children == old && root->last == old);
+    assert(old->next == NULL && old->parent == root);
+    name[0] = 'Z';
+    value[0] = 'Z';
+    assert(strcmp((const char *)child->name, "child") == 0);
+    assert_content(child, expected);
+    assert(xmlAddChild(root, child) == child);
+    assert(xmlAddChild(root, plain) == plain);
+    assert(xmlAddChild(root, empty) == empty);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size > 0);
+    assert(strstr((const char *)memory, "<p:child>") != NULL);
+    assert(strstr((const char *)memory, "<plain/>") != NULL);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    assert_content(xmlDocGetRootElement(reparsed)->children->next, expected);
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+    assert(survivor->doc == doc && survivor->children->doc == doc);
+    assert(strcmp((const char *)ns->href, "urn:p") == 0);
+    assert(xmlNodeSetContent(survivor, BAD_CAST "fixed&amp;") == 0);
+    assert(xmlNodeAddContent(survivor, BAD_CAST "!") == 0);
+    assert_content(survivor, "fixed&!");
+    assert(survivor->ns == ns && survivor->children->doc == doc);
+    xmlFreeNode(survivor);
+#else
+    xmlFreeNode(survivor);
+    xmlFreeDoc(doc);
+#endif
+}
+
 static void test_construct_child(void) {
     static const char input[] =
         "<p:root xmlns:p='urn:parent' xmlns:q='urn:other'><!--before--></p:root>";
@@ -777,6 +848,45 @@ static void test_construct_text_child_serialization_validation(void) {
     }
 }
 
+static void test_construct_doc_node_rejections(void) {
+    static const char input[] = "<p:root xmlns:p='urn:p'><p:old/></p:root>";
+    static const char *const invalid[] = {"&unknown;", "&#0;", "bad &", "\xc3"};
+    static const char *const raw_invalid[] = {"\xc3", "\1"};
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, old;
+    xmlDoc unregistered = {0};
+    xmlNs invalid_ns = {0};
+    size_t i;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    old = root->children;
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        assert(xmlNewDocNode(doc, root->ns, BAD_CAST "bad", BAD_CAST invalid[i]) == NULL);
+        assert(root->children == old && root->last == old && old->next == NULL);
+    }
+    assert(xmlNewDocNode(&unregistered, NULL, BAD_CAST "bad", NULL) == NULL);
+    assert(xmlNewDocRawNode((xmlDocPtr)root, NULL, BAD_CAST "bad", NULL) == NULL);
+    assert(xmlNewDocNode(doc, &invalid_ns, BAD_CAST "bad", NULL) == NULL);
+    assert(xmlNewDocRawNode(doc, &invalid_ns, BAD_CAST "bad", NULL) == NULL);
+    for (i = 0; i < sizeof(raw_invalid) / sizeof(raw_invalid[0]); ++i) {
+        xmlNodePtr node = xmlNewDocRawNode(doc, root->ns, BAD_CAST "bad",
+                                         BAD_CAST raw_invalid[i]);
+        xmlChar *memory = NULL;
+        int size = 0;
+        assert(node && xmlAddChild(root, node) == node);
+        xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+        assert(memory == NULL && size == 0);
+        assert(xmlNodeSetContent(node->children, BAD_CAST "repaired & text") == 0);
+        xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+        assert(memory && strstr((const char *)memory, "repaired &amp; text"));
+        xmlFree(memory);
+        xmlUnlinkNode(node);
+        xmlFreeNode(node);
+        assert(root->children == old && root->last == old && old->next == NULL);
+    }
+    xmlFreeDoc(doc);
+}
+
 static void test_construct_child_failure_and_lifetime(void) {
     static const char input[] = "<p:root xmlns:p='urn:parent'><p:old/></p:root>";
     static const char *const invalid[] = {"&unknown;", "&#0;", "bad &", "\xc3"};
@@ -831,11 +941,14 @@ int main(void) {
     test_bounded_content_guard_page();
 #endif
     test_construct_child();
+    test_construct_doc_node(0);
+    test_construct_doc_node(1);
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
     test_set_content_len_rejection();
     test_construct_text_child_serialization_validation();
     test_construct_child_failure_and_lifetime();
+    test_construct_doc_node_rejections();
     test_set_rejection_is_transactional();
     test_set_namespace_borrower_lifetime();
     test_invalid_facade_and_document_noop();

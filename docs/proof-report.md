@@ -3,15 +3,15 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**10,892 checks, 877 by flow analysis and 10,015 by provers;
+**10,908 checks, 884 by flow analysis and 10,024 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetContent`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
-`xmlNewDocComment`, `xmlNewDocPI`, and `xmlNewCDataBlock` through the SPARK
-Store/Runtime. The
-entity summaries report 0 flow errors, 129 warnings, and 0 `pragma Assume`
+`xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`, and
+`xmlNewCDataBlock` through the SPARK Store/Runtime. The entity summaries report
+0 flow errors, 130 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -28,13 +28,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 243 |
-| Initialization | 491 |
-| Runtime checks | 4,921 |
+| Data dependencies | 245 |
+| Initialization | 496 |
+| Runtime checks | 4,926 |
 | Assertions | 1,468 |
-| Functional contracts | 3,574 |
+| Functional contracts | 3,578 |
 | Termination | 195 |
-| **Total** | **10,892** |
+| **Total** | **10,908** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -161,8 +161,8 @@ evidence for the API wrapper, not a pointer-safety proof claim.
 `xmlNewDocText`, `xmlNewDocTextLen`, `xmlNewDocComment`, `xmlNewDocPI`, and
 `xmlNewCDataBlock`
 route through `Runtime.New_Doc_Content` and
-`XML3_DOM_Store.Content.New_Doc_Content`. The Store operation accepts only
-text, CDATA, comment, and PI kinds, requires and restores `Ready (S)`, and relates a
+`XML3_DOM_Store.Content.New_Doc_Content`. The Store operation accepts
+text, CDATA, comment, PI, and empty element kinds, requires and restores `Ready (S)`, and relates a
 non-NULL result to `Created` status. It validates a non-NULL document before
 constructing the node, re-finds the document and new node after construction,
 then uses the existing `Set_Node_Projection` contract to set `Document` and
@@ -177,6 +177,19 @@ public API semantics or rollback; NULL/bounded input behavior, document
 validation, unattached construction, serialization, document-first release,
 and allocation-failure retry are runtime evidence. Registration callbacks and
 native PI dictionary interning are unsupported.
+
+`xmlNewDocNode` / `xmlNewDocRawNode` use `Runtime.New_Doc_Node` and
+`Store.Content.New_Doc_Node`. This operation reuses `New_Doc_Content` for an
+empty element with an explicit namespace, then constructs and attaches a text
+child when required. `New_Child` delegates its construction phase here before
+attaching the unpublished element to the parent; `xmlNewNode` delegates to the
+same documentless path. Decoding/raw handling, affiliation, namespace pins and
+failure cleanup remain in SPARK, with no parallel C ownership logic. The new
+operation's contract restores `Ready` and relates result/status; full public
+API behavior, reference semantics and C pointer validity remain outside the
+formal claim. Runtime tests cover decoded/raw input, copied names and content,
+NULL/empty distinctions, subtree document affiliation without attachment,
+namespace retention after document-first release, and allocation-failure retry.
 
 `xmlNewCDataBlock` selects `CData_Node` in the same C/Runtime/Store path. The
 core `Create_Node` postcondition explicitly guarantees a null `Name` address
@@ -295,8 +308,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-5fc2c215912ac8c51b1a160559a9146a7e702c53da4f10d36e7b959dd0a59f35  src/xml3_c.adb
-a57a5f2a497ade201cba044535dc1e5f9c9717c78bcc6863703b153088887225  src/xml3_c.ads
+63001db1029cd65f59ec2c96522ec03c55279413b8e04dbd7bb08efae33f29cf  src/xml3_c.adb
+a7b041bbca29c7e89725be8e2f5875b842c458242d18e0805af5d6b11851ca36  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -312,10 +325,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-caa4519c1855289dff7f0af49c56d0fc7a038fa28a03f791dc48499c5b872900  src/xml3_dom_runtime.adb
-e774e825d76ff2839571f141867202d296d2bab743ff08c3bae10499d69012e3  src/xml3_dom_runtime.ads
-143aa2ca67776ced488486875c13177a020405373cbae04223549ab11ca48757  src/xml3_dom_store-content.adb
-5be8bd80d06d3c663252a3ead7d508aa660007881bb29281f7b7e4deba1c6fc1  src/xml3_dom_store-content.ads
+3036d7eaf6c7f2ee95e5e032017b1d67445f08a5f25619cdac04de0cd1c18413  src/xml3_dom_runtime.adb
+6b3ecc94e65fcbfe59d24ce36081e354af4898db962648c14cf584bf06c82fb0  src/xml3_dom_runtime.ads
+90cddceba65719697f3b02ec14403667b73dfcfe7f20c6d24a934825bdfb9c8e  src/xml3_dom_store-content.adb
+af0848cf389c674fb712fd9fbf57ebb03993edaea4de1b3a115fe4e7cd083abc  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 bc71cab53c16e4f4b9bcc59ab5e2a83a0c33b1c4f8c44adbf768024acc3ebb2d  src/xml3_dom_store-properties.adb
@@ -341,10 +354,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-02b4f26d53edef5df82d86d524a41bff866042fb6047ba6d5e4e0fbd6b13b932  include/libxml/tree.h
+8696a2a82de55bfc92ac06d3948be37bcf737a3f7bffda068944e2eb249f82b6  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-0ba56edcf8692dd618aa7d6e9560fbcbf7b22535089b4ea96b29ecbdc4972d46  Makefile
+6390b35d8ece1b784e1e9c0037cc5e7405b320fe3a49d15c45889b776bba67ed  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

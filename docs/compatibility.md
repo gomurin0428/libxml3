@@ -194,6 +194,16 @@ raw content はコピーされ、NULL/empty は区別します。non-NULL conten
 長さ0では入力を読みません。最初のNULまでだけを保持し、後続の隠れたbytesは保持しません。
 UTF-8/XML文字の検査は出力時に行い、`]]>` は複数CDATAに分割して値を保持します。
 
+`xmlNewDocNode` / `xmlNewDocRawNode` は要素とその text child に文書を設定しますが、
+要素自体の parent は NULL のままです。NULL doc では文書なしの subtree を作成します。
+指定した namespace を保持し、NULL namespace では継承しません。name はコピーします。
+`xmlNewDocNode` は既存 `xmlNewChild` と同じ predefined/numeric reference decoder を使い、
+不正・未対応の参照や不正 UTF-8 を拒否します。固定版の構文エラーの黙殺は再現しません。
+`xmlNewDocRawNode` は raw content を保持し、検査・escaping は出力時に行います。
+raw の空文字列は空 text child を作り、NULL は作りません。文書・namespace の寿命、
+要素作成後に text 確保が失敗した場合の後始末は SPARK Store/Runtime が管理します。
+dictionary interning、登録callback、一般実体の展開は未対応です。
+
 呼び出し中、入力バッファは読み取り可能かつ不変である必要があります。入力は
 借用されて DOM にコピーされ、以後保持されません。`xmlFreeDoc` は現在接続されて
 いる文書 subtree と document の参照を解放します。detached node が残る場合は
