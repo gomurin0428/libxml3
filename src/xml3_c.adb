@@ -1002,18 +1002,24 @@ package body XML3_C is
          return System.Null_Address;
    end Add_Child;
 
-   function Node_Add_Content
-     (Node, Content : System.Address) return Interfaces.C.int
+   function Node_Append_Content
+     (Node, Content : System.Address; Length : Interfaces.C.int;
+      Bounded : Boolean) return Interfaces.C.int
    is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Suffix : constant String := C_String_Value (Content);
+         Suffix : constant String :=
+           (if Bounded then C_String_Prefix (Content, int'Max (Length, 0))
+            else C_String_Value (Content));
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Add_Content (Node, Suffix, Status);
+         XML3_DOM_Runtime.Add_Content
+           (Node, Suffix, Status,
+            Has_Input => Bounded and then Length > 0
+              and then Content /= System.Null_Address);
       end;
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
@@ -1034,7 +1040,22 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return 1;
+   end Node_Append_Content;
+
+   function Node_Add_Content
+     (Node, Content : System.Address) return Interfaces.C.int
+   is
+   begin
+      return Node_Append_Content (Node, Content, 0, False);
    end Node_Add_Content;
+
+   function Node_Add_Content_Len
+     (Node, Content : System.Address; Length : Interfaces.C.int)
+     return Interfaces.C.int
+   is
+   begin
+      return Node_Append_Content (Node, Content, Length, True);
+   end Node_Add_Content_Len;
 
    function Node_Set_Content_Len
      (Node, Content : System.Address; Length : Interfaces.C.int)

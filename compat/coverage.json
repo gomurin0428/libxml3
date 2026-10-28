@@ -109,6 +109,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeAddContentLen": {
+    "implementation": "partial",
+    "scope": "Bounded raw-text append through SPARK Store/Runtime. Nonpositive length or NULL content is a no-op; positive length stops at NUL or len bytes. SPARK handles empty-text materialization when a positive-length input starts with NUL, text coalescing and failure rollback. Invisible bytes after NUL are not retained. Raw UTF-8 chunks can be appended and are validated at serialization.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNodeSetContentLen": {
     "implementation": "partial",
     "scope": "Length-bounded C string conversion delegates to the existing SPARK content replacement. Nonnegative lengths read at most len bytes and stop at NUL; zero length never reads content, negative lengths use NUL termination. Scalar bytes hidden after NUL are not retained. Element/attribute reference decoding, scalar raw text, namespace lifetime and failure rollback follow xmlNodeSetContent; unsupported general entities remain rejected.",

@@ -98,6 +98,7 @@ xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlDocSetRootElement(xmlDocPtr doc, xmlNodePtr root);
 xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 int xmlNodeAddContent(xmlNodePtr cur, const xmlChar *content);
+int xmlNodeAddContentLen(xmlNodePtr cur, const xmlChar *content, int len);
 int xmlNodeSetContent(xmlNodePtr cur, const xmlChar *content);
 int xmlNodeSetContentLen(xmlNodePtr cur, const xmlChar *content, int len);
 void xmlUnlinkNode(xmlNodePtr cur);

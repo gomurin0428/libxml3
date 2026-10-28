@@ -15,7 +15,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、`xmlAddChild`、
-  `xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNewChild`、`xmlNewTextChild`、
+  `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
@@ -65,7 +65,7 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
@@ -112,6 +112,11 @@ NULL content は子を作らず、empty string は空の text 子を作る点も
 切れた参照や UTF-8 を拒否し、元の tree を保持します。長さには既存の入力上限を適用します。
 長さ 0 は空文字列として既存 setter に渡し、要素の children を空にします。固定版の parser は
 長さ 0 でも先頭 byte を読み、非 NUL なら空の text child を作るため、この挙動は再現しません。
+`xmlNodeAddContentLen` は raw text を長さ指定で追記します。置換とは異なり、長さ 0 以下
+または NULL content は何もしません。正の長さは最初の NUL または指定末尾までを読み、
+NUL 後の見えない bytes は保存しません。先頭が NUL でも正の長さの入力なら、必要に応じて
+空の text child や空文字列を作る固定版の挙動を保ちます。この判断と text 結合・接続・後始末は
+SPARK 側です。UTF-8 の途中で区切られた raw byte も追記でき、出力時に完成した文字列を検査します。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

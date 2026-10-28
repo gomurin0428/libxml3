@@ -6,7 +6,8 @@
 **10,831 checks, 868 by flow analysis and 9,963 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
-memory serialization, `xmlNodeAddContent`, `xmlNodeSetContent`,
+memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
+`xmlNodeSetContent`,
 `xmlNewChild`, and `xmlNewTextChild` through the SPARK Store/Runtime. The
 entity summaries report 0 flow errors, 128 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
@@ -86,13 +87,22 @@ are included in this aggregate; XML conformance and full libxml2 lexical
 equivalence remain tested properties, not proof claims. The C adapter and
 native allocator/byte operations remain outside proof.
 
-`xmlNodeAddContent` routes through `Runtime` and `XML3_DOM_Store.Content.Append`;
-its public Store contract requires and restores `Ready (S)`. The private
-`Replace_Content` helper requires a non-pending projection and explicitly
-postconditions a non-null, valid, editable Store with projection complete and
-facades present. Its frame preserves node and namespace counts, unrelated live
-node views, and all target-node fields other than content address, length, and
-pin on success; a non-success status leaves the target node unchanged.
+`xmlNodeAddContent` and `xmlNodeAddContentLen` use the same
+`Runtime.Add_Content` and `XML3_DOM_Store.Content.Append` path, whose Store
+contract requires and restores `Ready (S)`. The length-bounded adapter performs
+a trusted `C_String_Prefix`/`Scan_Length` conversion and passes `Has_Input` only
+for positive-length non-NULL input. Store uses that flag to distinguish a
+positive-length leading NUL, which materializes empty text/content when needed,
+from a zero/nonpositive-length or NULL-input no-op. Raw bytes are not decoded;
+bounded pointer scanning and foreign-pointer validity remain outside GNATprove.
+Guard-page checks, empty-text allocation failure/retry, and UTF-8 split-append
+repair are runtime evidence, not additional formal claims.
+The private `Replace_Content` helper requires a non-pending projection and
+explicitly postconditions a non-null, valid, editable Store with projection
+complete and facades present. Its frame preserves node and namespace counts,
+unrelated live node views, and all target-node fields other than content
+address, length, and pin on success; a non-success status leaves the target
+node unchanged.
 `xmlNodeSetContent` routes through `Runtime.Set_Content` and
 `XML3_DOM_Store.Content.Set`. Element/Attribute input is decoded before
 mutation; the replacement text child is attached before old children are
@@ -242,8 +252,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-e859ea7b428319ff58675520d307b975224ae7aec94d9843fd90fbff35fd73e5  src/xml3_c.adb
-0edd12201df1555031b0c29df6668c372c2e9a49ad39f238db12d938c84ed9c4  src/xml3_c.ads
+ccfc427951ffa67f8bd0d00b09c0317789f75695b26b1286d46b1c74561551a8  src/xml3_c.adb
+a760439a8464ade365435eb3151c626a70f8ed0114c9dd57f2d7670145ae8350  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -259,10 +269,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-62113b6a6ef9309df6969806bab3f641409778fe1866445b929ccc65b2dea7bd  src/xml3_dom_runtime.adb
-6122ec9ec2640ee56374b3af4f0a4c4e95331257b1e1385261c9b366d5e79c64  src/xml3_dom_runtime.ads
-b3bf41313cd0679a71179bb975d01939ec25a8c4d18544ba70215d32a0d15c83  src/xml3_dom_store-content.adb
-604ceb14366b5eb18b66827eee78da9f3ef1ed0f0be55d6ff1b1c8285b803593  src/xml3_dom_store-content.ads
+aad8f399b8a010c7519925f3393f9f8438dbd20b9d9ba4d4136f540630919d47  src/xml3_dom_runtime.adb
+d87f9d450fb9abc961a3d7594157dcd095baa04a3d6c2abd9cb9683d33657601  src/xml3_dom_runtime.ads
+b2d5e997bbfd3d043e51901ffa3e7363b3dc838388f0bf7bd0ea5de5e3970418  src/xml3_dom_store-content.adb
+b84caf0789557a45cc2338871dca1fa7618ccfcbdbc888b9a3554593d1b54a69  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 1334154710f271040b55a309cd9b4ff93fb1d82988fbd85046dd7d05d3179944  src/xml3_dom_store-properties.adb
@@ -288,10 +298,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-788fb69892f734bfce8787a8a206badfbd09143c5adba3ae5803ae14c39648f0  include/libxml/tree.h
+e89f077ec996e744c630a8b6c750fa1ce383992b713ff8b47c44b5004f73f01a  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-063cb5dbe0db485acb2f4aaa8124a956dbcdc55d870ec8b20e443b4890e3094b  Makefile
+c4c7ce6ec7540c852721d6576085ba4e4eaf074cb71491b09fd4ad8c0ba7394c  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
