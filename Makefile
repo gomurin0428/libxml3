@@ -322,6 +322,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-attach 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-unlink 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test last-child 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test release-lists 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 
 test-fuzz: tests/fuzz-test
@@ -372,9 +373,9 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlUnlinkNode xmlFreeNode \
+		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
 		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
-	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
+	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp xmlFreePropList \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \

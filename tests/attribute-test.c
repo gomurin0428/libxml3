@@ -514,7 +514,50 @@ static void test_detached_lifetime_and_errors(void) {
 }
 #endif
 
+static void test_free_prop_list(void) {
+    static const char input[] =
+        "<r xmlns:p='urn:list' keep='v' p:a='one' p:b='two' last='three'/>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlAttrPtr keep, fresh, standalone;
+    xmlNsPtr ns;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    keep = root->properties;
+    ns = root->nsDef;
+    xmlFreePropList(NULL);
+    xmlFreePropList(keep->next);
+#ifdef XML3_REFERENCE_TEST
+    keep->next = NULL;
+#endif
+    assert(root->properties == keep && keep->next == NULL && keep->prev == NULL);
+    assert_value(keep, "v");
+    fresh = xmlNewNsProp(root, ns, BAD_CAST "fresh", BAD_CAST "new");
+    assert(fresh && keep->next == fresh && fresh->prev == keep);
+    xmlFreePropList(root->properties);
+#ifdef XML3_REFERENCE_TEST
+    root->properties = NULL;
+#endif
+    assert(root->properties == NULL && root->nsDef == ns);
+    assert(strcmp((const char *)ns->href, "urn:list") == 0);
+    fresh = xmlSetNsProp(root, ns, BAD_CAST "restored", BAD_CAST "value");
+    assert(fresh && root->properties == fresh);
+    xmlFreeNodeList(fresh->children);
+#ifdef XML3_REFERENCE_TEST
+    fresh->children = fresh->last = NULL;
+#endif
+    assert(fresh->children == NULL && fresh->last == NULL);
+    assert_value(fresh, "");
+    assert(xmlSetNsProp(root, ns, BAD_CAST "restored", BAD_CAST "again") == fresh);
+    assert_value(fresh, "again");
+    xmlFreeDoc(doc);
+    standalone = xmlNewDocProp(NULL, BAD_CAST "alone", BAD_CAST "value");
+    assert(standalone);
+    xmlFreePropList(standalone);
+}
+
 int main(void) {
+    test_free_prop_list();
     check_reference_version();
     test_edit_flow();
     test_parsed_attributes();

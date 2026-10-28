@@ -152,6 +152,15 @@ text/comment/CDATA/PI、document の末尾 child、属性値の text を取得�
 NULL・child のない node・namespace・未登録 facade は NULL です。読み取りでは内容や
 リンクを変更せず、native allocation を行わず、既存の last error も消去しません。
 
+`xmlFreeNodeList` / `xmlFreePropList` は指定 node / attribute から `next` の末尾までを、
+各 subtree・属性値を含めて解放します。NULL は no-op、未登録 pointer と種別違いは拒否します。
+`xmlFreeNodeList` は document 自体・attribute 自体・namespace を受け付けませんが、
+document の child と attribute 値の text は対象です。`xmlFreePropList` は qualified
+attribute にも対応し、namespace 宣言や残る利用者の参照は保持します。
+安全性のため、固定版と異なり attached list の親・直前の兄弟のリンクも自動で更新します。
+参照版テストはこのリンクだけを呼び出し側で修復し、解放済み pointer を利用しません。
+一覧の走査・解放・寿命判断はSPARK側で行い、最後に一度 native facade を同期します。
+
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を
 保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を

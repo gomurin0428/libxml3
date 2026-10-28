@@ -1230,6 +1230,20 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
+    } else if (strcmp(operation, "release-lists") == 0) {
+        static const char input[] = "<root a='one' b='two'><one/><two/></root>";
+        xmlNodePtr root;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        xml3_oom_enable(0);
+        xmlFreePropList(root->properties);
+        xmlFreeNodeList(root->children);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        assert(root->properties == NULL && root->children == NULL && root->last == NULL);
     } else if (strcmp(operation, "last-child") == 0) {
         static const char input[] = "<root a='value'><one/>text<!--last--></root>";
         xmlNodePtr root;
@@ -1339,6 +1353,10 @@ int main(int argc, char **argv) {
     assert(doc != NULL);
     xmlFreeDoc(doc);
     assert(xmlGetLastError() == NULL);
+    if (strcmp(operation, "release-lists") == 0) {
+        puts("list release used no native allocations");
+        return 0;
+    }
     if (strcmp(operation, "last-child") == 0) {
         puts("last-child queries used no native allocations");
         return 0;

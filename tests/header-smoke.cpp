@@ -20,6 +20,10 @@ int main() {
     int (*unset_prop)(xmlNodePtr, const xmlChar *) = xmlUnsetProp;
     int (*remove_prop)(xmlAttrPtr) = xmlRemoveProp;
     void (*free_prop)(xmlAttrPtr) = xmlFreeProp;
+    void (*free_node_list)(xmlNodePtr) = xmlFreeNodeList;
+    void (*free_prop_list)(xmlAttrPtr) = xmlFreePropList;
+    (void)free_node_list;
+    (void)free_prop_list;
     xmlNsPtr (*new_ns)(xmlNodePtr, const xmlChar *, const xmlChar *) =
         xmlNewNs;
     void (*set_ns)(xmlNodePtr, xmlNsPtr) = xmlSetNs;

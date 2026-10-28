@@ -179,6 +179,14 @@ is
          XML3_DOM_Store.Release (Current, Facade, Kind, Require_Parent, Status);
       end Release;
 
+      procedure Release_List
+        (Facade : System.Address; Kind : XML3_DOM_Store.Release_Kind;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Release_List (Current, Facade, Kind, Status);
+      end Release_List;
+
       procedure Create_Property
         (Element : System.Address; Name, Value : String;
          Has_Value : Boolean; Result : out System.Address;
