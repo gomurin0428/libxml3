@@ -41,9 +41,10 @@ managed list release through `Runtime.Release_List` / `Store.Release_List`,
 namespace-list traversal through
 `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
 `Collect_Namespaces`, QName splitting through `XML3_Text.QNames.Prefix_Length`
-and `Split`, and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,218 checks
-(968 flow and 10,250 prover), no unproved or justified conditions, 0
+and `Split`, QName building through `XML3_Text.QNames.Build`, and explicit
+UTF-8 memory serialization. The C adapters and native ABI implementation are
+not proved. The refreshed aggregate has 11,237 checks
+(972 flow and 10,265 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 136 warnings. The representation-generation
 diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -165,7 +166,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,218-check aggregate proof; see
+new units are included in the current successful 11,237-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -359,6 +360,12 @@ C pointerの妥当性・変換とstatus写像は従来どおり証明外です�
 DOM/Store は変更せず、C conversion limit/error mapping、native allocator/copy、pointer arithmetic
 と ABI は trusted boundary です。Unicode 比較は pinned reference と libxml3 の両方で行い、
 OOM allocation injection は libxml3 のみで実行します。
+
+`xmlBuildQName` は SPARK `XML3_Text.QNames.Build` で size bound、buffer selection、
+result/status 契約を扱います。NULL prefix は borrowed original pointer、empty prefix は colon
+を含む新しい値です。C string conversion と pointer/ABI、native allocation/write は trusted
+boundary です。overlapping input/output は libxml3 で入力を先にコピーして安全に扱いますが、
+固定版との overlap equivalence は主張しません。
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、

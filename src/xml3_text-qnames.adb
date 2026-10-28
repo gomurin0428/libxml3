@@ -2,6 +2,44 @@ package body XML3_Text.QNames with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   procedure Build
+     (Name, Prefix : String; Original, Buffer : System.Address;
+      Has_Prefix : Boolean; Capacity : Integer;
+      Result : out System.Address; Status : out Build_Status)
+   is
+      Needed : Byte_Count;
+      Target : System.Address := Buffer;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Original = System.Null_Address or else Capacity < 0 then
+         return;
+      end if;
+      if not Has_Prefix then
+         Result := Original;
+         Status := Built;
+         return;
+      end if;
+      if Name'Length > Max_Bytes - Prefix'Length - 2 then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      Needed := Name'Length + Prefix'Length + 2;
+      if Target = System.Null_Address or else Capacity < Needed then
+         Native.Allocate (Native.Byte_Count (Needed), Target);
+         if Target = System.Null_Address then
+            Status := No_Memory;
+            return;
+         end if;
+      end if;
+      Native.Write_String (Target, 0, Prefix);
+      Native.Write_Byte (Target, Prefix'Length, ':');
+      Native.Write_String (Target, Prefix'Length + 1, Name);
+      Native.Write_Byte (Target, Needed - 1, Character'Val (0));
+      Result := Target;
+      Status := Built;
+   end Build;
+
    function Prefix_Length (Input : String) return Byte_Count is
    begin
       for I in Input'Range loop

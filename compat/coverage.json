@@ -630,6 +630,12 @@
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlBuildQName": {
+    "implementation": "partial",
+    "scope": "Raw-byte builder, not lexical validation. NULL prefix returns the borrowed original name; non-NULL empty prefix builds ':name'. Uses a caller buffer only when capacity is sufficient; otherwise leaves it untouched and returns an xmlFree-owned allocation. NULL name and negative capacity return NULL. Combined size is bounded; C conversion, native allocation/write, pointer ABI, and complete semantics remain outside proof. Overlap safety is libxml3-only and excluded from reference comparison.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlValidateNCName": {
     "implementation": "partial",
     "scope": "Shared pure SPARK name validator in NCName mode rejects colon and enforces a NameStartChar. Optional XML whitespace, status mapping and trust boundary as xmlValidateName.",

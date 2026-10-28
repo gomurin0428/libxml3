@@ -67,7 +67,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlUnsetNsProp`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
-  `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlSplitQName2`、`xmlSplitQName3`、
+  `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`
 * `libxml/xmlmemory.h`: `xmlFree`
@@ -206,6 +206,18 @@ diagnostic、`Storage_Error` と QName2 の native allocation failure は既存�
 に写像されます。QName3 は native allocation を行いませんが、C conversion と pointer/array ABI は
 proof 範囲外です。Unicode test は library と
 固定版の両方で実行しますが、OOM allocation injection は libxml3 側だけで、固定版には実行しません。
+
+`xmlBuildQName` は `ncname` / `prefix` の lexical validation や namespace 解決をせず、NUL 終端
+byte 列を `prefix:name` として組み立てます。NULL `ncname` または負の `len` は NULL を返し、
+入力を読みません。NULL prefix は元の name pointer を借用して返しますが、非NULLの空 prefix は
+`":name"` を作ります。prefix がある場合、必要容量は両 byte length と colon・NUL の合計で、
+`XML3_Text.Max_Bytes` 以下でなければなりません。
+`memory` に十分な容量があれば同じ pointer を返してそこへ書き、足りない場合は caller buffer を
+変更せず新しい allocation を返します。新規 allocation だけを `xmlFree` し、caller buffer と
+borrowed name は解放しません。変換上限・組み合わせサイズ超過は既存の DOM error diagnostic、
+native/Ada allocation failure は memory diagnostic になります。入力を出力より先にコピーするため
+重複領域でも安全ですが、これは libxml3 側だけの安全性であり、overlap の固定版比較はしません。
+native allocation/write、C string/pointer/ABI は証明外です。
 
 `xmlNodeGetAttrValue` は名前空間URIを指定して属性値の独立コピーを取得します。
 成功は `0`、属性なしは `1`、確保・上限・文字列変換・内部エラーは `-1` で、失敗時の出力は NULL です。
