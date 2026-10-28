@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,218 checks, 968 by flow analysis and 10,250 by provers;
+**11,237 checks, 972 by flow analysis and 10,265 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -32,6 +32,11 @@ flow. Native allocation, copying/writes, C-string conversion, pointer
 arithmetic, ABI mapping, and complete public semantics remain trusted or
 outside proof. The Unicode comparison runs against the pinned reference and
 libxml3; OOM injection is libxml3-only.
+`xmlBuildQName` uses `XML3_Text.QNames.Build`, which proves the bounded output
+size, buffer-selection branches, and result/status contract (15 checks).
+Native allocation/writes, C-string conversion and pointer/ABI behavior remain
+trusted; overlap safety is tested only for libxml3 and is not claimed as
+reference equivalence.
 Namespace searches through `xmlSearchNs` / `xmlSearchNsByHref` route through
 `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`, which composes
 the pure `Search_Namespace` query with lazy XML-binding creation for
@@ -47,7 +52,8 @@ in scope. It ignores `doc` and returns a caller-owned array of borrowed
 namespace pointers. The SPARK proof includes traversal, capacity, status and
 cleanup checks; native address allocation/writes, C array representation,
 pointer validity, and complete public semantics remain outside the proof. The
-QName proof adds 10 checks for `Prefix_Length` and 13 for `Split`. The entity
+QName proof includes 15 checks for `Build`, 10 for `Prefix_Length`, and 13
+for `Split`. The entity
 summaries report 0 flow errors, 136 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -71,13 +77,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 265 |
-| Initialization | 557 |
-| Runtime checks | 5,031 |
+| Data dependencies | 266 |
+| Initialization | 560 |
+| Runtime checks | 5,040 |
 | Assertions | 1,486 |
-| Functional contracts | 3,678 |
+| Functional contracts | 3,684 |
 | Termination | 201 |
-| **Total** | **11,218** |
+| **Total** | **11,237** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -447,8 +453,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-c6376d5c4d481ea026986189ea38e50517a6f14b676a4d169407cdc421a88f7c  src/xml3_c.adb
-4e1c92eede354fa59b905e034d9ae38b799d6352528edc870777fbce44c25b7b  src/xml3_c.ads
+cdb5d8651f18a6c7d83e74a60612ce3282e8ba9920603aaa0ed8fe148f09b2fb  src/xml3_c.adb
+f23cab0a0538e703c61415223383377cc74e8c6c57b17759ad2d1b005768e1e4  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -493,12 +499,12 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 0540786136c12dbfd2829c2f46a43a0f6a8f6be7ed117f54116c91c8cf6aa631  src/xml3_text.adb
 fc4315bcae6aad4d1e078c869bf84d625661ad100e4ec33100b59a18c1f763ad  src/xml3_text.ads
-56bed3fac418e971a6a25518cc6892da14edfd16d7625148eaf8a77ea8587fe8  src/xml3_text-qnames.adb
-2c9d0d32e045c0ad194c15400131cb6d0ee2767a27a7d585ee65a4e031337d05  src/xml3_text-qnames.ads
-2688917374f25aa9d50241625a38f7d497339ed8850908f4d14c4c321af208a6  include/libxml/tree.h
+e4c98a402db869f045241cec3ef3ef05ffa7390624acb7c1123b382e29b8c12a  src/xml3_text-qnames.adb
+7c0b1f7e4ca6a68ac438599b328d39543964baba74bc2d97a54832cbc1694a0e  src/xml3_text-qnames.ads
+6631b826ca150946db332711787afeca4f77a8211b211dfa9129f1661733da31  include/libxml/tree.h
 cb57263fefe70df4f5af98a8ea2055acd85c1b1cd727d8a00014214f1291552b  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-058ca0d9ed69da0c549a537b75a95b076ccf482bbdc47a731e8a4d57f44ae82a  Makefile
+6d453f47334a33f325cb9a176330fb6883735eb795e93d351d3a61793f0c26a0  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

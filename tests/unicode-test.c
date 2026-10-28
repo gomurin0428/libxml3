@@ -57,6 +57,62 @@ static void test_validation(void) {
     }
 }
 
+static void test_qname_building(void) {
+    static const struct {
+        const char *name, *prefix, *expected;
+    } cases[] = {
+        {"name", "p", "p:name"}, {"値", "名", "名:値"},
+        {"name", "", ":name"}, {"", "p", "p:"}, {"", "", ":"},
+        {"a:b", "p:q", "p:q:a:b"}, {"a b", "1", "1:a b"},
+        {"\xff", "\xc0", "\xc0:\xff"}, {"a\0ignored", "p\0ignored", "p:a"}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        const xmlChar *name = BAD_CAST cases[i].name;
+        const xmlChar *prefix = BAD_CAST cases[i].prefix;
+        size_t needed = strlen(cases[i].expected) + 1;
+        xmlChar *built = xmlBuildQName(name, prefix, NULL, 0);
+        assert(built && built != name && built != prefix);
+        assert(strcmp((const char *)built, cases[i].expected) == 0);
+        xmlFree(built);
+        int capacities[] = {0, (int)needed - 1, (int)needed, (int)needed + 1};
+        for (size_t j = 0; j < sizeof(capacities) / sizeof(*capacities); ++j) {
+            xmlChar storage[64], before[64];
+            memset(storage, '!', sizeof(storage));
+            memcpy(before, storage, sizeof(storage));
+            xmlChar *buffer = storage + 1;
+            built = xmlBuildQName(name, prefix, buffer, capacities[j]);
+            assert(built && strcmp((const char *)built, cases[i].expected) == 0);
+            if ((size_t)capacities[j] >= needed) {
+                assert(built == buffer && storage[0] == '!' && storage[needed + 1] == '!');
+            } else {
+                assert(built != buffer && memcmp(storage, before, sizeof(storage)) == 0);
+                xmlFree(built);
+            }
+        }
+    }
+    {
+        const xmlChar name[] = "name";
+        xmlChar buffer[] = "unchanged";
+        assert(xmlBuildQName(name, NULL, buffer, sizeof(buffer)) == name);
+        assert(xmlBuildQName(name, NULL, NULL, 0) == name);
+        assert(!xmlBuildQName(name, NULL, buffer, -1));
+        assert(!xmlBuildQName(name, BAD_CAST "p", buffer, -1));
+        assert(!xmlBuildQName(NULL, BAD_CAST "p", buffer, sizeof(buffer)));
+        assert(strcmp((const char *)buffer, "unchanged") == 0);
+    }
+#ifndef XML3_REFERENCE_VERSION
+    /* The reference's overlapping memcpy inputs are undefined. */
+    {
+        xmlChar buffer[32] = "name";
+        assert(xmlBuildQName(buffer, BAD_CAST "p", buffer, sizeof(buffer)) == buffer);
+        assert(strcmp((const char *)buffer, "p:name") == 0);
+        strcpy((char *)buffer, "prefix");
+        assert(xmlBuildQName(buffer + 3, buffer, buffer + 1, sizeof(buffer) - 1) == buffer + 1);
+        assert(strcmp((const char *)buffer + 1, "prefix:fix") == 0);
+    }
+#endif
+}
+
 static void test_qname_splitting(void) {
     static const struct {
         const char *input, *prefix, *local;
@@ -201,5 +257,6 @@ int main(void) {
     test_ranges();
     test_validation();
     test_qname_splitting();
+    test_qname_building();
     puts("Unicode name tests passed");
 }

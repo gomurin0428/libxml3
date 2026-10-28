@@ -112,7 +112,33 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "qname-split") == 0) {
+    if (strcmp(operation, "qname-build") == 0) {
+        const xmlChar name[] = "name";
+        xmlChar buffer[32], before[32];
+        xml3_oom_enable(fail_index);
+        assert(xmlBuildQName(name, NULL, buffer, sizeof(buffer)) == name);
+        assert(xmlBuildQName(name, BAD_CAST "p", buffer, 7) == buffer);
+        assert(xml3_oom_count() == 0);
+        assert(xmlStrEqual(buffer, BAD_CAST "p:name"));
+        memset(buffer, '!', sizeof(buffer));
+        memcpy(before, buffer, sizeof(buffer));
+        xmlChar *built = xmlBuildQName(name, BAD_CAST "p", buffer, 6);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(memcmp(buffer, before, sizeof(buffer)) == 0);
+        if (injected) {
+            assert(!built);
+            require_oom_error();
+        } else {
+            assert(built && built != buffer && xmlStrEqual(built, BAD_CAST "p:name"));
+        }
+        xmlFree(built);
+        built = xmlBuildQName(name, BAD_CAST "p", buffer, 6);
+        assert(built && built != buffer && xmlStrEqual(built, BAD_CAST "p:name"));
+        assert(memcmp(buffer, before, sizeof(buffer)) == 0);
+        xmlFree(built);
+    } else if (strcmp(operation, "qname-split") == 0) {
         const xmlChar input[] = "p:name";
         xmlChar *prefix = (xmlChar *)1;
         int length = -1;

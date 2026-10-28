@@ -4,18 +4,18 @@ Summary of SPARK analysis
 --------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total        Flow                                 Provers   Justified   Unproved
 --------------------------------------------------------------------------------------------------------------
-Data Dependencies               265         265                                       .           .          .
+Data Dependencies               266         266                                       .           .          .
 Flow Dependencies                 .           .                                       .           .          .
-Initialization                  557         557                                       .           .          .
+Initialization                  560         560                                       .           .          .
 Non-Aliasing                      .           .                                       .           .          .
-Run-time Checks                5031           .      5031 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
+Run-time Checks                5040           .      5040 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
 Assertions                     1486           .    1486 (CVC5 66%, Trivial 11%, Z3 23%)           .          .
-Functional Contracts           3678           .     3678 (CVC5 69%, Trivial 2%, Z3 29%)           .          .
+Functional Contracts           3684           .     3684 (CVC5 69%, Trivial 2%, Z3 29%)           .          .
 LSP Verification                  .           .                                       .           .          .
 Termination                     201         146                    55 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .           .                                       .           .          .
 --------------------------------------------------------------------------------------------------------------
-Total                         11218    968 (9%)                             10250 (91%)           .          .
+Total                         11237    972 (9%)                             10265 (91%)           .          .
 
 
 max steps used for successful proof: 47922
@@ -440,7 +440,8 @@ in unit xml3_text, 9 subprograms and packages out of 9 analyzed
   XML3_Text.Valid_UTF8 at xml3_text.ads:33 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Text.Validate_UTF8 at xml3_text.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_Text.XML_Char at xml3_text.ads:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-in unit xml3_text-qnames, 3 subprograms and packages out of 3 analyzed
+in unit xml3_text-qnames, 4 subprograms and packages out of 4 analyzed
   XML3_Text.QNames at xml3_text-qnames.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.QNames.Prefix_Length at xml3_text-qnames.ads:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
-  XML3_Text.QNames.Split at xml3_text-qnames.ads:16 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_Text.QNames.Build at xml3_text-qnames.ads:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  XML3_Text.QNames.Prefix_Length at xml3_text-qnames.ads:19 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
+  XML3_Text.QNames.Split at xml3_text-qnames.ads:27 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (13 checks)
