@@ -209,10 +209,12 @@ Runtime declares both managed state and foreign memory as `Input`; the Store
 query does not mutate the graph or allocate content. Its failure postcondition
 requires a false result. Kind checks and XML-whitespace scanning occur in SPARK,
 bounded by managed content length. Native byte access remains trusted.
-Pinned-reference tests cover text versus CDATA, NULL/empty/XML-only whitespace,
+Tests cover text versus CDATA, NULL/empty/XML-only whitespace,
 non-XML whitespace, other node kinds, mutation-driven classification changes,
 document-first release and rejection of unmanaged facades. These are runtime
-semantic checks, not a claim of complete C API proof.
+semantic checks, not a claim of complete C API proof. Common cases also run against
+the pinned reference; document-first release and unmanaged facades are
+library-specific checks.
 
 `xmlTextConcat` reuses `Runtime.Add_Content` / `Store.Content.Append` with a
 scalar-only policy checked before the empty-input no-op. Existing
