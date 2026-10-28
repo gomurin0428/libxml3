@@ -2,6 +2,24 @@ with System;
 with XML3_Native_Memory;
 
 package XML3_Text.Buffers with SPARK_Mode is
+   use type System.Address;
+
+   type Concatenate_Status is (Copied, No_Input, No_Memory, Limit_Exceeded);
+
+   function Fits (Left_Length, Right_Length : Natural) return Boolean is
+     (Left_Length <= Max_Bytes
+      and then Right_Length <= Max_Bytes - Left_Length)
+     with Global => null;
+
+   procedure Concatenate
+     (Left, Right : String; Has_Left, Has_Right : Boolean;
+      Result : out System.Address; Status : out Concatenate_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => (Has_Left or else Left'Length = 0)
+         and then (Has_Right or else Right'Length = 0),
+       Post => (if Status = Copied then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    procedure Duplicate (Input : String; Result : out System.Address)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Input'Length <= Max_Bytes;

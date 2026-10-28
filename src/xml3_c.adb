@@ -2341,29 +2341,38 @@ package body XML3_C is
          return 0;
    end Str_Equal;
 
-   function Duplicate_Text
-     (Item : System.Address; Length : Interfaces.C.int; Bounded : Boolean)
+   function Str_N_Concat_New
+     (Left, Right : System.Address; Length : Interfaces.C.int)
       return System.Address
    is
       Result : System.Address;
+      Status : XML3_Text.Buffers.Concatenate_Status;
    begin
-      if Item = System.Null_Address or else (Bounded and then Length < 0) then
-         return System.Null_Address;
-      end if;
-      if Bounded and then Length > Max_Input then
-         raise Invalid_C_String;
-      end if;
       declare
-         Value : constant String :=
-           (if not Bounded then C_String_Value (Item)
-            elsif Length = 0 then ""
-            else To_String (Item, Natural (Length)));
+         Head : constant String := C_String_Value (Left);
       begin
-         XML3_Text.Buffers.Duplicate (Value, Result);
+         if Right /= System.Null_Address and then Length > 0
+           and then not XML3_Text.Buffers.Fits (Head'Length, Natural (Length))
+         then
+            raise Invalid_C_String;
+         end if;
+         declare
+            Tail : constant String :=
+              (if Right = System.Null_Address or else Length = 0 then ""
+               elsif Length < 0 then C_String_Value (Right)
+               else To_String (Right, Natural (Length)));
+         begin
+            XML3_Text.Buffers.Concatenate
+              (Head, Tail, Left /= System.Null_Address,
+               Right /= System.Null_Address, Result, Status);
+         end;
       end;
-      if Result = System.Null_Address then
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-      end if;
+      case Status is
+         when XML3_Text.Buffers.Copied | XML3_Text.Buffers.No_Input => null;
+         when XML3_Text.Buffers.No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Limit_Exceeded => Report_Dom_Error (115);
+      end case;
       return Result;
    exception
       when Invalid_C_String =>
@@ -2375,17 +2384,20 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end Duplicate_Text;
+   end Str_N_Concat_New;
 
    function Str_Duplicate (Item : System.Address) return System.Address is
    begin
-      return Duplicate_Text (Item, 0, False);
+      return Str_N_Concat_New (System.Null_Address, Item, -1);
    end Str_Duplicate;
 
    function Str_N_Duplicate
      (Item : System.Address; Length : Interfaces.C.int) return System.Address is
    begin
-      return Duplicate_Text (Item, Length, True);
+      if Length < 0 then
+         return System.Null_Address;
+      end if;
+      return Str_N_Concat_New (System.Null_Address, Item, Length);
    end Str_N_Duplicate;
 
    function Str_Length (Item : System.Address) return Interfaces.C.int is
