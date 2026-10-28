@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -471,6 +471,15 @@ capを確認し、巨大な公開C stringは作っていません。SPARKはscan
 native-call preconditionsを対象にしますが、foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論は
 信頼境界です。共有malformed/reference・guard-page vectorsは両方で実行し、invalid UTF-8のreference比較は対象vectorの期待値だけを
 比較します。OOM/no-allocation testはlibxml3のみです。
+`xmlUTF8Size` はUTF-8全体をvalidate/decodeせず、lead byteだけから幅を分類します。NULLなら読み取りなしで-1、それ以外はbyte 0を
+一度だけ読み、それ以降やNUL終端は参照しません。`0x00..0x7f`（NUL含む）は1、`0xc2..0xdf` は2、`0xe0..0xef` は3、
+`0xf0..0xf4` は4、その他は-1です。したがって非NUL終端の1-byte readable bufferでも使用でき、単独の `0xe2` は3を返します。
+後続byte、truncation、surrogate、scalar rangeは検証しないので、これはUTF-8/XML validity oracleではありません。通常のvalid/invalid
+lead結果にallocation・mutation・diagnosticはなく、予期しないC例外はDOM error 1と-1です。pinned referenceは `0xc0..0xc1` に2、
+`0xf5..0xf7` に4、`0xf8..0xfb` に5、`0xfc..0xfd` に6、`0xfe` に7を返しますが、この実装はこれらinvalid Unicode leadersを拒否します。
+有効性検証やdecodeには `xmlCheckUTF8` / `xmlGetUTF8Char` を使います。全256 byte valuesをPROT_NONE直前の最後のreadable byteに
+それぞれ置くguard test、単独の非NUL終端1-byte input、OOM no-allocation testを実施します。SPARK helperはlead分類とresult contractを担いますが、native byte/readable pointer、
+pointer validity、C mapping/ABI、完全なAPI意味論はtrusted boundaryです。
 `xmlUTF8Strndup` は最大 `len` 個のUnicode scalarに対応する訪問prefixだけをstrict UTF-8として検証し、
 そのraw bytesを新しいNUL終端のowned copyへ複製します。NULL inputまたは負の `len` は読み取り・allocation・診断なしでNULL、
 非NULL inputの `len == 0` はinputを読まずに新しい空文字列を返します。正の `len` は要求scalar数または最初のNULで止まり、

@@ -53,8 +53,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,458 checks
-(1,074 flow and 10,384 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 11,462 checks
+(1,076 flow and 10,386 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 137 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -178,7 +178,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,458-check aggregate proof; see
+new units are included in the current successful 11,462-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -818,6 +818,24 @@ semantics or actual foreign bytes. Pointer validity/readable extent, actual
 bytes, and C mapping remain trusted. Shared malformed/reference and
 guard-page vectors run against both implementations; OOM/no-allocation checks
 are libxml3-only.
+`xmlUTF8Size` is a lead-byte width classifier, not UTF-8 or XML validation.
+For non-NULL input it reads only byte zero and does not inspect continuations,
+truncation, scalar validity, or a NUL terminator; a single readable non-NUL-
+terminated byte is sufficient. It returns 1 for `0x00..0x7f` (including NUL),
+2 for `0xc2..0xdf`, 3 for `0xe0..0xef`, 4 for `0xf0..0xf4`, and -1 otherwise;
+NULL returns -1 without a read. Thus isolated `0xe2` and the lead of
+`0xed 0xa0 0x80` both return 3 without validating the sequence. Normal results
+do not allocate, mutate input, or record diagnostics; unexpected exceptions
+map to DOM error 1 and -1. The pinned reference also reads only the lead byte
+but reports widths for invalid leads `0xc0..0xc1`, `0xf5..0xf7`, `0xf8..0xfb`,
+`0xfc..0xfd`, and `0xfe`; this implementation intentionally rejects them.
+Callers needing validation or decoding use `xmlCheckUTF8` or `xmlGetUTF8Char`.
+`UTF8_Lead_Size` proves 2 checks for its result contract and native-call precondition, including
+the result range and NULL case; proof does not establish the actual foreign
+byte, readable extent, pointer validity, C mapping/ABI, or complete API
+semantics. The guard-page loop places each of the 256 byte values at the final
+readable byte before `PROT_NONE`; standalone non-terminated one-byte inputs and
+no-allocation behavior are also tested.
 `xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
 bounded sum, allocation sizing, status/result contract, and native-call
 preconditions. Its adapter checks a positive right-hand span against that sum

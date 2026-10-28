@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,458 checks, 1,074 by flow analysis and 10,384 by provers;
+**11,462 checks, 1,076 by flow analysis and 10,386 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -231,6 +231,24 @@ semantics or actual foreign bytes. Pointer validity/readable extent, actual
 bytes, and C mapping remain trusted. Shared malformed/reference and
 guard-page vectors run against both implementations; OOM/no-allocation checks
 are libxml3-only.
+`xmlUTF8Size` delegates lead-byte classification to
+`XML3_Text.Buffers.UTF8_Lead_Size`. NULL returns -1 without a read; otherwise
+exactly byte zero is read, with no follow-up read or required NUL terminator.
+It returns 1 for `0x00..0x7f` (including NUL), 2 for `0xc2..0xdf`, 3 for
+`0xe0..0xef`, 4 for `0xf0..0xf4`, and -1 for all other leads. This is not
+UTF-8/XML validation: a lone `0xe2` or surrogate-leading `0xed` returns 3
+without checking truncation, continuations, or scalar validity. One readable
+non-terminated byte is sufficient. Normal results allocate nothing, mutate no
+input, and record no diagnostic; unexpected exceptions map to error 1 and -1.
+The pinned reference also reads only the lead but assigns widths to invalid
+leaders `0xc0..0xc1`, `0xf5..0xf7`, `0xf8..0xfb`, `0xfc..0xfd`, and `0xfe`;
+this implementation rejects them. Validation/decoding uses `xmlCheckUTF8` or
+`xmlGetUTF8Char`. The guard-page loop places each of the 256 byte values at the
+final readable byte before `PROT_NONE`; standalone non-terminated one-byte
+inputs and no-allocation behavior are also tested. GNATprove proves 2
+`UTF8_Lead_Size` checks for its result/null contract and native-call precondition. These checks do
+not establish native bytes, readable extent/pointer validity, C mapping/ABI,
+or complete Unicode/API semantics.
 `xmlUTF8Strndup` delegates through `UTF8_Str_Sub_Copy` to
 `XML3_Text.Buffers.Copy_UTF8_Slice` at start zero. That helper finds the start
 and delegates the selected prefix to `Copy_UTF8_Prefix`, which validates before
@@ -371,13 +389,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 291 |
+| Data dependencies | 292 |
 | Initialization | 634 |
 | Runtime checks | 5,087 |
 | Assertions | 1,493 |
-| Functional contracts | 3,748 |
-| Termination | 205 |
-| **Total** | **11,458** |
+| Functional contracts | 3,750 |
+| Termination | 206 |
+| **Total** | **11,462** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -747,8 +765,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-2f3435a3cea498918c00366ac76e1b4947a8a72e3533e625b2271b2e0ce9e031  src/xml3_c.adb
-14f09c6be0f2359dfb0464644c8f9e877a6b30e0bb97db8e6e1d2c750346c0c0  src/xml3_c.ads
+180459852bb6a67d9e68355a741a70979b370abce7844f6f280fc1427ad88a69  src/xml3_c.adb
+ee767adffdc363821cb369831e40b63f9452dfc2a3af6a98ccccf988949982b6  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -795,13 +813,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-2bd469a215a6a0a7f2435da8fbb14ee211656c15dfced400b8a7782c3b39d30c  src/xml3_text-buffers.adb
-3529dc2740c58643962925b958b8daae805ead14f8f758dd098b8989ec2497ef  src/xml3_text-buffers.ads
+96df6a738f5a51b552caa73bd6db8ef3bca32e54cefe5b6228574d85df6b44c0  src/xml3_text-buffers.adb
+8434369083043b2f131504c7d8259ca0063e5b745a4e546ec6c2ed6792cdd4f0  src/xml3_text-buffers.ads
 f34d351a12e61e5addb9f17b70da9d4230de23d2e10ca1f31e5dcdcb0e822a2d  include/libxml/tree.h
-a2de13a70f1ef4027c198f810ed526614791f02152b6939b7fee511dcc540b8a  include/libxml/xmlstring.h
+2558ae32863da3bda121ad45bccf3bf0570b90beb3da1df937dc6fcecaa3e558  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-58554ad829a4e53999c9ec4fdd370825ff7cfe6c36e7b5acf6fc25591c6c3619  Makefile
+c0b40ab82c6e8a887cec5c993904940312036c1649440ab5273d429ac2b0b0a5  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

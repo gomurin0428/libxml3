@@ -230,6 +230,21 @@ procedure Text_Buffers_Test is
       XML3_Text.Buffers.Copy_UTF8_Slice (Text'Address, 1, 1, Copy, Status, 4);
       pragma Assert (Status = XML3_Text.Buffers.No_Slice and Copy = System.Null_Address);
    end Check_UTF8_Slice;
+
+   procedure Check_UTF8_Lead_Size is
+      Byte : aliased Character := Character'Val (0);
+   begin
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (System.Null_Address) = -1);
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = 1);
+      Byte := Character'Val (16#C2#);
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = 2);
+      Byte := Character'Val (16#E0#);
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = 3);
+      Byte := Character'Val (16#F4#);
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = 4);
+      Byte := Character'Val (16#F5#);
+      pragma Assert (XML3_Text.Buffers.UTF8_Lead_Size (Byte'Address) = -1);
+   end Check_UTF8_Lead_Size;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -251,5 +266,6 @@ begin
    Check_UTF8_Prefix_Size;
    Check_UTF8_Prefix_Copy;
    Check_UTF8_Slice;
+   Check_UTF8_Lead_Size;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

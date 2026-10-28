@@ -207,6 +207,16 @@ XML character validationはしません。inclusive `Max_Bytes` まで走査が�
 DOM error 1と-1です。allocation、input mutation、normalizationは行いません。小さい `Last` のAda testでcapを確認し、
 巨大な公開C stringは構築していません。SPARKはscan control、byte-offset bounds、status/result contractとnative-call
 preconditionsを対象にし、foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論はtrusted boundaryです。
+`xmlUTF8Size` は完全なUTF-8検証ではなく、先頭byteだけを分類します。NULLなら読み取りなしで-1、それ以外はbyte 0だけを読み、
+以降のbyteやNUL終端は確認しません。`0x00..0x7f`（NULを含む）は1、`0xc2..0xdf` は2、`0xe0..0xef` は3、
+`0xf0..0xf4` は4、それ以外は-1です。そのため、単独の `0xe2` や `0xed 0xa0 0x80` の先頭は、それぞれ幅3を返しますが、
+後続byte、truncation、scalarの有効性は検査されません。先頭の1 byteだけ読み取り可能な非NUL終端bufferでも動作します。通常の有効・無効
+先頭byteではallocation・mutation・diagnosticはなく、予期しない例外だけDOM error 1と-1になります。pinned referenceも先頭だけを
+読みますが、`0xc0..0xc1`、`0xf5..0xf7`、`0xf8..0xfb`、`0xfc..0xfd`、`0xfe` に幅を返します。この実装はUnicode leadではない
+これらを拒否します。実際のUTF-8妥当性検証やdecodeには `xmlCheckUTF8` または `xmlGetUTF8Char` を使います。SPARK helperの
+結果の範囲・NULL時のcontract・native-callの前提を証明しますが、foreign byte、pointer validity/readable byte、C mapping、完全なAPI意味論はtrusted boundaryです。
+全256先頭byteをそれぞれPROT_NONE直前の最後のreadable byteに置くguard test、単独の非NUL終端1-byte input、
+allocationなしの挙動をtestします。
 `xmlUTF8Strndup` は最大 `len` 個のUnicode scalarを訪問prefixだけstrict UTF-8として検証し、
 そのraw bytesを新しいNUL終端allocationへコピーします。NULL inputまたは負の `len` は読み取り・allocation・
 診断なしでNULL、非NULL inputの `len == 0` はinputを読まずに新しい空文字列を返します。正の `len` は要求scalar数または

@@ -720,6 +720,17 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlUTF8Size": {
+    "implementation": "partial",
+    "scope": "Classifies only the first byte of a UTF-8 sequence. NULL returns -1 without reading; non-NULL input reads exactly byte 0 and never inspects following bytes or requires a NUL terminator. Returns 1 for 0x00..0x7f (including NUL), 2 for 0xc2..0xdf, 3 for 0xe0..0xef, 4 for 0xf0..0xf4, and -1 for all other leading bytes. A lone 0xe2 returns 3; 0xed followed by surrogate bytes also returns 3 because continuation, truncation, scalar validity, and XML character validity are not checked. A single readable non-terminated byte is sufficient. Normal results allocate nothing, do not mutate input, and record no diagnostic; unexpected exceptions map to DOM error 1 and -1. The pinned reference also reads only the lead byte but reports widths for invalid leaders 0xc0..0xc1, 0xf5..0xf7, 0xf8..0xfb, 0xfc..0xfd, and 0xfe; this implementation intentionally rejects them. Use xmlCheckUTF8 or xmlGetUTF8Char for validation or decoding. SPARK covers lead classification and result contracts, not actual foreign bytes, readable extent/pointer validity, C mapping/ABI, or complete Unicode/API semantics. The guard-page loop tests all 256 values as the final readable byte before PROT_NONE; standalone non-terminated one-byte inputs and no-allocation behavior are also tested.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlUTF8Strndup": {
     "implementation": "partial",
     "scope": "Creates an independent NUL-terminated owned copy of up to the requested number of Unicode scalars. NULL input or a negative len returns NULL without reading, allocating, or recording a diagnostic; a non-NULL zero len allocates a new empty string without reading input. Positive len validates only the traversed strict UTF-8 prefix, stopping at the requested scalar count or the first NUL; an unvisited suffix is not inspected. A malformed, truncated, overlong, surrogate, out-of-range, or otherwise noncanonical visited prefix returns NULL before allocation with no partial copy or diagnostic. The strict rejection is an intentional safety difference from unspecified/permissive invalid-reference behavior. ASCII controls and Unicode noncharacters are valid UTF-8, not XML-character validation. Cap exhaustion through inclusive Max_Bytes records DOM error 115 and returns NULL; allocation failure maps to the standard memory error 2 and NULL; unexpected exceptions map to error 1 and NULL. The returned buffer is caller-owned and must be freed with xmlFree; input is not mutated or freed. Reduced-Last Ada tests cover the cap; no huge public C string is constructed. GNATprove covers scan/span control, bounds, status/result contracts, and native-call preconditions, not native bytes, readable/stable extents, pointer validity, allocator behavior, C ABI/mapping, or complete Unicode API semantics. Shared malformed/reference and guard-page vectors run against both implementations; OOM/no-allocation checks are libxml3-only.",

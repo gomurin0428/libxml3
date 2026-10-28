@@ -607,6 +607,38 @@ static void test_utf8_slice(void) {
     xmlFree(value);
 }
 
+static int expected_utf8_lead_size(int byte) {
+    if (byte < 0x80) return 1;
+    if (byte >= 0xc2 && byte <= 0xdf) return 2;
+    if (byte >= 0xe0 && byte <= 0xef) return 3;
+    if (byte >= 0xf0 && byte <= 0xf4) return 4;
+#ifdef XML3_REFERENCE_VERSION
+    if (byte == 0xc0 || byte == 0xc1) return 2;
+    if (byte >= 0xf5 && byte <= 0xf7) return 4;
+    if (byte >= 0xf8 && byte <= 0xfb) return 5;
+    if (byte >= 0xfc && byte <= 0xfd) return 6;
+    if (byte == 0xfe) return 7;
+#endif
+    return -1;
+}
+
+static void test_utf8_lead_size(void) {
+    xmlResetLastError();
+    assert(xmlUTF8Size(NULL) == -1);
+    for (int byte = 0; byte < 256; ++byte) {
+        xmlChar value = (xmlChar)byte;
+        assert(xmlUTF8Size(&value) == expected_utf8_lead_size(byte));
+        assert(value == (xmlChar)byte);
+    }
+    assert(xmlUTF8Size(BAD_CAST "\xe2x") == 3);
+    assert(xmlUTF8Size(BAD_CAST "\xed\xa0\x80") == 3);
+#ifndef XML3_REFERENCE_VERSION
+    assert(!xmlCheckUTF8(BAD_CAST "\xe2x"));
+    assert(!xmlCheckUTF8(BAD_CAST "\xed\xa0\x80"));
+#endif
+    assert(!xmlGetLastError());
+}
+
 static void test_string_length(void) {
     assert(xmlStrlen(NULL) == 0 && xmlStrlen(BAD_CAST "") == 0);
     assert(xmlStrlen(BAD_CAST "abc") == 3);
@@ -845,6 +877,10 @@ static void test_string_duplicates(void) {
         assert(mapping != MAP_FAILED);
         xmlChar *unreadable = mapping + page_size;
         assert(mprotect(unreadable, (size_t)page_size, PROT_NONE) == 0);
+        for (int byte = 0; byte < 256; ++byte) {
+            unreadable[-1] = (xmlChar)byte;
+            assert(xmlUTF8Size(unreadable - 1) == expected_utf8_lead_size(byte));
+        }
         xmlChar *source = unreadable - 3;
         memcpy(source, "abc", 3);
         xmlChar *copy = xmlStrndup(source, 3);
@@ -1330,6 +1366,7 @@ int main(void) {
     test_utf8_prefix_size();
     test_utf8_prefix_copy();
     test_utf8_slice();
+    test_utf8_lead_size();
 #ifdef XML3_REFERENCE_VERSION
     if (strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) != 0) {
         fprintf(stderr, "wrong reference runtime: %s\n", xmlParserVersion);
