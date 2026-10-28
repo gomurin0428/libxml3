@@ -348,6 +348,15 @@ is
            (Current, Facade, Mode, Result, Count, Status);
       end Select_Element;
 
+      procedure Get_Namespace_List
+        (Facade : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Queries.Get_Namespace_List
+           (Current, Facade, Result, Status);
+      end Get_Namespace_List;
+
       procedure Search_Namespace
         (Facade : System.Address;
          Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind;

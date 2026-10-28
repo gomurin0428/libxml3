@@ -378,7 +378,75 @@ static void test_null_namespace_uri_lookup(void) {
     xmlFreeNode(root);
 }
 
+static void check_ns_list(xmlNodePtr node, xmlNsPtr *expected, size_t count) {
+    xmlNsPtr *list = (xmlNsPtr *)1;
+    assert(xmlGetNsListSafe(NULL, node, &list) == (count ? 0 : 1));
+    if (count) {
+        assert(list);
+        for (size_t i = 0; i < count; ++i) assert(list[i] == expected[i]);
+        assert(list[count] == NULL);
+    } else {
+        assert(list == NULL);
+    }
+    xmlFree(list);
+    list = xmlGetNsList(NULL, node);
+    if (count) {
+        assert(list);
+        for (size_t i = 0; i < count; ++i) assert(list[i] == expected[i]);
+        assert(list[count] == NULL);
+    } else {
+        assert(list == NULL);
+    }
+    xmlFree(list);
+}
+
+static void test_namespace_lists(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    assert(doc && root);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr p = xmlNewNs(root, BAD_CAST "urn:parent", BAD_CAST "p");
+    xmlNsPtr d = xmlNewNs(root, BAD_CAST "urn:default", NULL);
+    xmlNsPtr q = xmlNewNs(root, BAD_CAST "urn:q", BAD_CAST "q");
+    xmlNodePtr child = xmlNewChild(root, NULL, BAD_CAST "child", NULL);
+    assert(p && d && q && child);
+    xmlNsPtr shadow = xmlNewNs(child, BAD_CAST "urn:child", BAD_CAST "p");
+    xmlNsPtr empty = xmlNewNs(child, BAD_CAST "", NULL);
+    xmlNsPtr null_href = xmlNewNs(child, NULL, BAD_CAST "n");
+    assert(shadow && empty && null_href);
+    xmlNsPtr expected[] = {shadow, empty, null_href, q};
+    check_ns_list(child, expected, 4);
+    xmlNodePtr text = xmlNewText(BAD_CAST "value");
+    assert(text && xmlAddChild(child, text));
+    xmlAttrPtr attr = xmlNewProp(child, BAD_CAST "id", BAD_CAST "1");
+    assert(attr);
+    check_ns_list(text, expected, 4);
+    check_ns_list((xmlNodePtr)attr, expected, 4);
+    assert(child->nsDef == shadow && shadow->next == empty);
+    check_ns_list(NULL, NULL, 0);
+    check_ns_list((xmlNodePtr)doc, NULL, 0);
+    assert(xmlGetNsListSafe(doc, child, NULL) == 1);
+    xmlNodePtr standalone = xmlNewNode(q, BAD_CAST "standalone");
+    assert(standalone);
+    check_ns_list(standalone, NULL, 0);
+    xmlFreeNode(standalone);
+    xmlUnlinkNode(child);
+    check_ns_list(child, expected, 3);
+    assert(xmlAddChild(root, child) == child);
+    check_ns_list(child, expected, 4);
+    xmlUnlinkNode(child);
+#ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+    check_ns_list(child, expected, 3);
+    xmlFreeNode(child);
+#else
+    xmlFreeNode(child);
+    xmlFreeDoc(doc);
+#endif
+}
+
 int main(void) {
+    test_namespace_lists();
 #ifdef XML3_REFERENCE_TEST
     assert(LIBXML_VERSION == 21504);
     assert(strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) == 0);

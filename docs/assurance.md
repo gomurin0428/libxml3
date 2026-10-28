@@ -38,11 +38,13 @@ through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
 managed list release through `Runtime.Release_List` / `Store.Release_List`,
-and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,143 checks
-(947 flow and 10,196 prover), no
-unproved or justified conditions, 0 `pragma Assume` statements, and 130
-warnings. The representation-generation diagnostic is recorded separately.
+namespace-list traversal through
+`Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
+`Collect_Namespaces`, and explicit UTF-8 memory serialization. The C adapters and native ABI
+implementation are not proved. The refreshed aggregate has 11,183 checks
+(958 flow and 10,225 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 133 warnings. The representation-generation
+diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -162,7 +164,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,143-check aggregate proof; see
+new units are included in the current successful 11,183-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -196,6 +198,21 @@ tests cover middle/head/tail/sole-property unlink, repeat unlink, editing and
 reattachment, namespace/document-first release, and no native allocation. Native byte comparison,
 copying, allocation/free and address correspondence remain trusted boundary
 operations. Public C getters route through these queries.
+
+`Get_Namespace_List` performs a bounded two-pass traversal of managed node and
+namespace IDs. The first pass counts visible declarations; the second writes
+their borrowed facades into an exactly sized, caller-owned, NULL-terminated
+array. List traversal uses declaration-only prefix resolution, so it does not
+fall back to a node's namespace reference or synthesize the implicit `xml`
+binding. It includes NULL/empty href declarations, deduplicates prefixes in
+nearest-first order, and ignores the document argument. Store selection,
+capacity checks, status and cleanup decisions are SPARK code; native address
+allocation, array writes, pointer validity and the C ABI remain trusted. The
+namespace pointers are borrowed and remain valid only while their owning node
+is alive. Fixed-reference tests cover order, shadowing, NULL/empty hrefs,
+element/text/attribute ancestry, and detach/reattach. Allocation failure and
+document-first release are tested separately against libxml3.
+Complete `xmlGetNsList` / `xmlGetNsListSafe` semantic equivalence is not proved.
 
 `xmlAddSibling` resolves its reference node and incoming node through Store IDs,
 rejects self-insertion and mixed attribute/content lists, then delegates to

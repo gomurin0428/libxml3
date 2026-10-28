@@ -66,7 +66,8 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
   `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
-  `xmlSearchNsByHref`、`xmlHasNsProp`、`xmlGetNsProp`、`xmlGetNoNsProp`、
+  `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
+  `xmlGetNsProp`、`xmlGetNoNsProp`、
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrcmp`、`xmlStrEqual`、`xmlStrlen`
 * `libxml/xmlmemory.h`: `xmlFree`
@@ -115,6 +116,16 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 宣言は既存 Store の規則で末尾に追加します（固定版の先頭追加とは順序が異なります）。
 prefix 検索は NULL href の宣言を飛ばしますが、href 検索は NULL と空文字列を区別します。
 NULL href 宣言も同じ prefix の祖先宣言を href 検索で隠す、という固定版の扱いを保ちます。
+
+`xmlGetNsList` / `xmlGetNsListSafe` は管理対象 node facade のみを対象とし、node から祖先へたどり、各 element の namespace
+宣言を近い要素順・`nsDef` 宣言順に返します。同じ prefix（default prefix を含む）は
+最も近い宣言だけを含み、NULL / 空 href の宣言も列挙します。`doc` は無視され、
+implicit `xml` binding と、`node->ns` にだけ存在して祖先に宣言されていない binding は
+追加しません。safe API は出力を先に NULL にし、出力 pointer が NULL、node が NULL、
+namespace facade、未管理 node、または空の結果では 1、結果があれば 0、配列確保失敗では
+-1 を返します。legacy API は空・無効入力・失敗で NULL を返します。返却配列は呼び出し側が
+`xmlFree` で解放し、配列内の namespace pointer は借用で、元 node の寿命を超えて保持できません。
+ネイティブ pointer / 配列 ABI と完全な public semantics は証明対象外です。
 
 ### 限定的な作成・編集 API
 

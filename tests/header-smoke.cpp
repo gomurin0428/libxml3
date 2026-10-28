@@ -5,6 +5,10 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    int (*ns_list_safe)(const xmlDoc *, const xmlNode *, xmlNs ***) = xmlGetNsListSafe;
+    xmlNs **(*ns_list)(const xmlDoc *, const xmlNode *) = xmlGetNsList;
+    (void)ns_list_safe;
+    (void)ns_list;
     using ValidateNameFunction = int (*)(const xmlChar *, int);
     const ValidateNameFunction validators[] = {
         xmlValidateName, xmlValidateNCName, xmlValidateQName, xmlValidateNMToken};

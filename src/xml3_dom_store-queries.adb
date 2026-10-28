@@ -299,7 +299,8 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
 
    procedure Prefix_Resolved
      (S : Store; Original : Node_Ref; Candidate : Namespace_View;
-      Resolved : out Namespace_Ref; Status : out Operation_Status)
+      Resolved : out Namespace_Ref; Status : out Operation_Status;
+      Declarations_Only : Boolean := False)
      with Pre => S.Current /= null
        and then XML3_DOM.Valid (S.Current.all)
        and then Live_Node (S, Original)
@@ -339,7 +340,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
                Status := Internal_Error;
                return;
             end if;
-            if Current /= Original then
+            if Current /= Original and then not Declarations_Only then
                Ns := Node (S.Current.all, Current).Namespace;
                if Ns /= Null_Namespace then
                   if not Live_Namespace (S, Ns) then
@@ -362,6 +363,109 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
          Status := Internal_Error;
       end if;
    end Prefix_Resolved;
+
+   procedure Collect_Namespaces
+     (S : Store; Original : Node_Ref; Buffer : System.Address;
+      Capacity : Natural; Count : out Natural; Status : out Operation_Status)
+     with Global => (In_Out => Native.Foreign_Memory),
+       Pre => S.Current /= null
+         and then XML3_DOM.Valid (S.Current.all)
+         and then Live_Node (S, Original)
+         and then (Buffer = System.Null_Address or else
+           Native.Byte_Count (Capacity) <= Native.Byte_Count'Last / Native.Address_Bytes),
+       Post => Count <= Capacity
+   is
+      Current : Node_Ref := Original;
+      Ns, Resolved : Namespace_Ref;
+      Item : Namespace_View;
+   begin
+      Count := 0;
+      Status := Created;
+      for Outer in 1 .. Node_Count (S.Current.all) loop
+         pragma Loop_Invariant (Count <= Capacity);
+         exit when Current = Null_Node;
+         if not Live_Node (S, Current) then
+            Status := Internal_Error;
+            return;
+         end if;
+         if Node (S.Current.all, Current).Kind = Element_Node then
+            Ns := Node (S.Current.all, Current).First_Namespace;
+            for Inner in 1 .. Namespace_Count (S.Current.all) loop
+               pragma Loop_Invariant (Count <= Capacity);
+               exit when Ns = Null_Namespace;
+               if not Live_Namespace (S, Ns) then
+                  Status := Internal_Error;
+                  return;
+               end if;
+               Item := Namespace (S.Current.all, Ns);
+               Prefix_Resolved
+                 (S, Original, Item, Resolved, Status, Declarations_Only => True);
+               if Status /= Created then
+                  return;
+               end if;
+               if Resolved = Ns then
+                  if Count = Capacity then
+                     Status := Limit_Exceeded;
+                     return;
+                  end if;
+                  if Buffer /= System.Null_Address then
+                     Native.Write_Address (Buffer, Count, Item.Facade);
+                  end if;
+                  Count := Count + 1;
+               end if;
+               Ns := Item.Next;
+            end loop;
+            if Ns /= Null_Namespace then
+               Status := Internal_Error;
+               return;
+            end if;
+         end if;
+         Current := Node (S.Current.all, Current).Parent;
+      end loop;
+      if Current /= Null_Node then
+         Status := Internal_Error;
+      end if;
+   end Collect_Namespaces;
+
+   procedure Get_Namespace_List
+     (S : Store; Facade : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Original : constant Node_Ref := Find_Node (S, Facade);
+      Count, Written : Natural;
+      Buffer : System.Address := System.Null_Address;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if S.Current = null or else Original = Null_Node then
+         return;
+      end if;
+      Collect_Namespaces
+        (S, Original, System.Null_Address, Natural'Last - 1, Count, Status);
+      if Status /= Created or else Count = 0 then
+         return;
+      end if;
+      if Native.Byte_Count (Count) >= Native.Byte_Count'Last / Native.Address_Bytes then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      Native.Allocate
+        ((Native.Byte_Count (Count) + 1) * Native.Address_Bytes, Buffer);
+      if Buffer = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Collect_Namespaces (S, Original, Buffer, Count, Written, Status);
+      if Status /= Created or else Written /= Count then
+         Native.Free (Buffer);
+         if Status = Created then
+            Status := Internal_Error;
+         end if;
+         return;
+      end if;
+      Native.Write_Address (Buffer, Count, System.Null_Address);
+      Result := Buffer;
+   end Get_Namespace_List;
 
    procedure Is_In_Scope
      (S : Store; Original : Node_Ref; Candidate : Namespace_View;

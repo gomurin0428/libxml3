@@ -206,6 +206,11 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Get_Namespace_List
+        (Facade : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Search_Namespace
         (Facade : System.Address;
          Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind;

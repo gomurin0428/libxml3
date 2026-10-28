@@ -112,7 +112,29 @@ int main(int argc, char **argv) {
     fail_index = strtol(argv[2], NULL, 10);
     xmlResetLastError();
 
-    if (strcmp(operation, "validate-name") == 0) {
+    if (strcmp(operation, "ns-list") == 0) {
+        dom_node = xmlNewNode(NULL, BAD_CAST "root");
+        assert(dom_node);
+        xmlNsPtr ns = xmlNewNs(dom_node, BAD_CAST "urn:p", BAD_CAST "p");
+        assert(ns);
+        xmlNsPtr *list = (xmlNsPtr *)1;
+        xml3_oom_enable(fail_index);
+        int code = xmlGetNsListSafe(NULL, dom_node, &list);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(code == -1 && list == NULL);
+            require_oom_error();
+        } else {
+            assert(code == 0 && list && list[0] == ns && !list[1]);
+        }
+        xmlFree(list);
+        assert(dom_node->nsDef == ns && !ns->next);
+        list = xmlGetNsList(NULL, dom_node);
+        assert(list && list[0] == ns && !list[1]);
+        xmlFree(list);
+    } else if (strcmp(operation, "validate-name") == 0) {
         assert(!xmlReadMemory("<", 1, NULL, NULL,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING));
         error = xmlGetLastError();

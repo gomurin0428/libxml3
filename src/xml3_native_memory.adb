@@ -36,6 +36,15 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
    function Offset (Base : System.Address; Bytes : Byte_Count) return System.Address is
      (Base + Storage_Offset (Bytes));
 
+   procedure Write_Address
+     (Base : System.Address; Index : Natural; Value : System.Address)
+   is
+      Slot : System.Address with Import,
+        Address => Offset (Base, Byte_Count (Index) * Address_Bytes);
+   begin
+      Slot := Value;
+   end Write_Address;
+
    function Read_Id (Facade : System.Address) return Natural is
       Value : constant size_t :=
         To_Metadata (Facade - Storage_Offset (Metadata_Bytes)).Id;
