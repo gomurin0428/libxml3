@@ -18,8 +18,10 @@ attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 `xmlFreeNodeList` / `xmlFreePropList` and `Runtime.Release_List` /
 `Store.Release_List`, `xmlNewCDataBlock`, `xmlLastElementChild`,
 `xmlPreviousElementSibling`, and `xmlGetLastChild` through the SPARK
-Store/Runtime. The entity summaries report
-0 flow errors, 132 warnings, and 0 `pragma Assume`
+Store/Runtime. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
+`Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
+its C status/output-pointer mapping is outside the proof. The entity summaries
+report 0 flow errors, 132 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -414,8 +416,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-a7a81e6fdd13f0ffef2263b23d8201e78b539110faa7826d2b4a69af014b725d  src/xml3_c.adb
-d5d0448f5e453ea5a8d46d28b3fc989fbd180f1fecd5327a73143e5c836da4f8  src/xml3_c.ads
+0892e2020e3b6564e8aa8c331b1f94b761cc10c1b3fb3239ee27b15a676e88a4  src/xml3_c.adb
+377babb9cd7db1723832e32fe66b73f1625aca7be01e389942914ed971d8514f  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -460,10 +462,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-9d3c2e8e34378d29394f06395c9479aa6c0d7584ff5aafd1d87347673b513da6  include/libxml/tree.h
+e5fc981e6883d371779001f62925692f7f817871000dad63cb833b94957d4eae  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-26599024a6dcc28b4e235eb2e92f9769c1cebbe8a77665b16732adcc5d91b757  Makefile
+38aac8ae07300c8061101367280f8fbe97c2e730fb357b12d8aa6b324a6bea40  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

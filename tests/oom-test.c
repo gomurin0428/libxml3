@@ -1230,6 +1230,39 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
+    } else if (strcmp(operation, "attr-value") == 0) {
+        static const char input[] = "<root xmlns:p='urn:p' p:a='value'/>";
+        xmlNodePtr root;
+        xmlChar *value;
+        int result;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        value = (xmlChar *)root;
+        xml3_oom_enable(0);
+        result = xmlNodeGetAttrValue(root, BAD_CAST "missing", NULL, &value);
+        assert(result == 1 && value == NULL);
+        assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
+        xml3_oom_disable();
+        value = (xmlChar *)root;
+        xml3_oom_enable(fail_index);
+        result = xmlNodeGetAttrValue(root, BAD_CAST "a", BAD_CAST "urn:p", &value);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1 && value == NULL);
+            require_oom_error();
+        } else {
+            assert(result == 0 && value);
+            assert(strcmp((const char *)value, "value") == 0);
+            xmlFree(value);
+        }
+        xmlResetLastError();
+        assert(xmlNodeGetAttrValue(root, BAD_CAST "a", BAD_CAST "urn:p", &value) == 0);
+        assert(value && strcmp((const char *)value, "value") == 0);
+        xmlFree(value);
+        assert(xmlGetLastError() == NULL);
     } else if (strcmp(operation, "release-lists") == 0) {
         static const char input[] = "<root a='one' b='two'><one/><two/></root>";
         xmlNodePtr root;

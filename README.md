@@ -96,6 +96,7 @@ href による expanded name で行い、接続成功後に一致属性を置き
 `xmlGetLastChild` は要素に限定せず、document・element・属性値の末尾 child を取得します。
 `xmlFreeNodeList` / `xmlFreePropList` は指定位置から末尾までの兄弟列と子ツリーを解放し、
 残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。
+`xmlNodeGetAttrValue` は名前空間付き属性の取得を、成功・属性なし・確保/上限/変換/内部エラーの戻り値で区別します。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

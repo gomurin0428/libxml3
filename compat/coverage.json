@@ -419,6 +419,12 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeGetAttrValue": {
+    "implementation": "partial",
+    "scope": "Namespace-aware attribute value lookup through existing SPARK Runtime.Get_Property / Store.Queries.Find_Property / Get_Content. Returns 0 plus an independent xmlFree-compatible copy, 1 plus NULL for missing/invalid node or name (NULL out also returns 1), and -1 plus NULL for allocation, limit, string-conversion, or internal failures. NULL URI means no namespace, not any namespace. C status/output-pointer mapping is shared with existing getters; DTD defaults remain unsupported. Native ABI/output pointer and full public semantics are not proved.",
+    "tests": ["tests/attribute-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlGetLastChild": {
     "implementation": "partial",
     "scope": "SPARK Store/Runtime returns the managed last child without filtering its kind, including a document child or attribute-value text. NULL, empty/scalar nodes, namespaces and unmanaged facades return NULL. Reuses the managed selection path and preserves sticky errors. No native allocation. Native pointer/ABI validity and full C semantics remain unproved.",

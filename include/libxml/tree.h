@@ -151,6 +151,8 @@ xmlAttrPtr xmlHasNsProp(const xmlNode *node, const xmlChar *name,
 xmlChar *xmlGetNsProp(const xmlNode *node, const xmlChar *name,
                       const xmlChar *href);
 xmlChar *xmlGetNoNsProp(const xmlNode *node, const xmlChar *name);
+int xmlNodeGetAttrValue(const xmlNode *node, const xmlChar *name,
+                        const xmlChar *nsUri, xmlChar **out);
 xmlNodePtr xmlFirstElementChild(const xmlNode *parent);
 xmlNodePtr xmlLastElementChild(xmlNode *parent);
 xmlNodePtr xmlGetLastChild(const xmlNode *parent);

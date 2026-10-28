@@ -161,6 +161,13 @@ attribute にも対応し、namespace 宣言や残る利用者の参照は保持
 参照版テストはこのリンクだけを呼び出し側で修復し、解放済み pointer を利用しません。
 一覧の走査・解放・寿命判断はSPARK側で行い、最後に一度 native facade を同期します。
 
+`xmlNodeGetAttrValue` は名前空間URIを指定して属性値の独立コピーを取得します。
+成功は `0`、属性なしは `1`、確保・上限・文字列変換・内部エラーは `-1` で、失敗時の出力は NULL です。
+NULL URI は「名前空間なし」で、`xmlGetProp` の「名前空間不問」とは異なります。
+固定版同様、NULL node/name/out や要素以外は `1`。未登録 facade も検索対象にしません。
+空の属性値は空文字列のコピーを返し、属性なしと区別します。返却値は `xmlFree` で解放します。
+DTD の既定値や未対応実体は対象外です。
+
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を
 保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を

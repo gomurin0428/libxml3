@@ -326,6 +326,12 @@ mutex・Runtime 呼び出し・status/exception 変換のみで、native の `ne
 残存利用者、native allocation 不要を実行テストで検査します。完全な一覧解放の意味論・
 全原子性・native pointer validity を証明したという主張ではありません。
 
+`xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
+`Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、
+従来の `xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` も同じ入口を通ります。
+属性検索・内容のコピーはSPARK側のままで、新たな所有権モデルは追加していません。
+戻り値と出力 pointer の C ABI 契約そのものは証明外で、固定版比較と確保失敗テストで検査します。
+
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。
 文書・namespace の保持は `New_Doc_Content`、text 子の接続は既存の `Attach`、
