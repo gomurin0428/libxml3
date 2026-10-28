@@ -1338,7 +1338,7 @@ begin
             XML3_DOM_Store.Queries.Href_Search, False, "",
             Query_Result, Query_Status);
          pragma Assert
-           (Query_Status = XML3_DOM_Constructors.Invalid_Argument
+           (Query_Status = XML3_DOM_Constructors.Created
             and then Query_Result = System.Null_Address);
          XML3_DOM_Store.Queries.Get_Content
            (Managed, Source_Root, Query_Result, Query_Status);

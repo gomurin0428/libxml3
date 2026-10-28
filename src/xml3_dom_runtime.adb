@@ -356,7 +356,7 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
-         XML3_DOM_Store.Queries.Search_Namespace
+         XML3_DOM_Store.Queries.Lookup_Namespace
            (Current, Facade, Mode, Has_Value, Value, Result, Status);
       end Search_Namespace;
 

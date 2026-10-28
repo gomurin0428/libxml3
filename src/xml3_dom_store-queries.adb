@@ -220,6 +220,9 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    is
    begin
       if Mode = Prefix_Search then
+         if Candidate.Href = System.Null_Address then
+            return False;
+         end if;
          if not Has_Value then
             return Candidate.Prefix = System.Null_Address;
          end if;
@@ -227,9 +230,11 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
            and then Equal_Bytes
              (Candidate.Prefix, Candidate.Prefix_Length, Value);
       end if;
-      return Has_Value
-        and then Candidate.Href /= System.Null_Address
-        and then Equal_Bytes (Candidate.Href, Candidate.Href_Length, Value);
+      return (if Has_Value then
+                Candidate.Href /= System.Null_Address
+                and then Equal_Bytes
+                  (Candidate.Href, Candidate.Href_Length, Value)
+              else Candidate.Href = System.Null_Address);
    end Namespace_Matches;
 
    function Implicit_Query
@@ -555,9 +560,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if S.Current = null
-        or else (Mode = Href_Search and then not Has_Value)
-      then
+      if S.Current = null then
          return;
       end if;
       Original := Find_Node (S, Facade);
@@ -643,6 +646,49 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       end if;
       Status := Created;
    end Search_Namespace;
+
+   procedure Lookup_Namespace
+     (S : in out Store; Facade : System.Address; Mode : Namespace_Query_Kind;
+      Has_Value : Boolean; Value : String;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Current : Node_Ref;
+      Item : Node_View;
+   begin
+      Search_Namespace (S, Facade, Mode, Has_Value, Value, Result, Status);
+      if Status /= Created or else Result /= System.Null_Address
+        or else not Implicit_Query (Mode, Has_Value, Value)
+      then
+         return;
+      end if;
+      Current := Find_Node (S, Facade);
+      if Current = Null_Node
+        or else Node (S.Current.all, Current).Document /= Null_Node
+      then
+         return;
+      end if;
+      for Step in 1 .. Node_Count (S.Current.all) loop
+         exit when Current = Null_Node;
+         if not Live_Node (S, Current) then
+            Status := Internal_Error;
+            return;
+         end if;
+         Item := Node (S.Current.all, Current);
+         if Item.Kind = Element_Node then
+            Create_Namespace
+              (S, Item.Facade, XML3_Namespaces.XML_URI, "xml", True, True,
+               Result, Status);
+            if Status /= Created then
+               Result := System.Null_Address;
+            end if;
+            return;
+         end if;
+         Current := Item.Parent;
+      end loop;
+      if Current /= Null_Node then
+         Status := Internal_Error;
+      end if;
+   end Lookup_Namespace;
 
    procedure Next_Depth_First
      (S : Store; Root, Current : Node_Ref;

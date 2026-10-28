@@ -108,6 +108,14 @@ node の `ns` は移動時に再調整されません。宣言 scope 外へ移�
 lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重して ancestor
 の retained `ns` binding を参照します。
 
+`xmlSearchNs` / `xmlSearchNsByHref` は、文書を持たない node で組み込み `xml` binding が
+見つからない場合、最も近い element に宣言を作成します。text・属性からも親へたどり、
+要素の祖先がない単独 text/属性では作成しません。作成失敗は NULL とエラーで返し、
+既存の宣言を保ちます。成功後の再検索は同じ namespace を返します。
+宣言は既存 Store の規則で末尾に追加します（固定版の先頭追加とは順序が異なります）。
+prefix 検索は NULL href の宣言を飛ばしますが、href 検索は NULL と空文字列を区別します。
+NULL href 宣言も同じ prefix の祖先宣言を href 検索で隠す、という固定版の扱いを保ちます。
+
 ### 限定的な作成・編集 API
 
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
