@@ -8,6 +8,15 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Search_Status is (No_Match, Matched, Search_Limit_Exceeded);
 
+   type Slice_Status is (Sliced, No_Slice, No_Memory, Slice_Limit_Exceeded);
+
+   procedure Slice
+     (Item : System.Address; Start, Length : Integer;
+      Result : out System.Address; Status : out Slice_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Sliced then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    procedure Find_Substring
      (Item, Pattern : System.Address; Ignore_Case : Boolean;
       Position : out Byte_Count; Status : out Search_Status)

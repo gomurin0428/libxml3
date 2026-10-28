@@ -119,6 +119,15 @@ needle は全体を走査せず、`Max_Bytes` 未満の payload と境界の NUL
 上限ではありません。返却 pointer は入力が有効な間だけ使い、`xmlFree` せず、allocation・
 書き込み・transcodeも行いません。native pointer、読み取り可能範囲、byte内容、address
 計算、完全なAPI意味論は信頼境界です。
+`xmlStrsub(str, start, len)` は独立した `xmlFree` 所有の raw-byte copy を返します。
+NULL入力、負の `start`/`len` は診断なしでNULLです。start byte を検証するため `0..start` を走査し、
+その範囲でNULを見つけた場合もNULLです。`len == 0` でもstartを検証して空allocationを返します。
+有効なstartの後は文字列終端で切り詰めず、指定された `len` byteを正確にコピーし、
+最後にNULを付けます。したがって呼び出し側はそのspan全体を読めるようにする必要があります。
+埋め込みNUL、UTF-8断片、その他のbyteを検証・変換しません。`start < Max_Bytes` と
+`len <= Max_Bytes - start` を読み取り前に確認し、範囲超過は診断付きNULLです。
+実際のnative pointer/読み取り可能範囲/byte内容、allocationとwrite、address計算、完全なAPI意味論は
+信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、

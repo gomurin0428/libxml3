@@ -328,6 +328,11 @@ package XML3_C is
    function Str_Substring (Item, Pattern : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrstr";
 
+   function Str_Sub_Copy
+     (Item : System.Address; Start, Length : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlStrsub";
+
    function Str_Case_Substring
      (Item, Pattern : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrcasestr";
