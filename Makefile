@@ -374,7 +374,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
-	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlNextElementSibling \
+	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlLastElementChild xmlNextElementSibling xmlPreviousElementSibling \
 	xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory \
 	xmlGetLastError xmlResetLastError xmlResetError xmlCopyError; do \
 		nm -D --defined-only lib/libxml3.so | awk '{sub(/@@.*/, "", $$3); print $$3}' | grep -qx "$$symbol" || exit 1; \

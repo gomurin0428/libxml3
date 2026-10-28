@@ -2,7 +2,8 @@ with XML3_Native_Memory;
 
 package XML3_DOM_Store.Queries with SPARK_Mode is
    type Element_Query_Kind is
-     (Document_Root, First_Element, Next_Element, Element_Count);
+     (Document_Root, First_Element, Last_Element,
+      Next_Element, Previous_Element, Element_Count);
    type Property_Filter is (Any_Namespace, No_Namespace, Exact_Namespace);
    type Namespace_Query_Kind is (Prefix_Search, Href_Search);
 

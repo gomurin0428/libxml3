@@ -80,6 +80,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
+要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
+末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、

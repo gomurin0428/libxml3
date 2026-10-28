@@ -27,7 +27,8 @@ foreign-pointer validity remain trusted.
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
-editing and explicit UTF-8 memory serialization. The C adapters and native ABI
+editing, reverse element navigation through `Store.Queries.Select_Element`,
+and explicit UTF-8 memory serialization. The C adapters and native ABI
 implementation are not proved. The refreshed aggregate has 10,908 checks
 (884 flow and 10,024 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 130 warnings; the representation-generation
@@ -237,6 +238,13 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlLastElementChild` / `xmlPreviousElementSibling` の kind 検査・後方リンク走査は
+`Store.Queries.Select_Element` が実行します。既存の root/first/next 選択と C adapter を
+共通化し、C は Runtime 呼び出し・mutex・status/exception 変換のみです。
+走査は node 数で有界で、native field を C でたどりません。非 element のスキップ、
+編集後の順序、無接続 tree の文書先行解放後の走査は実行テストで検査します。
+「最も近い element を返す」完全な選択意味論までを契約で証明したという主張ではありません。
 
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。

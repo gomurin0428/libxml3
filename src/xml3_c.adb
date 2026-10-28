@@ -666,14 +666,16 @@ package body XML3_C is
       return Read_Doc (Cur, System.Null_Address, System.Null_Address, 0);
    end Parse_Doc;
 
-   function Doc_Get_Root_Element (Doc : System.Address) return System.Address
+   function Select_Element_Node
+     (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Element_Query_Kind;
+      Validation_Error : Boolean := False) return System.Address
    is
       Result : System.Address := System.Null_Address;
       Count : Natural := 0;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Doc = System.Null_Address then
+      if Facade = System.Null_Address then
          return System.Null_Address;
       end if;
       declare
@@ -681,10 +683,9 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Select_Element
-           (Doc, XML3_DOM_Store.Queries.Document_Root,
-            Result, Count, Status);
+           (Facade, Mode, Result, Count, Status);
       end;
-      Report_Operation_Status (Status);
+      Report_Operation_Status (Status, Validation_Error => Validation_Error);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -696,6 +697,13 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end Select_Element_Node;
+
+   function Doc_Get_Root_Element (Doc : System.Address) return System.Address
+   is
+   begin
+      return Select_Element_Node
+        (Doc, XML3_DOM_Store.Queries.Document_Root, Validation_Error => True);
    end Doc_Get_Root_Element;
 
    function New_Doc (Version : System.Address) return System.Address is
@@ -1930,67 +1938,31 @@ package body XML3_C is
 
    function First_Element_Child (Parent : System.Address) return System.Address
    is
-      Result : System.Address := System.Null_Address;
-      Count : Natural := 0;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
    begin
-      if Parent = System.Null_Address then
-         return System.Null_Address;
-      end if;
-      declare
-         Guard : XML3_DOM_Lock.Guard;
-      begin
-         XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Select_Element
-           (Parent, XML3_DOM_Store.Queries.First_Element,
-            Result, Count, Status);
-      end;
-      Report_Operation_Status (Status, Validation_Error => False);
-      return Result;
-   exception
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
+      return Select_Element_Node
+        (Parent, XML3_DOM_Store.Queries.First_Element);
    end First_Element_Child;
+
+   function Last_Element_Child (Parent : System.Address) return System.Address
+   is
+   begin
+      return Select_Element_Node
+        (Parent, XML3_DOM_Store.Queries.Last_Element);
+   end Last_Element_Child;
 
    function Next_Element_Sibling (Node : System.Address) return System.Address
    is
-      Result : System.Address := System.Null_Address;
-      Count : Natural := 0;
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
-         return System.Null_Address;
-      end if;
-      declare
-         Guard : XML3_DOM_Lock.Guard;
-      begin
-         XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Select_Element
-           (Node, XML3_DOM_Store.Queries.Next_Element,
-            Result, Count, Status);
-      end;
-      Report_Operation_Status (Status, Validation_Error => False);
-      return Result;
-   exception
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
+      return Select_Element_Node
+        (Node, XML3_DOM_Store.Queries.Next_Element);
    end Next_Element_Sibling;
+
+   function Previous_Element_Sibling (Node : System.Address) return System.Address
+   is
+   begin
+      return Select_Element_Node
+        (Node, XML3_DOM_Store.Queries.Previous_Element);
+   end Previous_Element_Sibling;
 
    function Child_Element_Count
      (Parent : System.Address) return Interfaces.C.unsigned_long
