@@ -67,6 +67,10 @@ package XML3_C is
      (Doc, Ns, Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewDocNode";
 
+   function New_Doc_Prop
+     (Doc, Name, Value : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewDocProp";
+
    function New_Doc_Raw_Node
      (Doc, Ns, Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewDocRawNode";

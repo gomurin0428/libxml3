@@ -107,12 +107,13 @@ is
         (Doc, Ns : System.Address; Name, Content : String;
          Raw_Content, Has_Content : Boolean;
          Result : out System.Address;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Attribute_Mode : Boolean := False)
       is
       begin
          XML3_DOM_Store.Content.New_Doc_Node
            (Current, Doc, Ns, Name, Content, Raw_Content, Has_Content,
-            Result, Status);
+            Result, Status, Attribute_Mode);
       end New_Doc_Node;
 
       procedure Add_Content

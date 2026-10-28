@@ -74,12 +74,16 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 主なサブセットは、UTF-8/UTF-16LE/BE のメモリ入力、要素・属性・テキスト・CDATA・
 コメント・PI の DOM 閲覧、namespace lookup に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
-`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlDocSetRootElement`、
+`xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
+`xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
+値の文字参照は展開し、NULL/空文字列はいずれも text child を作りません。
+属性は `xmlFreeProp` で解放でき、文書先行解放後も保持されます。属性の接続や単独の
+シリアライズはこのサブセットではサポートしません。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

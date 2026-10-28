@@ -13,6 +13,8 @@ int main() {
     const SearchNsFunction search_ns_by_href = xmlSearchNsByHref;
     xmlAttrPtr (*new_prop)(xmlNodePtr, const xmlChar *, const xmlChar *) =
         xmlNewProp;
+    xmlAttrPtr (*new_doc_prop)(xmlDocPtr, const xmlChar *, const xmlChar *) =
+        xmlNewDocProp;
     xmlAttrPtr (*set_prop)(xmlNodePtr, const xmlChar *, const xmlChar *) =
         xmlSetProp;
     int (*unset_prop)(xmlNodePtr, const xmlChar *) = xmlUnsetProp;
@@ -69,6 +71,7 @@ int main() {
     (void)search_ns;
     (void)search_ns_by_href;
     (void)new_prop;
+    (void)new_doc_prop;
     (void)set_prop;
     (void)unset_prop;
     (void)remove_prop;

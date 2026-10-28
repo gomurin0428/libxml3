@@ -11,8 +11,9 @@ memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlIsBlankNode`, `xmlNodeGetLang`, `xmlNodeGetSpacePreserve`,
 `xmlNodeSetLang`, `xmlNodeSetSpacePreserve`,
 `xmlNewChild`, `xmlNewTextChild`, `xmlNewDocText`, `xmlNewDocTextLen`,
-`xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`, and
-`xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
+`xmlNewDocComment`, `xmlNewDocPI`, `xmlNewDocNode`, `xmlNewDocRawNode`,
+`xmlNewDocProp`, `xmlNewCDataBlock`, `xmlLastElementChild`, and
+`xmlPreviousElementSibling`
 through the SPARK Store/Runtime. The entity summaries report
 0 flow errors, 131 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
@@ -194,6 +195,16 @@ formal claim. Runtime tests cover decoded/raw input, copied names and content,
 NULL/empty distinctions, subtree document affiliation without attachment,
 namespace retention after document-first release, and allocation-failure retry.
 
+`xmlNewDocProp` uses `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`
+with the attribute mode to create a detached, unnamespaced property. The SPARK
+path owns document affiliation, value-reference decoding, child construction,
+and failure cleanup; the C adapter selects the mode, converts inputs, locks,
+and maps statuses/errors without traversing DOM fields.
+The tested NULL/empty behavior, document-first attribute lifetime, rejected
+invalid references/names, and OOM preservation are runtime evidence. Attribute
+attachment and standalone serialization are unsupported, and the API's complete
+C semantics, native pointer validity, and ABI are not formally proved.
+
 `xmlNewCDataBlock` selects `CData_Node` in the same C/Runtime/Store path. The
 core `Create_Node` postcondition explicitly guarantees a null `Name` address
 and zero `Name_Length` for CDATA; this is a specific proved projection
@@ -363,8 +374,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-8f9d2ad52443ef8b72c86a33d387dcb798ddf8373dc4dc7a2c3bec32eab373fb  src/xml3_c.adb
-a9f60b0a59a242ea043aea5a968fec4e450fdb8c374b6d3043ab4f7f44d1a9dd  src/xml3_c.ads
+e4ff9813d52909bd4ce83f7b1d5fab4227736f741ca59b323d0afc76d75ec056  src/xml3_c.adb
+60a37312ec4e09d9765e102e00c787a73f86891a88fe670621439e6b39396508  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -380,10 +391,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-a65b6deea3e577c01a5403a70a870610ecd9e015ffd58036f821d38247f42f8c  src/xml3_dom_runtime.adb
-f39a2a0e922e9786eec316e0d6f8b0a97e021f698784308b0882dc6ff2aa601f  src/xml3_dom_runtime.ads
-06b75e8e84b3e13640cc32e59bffe08729aa1393d8e05a40f4fbb8c39c4c66cf  src/xml3_dom_store-content.adb
-012c7564561193975cc905af6a823dc52245d9506cf4cf388fae0606c556872a  src/xml3_dom_store-content.ads
+994eeabbb3015632b7bb2b37e772b4c6cff7d86db61b669769b0bb12c56b5354  src/xml3_dom_runtime.adb
+f6382a46b5940d4483096ff256664645ba3f8e5ec671bbcc940a422d3cbd234c  src/xml3_dom_runtime.ads
+f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
+a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 bc71cab53c16e4f4b9bcc59ab5e2a83a0c33b1c4f8c44adbf768024acc3ebb2d  src/xml3_dom_store-properties.adb
@@ -409,10 +420,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-5d6c4fd8bc49b3370b65d3f3d4bb212501772f52c29514adf02fcd41e65bd265  include/libxml/tree.h
+b29125a455f4c3c638c9702ac4a6626e62d4b8a81a51cbea56d0de59a2a32476  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-a79f548c6b0243cfca519ba992e6f35b5ff9187a31b82cb3f069250ed4804578  Makefile
+1c4ef2376df1d47ce15f5f2e24d10efe51de439a71de1d3671f500aef45172e4  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

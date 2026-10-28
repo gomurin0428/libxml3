@@ -836,9 +836,9 @@ package body XML3_C is
         (System.Null_Address, Ns, Name, System.Null_Address);
    end New_Node;
 
-   function New_Element_Node
+   function New_Container_Node
      (Context, Ns, Name, Content : System.Address;
-      Raw_Content, As_Child : Boolean)
+      Raw_Content, As_Child : Boolean; Attribute_Mode : Boolean := False)
      return System.Address
    is
       Result : System.Address := System.Null_Address;
@@ -862,7 +862,7 @@ package body XML3_C is
          else
             XML3_DOM_Runtime.New_Doc_Node
               (Context, Ns, Name_Text, Content_Text, Raw_Content,
-               Content /= System.Null_Address, Result, Status);
+               Content /= System.Null_Address, Result, Status, Attribute_Mode);
          end if;
       end;
       Report_Operation_Status (Status);
@@ -880,7 +880,19 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end New_Element_Node;
+   end New_Container_Node;
+
+   function New_Doc_Prop
+     (Doc, Name, Value : System.Address) return System.Address
+   is
+   begin
+      if Name = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return New_Container_Node
+        (Doc, System.Null_Address, Name, Value, Raw_Content => False,
+         As_Child => False, Attribute_Mode => True);
+   end New_Doc_Prop;
 
    function New_Doc_Node
      (Doc, Ns, Name, Content : System.Address) return System.Address
@@ -889,7 +901,7 @@ package body XML3_C is
       if Name = System.Null_Address then
          return System.Null_Address;
       end if;
-      return New_Element_Node
+      return New_Container_Node
         (Doc, Ns, Name, Content, Raw_Content => False, As_Child => False);
    end New_Doc_Node;
 
@@ -900,7 +912,7 @@ package body XML3_C is
       if Name = System.Null_Address then
          return System.Null_Address;
       end if;
-      return New_Element_Node
+      return New_Container_Node
         (Doc, Ns, Name, Content, Raw_Content => True, As_Child => False);
    end New_Doc_Raw_Node;
 
@@ -908,7 +920,7 @@ package body XML3_C is
      (Parent, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      return New_Element_Node
+      return New_Container_Node
         (Parent, Ns, Name, Content, Raw_Content => False, As_Child => True);
    end New_Child;
 
@@ -916,7 +928,7 @@ package body XML3_C is
      (Parent, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      return New_Element_Node
+      return New_Container_Node
         (Parent, Ns, Name, Content, Raw_Content => True, As_Child => True);
    end New_Text_Child;
 

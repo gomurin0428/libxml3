@@ -991,6 +991,29 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)root->last->content, expected) == 0);
         }
         xmlFreeDoc(content_doc);
+    } else if (strcmp(operation, "dom-new-doc-prop") == 0) {
+        xmlDocPtr property_doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlAttrPtr attr;
+        assert(property_doc && root);
+        assert(xmlDocSetRootElement(property_doc, root) == NULL);
+        xml3_oom_enable(fail_index);
+        attr = xmlNewDocProp(property_doc, BAD_CAST "a", BAD_CAST "new&amp;value");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(xmlDocGetRootElement(property_doc) == root && root->properties == NULL);
+        if (injected) {
+            assert(attr == NULL);
+            require_oom_error();
+            attr = xmlNewDocProp(property_doc, BAD_CAST "a", BAD_CAST "new&amp;value");
+        }
+        assert(attr && attr->doc == property_doc && attr->parent == NULL);
+        assert(attr->children && attr->children->doc == property_doc);
+        assert(strcmp((const char *)attr->children->content, "new&value") == 0);
+        xmlFreeDoc(property_doc);
+        assert(strcmp((const char *)attr->children->content, "new&value") == 0);
+        xmlFreeProp(attr);
     } else if (strcmp(operation, "dom-new-child") == 0 ||
                strcmp(operation, "dom-new-text-child") == 0 ||
                strcmp(operation, "dom-new-doc-node") == 0 ||

@@ -178,6 +178,12 @@
     "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNewDocProp": {
+    "implementation": "partial",
+    "scope": "Detached unnamespaced attribute created through the shared SPARK document-node path. Optional document must be managed/live and is retained for lifetime; NULL document is allowed. Predefined/numeric references are decoded, invalid/unsupported references are rejected transactionally; NULL/empty value creates no text child. NULL and colon-containing names are rejected. Attribute attachment and standalone serialization are unsupported; XML-name completeness, native pointers/ABI, and full C semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewCDataBlock": {
     "implementation": "partial",
     "scope": "Bounded raw CDATA construction with optional live document, no attachment and NULL name. Non-NULL negative length rejected; zero length reads no content; NULL/empty distinct. Early NUL ends retained bytes. SPARK construction/owner pin path; document-first release supported. UTF-8/XML validation and CDATA delimiter splitting occur at serialization. Native input validity/callbacks/full API semantics not proved.",

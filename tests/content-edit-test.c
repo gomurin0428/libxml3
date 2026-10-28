@@ -1421,6 +1421,60 @@ static void test_construct_child_failure_and_lifetime(void) {
 }
 #endif
 
+static void test_document_property(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlAttrPtr attr;
+    const char *values[] = {NULL, "", "a&amp;b&#x1F642;\t\r\n", "literal<text"};
+    const char *expected[] = {"", "", "a&b\xF0\x9F\x99\x82\t\r\n", "literal<text"};
+    assert(doc && root);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    for (unsigned i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        attr = xmlNewDocProp(doc, BAD_CAST "a", BAD_CAST values[i]);
+        assert(attr && attr->type == XML_ATTRIBUTE_NODE && attr->doc == doc);
+        assert(attr->parent == NULL && attr->prev == NULL && attr->next == NULL);
+        assert(attr->ns == NULL && root->properties == NULL);
+        assert_content((xmlNodePtr)attr, expected[i]);
+        if (i < 2) {
+            assert(attr->children == NULL && attr->last == NULL);
+        } else {
+            assert(attr->children && attr->children == attr->last);
+            assert(attr->children->doc == doc && attr->children->parent == (xmlNodePtr)attr);
+        }
+        assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "edited&amp;value") == 0);
+        assert_content((xmlNodePtr)attr, "edited&value");
+        xmlFreeProp(attr);
+    }
+    assert(xmlNewDocProp(doc, NULL, BAD_CAST "x") == NULL);
+    attr = xmlNewDocProp(NULL, BAD_CAST "standalone", BAD_CAST "&#65;");
+    assert(attr && attr->doc == NULL);
+    assert_content((xmlNodePtr)attr, "A");
+    xmlFreeProp(attr);
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlNode unmanaged = {0};
+        const char *invalid[] = {"&missing;", "&#0;", "&#x110000;", "&amp"};
+        for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+            assert(xmlNewDocProp(doc, BAD_CAST "a", BAD_CAST invalid[i]) == NULL);
+            assert(xmlDocGetRootElement(doc) == root && root->properties == NULL);
+        }
+        assert(xmlNewDocProp(doc, BAD_CAST "p:a", BAD_CAST "v") == NULL);
+        assert(xmlNewDocProp((xmlDocPtr)root, BAD_CAST "a", BAD_CAST "v") == NULL);
+        assert(xmlNewDocProp((xmlDocPtr)&unmanaged, BAD_CAST "a", BAD_CAST "v") == NULL);
+    }
+    attr = xmlNewDocProp(doc, BAD_CAST "held", BAD_CAST "before");
+    assert(attr);
+    xmlFreeDoc(doc);
+    assert(attr->doc == doc && attr->children->doc == doc);
+    assert_content((xmlNodePtr)attr, "before");
+    assert(xmlNodeSetContent((xmlNodePtr)attr, BAD_CAST "after&amp;free") == 0);
+    assert_content((xmlNodePtr)attr, "after&free");
+    xmlFreeProp(attr);
+#else
+    xmlFreeDoc(doc);
+#endif
+}
+
 int main(void) {
     assert(xmlNodeAddContent(NULL, NULL) == 1);
     assert(xmlNodeSetContent(NULL, NULL) == 1);
@@ -1434,6 +1488,7 @@ int main(void) {
     test_add_content_len();
     test_new_text_len();
     test_document_text();
+    test_document_property();
 #if defined(__unix__)
     test_bounded_content_guard_page();
 #endif
