@@ -698,6 +698,17 @@
     ],
     "proof": "not-proved"
   },
+  "function:xmlstring.h:xmlUTF8Strlen": {
+    "implementation": "partial",
+    "scope": "Counts Unicode scalar values before the first NUL in a NUL-terminated UTF-8 string; this is neither byte length nor grapheme-cluster count, and no normalization occurs. Empty input returns 0; NULL, malformed, truncated, overlong, surrogate, out-of-range, or unsupported UTF-8 returns -1 without a diagnostic. ASCII controls and Unicode noncharacters count as valid UTF-8 but are not thereby XML-character validated. The strict scanner deliberately rejects noncanonical encodings permissively counted by the pinned reference, including two consecutive continuation bytes counted as one character. If no NUL is found through the inclusive Max_Bytes boundary, DOM error 115 is recorded and -1 returned; unexpected exceptions map to error 1 and -1. No allocation, input mutation, or transcoding. Reduced-Last Ada tests exercise the cap; no huge public C string is constructed. GNATprove covers counter/loop/index bounds, status/result contracts, and native-call preconditions, not full Unicode API semantics or actual foreign bytes. Pointer validity/readable extent and C diagnostic mapping remain trusted. Shared malformed/reference-permissive and guard-page vectors run against both implementations with differing expected results; OOM/no-allocation checks are libxml3-only.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:xmlstring.h:xmlGetUTF8Char": {
     "implementation": "partial",
     "scope": "Decodes one strict UTF-8 scalar from at most *len readable bytes and returns its code point, updating *len to consumed width. NULL utf, NULL len, or *len < 1 returns -1; when len is non-NULL it is set to 0 for failure, and *len < 1 is handled without reading utf. NUL decodes as code point 0 with width 1; ASCII controls and Unicode noncharacters are accepted as UTF-8. Invalid, truncated, overlong, surrogate, out-of-range, or unsupported lead bytes return -1 with *len = 0 and no diagnostic; unexpected C-side exceptions map to DOM error 1, *len = 0, and -1. Unlike the pinned reference, the decoder rejects F8..FF lead-byte masking (including F8 90 80 80 and FC 80 80 80) and avoids the reference's utf[0] read before checking *len < 1. No allocation, input mutation, transcoding, or XML validation occurs. GNATprove covers scalar loop/index/overflow safety, width bounds, and native-call preconditions, not complete Unicode API semantics or actual foreign bytes. Pointer validity, *len-byte readable extent, and C mapping remain trusted. Shared vectors, reference-permissive vectors with differing expectations, and exact-span guard-page tests run against both reference and libxml3; the zero-length unreadable-pointer safety test and OOM/no-allocation checks are libxml3-only.",

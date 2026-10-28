@@ -6,23 +6,36 @@ package body XML3_Text.Buffers with SPARK_Mode is
      (Item : System.Address; Status : out UTF8_Status;
       Last : Byte_Count := Max_Bytes)
    is
+      Length : Byte_Count;
+   begin
+      Count_UTF8 (Item, Length, Status, Last);
+   end Check_UTF8;
+
+   procedure Count_UTF8
+     (Item : System.Address; Length : out Byte_Count; Status : out UTF8_Status;
+      Last : Byte_Count := Max_Bytes)
+   is
       Position : Natural := 0;
+      Count : Natural := 0;
       Bytes : String (1 .. 4) := (others => Character'Val (0));
       B : Natural;
       Width : Positive range 1 .. 4;
       Kind : Text_Error_Kind;
       Error_Position : Natural;
    begin
+      Length := 0;
       Status := UTF8_Invalid;
       if Item = System.Null_Address then
          return;
       end if;
       while Position <= Last loop
          pragma Loop_Invariant (Position <= Last + 4);
+         pragma Loop_Invariant (Count <= Position);
          pragma Loop_Variant (Increases => Position);
          Bytes (1) := Native.Byte_At (Item, Position);
          B := Character'Pos (Bytes (1));
          if B = 0 then
+            Length := Count;
             Status := UTF8_Valid;
             return;
          elsif B < 128 then
@@ -54,9 +67,10 @@ package body XML3_Text.Buffers with SPARK_Mode is
             end if;
          end if;
          Position := Position + Width;
+         Count := Count + 1;
       end loop;
       Status := UTF8_Limit_Exceeded;
-   end Check_UTF8;
+   end Count_UTF8;
 
    procedure Get_UTF8_Char
      (Item : System.Address; Available : Integer;

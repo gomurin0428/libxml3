@@ -178,6 +178,16 @@ pinned referenceが `F8`–`FF` leadをmaskしてdecodeする差も再現せず�
 allocationやinput mutation、transcodingはしません。shared vectorsとguard-page exact-span testはreferenceとlibxml3で実行し、
 referenceのpermissive vectorsは両方で期待値を分けます。`*len == 0` のunreadable-pointer安全testとOOM/no-allocation
 testはlibxml3のみです。native pointer validity、`*len` 分のreadable extent、actual bytes、C-side mappingは信頼境界です。
+`xmlUTF8Strlen` はNUL終端UTF-8列のUnicode scalar数を返し、byte数やgrapheme cluster数ではありません。
+combining sequenceは構成scalarごとに数え、normalizationもしません。NULL・malformed・truncated・
+overlong・surrogate・U+10FFFF超過などstrict UTF-8でない入力は診断なしで-1、空列は0で、最初のNULで停止します。
+ASCII controlとUnicode noncharacterはvalid UTF-8なら数えますが、XML character validityは判定しません。
+pinned referenceがoverlong、surrogate、範囲外scalar、また連続する2個のcontinuation byteを
+1 scalarとして数える挙動は再現せず、strictに拒否します。`Max_Bytes` 位置までにNULを確認できない場合はDOM error 115と-1、
+予期しない例外はDOM error 1と-1です。allocation、mutation、transcodingは行いません。
+小さい `Last` のAda helper testでcapを確認し、巨大な公開C stringは構築していません。
+SPARKは走査制御、scalar counter/bounds、status/result contract、native-call preconditionsを証明しますが、
+Unicode意味論全体、native bytes/readable extent、pointer validity、C mappingは信頼境界です。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
