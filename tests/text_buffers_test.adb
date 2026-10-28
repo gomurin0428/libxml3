@@ -9,6 +9,7 @@ procedure Text_Buffers_Test is
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
+   use type XML3_Text.Buffers.Slice_Status;
    use type XML3_Text.Text_Error_Kind;
    Left : aliased String := "aa" & Character'Val (0);
    Right : aliased String := "aa" & Character'Val (0);
@@ -176,6 +177,32 @@ procedure Text_Buffers_Test is
       XML3_Text.Buffers.Measure_UTF8_Prefix (Text'Address, 2, Size, Status, 2);
       pragma Assert (Status = XML3_Text.Buffers.UTF8_Invalid and Size = 0);
    end Check_UTF8_Prefix_Size;
+
+   procedure Check_UTF8_Prefix_Copy is
+      Text : aliased String := "a" & Character'Val (16#E2#) & Character'Val (16#82#)
+        & Character'Val (16#AC#) & Character'Val (0);
+      Status : XML3_Text.Buffers.Slice_Status;
+      Copy : System.Address;
+   begin
+      XML3_Text.Buffers.Copy_UTF8_Prefix (System.Null_Address, 0, Copy, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Slice and Copy = System.Null_Address);
+      XML3_Text.Buffers.Copy_UTF8_Prefix (Text'Address, -1, Copy, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Slice and Copy = System.Null_Address);
+      XML3_Text.Buffers.Copy_UTF8_Prefix (Text'Address, 0, Copy, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Sliced and Copy /= System.Null_Address);
+      pragma Assert (XML3_Native_Memory.Byte_At (Copy, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Copy);
+      XML3_Text.Buffers.Copy_UTF8_Prefix (Text'Address, 2, Copy, Status, 3);
+      pragma Assert
+        (Status = XML3_Text.Buffers.Slice_Limit_Exceeded and Copy = System.Null_Address);
+      XML3_Text.Buffers.Copy_UTF8_Prefix (Text'Address, 3, Copy, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.Sliced and Copy /= System.Null_Address);
+      pragma Assert (XML3_Native_Memory.Equal_Bytes (Copy, Text'Address, 5));
+      XML3_Native_Memory.Free (Copy);
+      Text (3) := Character'Val (0);
+      XML3_Text.Buffers.Copy_UTF8_Prefix (Text'Address, 2, Copy, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.No_Slice and Copy = System.Null_Address);
+   end Check_UTF8_Prefix_Copy;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -195,5 +222,6 @@ begin
    Check_UTF8_Count;
    Check_UTF8_Position;
    Check_UTF8_Prefix_Size;
+   Check_UTF8_Prefix_Copy;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

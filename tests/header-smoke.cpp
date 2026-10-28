@@ -8,6 +8,8 @@ int main() {
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;
+    xmlChar *(*utf8_copy)(const xmlChar *, int) = xmlUTF8Strndup;
+    (void)utf8_copy;
     (void)utf8_size;
     const xmlChar *(*utf8_position)(const xmlChar *, int) = xmlUTF8Strpos;
     (void)utf8_position;

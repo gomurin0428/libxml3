@@ -286,6 +286,35 @@ int main(int argc, char **argv) {
         copy = xmlStrncatNew(left, right, sizeof(right));
         assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
         xmlFree(copy);
+    } else if (strcmp(operation, "utf8-strndup") == 0) {
+        const xmlChar source[] = "A名\xf0\x9f\x98\x80";
+        xml3_oom_enable(fail_index);
+        assert(!xmlUTF8Strndup(NULL, 0) && !xmlUTF8Strndup(source, -1));
+        assert(!xmlUTF8Strndup(BAD_CAST "a\xed\xa0\x80", 2));
+        assert(xml3_oom_count() == 0);
+        xmlChar *copy = xmlUTF8Strndup(source, 2);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy && copy != source && !memcmp(copy, source, 4) && copy[4] == 0);
+        }
+        xmlFree(copy);
+        assert(!memcmp(source, "A名\xf0\x9f\x98\x80", sizeof(source)));
+        copy = xmlUTF8Strndup(source, 2);
+        assert(copy && !memcmp(copy, source, 4) && copy[4] == 0);
+        xmlFree(copy);
+        xml3_oom_enable(0);
+        copy = xmlUTF8Strndup(source, 0);
+        assert(!copy && xml3_oom_was_injected() && xml3_oom_count() >= 1);
+        xml3_oom_disable();
+        require_oom_error();
+        copy = xmlUTF8Strndup(source, 0);
+        assert(copy && copy[0] == 0);
+        xmlFree(copy);
     } else if (strcmp(operation, "strsub") == 0) {
         const xmlChar source[] = {'x', 'a', 0, 'b', 0xff};
         xml3_oom_enable(fail_index);

@@ -69,7 +69,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Strndup`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -471,6 +471,17 @@ capを確認し、巨大な公開C stringは作っていません。SPARKはscan
 native-call preconditionsを対象にしますが、foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論は
 信頼境界です。共有malformed/reference・guard-page vectorsは両方で実行し、invalid UTF-8のreference比較は対象vectorの期待値だけを
 比較します。OOM/no-allocation testはlibxml3のみです。
+`xmlUTF8Strndup` は最大 `len` 個のUnicode scalarに対応する訪問prefixだけをstrict UTF-8として検証し、
+そのraw bytesを新しいNUL終端のowned copyへ複製します。NULL inputまたは負の `len` は読み取り・allocation・診断なしでNULL、
+非NULL inputの `len == 0` はinputを読まずに新しい空文字列を返します。正の `len` は要求scalar数または最初のNULで止まり、
+後続suffixは検証しません。訪問prefixのmalformed・truncated・noncanonical encodingはallocation前に部分copyなしで
+診断なしのNULLです。返却値はcallerが `xmlFree` し、inputは変更・解放しません。ASCII controlとUnicode noncharacterは
+UTF-8として許可しますが、XML character validationはしません。referenceのinvalid UTF-8動作は保証されず、strictな訪問prefix拒否は
+意図的な安全差です。inclusive `Max_Bytes` まで未解決ならDOM error 115とNULL、allocation failureはDOM error 2、
+予期しない例外はDOM error 1とNULLです。小さい `Last` のAda testでcapを確認し、巨大な公開C stringは作っていません。
+SPARKはscan、span/byte bounds、status/result contract、native-call preconditionsを対象にしますが、native bytes/readable extent、
+pointer validity、allocation実動作、C mapping/ABI、完全なUnicode意味論は信頼境界です。共有malformed/reference・guard-page vectorsは
+両方で実行し、OOM/no-allocation testはlibxml3のみです。
 `xmlStrchr` はNUL終端raw byte列内で最初の一致した非NUL byteを探し、入力を借用する
 pointerを返します。返却値は `xmlFree` で個別に解放しません。NULL inputまたは検索値0は
 読み取りなしでNULLを返し、NUL byte自体は

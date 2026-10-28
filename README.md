@@ -207,6 +207,17 @@ XML character validationはしません。inclusive `Max_Bytes` まで走査が�
 DOM error 1と-1です。allocation、input mutation、normalizationは行いません。小さい `Last` のAda testでcapを確認し、
 巨大な公開C stringは構築していません。SPARKはscan control、byte-offset bounds、status/result contractとnative-call
 preconditionsを対象にし、foreign pointer validity/readable extent、actual bytes、C mapping、完全なUnicode意味論はtrusted boundaryです。
+`xmlUTF8Strndup` は最大 `len` 個のUnicode scalarを訪問prefixだけstrict UTF-8として検証し、
+そのraw bytesを新しいNUL終端allocationへコピーします。NULL inputまたは負の `len` は読み取り・allocation・
+診断なしでNULL、非NULL inputの `len == 0` はinputを読まずに新しい空文字列を返します。正の `len` は要求scalar数または
+最初のNULで停止し、未訪問suffixは検査しません。訪問prefixのmalformed・truncated・noncanonical encodingはallocation前に
+部分コピーなしで診断なしのNULLとなります。返却値はcallerが `xmlFree` するowned copyで、inputを変更・解放しません。
+ASCII controlとUnicode noncharacterはUTF-8として許可しますが、XML character validationはしません。referenceのinvalid
+UTF-8動作は保証されず、strict prefix拒否は意図的な安全差です。inclusive `Max_Bytes` までscanが未解決ならDOM error 115とNULL、
+allocation failureは標準のDOM error 2、予期しない例外はDOM error 1とNULLです。小さい `Last` のAda testでcapを確認し、
+巨大な公開C stringは構築していません。SPARKはscan、span/byte bounds、status/result contract、native-call preconditionsを対象にし、
+native bytes/readable extent、pointer validity、allocationの実動作、C ABI/mapping、完全なUnicode API意味論はtrusted boundaryです。
+shared malformed/reference・guard-page vectorsはreferenceとlibxml3の両方で実行し、OOM/no-allocation testはlibxml3のみです。
 `xmlStrncmp` と `xmlStrncasecmp` は正の `len` の範囲でbyte単位に比較し、
 Max_Input cutoffを設けずC `int` の正の全範囲（early exit時の `INT_MAX` を含む）を受け付け、
 最初の不一致、NUL、または長さ境界で停止します。`len <= 0` はpointer判定より先に0を返し、
