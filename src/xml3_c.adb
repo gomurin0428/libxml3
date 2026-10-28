@@ -1092,21 +1092,25 @@ package body XML3_C is
          return System.Null_Address;
    end Doc_Set_Root_Element;
 
-   function Add_Child
-     (Parent, Child : System.Address) return System.Address
+   function Add_Node
+     (Target, Child : System.Address; As_Sibling : Boolean) return System.Address
    is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Parent = System.Null_Address or else Child = System.Null_Address then
+      if Target = System.Null_Address or else Child = System.Null_Address then
          return System.Null_Address;
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Add_Child (Parent, Child, Result, Status);
+         if As_Sibling then
+            XML3_DOM_Runtime.Add_Sibling (Target, Child, Result, Status);
+         else
+            XML3_DOM_Runtime.Add_Child (Target, Child, Result, Status);
+         end if;
       end;
       Report_Operation_Status (Status);
       return Result;
@@ -1120,7 +1124,15 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
-   end Add_Child;
+   end Add_Node;
+
+   function Add_Child
+     (Parent, Child : System.Address) return System.Address is
+     (Add_Node (Parent, Child, False));
+
+   function Add_Sibling
+     (Sibling, Child : System.Address) return System.Address is
+     (Add_Node (Sibling, Child, True));
 
    function Text_Merge
      (First, Second : System.Address) return System.Address

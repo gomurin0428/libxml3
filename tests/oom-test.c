@@ -413,7 +413,8 @@ int main(int argc, char **argv) {
         assert(first->next == gap && gap->next == last && last->prev == gap);
         assert(strcmp((const char *)first->content, "leftright") == 0);
         assert(xmlGetLastError() == NULL);
-    } else if (strcmp(operation, "dom-merge") == 0) {
+    } else if (strcmp(operation, "dom-merge") == 0 ||
+               strcmp(operation, "dom-sibling") == 0) {
         xmlNodePtr root;
         doc = xmlNewDoc(NULL);
         root = xmlNewNode(NULL, BAD_CAST "root");
@@ -424,7 +425,9 @@ int main(int argc, char **argv) {
         assert(xmlDocSetRootElement(doc, root) == NULL);
         assert(xmlAddChild(root, merge_left) == merge_left);
         xml3_oom_enable(fail_index);
-        dom_node = xmlAddChild(root, merge_right);
+        dom_node = strcmp(operation, "dom-sibling") == 0
+            ? xmlAddSibling(merge_left, merge_right)
+            : xmlAddChild(root, merge_right);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -437,6 +440,12 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)merge_left->content, "left") == 0);
             assert(strcmp((const char *)merge_right->content, "right") == 0);
             require_oom_error();
+            if (strcmp(operation, "dom-sibling") == 0) {
+                xmlResetLastError();
+                assert(xmlAddSibling(merge_left, merge_right) == merge_left);
+                assert(strcmp((const char *)merge_left->content, "leftright") == 0);
+                merge_right = NULL;
+            }
         } else {
             assert(dom_node == merge_left);
             assert(root->children == merge_left && root->last == merge_left);

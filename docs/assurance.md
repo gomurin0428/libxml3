@@ -34,8 +34,10 @@ through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Queries.Select_Element`, detached `xmlNewDocProp` construction through
 `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, managed attribute
 attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
-explicit UTF-8 memory serialization. The C adapters and native ABI implementation are not proved.
-The refreshed aggregate has 11,048 checks (925 flow and 10,123 prover), no
+managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
+and explicit UTF-8 memory serialization. The C adapters and native ABI
+implementation are not proved. The refreshed aggregate has 11,071 checks
+(932 flow and 10,139 prover), no
 unproved or justified conditions, 0 `pragma Assume` statements, and 132
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -191,6 +193,16 @@ tests cover middle/head/tail/sole-property unlink, repeat unlink, editing and
 reattachment, namespace/document-first release, and no native allocation. Native byte comparison,
 copying, allocation/free and address correspondence remain trusted boundary
 operations. Public C getters route through these queries.
+
+`xmlAddSibling` resolves its reference node and incoming node through Store IDs,
+rejects self-insertion and mixed attribute/content lists, then delegates to
+`Store.Add_Child` using the reference node's managed parent. Text coalescing,
+property replacement, document affiliation, and failure preservation reuse the
+existing paths. Runtime is a passthrough; the C adapter shares only locking,
+status and exception mapping with `xmlAddChild`, and reads no native DOM links.
+Parentless sibling chains and children of attributes remain unsupported. Tests
+cover append/reorder/merge and serialize/reparse, namespaced attribute replacement,
+invalid and cross-document cases, document-first lifetime, and OOM retry.
 
 `XML3_DOM_Store.Properties` adds internal namespace-free property creation and
 replacement. Creation appends attributes, including duplicates; replacement

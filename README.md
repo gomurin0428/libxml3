@@ -90,6 +90,9 @@ href による expanded name で行い、接続成功後に一致属性を置き
 このサブセットではサポートしません。
 `xmlUnlinkNode` は属性も切り離せます。値・文書所属・namespace の保持は継続し、
 切り離した属性は編集・同一文書内での再接続・`xmlFreeProp` による解放ができます。
+`xmlAddSibling` は親に接続された node の兄弟列の末尾へ追加します。通常 child と属性は
+混在させず、text の結合・同じ expanded name の属性の置換は `xmlAddChild` と共通です。
+親のない兄弟列、文書間移動、属性値内部への兄弟追加は未対応です。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。
