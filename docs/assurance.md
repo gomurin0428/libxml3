@@ -27,7 +27,8 @@ foreign-pointer validity remain trusted.
 The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
-editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
+lookup through `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`,
+namespace editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
 through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
 through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Properties.Set_Qualified_Property`, reverse element navigation through
@@ -38,9 +39,9 @@ attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
 managed list release through `Runtime.Release_List` / `Store.Release_List`,
 and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,098 checks
-(938 flow and 10,160 prover), no
-unproved or justified conditions, 0 `pragma Assume` statements, and 132
+implementation are not proved. The refreshed aggregate has 11,116 checks
+(943 flow and 10,173 prover), no
+unproved or justified conditions, 0 `pragma Assume` statements, and 130
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -161,7 +162,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the successful 11,048-check aggregate proof; see
+new units are included in the current successful 11,116-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -331,6 +332,12 @@ mutex・Runtime 呼び出し・status/exception 変換のみで、native の `ne
 従来の `xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` も同じ入口を通ります。
 属性検索・内容のコピーはSPARK側のままで、新たな所有権モデルは追加していません。
 戻り値と出力 pointer の C ABI 契約そのものは証明外で、固定版比較と確保失敗テストで検査します。
+
+公開 namespace 検索は `Store.Queries.Lookup_Namespace` を通ります。まず純粋な
+`Search_Namespace` で検索し、必要な場合だけ最も近い文書なし element へ
+`Store.Create_Namespace` で組み込み `xml` 宣言を追加します。C 境界には変更を加えません。
+属性更新内部では純粋な検索を維持し、更新失敗時の宣言の巻き戻し処理は変えていません。
+固定版比較・作成失敗後の再試行・既存宣言の保持・再検索の確保不要を実行検査します。
 
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。

@@ -303,12 +303,89 @@ static void test_replace_last_namespace_borrower(void) {
 }
 #endif
 
+static void test_docless_namespace_lookup(void) {
+    const xmlChar *xml_uri = BAD_CAST "http://www.w3.org/XML/1998/namespace";
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr child = xmlNewChild(root, NULL, BAD_CAST "child", BAD_CAST "text");
+    xmlNsPtr ns, by_uri;
+    xmlAttrPtr attr;
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlChar *dump = NULL;
+    int size = 0;
+    assert(root && child && doc && !child->nsDef);
+    ns = xmlSearchNs(NULL, child->children, BAD_CAST "xml");
+    assert(ns && child->nsDef == ns && !root->nsDef);
+    assert(xmlStrEqual(ns->prefix, BAD_CAST "xml") && xmlStrEqual(ns->href, xml_uri));
+    assert(xmlSearchNsByHref(NULL, child, xml_uri) == ns);
+    assert(xmlSearchNs(NULL, child, BAD_CAST "xml") == ns && !ns->next);
+    attr = xmlNewNsProp(child, ns, BAD_CAST "lang", BAD_CAST "ja");
+    assert(attr && xmlSearchNs(NULL, (xmlNodePtr)attr, BAD_CAST "xml") == ns);
+    by_uri = xmlSearchNsByHref(NULL, root, xml_uri);
+    assert(by_uri && root->nsDef == by_uri && by_uri != ns);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    xmlDocDumpMemoryEnc(doc, &dump, &size, "UTF-8");
+    assert(dump && size > 0);
+    {
+        xmlDocPtr parsed = xmlReadMemory((const char *)dump, size, NULL, NULL, 0);
+        xmlChar *lang;
+        assert(parsed);
+        lang = xmlNodeGetLang(xmlDocGetRootElement(parsed)->children);
+        assert(lang && xmlStrEqual(lang, BAD_CAST "ja"));
+        xmlFree(lang);
+        xmlFreeDoc(parsed);
+    }
+    xmlFree(dump);
+    xmlFreeDoc(doc);
+    root = xmlNewText(BAD_CAST "standalone");
+    attr = xmlNewDocProp(NULL, BAD_CAST "standalone", NULL);
+    assert(root && attr);
+    assert(!xmlSearchNs(NULL, root, BAD_CAST "xml"));
+    assert(!xmlSearchNsByHref(NULL, (xmlNodePtr)attr, xml_uri));
+    xmlFreeNode(root);
+    xmlFreeProp(attr);
+#ifndef XML3_REFERENCE_TEST
+    doc = xmlNewDoc(NULL);
+    root = xmlNewNode(NULL, BAD_CAST "retained");
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    ns = xmlSearchNs(NULL, root, BAD_CAST "xml");
+    assert(ns);
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    assert(xmlSearchNsByHref(NULL, root, xml_uri) == ns);
+    assert(xmlNewNsProp(root, ns, BAD_CAST "lang", BAD_CAST "en"));
+    xmlFreeNode(root);
+#endif
+}
+
+static void test_null_namespace_uri_lookup(void) {
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr child = xmlNewChild(root, NULL, BAD_CAST "child", NULL);
+    xmlNsPtr parent, null_uri, empty_uri;
+    xmlAttrPtr attr;
+    assert(root && child);
+    parent = xmlNewNs(root, BAD_CAST "urn:parent", BAD_CAST "p");
+    null_uri = xmlNewNs(child, NULL, BAD_CAST "p");
+    empty_uri = xmlNewNs(child, BAD_CAST "", BAD_CAST "empty");
+    assert(parent && null_uri && empty_uri);
+    assert(xmlSearchNs(NULL, child, BAD_CAST "p") == parent);
+    assert(xmlSearchNsByHref(NULL, child, NULL) == null_uri);
+    assert(xmlSearchNsByHref(NULL, child, BAD_CAST "") == empty_uri);
+    assert(!xmlSearchNsByHref(NULL, child, BAD_CAST "urn:parent"));
+    attr = xmlNewProp(child, BAD_CAST "a", BAD_CAST "v");
+    assert(attr && xmlSearchNsByHref(NULL, (xmlNodePtr)attr, NULL) == null_uri);
+    assert(xmlSearchNs(NULL, child, BAD_CAST "empty") == empty_uri);
+    assert(!xmlSearchNsByHref(NULL, root, NULL));
+    xmlFreeNode(root);
+}
+
 int main(void) {
 #ifdef XML3_REFERENCE_TEST
     assert(LIBXML_VERSION == 21504);
     assert(strcmp(xmlParserVersion, XML3_REFERENCE_VERSION_STRING) == 0);
 #endif
     test_namespace_property_flow();
+    test_docless_namespace_lookup();
+    test_null_namespace_uri_lookup();
     test_docless_xml_namespace();
     test_standalone_and_parsed_namespaces();
 #ifndef XML3_REFERENCE_TEST

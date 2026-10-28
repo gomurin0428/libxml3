@@ -419,6 +419,18 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlSearchNs": {
+    "implementation": "partial",
+    "scope": "SPARK Store/Runtime namespace lookup with managed ancestry, shadowing, and retained namespaces. A missing built-in xml binding on documentless nodes is created on the nearest element through Store.Create_Namespace, then reused; failure preserves existing declarations. Implicit declarations append rather than prepend. Prefix lookup skips NULL href declarations. C ABI/native pointer validity and complete lookup semantics are not proved.",
+    "tests": ["tests/namespace-test.c", "tests/namespace-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSearchNsByHref": {
+    "implementation": "partial",
+    "scope": "SPARK Store/Runtime URI lookup shares managed shadowing and lazy documentless xml binding creation with xmlSearchNs. NULL URI matches NULL href declarations, distinct from empty href; attribute queries exclude default namespaces. Pure internal searches remain non-mutating for property-update rollback. New implicit declarations append rather than prepend. Full public semantics, native pointer validity, and C ABI remain outside proof.",
+    "tests": ["tests/namespace-test.c", "tests/namespace-edit-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNodeGetAttrValue": {
     "implementation": "partial",
     "scope": "Namespace-aware attribute value lookup through existing SPARK Runtime.Get_Property / Store.Queries.Find_Property / Get_Content. Returns 0 plus an independent xmlFree-compatible copy, 1 plus NULL for missing/invalid node or name (NULL out also returns 1), and -1 plus NULL for allocation, limit, string-conversion, or internal failures. NULL URI means no namespace, not any namespace. C status/output-pointer mapping is shared with existing getters; DTD defaults remain unsupported. Native ABI/output pointer and full public semantics are not proved.",

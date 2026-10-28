@@ -1230,6 +1230,42 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         xmlFreeNode(node);
+    } else if (strcmp(operation, "ns-search-prefix") == 0 ||
+               strcmp(operation, "ns-search-href") == 0) {
+        const xmlChar *uri = BAD_CAST "http://www.w3.org/XML/1998/namespace";
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlNsPtr existing, result;
+        int by_href = strcmp(operation, "ns-search-href") == 0;
+        assert(root);
+        existing = xmlNewNs(root, BAD_CAST "urn:p", BAD_CAST "p");
+        assert(existing);
+        xml3_oom_enable(0);
+        assert(!xmlSearchNs(NULL, root, BAD_CAST "missing"));
+        assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
+        xml3_oom_disable();
+        xml3_oom_enable(fail_index);
+        result = by_href ? xmlSearchNsByHref(NULL, root, uri)
+                         : xmlSearchNs(NULL, root, BAD_CAST "xml");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!result && root->nsDef == existing && !existing->next);
+            require_oom_error();
+        } else {
+            assert(result && xmlStrEqual(result->href, uri));
+        }
+        xmlResetLastError();
+        result = xmlSearchNs(NULL, root, BAD_CAST "xml");
+        assert(result && xmlStrEqual(result->href, uri));
+        assert(xmlSearchNs(NULL, root, BAD_CAST "p") == existing);
+        xml3_oom_enable(0);
+        assert(xmlSearchNsByHref(NULL, root, uri) == result);
+        assert(xmlSearchNs(NULL, root, BAD_CAST "xml") == result);
+        assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
+        xml3_oom_disable();
+        assert(xmlGetLastError() == NULL);
+        xmlFreeNode(root);
     } else if (strcmp(operation, "attr-value") == 0) {
         static const char input[] = "<root xmlns:p='urn:p' p:a='value'/>";
         xmlNodePtr root;

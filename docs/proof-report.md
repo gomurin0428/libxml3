@@ -3,7 +3,7 @@
 ## Result
 
 `make prove` completed successfully for this source revision:
-**11,098 checks, 938 by flow analysis and 10,160 by provers;
+**11,116 checks, 943 by flow analysis and 10,173 by provers;
 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -20,8 +20,14 @@ attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 `xmlPreviousElementSibling`, and `xmlGetLastChild` through the SPARK
 Store/Runtime. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
-its C status/output-pointer mapping is outside the proof. The entity summaries
-report 0 flow errors, 132 warnings, and 0 `pragma Assume`
+its C status/output-pointer mapping is outside the proof. Public
+`xmlSearchNs` / `xmlSearchNsByHref` route through
+`Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`, which composes
+the pure `Search_Namespace` query with lazy XML-binding creation for
+documentless managed nodes. The pure query remains the qualified-property
+rollback path. C adapters and libxml2 semantic equivalence, including
+append-versus-prepend declaration ordering, remain outside the proof. The
+entity summaries report 0 flow errors, 130 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -41,13 +47,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 258 |
-| Initialization | 537 |
-| Runtime checks | 4,989 |
+| Data dependencies | 259 |
+| Initialization | 541 |
+| Runtime checks | 4,996 |
 | Assertions | 1,474 |
-| Functional contracts | 3,645 |
+| Functional contracts | 3,651 |
 | Termination | 195 |
-| **Total** | **11,098** |
+| **Total** | **11,116** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -433,7 +439,7 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-cecff47b1de3f87e9463e461f5e0ca53f8ed39166ba7d7d60cd89be7170b6d9f  src/xml3_dom_runtime.adb
+9a246879d7d1e068287487b30e4cbe0842161f0f59048ca0ff8a4f32f0a43e68  src/xml3_dom_runtime.adb
 16732f7165d667e86e91f88c235e39634dcf4a61fb96cf8414903accc80b028d  src/xml3_dom_runtime.ads
 f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
@@ -441,8 +447,8 @@ a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_s
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2c5f2910bde31cda9af6496a4760dfbfeb3db5b7b50f606340bc915a569b92f6  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-664ab9e9d540bb16474149dd0e23d97d95abf7b9f5f006cd09021ab194db620d  src/xml3_dom_store-queries.adb
-0ac3ca1989efc6788ead0db6b814a164b41dd07d7aef4ec042085279bbbd1244  src/xml3_dom_store-queries.ads
+d66d1b6c549c87041813e43172da62d64860aaedf8f9b096d636509ba74d7905  src/xml3_dom_store-queries.adb
+4d8f23a5334705217c9fe752778dd70c5e4feec299c8c0d128d73c60774b26e7  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
 3d429edf26b88a3392fada0e24319ec30455c0551a52636ba8d80a79fff3cb67  src/xml3_dom_store.adb
@@ -465,7 +471,7 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 e5fc981e6883d371779001f62925692f7f817871000dad63cb833b94957d4eae  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-38aac8ae07300c8061101367280f8fbe97c2e730fb357b12d8aa6b324a6bea40  Makefile
+08385072249ac2bc9cb5fa0fdde86e8b8fdbb1e545da6c3055d6a6890570e9ed  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
