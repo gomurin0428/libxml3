@@ -121,6 +121,11 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Release_List
+        (Facade : System.Address; Kind : XML3_DOM_Store.Release_Kind;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Create_Property
         (Element : System.Address; Name, Value : String;
          Has_Value : Boolean; Result : out System.Address;

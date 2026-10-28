@@ -94,6 +94,8 @@ href による expanded name で行い、接続成功後に一致属性を置き
 混在させず、text の結合・同じ expanded name の属性の置換は `xmlAddChild` と共通です。
 親のない兄弟列、文書間移動、属性値内部への兄弟追加は未対応です。
 `xmlGetLastChild` は要素に限定せず、document・element・属性値の末尾 child を取得します。
+`xmlFreeNodeList` / `xmlFreePropList` は指定位置から末尾までの兄弟列と子ツリーを解放し、
+残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。
 要素の前向き走査に加え、`xmlLastElementChild` / `xmlPreviousElementSibling` による
 末尾・前方への走査も可能です。コメント・テキスト等は飛ばします。
 `xmlTextMerge` は通常のテキストノードを結合し、成功時だけ第二引数を切り離して解放します。

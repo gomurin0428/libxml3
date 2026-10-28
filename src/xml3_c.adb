@@ -1295,7 +1295,10 @@ package body XML3_C is
          Report_Dom_Error (1);
    end Unlink_Node;
 
-   procedure Free_Node (Node : System.Address) is
+   procedure Free_Managed_Node
+     (Node : System.Address; Kind : XML3_DOM_Store.Release_Kind;
+      As_List : Boolean)
+   is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
@@ -1306,8 +1309,11 @@ package body XML3_C is
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Release
-           (Node, XML3_DOM_Store.Content_Node, False, Status);
+         if As_List then
+            XML3_DOM_Runtime.Release_List (Node, Kind, Status);
+         else
+            XML3_DOM_Runtime.Release (Node, Kind, False, Status);
+         end if;
       end;
       Report_Operation_Status (Status);
    exception
@@ -1317,7 +1323,17 @@ package body XML3_C is
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
       when others =>
          Report_Dom_Error (1);
+   end Free_Managed_Node;
+
+   procedure Free_Node (Node : System.Address) is
+   begin
+      Free_Managed_Node (Node, XML3_DOM_Store.Content_Node, False);
    end Free_Node;
+
+   procedure Free_Node_List (Node : System.Address) is
+   begin
+      Free_Managed_Node (Node, XML3_DOM_Store.Content_Node, True);
+   end Free_Node_List;
 
    procedure Free_Doc (Doc : System.Address) is
       Status : XML3_DOM_Store.Operation_Status :=
@@ -1896,28 +1912,14 @@ package body XML3_C is
    end Remove_Prop;
 
    procedure Free_Prop (Attribute : System.Address) is
-      Status : XML3_DOM_Store.Operation_Status :=
-        XML3_DOM_Constructors.Internal_Error;
    begin
-      if Attribute = System.Null_Address then
-         return;
-      end if;
-      declare
-         Guard : XML3_DOM_Lock.Guard;
-      begin
-         XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Release
-           (Attribute, XML3_DOM_Store.Namespaced_Attribute, False, Status);
-      end;
-      Report_Operation_Status (Status);
-   exception
-      when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-      when others =>
-         Report_Dom_Error (1);
+      Free_Managed_Node (Attribute, XML3_DOM_Store.Namespaced_Attribute, False);
    end Free_Prop;
+
+   procedure Free_Prop_List (Attribute : System.Address) is
+   begin
+      Free_Managed_Node (Attribute, XML3_DOM_Store.Namespaced_Attribute, True);
+   end Free_Prop_List;
 
    function Has_Prop
      (Node, Name : System.Address) return System.Address

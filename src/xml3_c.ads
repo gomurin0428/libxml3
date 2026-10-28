@@ -170,6 +170,9 @@ package XML3_C is
    procedure Free_Node (Node : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeNode";
 
+   procedure Free_Node_List (Node : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeNodeList";
+
    procedure Free_Doc (Doc : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeDoc";
 
@@ -235,6 +238,9 @@ package XML3_C is
 
    procedure Free_Prop (Attribute : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeProp";
+
+   procedure Free_Prop_List (Attribute : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreePropList";
 
    function Has_Prop
      (Node : System.Address;

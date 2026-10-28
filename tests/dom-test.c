@@ -545,7 +545,120 @@ static void test_free_rejects_unsupported_types(void) {
 }
 #endif
 
+static void test_free_node_list(void) {
+    static const char input[] =
+        "<r><keep/><remove a='1'><nested/></remove>text<!--tail--></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, keep, fresh, standalone;
+    xmlChar *bytes = NULL;
+    int length = 0;
+    xmlDocPtr reparsed;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    keep = root->children;
+    xmlFreeNodeList(NULL);
+    xmlFreeNodeList(keep->next);
+#ifdef XML3_REFERENCE_TEST
+    /* libxml2 requires callers to repair the surviving list links. */
+    keep->next = NULL;
+    root->last = keep;
+#endif
+    assert(root->children == keep && root->last == keep && keep->next == NULL);
+    assert(keep->parent == root && keep->prev == NULL);
+    fresh = xmlNewTextChild(root, NULL, BAD_CAST "fresh", BAD_CAST "new & data");
+    assert(fresh && keep->next == fresh && fresh->prev == keep);
+    xmlDocDumpMemoryEnc(doc, &bytes, &length, "UTF-8");
+    assert(bytes && length > 0);
+    reparsed = xmlReadMemory((const char *)bytes, length, NULL, NULL, 0);
+    assert(reparsed && xmlChildElementCount(xmlDocGetRootElement(reparsed)) == 2);
+    assert_text(xmlDocGetRootElement(reparsed)->last, "new & data");
+    xmlFreeDoc(reparsed);
+    xmlFree(bytes);
+    xmlFreeNodeList(root->children);
+#ifdef XML3_REFERENCE_TEST
+    root->children = root->last = NULL;
+#endif
+    assert(root->children == NULL && root->last == NULL);
+    assert(xmlNewChild(root, NULL, BAD_CAST "again", NULL));
+    fresh = xmlNewComment(BAD_CAST "document tail");
+    assert(fresh && xmlAddChild((xmlNodePtr)doc, fresh) == fresh);
+    xmlFreeNodeList(doc->children);
+#ifdef XML3_REFERENCE_TEST
+    doc->children = doc->last = NULL;
+#endif
+    assert(doc->children == NULL && doc->last == NULL);
+    assert(xmlDocGetRootElement(doc) == NULL);
+    xmlFreeDoc(doc);
+    standalone = xmlNewNode(NULL, BAD_CAST "standalone");
+    assert(standalone && xmlNewChild(standalone, NULL, BAD_CAST "child", NULL));
+    xmlFreeNodeList(standalone);
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void test_release_list_lifetime_and_rejections(void) {
+    static const char input[] = "<r a='one' b='two'><keep/><donor/></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, keep, donor;
+    xmlNsPtr ns;
+    xmlAttrPtr first;
+    xmlNode unmanaged = {0};
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    keep = root->children;
+    donor = keep->next;
+    first = root->properties;
+    ns = xmlNewNs(donor, BAD_CAST "urn:retained", BAD_CAST "p");
+    assert(ns);
+    xmlSetNs(keep, ns);
+    assert(xmlNewChild(root, ns, BAD_CAST "borrower", NULL));
+    assert(xmlNewNsProp(root, ns, BAD_CAST "borrowed", BAD_CAST "v"));
+    xmlResetLastError();
+    xmlFreeNodeList((xmlNodePtr)doc);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlFreeNodeList((xmlNodePtr)first);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlFreeNodeList((xmlNodePtr)ns);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlFreePropList((xmlAttrPtr)root);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlFreePropList((xmlAttrPtr)ns);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    unmanaged.type = XML_ELEMENT_NODE;
+    unmanaged.next = &unmanaged;
+    xmlResetLastError();
+    xmlFreeNodeList(&unmanaged);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlFreePropList((xmlAttrPtr)&unmanaged);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlFreeNodeList(NULL);
+    xmlFreePropList(NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(root->children == keep && keep->next == donor && root->properties == first);
+    xmlResetLastError();
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    xmlFreeNodeList(donor);
+    assert(root->children == keep && root->last == keep && keep->next == NULL);
+    assert(keep->ns == ns && strcmp((const char *)ns->href, "urn:retained") == 0);
+    xmlFreePropList(root->properties);
+    assert(root->properties == NULL && keep->ns == ns);
+    assert(strcmp((const char *)ns->prefix, "p") == 0);
+    xmlSetNs(keep, NULL);
+    assert(keep->ns == NULL);
+    xmlFreeNodeList(root->children);
+    assert(root->children == NULL && root->last == NULL);
+    assert(xmlNewChild(root, NULL, BAD_CAST "after", NULL));
+    xmlFreeNode(root);
+}
+#endif
+
 int main(void) {
+    test_free_node_list();
     test_constructors_and_root_replacement();
     test_promote_descendant_to_root();
     test_namespace_lookup_after_move();
@@ -554,6 +667,7 @@ int main(void) {
     test_add_sibling_flow();
 #ifndef XML3_REFERENCE_TEST
     test_sibling_rejections_and_lifetime();
+    test_release_list_lifetime_and_rejections();
     test_cross_document_detached_lifetime();
     test_sticky_mutator_errors();
     test_safe_ownership();

@@ -123,6 +123,11 @@ package XML3_DOM_Store with SPARK_Mode is
       Require_Parent : Boolean; Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
 
+   procedure Release_List
+     (S : in out Store; Facade : System.Address; Kind : Release_Kind;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory);
+
 private
    type Store is limited record
       Current : XML3_DOM.State_Access := null;

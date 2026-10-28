@@ -36,9 +36,10 @@ through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node`, managed attribute
 attachment through `Store.Add_Child` / `Store.Properties.Add_Property`, and
 managed sibling insertion through `Runtime.Add_Sibling` / `Store.Add_Sibling`,
+managed list release through `Runtime.Release_List` / `Store.Release_List`,
 and explicit UTF-8 memory serialization. The C adapters and native ABI
-implementation are not proved. The refreshed aggregate has 11,071 checks
-(932 flow and 10,139 prover), no
+implementation are not proved. The refreshed aggregate has 11,098 checks
+(938 flow and 10,160 prover), no
 unproved or justified conditions, 0 `pragma Assume` statements, and 132
 warnings. The representation-generation diagnostic is recorded separately.
 The parser postcondition requires every output node's parent to precede it and
@@ -315,6 +316,15 @@ kind で絞り込まず管理中の末尾 child facade を返します。文書�
 C adapter は共通の入口を呼ぶだけで、native `last` field は読みません。切り離し・再接続・
 内容置換後の結果、文書先行解放後の利用、native allocation 不要を実行テストで検査します。
 戻り値の完全な公開意味論や native pointer validity を証明したという主張ではありません。
+
+`xmlFreeNodeList` / `xmlFreePropList` は `Runtime.Release_List` / `Store.Release_List`
+を通り、管理中の `Next` を保存して既存の `Free_Subtree_With_Namespaces` を反復します。
+反復は node 数で有界で、各段階の `Valid`・`Can_Edit`・`Facades_Present` を維持します。
+最後に一度 `Synchronize` / `Reclaim_Empty` を実行します。C は単体解放と共通の
+mutex・Runtime 呼び出し・status/exception 変換のみで、native の `next` は読みません。
+接続済み suffix の安全な切り離し、再編集・出力・再読み込み、文書先行解放、名前空間の
+残存利用者、native allocation 不要を実行テストで検査します。完全な一覧解放の意味論・
+全原子性・native pointer validity を証明したという主張ではありません。
 
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。

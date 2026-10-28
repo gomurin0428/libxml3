@@ -543,4 +543,51 @@ package body XML3_DOM_Store with SPARK_Mode is
       Reclaim_Empty (S);
       Status := Created;
    end Release;
+
+   procedure Release_List
+     (S : in out Store; Facade : System.Address; Kind : Release_Kind;
+      Status : out Operation_Status)
+   is
+      N : Node_Ref := Find_Node (S, Facade);
+      Following : Node_Ref;
+      Item : Node_View;
+   begin
+      Status := Invalid_Argument;
+      if Facade = System.Null_Address then
+         Status := Created;
+         return;
+      elsif N = Null_Node or else Kind = Document_Only then
+         return;
+      end if;
+      Status := Internal_Error;
+      for Step in 1 .. Node_Count (S.Current.all) loop
+         pragma Loop_Invariant (S.Current /= null);
+         pragma Loop_Invariant
+           (Valid (S.Current.all) and then Can_Edit (S.Current.all)
+            and then Facades_Present (S.Current.all));
+         if N not in 1 .. Node_Ref (Node_Count (S.Current.all))
+           or else Node (S.Current.all, N).State /= Live
+         then
+            exit;
+         end if;
+         Item := Node (S.Current.all, N);
+         if (Kind = Content_Node
+             and then Item.Kind in Document_Node | Attribute_Node)
+           or else (Kind in Plain_Attribute | Namespaced_Attribute
+                    and then Item.Kind /= Attribute_Node)
+         then
+            Status := Invalid_Argument;
+            exit;
+         end if;
+         Following := Item.Next;
+         Free_Subtree_With_Namespaces (S.Current.all, N);
+         N := Following;
+         if N = Null_Node then
+            Status := Created;
+            exit;
+         end if;
+      end loop;
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      Reclaim_Empty (S);
+   end Release_List;
 end XML3_DOM_Store;
