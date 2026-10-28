@@ -1,9 +1,14 @@
+#define _GNU_SOURCE
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#if defined(__unix__)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 static void assert_content(xmlNodePtr node, const char *expected) {
     xmlChar *content = xmlNodeGetContent(node);
@@ -324,6 +329,104 @@ static void test_invalid_comment_serialization(void) {
 }
 #endif
 
+static void test_set_content_len(void) {
+    static const xmlChar reference[] = {'A', '&', 'a', 'm', 'p', ';', 'B', 'X'};
+    static const xmlChar terminated[] = {'a', 0, 'z'};
+    static const xmlChar raw[] = {'a', 'b', 'c', 'X'};
+    xmlNodePtr element = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr text = xmlNewText(BAD_CAST "old");
+    xmlAttrPtr attr;
+    assert(element != NULL && text != NULL);
+    attr = xmlNewProp(element, BAD_CAST "a", BAD_CAST "old");
+    assert(attr != NULL);
+    assert(xmlNodeSetContentLen(element, reference, 7) == 0);
+    assert_content(element, "A&B");
+    assert(xmlNodeSetContentLen((xmlNodePtr)attr, reference, 7) == 0);
+    assert_content((xmlNodePtr)attr, "A&B");
+    assert(xmlNodeSetContentLen(text, raw, 3) == 0);
+    assert_content(text, "abc");
+    assert(xmlNodeSetContentLen(text, text->content + 1, 2) == 0);
+    assert_content(text, "bc");
+    assert(xmlNodeSetContentLen(text, terminated, 3) == 0);
+    assert_content(text, "a");
+    assert(xmlNodeAddContent(text, BAD_CAST "&") == 0);
+    assert_content(text, "a&");
+    assert(xmlNodeSetContentLen(element, terminated, 3) == 0);
+    assert_content(element, "a");
+    assert(xmlNodeSetContentLen(text, raw, 0) == 0);
+    assert(text->content != NULL && text->content[0] == 0);
+    assert(xmlNodeSetContentLen(element, raw, 0) == 0);
+#ifdef XML3_REFERENCE_TEST
+    assert(element->children != NULL);
+    assert(element->children->type == XML_TEXT_NODE);
+    assert(element->children->content != NULL &&
+           element->children->content[0] == 0);
+#else
+    assert(element->children == NULL);
+#endif
+    assert(xmlNodeSetContentLen(text, BAD_CAST "negative", -7) == 0);
+    assert_content(text, "negative");
+    assert(xmlNodeSetContentLen(element, BAD_CAST "&amp;", -1) == 0);
+    assert_content(element, "&");
+    assert(xmlNodeSetContentLen(text, NULL, 20) == 0);
+    assert(text->content == NULL);
+    assert(xmlNodeSetContentLen(element, NULL, 20) == 0);
+    assert(element->children == NULL);
+    assert(xmlNodeSetContentLen(NULL, raw, 3) == 1);
+    xmlFreeNode(text);
+    xmlFreeNode(element);
+}
+
+#if defined(__unix__)
+static void test_set_content_len_guard_page(void) {
+    long page_size = sysconf(_SC_PAGESIZE);
+    unsigned char *mapping;
+    xmlChar *buffer;
+    xmlNodePtr text = xmlNewText(NULL);
+    xmlNodePtr element = xmlNewNode(NULL, BAD_CAST "root");
+    assert(page_size >= 8 && text != NULL && element != NULL);
+    mapping = mmap(NULL, (size_t)page_size * 2, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page_size, (size_t)page_size, PROT_NONE) == 0);
+    buffer = mapping + page_size - 7;
+    memcpy(buffer, "A&amp;B", 7);
+    assert(xmlNodeSetContentLen(element, buffer, 7) == 0);
+    assert_content(element, "A&B");
+    assert(xmlNodeSetContentLen(text, buffer, 7) == 0);
+    assert_content(text, "A&amp;B");
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlNodeSetContentLen(element, mapping + page_size, 0) == 0);
+    assert(element->children == NULL);
+    assert(xmlNodeSetContentLen(text, mapping + page_size, 0) == 0);
+    assert(text->content != NULL && text->content[0] == 0);
+#endif
+    assert(munmap(mapping, (size_t)page_size * 2) == 0);
+    xmlFreeNode(text);
+    xmlFreeNode(element);
+}
+#endif
+
+#ifndef XML3_REFERENCE_TEST
+static void test_set_content_len_rejection(void) {
+    static const xmlChar reference[] = {'&', 'a', 'm', 'p', ';'};
+    static const xmlChar utf8[] = {0xc3, 0xa9};
+    xmlNodePtr element = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr old;
+    assert(element != NULL);
+    old = xmlNewTextChild(element, NULL, BAD_CAST "old", BAD_CAST "kept");
+    assert(old != NULL);
+    assert(xmlNodeSetContentLen(element, reference, 4) == 1);
+    assert(element->children == old && old->parent == element);
+    assert(xmlNodeSetContentLen(element, utf8, 1) == 1);
+    assert(element->children == old && old->parent == element);
+    assert_content(element, "kept");
+    assert(xmlNodeSetContentLen(element, utf8, 2) == 0);
+    assert_content(element, "é");
+    xmlFreeNode(element);
+}
+#endif
+
 static void test_construct_child(void) {
     static const char input[] =
         "<p:root xmlns:p='urn:parent' xmlns:q='urn:other'><!--before--></p:root>";
@@ -500,9 +603,14 @@ int main(void) {
     test_detached_lifetime();
     test_set_content();
     test_set_detached_lifetime();
+    test_set_content_len();
+#if defined(__unix__)
+    test_set_content_len_guard_page();
+#endif
     test_construct_child();
     test_construct_text_child();
 #ifndef XML3_REFERENCE_TEST
+    test_set_content_len_rejection();
     test_construct_text_child_serialization_validation();
     test_construct_child_failure_and_lifetime();
     test_set_rejection_is_transactional();

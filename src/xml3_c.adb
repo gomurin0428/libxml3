@@ -133,6 +133,23 @@ package body XML3_C is
       return To_String (Item, Natural (Length));
    end C_String_Value;
 
+   function C_String_Prefix
+     (Item : System.Address; Limit : Interfaces.C.int) return String
+   is
+      Length : Integer;
+   begin
+      if Item = System.Null_Address or else Limit = 0 then
+         return "";
+      elsif Limit < 0 then
+         return C_String_Value (Item);
+      elsif Limit > Max_Input then
+         raise Invalid_C_String;
+      end if;
+      Length := Scan_Length (Item, Natural (Limit));
+      return To_String
+        (Item, (if Length < 0 then Natural (Limit) else Natural (Length)));
+   end C_String_Prefix;
+
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
       if Target = System.Null_Address then
@@ -1019,14 +1036,15 @@ package body XML3_C is
          return 1;
    end Node_Add_Content;
 
-   function Node_Set_Content
-     (Node, Content : System.Address) return Interfaces.C.int
+   function Node_Set_Content_Len
+     (Node, Content : System.Address; Length : Interfaces.C.int)
+     return Interfaces.C.int
    is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Value : constant String := C_String_Value (Content);
+         Value : constant String := C_String_Prefix (Content, Length);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
@@ -1052,6 +1070,13 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return 1;
+   end Node_Set_Content_Len;
+
+   function Node_Set_Content
+     (Node, Content : System.Address) return Interfaces.C.int
+   is
+   begin
+      return Node_Set_Content_Len (Node, Content, -1);
    end Node_Set_Content;
 
    procedure Unlink_Node (Node : System.Address) is

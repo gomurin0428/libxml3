@@ -75,7 +75,7 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 コメント・PI の DOM 閲覧、namespace lookup に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlSetProp` は namespace-aware QName を
