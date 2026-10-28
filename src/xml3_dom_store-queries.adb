@@ -442,7 +442,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Current := (case Mode is
          when Next_Element => N.Next,
          when Previous_Element => N.Previous,
-         when Last_Element => N.Last_Child,
+         when Last_Element | Last_Child_Node => N.Last_Child,
          when others => N.First_Child);
       for Step in 1 .. Node_Count (S.Current.all) loop
          exit when Current = Null_Node;
@@ -452,7 +452,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
             return;
          end if;
          N := Node (S.Current.all, Current);
-         if N.Kind = Element_Node then
+         if Mode = Last_Child_Node or else N.Kind = Element_Node then
             if Mode = Element_Count then
                if Count = Natural'Last then
                   Status := Limit_Exceeded;

@@ -51,6 +51,8 @@ int main() {
     xmlNodePtr (*new_doc_raw_node)(xmlDocPtr, xmlNsPtr, const xmlChar *,
                                   const xmlChar *) = xmlNewDocRawNode;
     xmlNodePtr (*last_element_child)(xmlNodePtr) = xmlLastElementChild;
+    xmlNodePtr (*get_last_child)(const xmlNode *) = xmlGetLastChild;
+    (void)get_last_child;
     xmlNodePtr (*text_merge)(xmlNodePtr, xmlNodePtr) = xmlTextMerge;
     int (*text_concat)(xmlNodePtr, const xmlChar *, int) = xmlTextConcat;
     int (*node_is_text)(const xmlNode *) = xmlNodeIsText;

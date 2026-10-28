@@ -15,8 +15,8 @@ memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNewDocProp`, managed-attribute attachment through `xmlAddChild`, managed
 attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 `xmlAddSibling`,
-`xmlNewCDataBlock`, `xmlLastElementChild`, and `xmlPreviousElementSibling`
-through the SPARK Store/Runtime. The entity summaries report
+`xmlNewCDataBlock`, `xmlLastElementChild`, `xmlPreviousElementSibling`, and
+`xmlGetLastChild` through the SPARK Store/Runtime. The entity summaries report
 0 flow errors, 132 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -297,6 +297,15 @@ fully proved. Tests include mixed non-element siblings, detach/reinsert,
 document and attribute inputs, and retained subtree navigation after document
 release. No ownership mutation or result allocation is introduced.
 
+`xmlGetLastChild` uses the same `Select_Element` Store/Runtime path with
+`Last_Child_Node` mode. Store resolves the facade and returns its live managed
+last child without filtering node kind; the C adapter uses the shared selector
+and reads no native `last` field. Document children and attribute-value text
+are included. Runtime tests cover node kinds, empty and unsupported inputs,
+unlink/reappend and replacement, detached-tree lifetime, and zero native
+allocations. The aggregate includes the SPARK selection unit and its written
+contracts, not complete public API semantics or native pointer validity.
+
 Public construction, root replacement, attachment/text merging, unlinking,
 release, namespace creation/assignment/free, namespace-qualified property
 mutation and read-only queries use the same Store. `xmlNewComment` and
@@ -403,8 +412,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-f0c139404787276dae9b6854b4dd704a34f52eb2d063599d29f3cc853b865a96  src/xml3_c.adb
-8f4d8154d8f2beee5cd59bde04b58d13a2e7bbc8cc39bde3c4c1e9e15f354834  src/xml3_c.ads
+ea3fed00027f981c84e797e8020d7f35be57c00cc71429a51144e9abc6e97bb3  src/xml3_c.adb
+612938a917d140dcb8d1f7bbe57c75eeb7210f2339b3d7e9a2efcb823d7a3d75  src/xml3_c.ads
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -428,8 +437,8 @@ a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_s
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2c5f2910bde31cda9af6496a4760dfbfeb3db5b7b50f606340bc915a569b92f6  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-73d29d01ece7304e4758a8b8f9c4c66e1ec7566489801becadf2c696560fe7db  src/xml3_dom_store-queries.adb
-ca1bce9284fdbaf9673ba55c57ebd91db2cea5637179aa6f0a364fec5316a1e4  src/xml3_dom_store-queries.ads
+664ab9e9d540bb16474149dd0e23d97d95abf7b9f5f006cd09021ab194db620d  src/xml3_dom_store-queries.adb
+0ac3ca1989efc6788ead0db6b814a164b41dd07d7aef4ec042085279bbbd1244  src/xml3_dom_store-queries.ads
 e17b9d6cf6d33b099ab68275cfc282f572a46cad0edc21e3e0703ad3c1413eb1  src/xml3_dom_store-serialization.adb
 fcfa348242acf0dc69540b20063081c3f56b18960c984cfa9e8d3d649dbf0dc9  src/xml3_dom_store-serialization.ads
 80f59e0a541a795c2e94c9735c46eb76f691ba9ed160fdfc6874186d295dd8d2  src/xml3_dom_store.adb
@@ -449,10 +458,10 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 03db400b94fee27550077f76b8c113c2a3f61f9fdc6a484b59c165a759070c17  src/xml3_text.adb
 0986b7098937b56d133aef1863ade9227314c7bd637730b39c6ef608c3969ac6  src/xml3_text.ads
-fb8ddbb1255e94be2fdf1dbfa2c67d053d69c1f15052cd030e4c598ecf8d094e  include/libxml/tree.h
+12314071590389f77591310cb81b46819696af88a3e504eef0c3fffa682521db  include/libxml/tree.h
 d6755c4f335d6337fc4df01ead1260434f8eb2af2c8a15254d2a9cd90c635241  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-88d27dbaaccacd3e35519d2c2b3b9cff8fc132d620e2fc8a93db7e7ea4761547  Makefile
+0661b9d9c32f87da39e7215e1df9414bb27a2ee89d50e46fe5dbc429b7a90c6a  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

@@ -147,6 +147,11 @@ element/document 親の通常 child と、element 親の属性に対応します
 が一致する旧属性を接続成功後に解放します。親のない兄弟列・属性値内部への兄弟追加は未対応です。
 文書所属・循環・document 直下の text/CDATA・複数 root の制約は `xmlAddChild` と同じです。
 
+`xmlGetLastChild` は管理中の node の末尾 child を kind で絞らず返します。要素以外にも
+text/comment/CDATA/PI、document の末尾 child、属性値の text を取得できます。
+NULL・child のない node・namespace・未登録 facade は NULL です。読み取りでは内容や
+リンクを変更せず、native allocation を行わず、既存の last error も消去しません。
+
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を
 保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を

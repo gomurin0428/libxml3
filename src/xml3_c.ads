@@ -264,6 +264,9 @@ package XML3_C is
    function First_Element_Child (Parent : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlFirstElementChild";
 
+   function Get_Last_Child (Parent : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetLastChild";
+
    function Last_Element_Child (Parent : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlLastElementChild";
 

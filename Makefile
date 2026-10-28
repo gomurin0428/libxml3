@@ -321,6 +321,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-delete 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-attach 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test attr-unlink 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test last-child 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
 
 test-fuzz: tests/fuzz-test
@@ -376,7 +377,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp \
 	xmlNewNs xmlSetNs xmlFreeNs xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
-	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlLastElementChild xmlNextElementSibling xmlPreviousElementSibling \
+	xmlGetNsProp xmlGetNoNsProp xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \
 	xmlChildElementCount xmlStrcmp xmlStrEqual xmlStrlen xmlFree xml3ReadMemory \
 	xmlGetLastError xmlResetLastError xmlResetError xmlCopyError; do \
 		nm -D --defined-only lib/libxml3.so | awk '{sub(/@@.*/, "", $$3); print $$3}' | grep -qx "$$symbol" || exit 1; \
