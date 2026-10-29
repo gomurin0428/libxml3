@@ -756,16 +756,27 @@ static void test_escaping(int entities) {
     assert(mapping != MAP_FAILED);
     assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
 #ifndef XML3_REFERENCE_VERSION
-    if (!entities) {
+    {
         static const xmlChar bad[][4] = {{0xff}, {1}, {0xe2, 'x'}, {0xf0, 0}, {0xf0, 0x80, 0}};
         static const size_t lengths[] = {1, 1, 2, 2, 3};
         for (size_t i = 0; i < sizeof(lengths) / sizeof(*lengths); ++i) {
             char *start = mapping + page - lengths[i];
             memcpy(start, bad[i], lengths[i]);
             xmlResetLastError();
-            assert(xmlEncodeSpecialChars(NULL, BAD_CAST start) == NULL);
+            assert(encode_chars(NULL, BAD_CAST start, entities) == NULL);
             assert(xmlGetLastError() && xmlGetLastError()->code == 115);
         }
+        xmlResetLastError();
+    }
+    if (entities) {
+        assert(xmlEncodeEntitiesReentrant((xmlDocPtr)1, BAD_CAST (mapping + page)) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        xmlResetLastError();
+        root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(root);
+        assert(xmlEncodeEntitiesReentrant((xmlDocPtr)root, BAD_CAST (mapping + page)) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        xmlFreeNode(root);
         xmlResetLastError();
     }
 #endif

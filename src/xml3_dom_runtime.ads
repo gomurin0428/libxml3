@@ -274,11 +274,10 @@ is
         with Global => (Input => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Encode_Entities
-        (Document : System.Address; Input : String; Result : out System.Address;
+        (Document, Input : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
-        with Pre => Input'First = 1 and then Input'Last in 0 .. XML3_Text.Max_Bytes,
-          Global => (Input => Managed,
-                     In_Out => XML3_Native_Memory.Foreign_Memory);
+        with Global => (Input => Managed,
+                        In_Out => XML3_Native_Memory.Foreign_Memory);
 
       procedure Dump_Memory_Encoding
         (Document : System.Address; Encoding : String;

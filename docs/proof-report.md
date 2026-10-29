@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,954 checks, 1,383 by flow analysis and 11,571
+It completed successfully: **12,953 checks, 1,383 by flow analysis and 11,570
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -159,18 +159,27 @@ unused as in pinned libxml2 2.15.4; malformed UTF-8/XML is rejected rather than
 silently repaired or preserved, and no DTD/entity expansion is provided. The
 String-based `Escape_Special` remains for internal DOM callers and emits one
 analyzer warning because `Validate_UTF8`'s `Error` output is unused.
-`xmlEncodeEntitiesReentrant` shares `Registered_Document`, `Encoding_Status`,
-and `Escape_Special` with the entity-list query. It escapes `<`, `>`, and `&`
+`xmlEncodeEntitiesReentrant` passes its input address directly through
+Runtime/Store `Encode_Entities`. `Registered_Document` runs before any input
+read; invalid documents return NULL without dereferencing document or input.
+`Escape_Special_Bytes` is shared with `xmlEncodeSpecialChars`, using
+`Non_ASCII => True, Quotes => False`, and `Encoding_Status` maps its result.
+The Store `Encode_Entities` query proves 3 checks and its Runtime wrapper 1.
+It escapes `<`, `>`, and `&`
 with named references, CR as `&#13;`, and valid non-ASCII as uppercase
 hexadecimal references; quotes, TAB, and LF remain literal. NULL input is
 returned before document validation, while non-NULL input permits only NULL
 or a registered document. The proof covers the shared bounded validation,
-escaping, and status/result contracts, not C-string conversion, native
-pointer/byte access, allocation/copy/free, ABI, or complete C semantics. Its
+escaping, and status/result contracts. No C-string conversion remains on this
+path; native pointer extents/stability, byte effects, allocation/free, C
+NULL/diagnostic mapping, ABI, and complete C semantics remain trusted. Its
 behavior intentionally rejects invalid UTF-8/XML rather than repairing or
 preserving it; document encoding is not retained, so explicit UTF-8 documents
 can differ from reference output. General-entity expansion and HTML behavior
-are unsupported. Public C integration and OOM retry are exercised by
+are unsupported. Scan/expansion caps map to resource-limit diagnostic 114,
+instead of the former C-string scan-cap diagnostic 115; invalid text/document
+still maps to 115. Guard pages cover rejection before input reads and early
+invalid-unit stopping. Public C integration and OOM retry are exercised by
 `tests/unicode-test.c` and `tests/oom-test.c`.
 `xmlStrQEqual` uses `XML3_Text.QNames.Compare` for raw-byte prefix/name/value
 comparison. The proof covers status initialization, NULL-prefix pointer
@@ -617,9 +626,9 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Initialization | 836 |
 | Runtime checks | 5,550 |
 | Assertions | 1,666 |
-| Functional contracts | 4,281 |
+| Functional contracts | 4,280 |
 | Termination | 260 |
-| **Total** | **12,954** |
+| **Total** | **12,953** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1175,7 +1184,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-657c677f17bc93dd0bb57fe447c28719ea6d6a72c14e554fa6f3399425e6f2dd  src/xml3_c.adb
+c197814f93302bb3672efc1fa855ae60dc86f6d7e4cb1d5a7c14bfa4c879faf6  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1198,16 +1207,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-40ca5f4dbef64b792e5fb42c8feec378c13da28c636310d789d8a04c4aa1bbe0  src/xml3_dom_runtime.adb
-52a484c26f9269732983ad798dffbf8dd6ef350d9ef22dca0a5e60f678c709c5  src/xml3_dom_runtime.ads
+3df42595187cf9c662d719d5b53a0434940d453f851e2b608a4f1ebafc432586  src/xml3_dom_runtime.adb
+0bd45fbcb184105c8b437a9fc249deaf7c7c0b9d5bb3a785267c56cbfdd8943c  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-834ec74ad048496a5ae842850b190393ade6a5c675d671962db4337354fc67aa  src/xml3_dom_store-queries.adb
-d83a6c0e1625a9d2fcdae3d1ca016191ce08fd905e231912d74af0f9c44adcde  src/xml3_dom_store-queries.ads
+f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_store-queries.adb
+f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 c58013fd806a30acb401ec56d6f6cf17010e026440b258e129b2a27bf574b302  src/xml3_dom_store.adb

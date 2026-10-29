@@ -493,6 +493,8 @@ NULL入力はNULL、空入力は空のコピーです。文書引数は参照し
 不正な文字以降は読まず、サイズ確認後に確保し、構築失敗では部分出力を解放します。
 `xmlEncodeEntitiesReentrant` は NULL input なら文書を検証せず診断なしで NULL を返し、
 non-NULL input では `doc == NULL` または登録済み文書のみを受け付け、空 input は独立した空文字列になります。
+文書の登録確認を入力読み取りより先に行い、不正な文書なら入力には触れません。
+`Escape_Special_Bytes` に直接渡すため、ここにもC文字列の中間コピーはありません。
 `<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、
 quote・TAB・LF は保持します。document encoding は保持しないため、明示 UTF-8 文書でも非ASCIIを参照化します。
 不正UTF-8/XMLは診断付きで拒否し、既存参照や一般実体の展開・HTML処理はしません。
