@@ -1744,6 +1744,37 @@ int main(int argc, char **argv) {
                       implicit ? "名" : "v") == 0);
         assert(strcmp((const char *)root->children->content,
                       implicit ? "é" : "text") == 0);
+    } else if (strcmp(operation, "node-list-raw") == 0 ||
+               strcmp(operation, "node-list-escaped") == 0 ||
+               strcmp(operation, "node-list-raw-empty") == 0) {
+        int escape = strcmp(operation, "node-list-escaped") == 0;
+        int empty = strcmp(operation, "node-list-raw-empty") == 0;
+        const char *input = empty ? "<r><e>skip</e></r>"
+            : "<r>a&amp;<![CDATA[b<]]><e>skip</e>c</r>";
+        xmlNodePtr root, first, last;
+        xmlChar *value;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        first = root->children;
+        last = root->last;
+        assert(first);
+        xml3_oom_enable(fail_index);
+        value = xmlNodeListGetRawString(doc, first, !escape);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(value == NULL);
+            require_oom_error();
+            value = xmlNodeListGetRawString(doc, first, !escape);
+        }
+        assert(value);
+        assert(strcmp((const char *)value,
+                      empty ? "" : escape ? "a&amp;b&lt;c" : "a&b<c") == 0);
+        assert(root->children == first && root->last == last);
+        assert(first->parent == root && last->parent == root);
+        xmlFree(value);
     } else if (strcmp(operation, "node-path") == 0) {
         xmlNodePtr root;
         xmlNodePtr first;

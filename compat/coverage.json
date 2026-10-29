@@ -360,6 +360,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeListGetRawString": {
+    "implementation": "partial",
+    "scope": "Public API in pinned libxml2 2.15.4. The doc argument is ignored. NULL list returns NULL; a non-NULL managed starting facade walks only its next-sibling chain, concatenating direct text/CDATA content without descent and skipping other kinds. Nonzero inLine copies raw bytes without UTF-8/XML validation; zero validates each selected node's UTF-8 independently, then validates XML characters and escapes special characters after concatenation, rejecting invalid sequences split across node boundaries. A non-NULL list with no selected text returns an independently xmlFree-owned empty string. Entity-reference nodes and xmlNodeListGetString are unsupported. Foreign facades are rejected before native dereference. Native pointer/readability, allocation/copy/free, ABI, and complete C semantics remain trusted.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlGetNodePath": {
     "implementation": "partial",
     "scope": "管理中nodeのbounded structural path。無効なUTF-8/XML名は安全のため拒否し、全public C semanticsは未証明。",

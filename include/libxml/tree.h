@@ -160,6 +160,8 @@ xmlChar *xmlBuildQName(const xmlChar *ncname, const xmlChar *prefix,
                        xmlChar *memory, int len);
 const xmlChar *xmlSplitQName3(const xmlChar *name, int *len);
 xmlChar *xmlNodeGetContent(const xmlNode *cur);
+xmlChar *xmlNodeListGetRawString(const xmlDoc *doc, const xmlNode *list,
+                                int inLine);
 xmlChar *xmlGetNodePath(const xmlNode *node);
 xmlChar *xmlGetProp(const xmlNode *node, const xmlChar *name);
 xmlAttrPtr xmlHasProp(const xmlNode *node, const xmlChar *name);

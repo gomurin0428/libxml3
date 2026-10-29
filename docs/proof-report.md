@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,438 checks, 1,204 by flow analysis and 11,234
+It completed successfully: **12,477 checks, 1,214 by flow analysis and 11,263
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -28,7 +28,8 @@ attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 Store/Runtime. `xmlStringGetNodeList` and `xmlStringLenGetNodeList` route
 through `Runtime.Parse_Content_List` / `Store.Content.Parse_Content_List`,
 the analyzed strict text decoder, and the existing document-owned text
-constructor. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
+constructor. `xmlNodeListGetRawString` routes through `Runtime.Get_List_Content`
+and `Store.Queries.Get_List_Content`. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
 its C status/output-pointer mapping is outside the proof. The public
 `xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
@@ -445,7 +446,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 448 entity
+The 450 entity
 summaries report 0 flow errors, 152 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -474,13 +475,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 313 |
-| Initialization | 734 |
-| Runtime checks | 5,407 |
-| Assertions | 1,638 |
-| Functional contracts | 4,130 |
+| Data dependencies | 315 |
+| Initialization | 742 |
+| Runtime checks | 5,423 |
+| Assertions | 1,640 |
+| Functional contracts | 4,141 |
 | Termination | 216 |
-| **Total** | **12,438** |
+| **Total** | **12,477** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -949,11 +950,27 @@ read. The proof covers the selected SPARK Store/Runtime/decoder contracts, not
 C-string scanning, native pointer validity, allocation/copy, ABI, diagnostics,
 or complete public semantics.
 
+## `xmlNodeListGetRawString`
+
+The thin C adapter ignores `doc`, returns NULL for a NULL list, and performs
+locking, Runtime dispatch, and status/diagnostic mapping. The SPARK query checks
+that the starting facade is registered before native metadata access, then
+measures and copies only direct text/CDATA content in the bounded next-sibling
+chain; it does not descend or mutate the DOM. Nonzero `inLine` preserves raw
+bytes without UTF-8/XML validation. Zero `inLine` validates each selected node's
+UTF-8 independently before concatenation, then validates XML characters and
+escapes special characters, rejecting malformed content split across node
+boundaries. A non-NULL list with no selected text produces an independently
+`xmlFree`-owned empty string. Entity-reference nodes are unsupported and
+`xmlNodeListGetString` remains deferred. The proof covers the query's bounded
+walk, size arithmetic, and status/result contracts, not native pointer
+validity/readability, allocation/copy/free, ABI, or complete C semantics.
+
 ## Source identity (SHA-256)
 
 ```text
-827de5033d0309f59ede7a021b611db736e1d7fcbd025734c9eba0fb49df9c10  src/xml3_c.adb
-ce3962343c33454ef2f4a0ad9c3b3245607add0b3e566d63109d55d77a26e8fa  src/xml3_c.ads
+1936c6890878b1c466eb5bf68034b9e0466cd01fc2b065f70e69c64b66bd3938  src/xml3_c.adb
+4317fb8c5abd1cc9741d65e32f664f5d9c9569cb3cba0ff0f2c4003a5741dc98  src/xml3_c.ads
 e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
 52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 386ab8e57be684a44d9cb5b31c45317bda8e887196525db4fb3bcfaf01b2af51  src/xml3_dom-import.adb
@@ -971,16 +988,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-cdfccc68fb585ed2403113f9cad5150b493169b950f51e45c1dd5ed0bfc99c5d  src/xml3_dom_runtime.adb
-4c3cee78dec086697485a5997b8699c4b75838c3ca2dc29d6ad6480ecf979b85  src/xml3_dom_runtime.ads
+0b86d0486b75ab221584074960d875f576157e26aaa721bc92e3ecc95229c868  src/xml3_dom_runtime.adb
+19281c309c4dc15c6d9ef4db370e857f5792f99335f24e41d74619b071df2133  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 6e08b02a697ce359a874fd8af497e7f6b644ece1e4ab418e5c5acc433d01e017  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-0b643ed7e67d5d5ac7e1336c1b99363c624a0c143a48f45e139fd455534d9ae1  src/xml3_dom_store-queries.adb
-200174bde387d9b78368e15c738218901347a674c0d0ab0e314c09b3d6c93108  src/xml3_dom_store-queries.ads
+60ba57d3be4bef95dd56c4fa4702cf3bf3e652b260cade18170a481fcad89ea8  src/xml3_dom_store-queries.adb
+5dbec6c402543f20e51156b5054606ac39787012b50534fc0cdb586cf0c2cff7  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 5a3c45a728e39776affbdacfd6ce7832626641eb85546b2d3d79387459d683b7  src/xml3_dom_store.adb
@@ -1004,11 +1021,11 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
 da00cfa85abfbc26c7fd8231ed11bc0e6f015f45b4c816903b2454ab0ee61fac  src/xml3_text-buffers.adb
 92fe9f1c1bb8236dee2b667f7799c5eb287998e0d9ed1bd82621072236545a8d  src/xml3_text-buffers.ads
-8cbe43265330525c762bbace385e6f5b83f6771a880133a4035f527444ba1a9f  include/libxml/tree.h
+97a89722735ed7f63b9b77d38f14f371f1ccf99e467ad0c9ca230aa40edc5fe6  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-d1bf342b7c6ebf43859d7c5615ea072414414e0ed101d1792f837a0d771b00fa  Makefile
+519e605fc903fee67edb19ca85264fbea28cf85db27acc286fe8bbb27d7b2337  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
