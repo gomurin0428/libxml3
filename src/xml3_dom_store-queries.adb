@@ -8,6 +8,64 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function Line_At_Node
+     (S : XML3_DOM.State; N : Node_Ref; Remaining : Natural) return Integer
+     with Global => null,
+       Pre => Valid (S),
+       Post => Line_At_Node'Result in -1 .. 65_535,
+       Subprogram_Variant => (Decreases => Remaining)
+   is
+      Item : Node_View;
+      Target : Node_Ref := Null_Node;
+      Result : Integer := -1;
+   begin
+      if Remaining = 0 or else N not in 1 .. Node_Ref (Node_Count (S)) then
+         return -1;
+      end if;
+      Item := Node (S, N);
+      if Item.State /= Live then
+         return -1;
+      end if;
+      if Item.Kind in Element_Node | Text_Node | Comment_Node |
+        Processing_Instruction_Node
+      then
+         if Item.Source_Line = 65_535 then
+            if Item.Kind = Element_Node and then Item.First_Child /= Null_Node then
+               Target := Item.First_Child;
+            elsif Item.Next /= Null_Node then
+               Target := Item.Next;
+            else
+               Target := Item.Previous;
+            end if;
+            Result := Line_At_Node (S, Target, Remaining - 1);
+         end if;
+         return (if Result = -1 or else Result = 65_535
+                 then Item.Source_Line else Result);
+      end if;
+      if Item.Previous in 1 .. Node_Ref (Node_Count (S))
+        and then Node (S, Item.Previous).Kind in
+          Element_Node | Text_Node | Comment_Node | Processing_Instruction_Node
+      then
+         return Line_At_Node (S, Item.Previous, Remaining - 1);
+      elsif Item.Parent in 1 .. Node_Ref (Node_Count (S))
+        and then Node (S, Item.Parent).Kind = Element_Node
+      then
+         return Line_At_Node (S, Item.Parent, Remaining - 1);
+      end if;
+      return -1;
+   end Line_At_Node;
+
+   procedure Get_Line_Number
+     (S : Store; Facade : System.Address; Result : out Integer)
+   is
+      N : constant Node_Ref := Find_Node (S, Facade);
+   begin
+      Result := -1;
+      if N /= Null_Node then
+         Result := Line_At_Node (S.Current.all, N, 5);
+      end if;
+   end Get_Line_Number;
+
    function Registered_Document (S : Store; Document : System.Address)
      return Boolean
      with Global => null,

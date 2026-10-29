@@ -166,6 +166,7 @@ xmlChar *xmlNodeListGetRawString(const xmlDoc *doc, const xmlNode *list,
                                 int inLine);
 xmlChar *xmlNodeListGetString(xmlDoc *doc, const xmlNode *list, int inLine);
 xmlChar *xmlGetNodePath(const xmlNode *node);
+long xmlGetLineNo(const xmlNode *node);
 xmlChar *xmlGetProp(const xmlNode *node, const xmlChar *name);
 xmlAttrPtr xmlHasProp(const xmlNode *node, const xmlChar *name);
 xmlNsPtr xmlSearchNs(xmlDocPtr doc, xmlNodePtr node,

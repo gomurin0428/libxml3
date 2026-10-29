@@ -59,9 +59,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,642 checks
-(1,265 flow and 11,377 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,685 checks
+(1,273 flow and 11,412 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 155 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,642-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,685-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -1117,6 +1117,24 @@ native facade validity/readable extents, native allocation, byte copy/write or
 free behavior, pointer arithmetic, C ABI/status/diagnostic mapping, or full
 public libxml2 semantics. Consequently the API remains partial/not-proved at
 the public C level.
+
+`xmlGetLineNo` resolves a registered facade before reading its Store record.
+The parser advances a monotone source cursor and records a capped line while
+scanning bytes once; only LF advances the line, so standalone CR and the CR in
+CRLF do not. This matches the fixed reference's harmless standalone-CR quirk,
+while a decoded character-reference newline does not advance the source line.
+Element lines are finalized after the opening tag. Parsed element/text/comment/PI
+nodes retain their stored source positions through edits and moves, except that
+a saturated 65535 result may use the bounded neighbor fallback.
+`Source_Line` is internal only: no public struct field or direct-write API is
+added. Constructed element/text/comment/PI nodes and synthetic attribute-value
+text use line 0. Attribute and CDATA nodes use eligible previous-sibling or
+element-parent fallback and can return -1 detached or inherit a different line
+after a move. NULL, document, and unregistered facades return -1. The
+five-node fallback is bounded and the 65535 cap remains in force;
+`XML_PARSE_BIG_LINES` is not supported. GNATprove analyzes the parser scan and
+Store query, but not C pointer arithmetic, native ABI, or complete public
+semantics.
 
 `xmlNodeSetName` resolves a registered facade before reading the proposed name,
 rejects unsupported kinds before touching the caller buffer, and validates bounded

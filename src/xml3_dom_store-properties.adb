@@ -367,6 +367,8 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
 
    procedure Discard_Unpublished (S : in out Store; N : Node_Ref) is
       Before : constant State := S.Current.all with Ghost;
+      Before_Namespaces : constant Namespace_View_Array :=
+        Snapshot_Namespaces (S.Current.all) with Ghost;
    begin
       if Node (S.Current.all, N).Kind = Attribute_Node
         and then Node (S.Current.all, N).First_Child /= Null_Node
@@ -374,11 +376,11 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
          Retire_Attribute_Children (S.Current.all, N, Null_Node);
       end if;
       pragma Assert
-        (Snapshot_Namespaces (S.Current.all) = Snapshot_Namespaces (Before));
+        (Snapshot_Namespaces (S.Current.all) = Before_Namespaces);
       Leaf_Retained_Declarations_Lemma (S.Current.all, N);
       Free_Subtree (S.Current.all, N);
       pragma Assert
-        (Snapshot_Namespaces (S.Current.all) = Snapshot_Namespaces (Before));
+        (Snapshot_Namespaces (S.Current.all) = Before_Namespaces);
       pragma Assert
         (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (Before)) =>
            (if Node (Before, I).State = Live

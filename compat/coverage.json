@@ -456,6 +456,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlGetLineNo": {
+    "implementation": "partial",
+    "scope": "管理中nodeの内部Storeに元入力のsource lineを0..65535で保持し、最大5 nodeのbounded fallbackで照会する。LFだけを行として数え、CRは単独でもCRLFの一部でも進めない。これは固定版のharmlessなstandalone-CR挙動に合わせたもの。文字参照の改行は数えない。構築element/text/comment/PIと合成attribute-value textは0。attribute/CDATAはeligible previous-siblingまたはelement-parent fallbackを使い、detached時に-1となることがあり、移動後は継承行が変わり得る。parsed element/text/comment/PIは保存位置を保持するが、65535飽和時はneighbor fallbackに依存する。NULL/document/未登録facadeは-1。出力上の行位置は追跡しない。XML_PARSE_BIG_LINES、public struct field、直接書き込みAPIは未対応。C ABI/native pointer/完全な公開意味論は未証明。",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlGetProp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

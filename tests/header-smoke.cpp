@@ -26,6 +26,8 @@ int main() {
     (void)encode_entities;
     xmlChar *(*get_node_path)(const xmlNode *) = xmlGetNodePath;
     (void)get_node_path;
+    long (*get_line_no)(const xmlNode *) = xmlGetLineNo;
+    (void)get_line_no;
     void (*set_node_name)(xmlNode *, const xmlChar *) = xmlNodeSetName;
     (void)set_node_name;
     xmlNodePtr (*string_list)(const xmlDoc *, const xmlChar *) = xmlStringGetNodeList;

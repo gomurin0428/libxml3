@@ -590,7 +590,7 @@ package body XML3_DOM with SPARK_Mode is
          Namespace => Null_Namespace, Owner => Own,
          Ns_Pin => Null_Owner, Doc_Pin => Doc_Pin,
          Content_Pin => Null_Owner, Name_Pin => Null_Owner,
-         Tree_Rank => 0);
+         Tree_Rank => 0, Source_Line => 0);
       S.Graph.Owners (Positive (Own)).References :=
         S.Graph.Owners (Positive (Own)).References + 1;
       if Doc_Pin /= Null_Owner and then Doc_Pin /= Own then

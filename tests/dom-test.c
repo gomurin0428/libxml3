@@ -343,6 +343,141 @@ static void test_node_paths(void) {
     }
 }
 
+static void test_node_line_numbers(void) {
+    static const char mixed[] =
+        "<?p\nv?>\n<r\n a='v'>\ntext\r\n<!--c\nx--><e/>\n<![CDATA[x]]></r>";
+    xmlDocPtr doc = xmlReadMemory(mixed, (int)strlen(mixed), NULL, NULL, 0);
+    xmlNodePtr pi, root, text, comment, element, trailing, cdata;
+    xmlAttrPtr attr;
+    assert(doc != NULL);
+    pi = doc->children;
+    root = xmlDocGetRootElement(doc);
+    assert(pi != NULL && pi->type == XML_PI_NODE && root != NULL);
+    assert(xmlGetLineNo(NULL) == -1);
+    assert(xmlGetLineNo((xmlNodePtr)doc) == -1);
+    assert(xmlGetLineNo(pi) == 2);
+    assert(xmlGetLineNo(root) == 4);
+    attr = root->properties;
+    assert(attr != NULL && xmlGetLineNo((xmlNodePtr)attr) == 4);
+    assert(attr->children != NULL && xmlGetLineNo(attr->children) == 0);
+    text = root->children;
+    comment = text->next;
+    element = comment->next;
+    trailing = element->next;
+    cdata = trailing->next;
+    assert(text->type == XML_TEXT_NODE && xmlGetLineNo(text) == 6);
+    assert(comment->type == XML_COMMENT_NODE && xmlGetLineNo(comment) == 7);
+    assert(element->type == XML_ELEMENT_NODE && xmlGetLineNo(element) == 7);
+    assert(trailing->type == XML_TEXT_NODE && xmlGetLineNo(trailing) == 8);
+    assert(cdata->type == XML_CDATA_SECTION_NODE && xmlGetLineNo(cdata) == 8);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r>&#10;<n/></r>",
+                        (int)strlen("<r>&#10;<n/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    text = root->children;
+    element = text->next;
+    assert(text->type == XML_TEXT_NODE && xmlGetLineNo(text) == 1);
+    assert(element->type == XML_ELEMENT_NODE && xmlGetLineNo(element) == 1);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r>\r<a/>\r\n<b/></r>", 18, NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    {
+        xmlNodePtr first_element = root->children;
+        while (first_element != NULL
+               && first_element->type != XML_ELEMENT_NODE) {
+            first_element = first_element->next;
+        }
+        assert(first_element != NULL && root->last != NULL);
+        assert(strcmp((const char *)first_element->name, "a") == 0);
+        assert(strcmp((const char *)root->last->name, "b") == 0);
+        assert(xmlGetLineNo(first_element) == 1);
+        assert(xmlGetLineNo(root->last) == 2);
+    }
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r>\n<source><move/></source>\n<target/></r>",
+                        (int)strlen("<r>\n<source><move/></source>\n<target/></r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    {
+        xmlNodePtr source = root->children->next;
+        xmlNodePtr target = root->last;
+        xmlNodePtr moved = source->children;
+        assert(xmlGetLineNo(moved) == 2);
+        xmlUnlinkNode(moved);
+        assert(xmlGetLineNo(moved) == 2);
+        assert(xmlAddChild(target, moved) == moved);
+        xmlNodeSetName(moved, BAD_CAST "renamed");
+        assert(xmlNodeSetContent(moved, BAD_CAST "edited") == 0);
+        assert(xmlGetLineNo(moved) == 2);
+    }
+    xmlFreeDoc(doc);
+
+    doc = xmlNewDoc(BAD_CAST "1.0");
+    root = xmlNewNode(NULL, BAD_CAST "constructed");
+    text = xmlNewText(BAD_CAST "value");
+    assert(doc != NULL && root != NULL && text != NULL);
+    assert(xmlGetLineNo((xmlNodePtr)doc) == -1);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlAddChild(root, text) == text);
+    assert(xmlGetLineNo(root) == 0 && xmlGetLineNo(text) == 0);
+    xmlFreeDoc(doc);
+
+    {
+        char input[65535 + 4];
+        memset(input, '\n', 65535);
+        memcpy(input + 65535, "<r/>", 4);
+        doc = xmlReadMemory(input, (int)sizeof(input), NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        assert(xmlGetLineNo(root) == 65535);
+        assert(xmlNewChild(root, NULL, BAD_CAST "child", NULL) != NULL);
+        assert(xmlGetLineNo(root) == 0);
+        xmlFreeDoc(doc);
+    }
+
+#ifndef XML3_REFERENCE_TEST
+    doc = xmlReadMemory("<r>\n<detached/></r>",
+                        (int)strlen("<r>\n<detached/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    text = root->children;
+    assert(xmlGetLineNo(text) == 2);
+    xmlUnlinkNode(text);
+    xmlFreeDoc(doc);
+    assert(xmlGetLineNo(text) == 2);
+    xmlFreeNode(text);
+
+    {
+        xmlNode unmanaged = {0};
+        xmlNsPtr ns;
+        const xmlError *sticky;
+        doc = xmlNewDoc(BAD_CAST "1.0");
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        ns = xmlNewNs(root, BAD_CAST "urn:line", BAD_CAST "p");
+        assert(ns != NULL);
+        unmanaged.type = XML_ELEMENT_NODE;
+        unmanaged.next = &unmanaged;
+        xmlResetLastError();
+        xmlFreeNodeList(&unmanaged);
+        sticky = xmlGetLastError();
+        assert(sticky != NULL && sticky->code == 115);
+        assert(xmlGetLineNo((xmlNodePtr)&unmanaged) == -1);
+        assert(xmlGetLineNo((xmlNodePtr)ns) == -1);
+        assert(xmlGetLastError() == sticky && sticky->code == 115);
+        xmlFreeDoc(doc);
+        xmlResetLastError();
+    }
+#endif
+}
+
 static void test_node_set_name(void) {
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
@@ -1711,6 +1846,7 @@ int main(void) {
     test_adjacent_sibling_flow();
     test_replace_node_flow();
     test_node_paths();
+    test_node_line_numbers();
     test_node_set_name();
 #ifndef XML3_REFERENCE_TEST
     test_replace_node_rejections();

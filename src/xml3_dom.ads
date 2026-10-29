@@ -43,6 +43,7 @@ package XML3_DOM with SPARK_Mode is
       Content_Pin : Owner_Ref := Null_Owner;
       Name_Pin    : Owner_Ref := Null_Owner;
       Tree_Rank   : Natural := 0;
+      Source_Line : Natural range 0 .. 65_535 := 0;
    end record;
 
    type Namespace_View is record
