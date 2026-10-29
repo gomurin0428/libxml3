@@ -1766,6 +1766,44 @@ int main(int argc, char **argv) {
         xmlFree(path);
         assert(root->children == first && first->next == second);
         assert(first->ns == ns && second->ns == ns);
+    } else if (strcmp(operation, "node-set-name") == 0) {
+        static const char input[] = "<root xmlns:p='urn:name'><p:old>value</p:old></root>";
+        xmlNodePtr root;
+        xmlNodePtr node;
+        xmlNodePtr child;
+        xmlNsPtr ns;
+        const xmlChar *old_name;
+        xmlChar *path;
+
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        node = root->children;
+        ns = node->ns;
+        child = node->children;
+        assert(root != NULL && node != NULL && ns != NULL && child != NULL);
+        xmlNodeSetName(node, BAD_CAST "before");
+        assert(strcmp((const char *)node->name, "before") == 0);
+        old_name = node->name;
+        xmlResetLastError();
+        xml3_oom_enable(fail_index);
+        xmlNodeSetName(node, BAD_CAST "after");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(node->name == old_name);
+            assert(node->parent == root && node->children == child);
+            assert(node->ns == ns);
+            require_oom_error();
+            xmlResetLastError();
+            xmlNodeSetName(node, BAD_CAST "after");
+        }
+        assert(strcmp((const char *)node->name, "after") == 0);
+        path = xmlGetNodePath(node);
+        assert(path != NULL && strcmp((const char *)path, "/root/p:after") == 0);
+        xmlFree(path);
+        assert(node->parent == root && node->children == child && node->ns == ns);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");

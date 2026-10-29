@@ -42,6 +42,12 @@ package XML3_DOM_Store.Content with SPARK_Mode is
        Pre => Ready (S),
        Post => Ready (S);
 
+   procedure Set_Name
+     (S : in out Store; Facade, Name : System.Address;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S), Post => Ready (S);
+
    procedure Set
      (S : in out Store; Facade : System.Address; Content : String;
       Has_Content : Boolean; Status : out Operation_Status)

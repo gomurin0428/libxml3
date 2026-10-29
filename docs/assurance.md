@@ -59,9 +59,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,262 checks
-(1,185 flow and 11,077 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 149 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,414 checks
+(1,194 flow and 11,220 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -215,7 +215,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,262-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,414-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -1020,6 +1020,21 @@ native facade validity/readable extents, native allocation, byte copy/write or
 free behavior, pointer arithmetic, C ABI/status/diagnostic mapping, or full
 public libxml2 semantics. Consequently the API remains partial/not-proved at
 the public C level.
+
+`xmlNodeSetName` resolves a registered facade before reading the proposed name,
+rejects unsupported kinds before touching the caller buffer, and validates bounded
+UTF-8/XML-name input in SPARK. Element and attribute names require NCNames;
+processing-instruction targets permit XMLName syntax but reject case-insensitive
+`xml`; unnamespaced `xmlns` and duplicate expanded attribute names are rejected.
+The old name, value, links, namespace, and facade identity remain unchanged on
+failure. A successful rename allocates and copies a distinct name owner, so later
+content replacement cannot release the name; the existing owner-delta and bridge
+synchronization machinery releases the old owner atomically. Attribute conflicts
+fail closed rather than deleting an existing property. NULL and unsupported node
+kinds are harmless no-ops, entity references are outside the managed subset, and
+the complete public C behavior is not claimed. C remains a thin lock/status/ABI
+adapter; pointer validity, readable extents, allocation, byte copying, and ABI
+mapping remain trusted boundaries.
 
 The current profile supports XML 1.0 UTF-8 and UTF-16LE/BE input, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,

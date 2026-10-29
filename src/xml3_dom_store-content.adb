@@ -1,7 +1,9 @@
 with XML3_DOM;
 with XML3_DOM_Bridge;
 with XML3_DOM_Constructors;
+with XML3_DOM_Store.Queries;
 with XML3_Text;
+with XML3_Text.Buffers;
 
 package body XML3_DOM_Store.Content with SPARK_Mode is
    use XML3_DOM;
@@ -9,6 +11,104 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
    pragma Unevaluated_Use_Of_Old (Allow);
+
+   procedure Set_Name
+     (S : in out Store; Facade, Name : System.Address;
+      Status : out Operation_Status)
+   is
+      N : constant Node_Ref := Find_Registered_Node (S, Facade);
+      Target : Node_View;
+      Length : XML3_Text.Byte_Count;
+      Buffer, Existing : System.Address := System.Null_Address;
+      Own : Owner_Ref := Null_Owner;
+      Success : Boolean;
+      Match_Status : Operation_Status;
+   begin
+      Status := Created;
+      if Facade = System.Null_Address or else Name = System.Null_Address then
+         return;
+      end if;
+      Status := Invalid_Argument;
+      if N = Null_Node then
+         return;
+      end if;
+      Target := Node (S.Current.all, N);
+      if Target.Kind not in Element_Node | Attribute_Node |
+        Processing_Instruction_Node
+      then
+         Status := Created;
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Length, Success);
+      if not Success then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      if not XML3_Text.Buffers.Valid_Name
+        (Name, Length, Target.Kind = Processing_Instruction_Node)
+      then
+         return;
+      end if;
+      if Target.Kind = Processing_Instruction_Node and then Length = 3
+        and then Native.Byte_At (Name, 0) in 'x' | 'X'
+        and then Native.Byte_At (Name, 1) in 'm' | 'M'
+        and then Native.Byte_At (Name, 2) in 'l' | 'L'
+      then
+         return;
+      end if;
+      if Target.Kind = Attribute_Node
+        and then Target.Namespace = Null_Namespace and then Length = 5
+        and then Native.Byte_At (Name, 0) = 'x'
+        and then Native.Byte_At (Name, 1) = 'm'
+        and then Native.Byte_At (Name, 2) = 'l'
+        and then Native.Byte_At (Name, 3) = 'n'
+        and then Native.Byte_At (Name, 4) = 's'
+      then
+         return;
+      end if;
+      if Target.Kind = Attribute_Node and then Target.Parent /= Null_Node then
+         XML3_DOM_Store.Queries.Find_Matching_Property
+           (S, Node (S.Current.all, Target.Parent).Facade, Facade,
+            Existing, Match_Status, Name, Length, Exclude_Source => True);
+         if Match_Status /= Created then
+            Status := Match_Status;
+            return;
+         elsif Existing /= System.Null_Address then
+            return;
+         end if;
+      end if;
+      if Owner_Count (S.Current.all) = Natural'Last then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      Ensure_Capacity
+        (S.Current, Node_Count (S.Current.all), Namespace_Count (S.Current.all),
+         Owner_Count (S.Current.all) + 1, Success);
+      if not Success then
+         Status := No_Memory;
+         return;
+      end if;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Buffer);
+      if Buffer = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Native.Copy_Bytes (Name, Buffer, Length);
+      Native.Write_Byte (Buffer, Length, Character'Val (0));
+      Register_Owner (S.Current.all, Buffer, Own, Success);
+      if not Success then
+         Native.Free (Buffer);
+         Status := Internal_Error;
+         return;
+      end if;
+      Set_Node_Projection
+        (S.Current.all, N, Buffer, Length, Target.Content, Target.Content_Length,
+         Target.Document, Target.Namespace, Target.Ns_Pin, Target.Doc_Pin,
+         Target.Content_Pin, Own, Success);
+      Release_Reservation (S.Current.all, Own);
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      Status := (if Success then Created else Internal_Error);
+   end Set_Name;
 
    procedure New_Doc_Content
      (S : in out Store; Doc : System.Address; Kind : Node_Kind;
@@ -58,7 +158,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
                  (S.Current.all, N, Item.Name, Item.Name_Length,
                   Item.Content, Item.Content_Length, D, Item.Namespace,
                   Item.Ns_Pin, Node (S.Current.all, D).Owner,
-                  Item.Content_Pin, Changed);
+                  Item.Content_Pin, Item.Name_Pin, Changed);
             end;
             XML3_DOM_Bridge.Synchronize (S.Current.all);
             if not Changed then
@@ -295,7 +395,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       Set_Node_Projection
         (S.Current.all, N, Target.Name, Target.Name_Length,
          Buffer, Length, Target.Document, Target.Namespace,
-         Target.Ns_Pin, Target.Doc_Pin, Own, Success);
+         Target.Ns_Pin, Target.Doc_Pin, Own, Target.Name_Pin, Success);
       if Has_Content then
          Release_Reservation (S.Current.all, Own);
       end if;

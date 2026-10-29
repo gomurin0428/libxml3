@@ -50,6 +50,7 @@ package body XML3_DOM_Constructors with SPARK_Mode is
      and then Node (Current.all, New_Node).Ns_Pin = Null_Owner
      and then Node (Current.all, New_Node).Doc_Pin = Null_Owner
      and then Node (Current.all, New_Node).Content_Pin = Null_Owner
+     and then Node (Current.all, New_Node).Name_Pin = Null_Owner
      and then Own in 1 .. Owner_Ref (Owner_Count (Current.all))
      and then (for all I in Namespace_Ref range
        1 .. Namespace_Ref (Namespace_Count (Current.all)) =>
@@ -526,7 +527,7 @@ package body XML3_DOM_Constructors with SPARK_Mode is
             (if Is_Doc then Local_N else Null_Node), Ns,
             (if Ns = Null_Namespace then Null_Owner
              else Namespace (Current.all, Ns).Owner),
-            Null_Owner, Null_Owner, Local_Ok);
+            Null_Owner, Null_Owner, Null_Owner, Local_Ok);
          if not Local_Ok then
             pragma Assert
               (for all I in Namespace_Ref range

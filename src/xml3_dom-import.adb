@@ -296,6 +296,8 @@ package body XML3_DOM.Import with SPARK_Mode is
            Mapped_Pin (Node (Source, Item).Doc_Pin, New_Owner)
          and then Imported_Node'Result.Content_Pin =
            Mapped_Pin (Node (Source, Item).Content_Pin, New_Owner)
+         and then Imported_Node'Result.Name_Pin =
+           Mapped_Pin (Node (Source, Item).Name_Pin, New_Owner)
          and then Imported_Node'Result.Tree_Rank =
            Node (Source, Item).Tree_Rank;
 
@@ -384,6 +386,7 @@ package body XML3_DOM.Import with SPARK_Mode is
          Ns_Pin => Mapped_Pin (Original.Ns_Pin, New_Owner),
          Doc_Pin => Mapped_Pin (Original.Doc_Pin, New_Owner),
          Content_Pin => Mapped_Pin (Original.Content_Pin, New_Owner),
+         Name_Pin => Mapped_Pin (Original.Name_Pin, New_Owner),
          Tree_Rank => Original.Tree_Rank);
    end Imported_Node;
 
@@ -999,7 +1002,8 @@ package body XML3_DOM.Import with SPARK_Mode is
                 Node (After, J).Owner <= Owner_Ref (Owner_Count (After))
                 and then Node (After, J).Ns_Pin <= Owner_Ref (Owner_Count (After))
                 and then Node (After, J).Doc_Pin <= Owner_Ref (Owner_Count (After))
-                and then Node (After, J).Content_Pin <= Owner_Ref (Owner_Count (After))));
+                and then Node (After, J).Content_Pin <= Owner_Ref (Owner_Count (After))
+                and then Node (After, J).Name_Pin <= Owner_Ref (Owner_Count (After))));
       end loop;
       pragma Assert (Pins_In_Range (After));
       if Facades_Present (Before) then

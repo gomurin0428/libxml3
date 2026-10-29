@@ -12,7 +12,9 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
 
    procedure Find_Matching_Property
      (S : Store; Element, Attribute : System.Address;
-      Result : out System.Address; Status : out Operation_Status)
+      Result : out System.Address; Status : out Operation_Status;
+      Name : System.Address := System.Null_Address; Name_Length : Natural := 0;
+      Exclude_Source : Boolean := False)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => (if Status /= XML3_DOM_Constructors.Created then

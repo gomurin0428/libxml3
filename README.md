@@ -362,6 +362,14 @@ URIは比較しません。従ってこれはURI解決済みの一意なXPathで
 不正なUTF-8/XML名・prefix・PI targetは不正な経路文字列を生成せず診断付きで拒否します
 （固定版のraw malformed name挙動との差）。完全な公開C意味論は未証明で、native pointer/readability、
 allocation/byte write、ABI/status mappingはtrusted boundaryです。
+`xmlNodeSetName` は管理中の element・attribute・PI の名前を独立所有領域へ
+コピーして変更します。空・不正UTF-8・不正NCName、PIの予約名 `xml`、
+非namespace属性の `xmlns`、expanded name が衝突する属性名は診断付きで拒否し、
+失敗時は元の名前・値・リンクを変更しません。NULL と未対応node kindはno-opです。
+attributeの衝突では既存propertyを削除せず、失敗して安全側に倒します。name ownership
+はcontent ownershipと独立して保持されるため、content置換やdocument解放後も
+managed detached nodeの名前は有効です。entity referenceや完全な公開C意味論は未対応・未証明で、
+native pointer/readability、allocation/byte write、ABI/status mappingはtrusted boundaryです。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力とNULL encodingをサポートし、encoding名のASCII大小文字を区別せず、

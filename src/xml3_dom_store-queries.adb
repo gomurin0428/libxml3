@@ -10,7 +10,9 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
 
    procedure Find_Matching_Property
      (S : Store; Element, Attribute : System.Address;
-      Result : out System.Address; Status : out Operation_Status)
+      Result : out System.Address; Status : out Operation_Status;
+      Name : System.Address := System.Null_Address; Name_Length : Natural := 0;
+      Exclude_Source : Boolean := False)
    is
       E : constant Node_Ref := Find_Node (S, Element);
       N : constant Node_Ref := Find_Node (S, Attribute);
@@ -28,6 +30,10 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
          return;
       end if;
       Source := Node (S.Current.all, N);
+      if Name /= System.Null_Address then
+         Source.Name := Name;
+         Source.Name_Length := Name_Length;
+      end if;
       if Source.Name = System.Null_Address then
          return;
       end if;
@@ -77,7 +83,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
                    (Candidate_Ns.Href, Source_Ns.Href, Source_Ns.Href_Length);
             end if;
          end if;
-         if Matches then
+         if Matches and then (not Exclude_Source or else P /= N) then
             Result := Candidate.Facade;
             Status := Created;
             return;
@@ -1049,21 +1055,6 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
              (Item.Name, Item.Name_Length, Allow_Colon);
       end Valid_Name;
 
-      function Find_Registered_Node return Node_Ref
-        with Pre => S.Current /= null
-          and then XML3_DOM.Valid (S.Current.all)
-      is
-         Item : Node_View;
-      begin
-         for Index in 1 .. Node_Count (S.Current.all) loop
-            Item := Node (S.Current.all, Node_Ref (Index));
-            if Item.State = Live and then Item.Facade = Facade then
-               return Node_Ref (Index);
-            end if;
-         end loop;
-         return Null_Node;
-      end Find_Registered_Node;
-
       procedure Namespace_Item
         (N : Namespace_Ref; Item : out Namespace_View;
          Good : out Boolean)
@@ -1773,7 +1764,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       if S.Current = null or else Facade = System.Null_Address then
          return;
       end if;
-      Start := Find_Registered_Node;
+      Start := Find_Registered_Node (S, Facade);
       if Start = Null_Node or else not Live_Node (S, Start) then
          return;
       end if;

@@ -41,6 +41,7 @@ package XML3_DOM with SPARK_Mode is
       Ns_Pin      : Owner_Ref := Null_Owner;
       Doc_Pin     : Owner_Ref := Null_Owner;
       Content_Pin : Owner_Ref := Null_Owner;
+      Name_Pin    : Owner_Ref := Null_Owner;
       Tree_Rank   : Natural := 0;
    end record;
 
@@ -122,14 +123,16 @@ package XML3_DOM with SPARK_Mode is
    function Holds (N : Node_View; B : Owner_Ref) return Boolean
      is (N.State = Live and then B /= Null_Owner
          and then (N.Owner = B or else N.Ns_Pin = B
-                   or else N.Doc_Pin = B or else N.Content_Pin = B))
+                   or else N.Doc_Pin = B or else N.Content_Pin = B
+                   or else N.Name_Pin = B))
      with Global => null;
 
    function Same_Pins (Left, Right : Node_View) return Boolean is
      (Left.State = Right.State and then Left.Owner = Right.Owner
       and then Left.Ns_Pin = Right.Ns_Pin
       and then Left.Doc_Pin = Right.Doc_Pin
-      and then Left.Content_Pin = Right.Content_Pin)
+      and then Left.Content_Pin = Right.Content_Pin
+      and then Left.Name_Pin = Right.Name_Pin)
      with Ghost, Global => null;
 
    function Snapshot_Nodes (S : State) return Node_View_Array
@@ -260,7 +263,8 @@ package XML3_DOM with SPARK_Mode is
          (Node (S, N).Owner <= Owner_Ref (Owner_Count (S))
           and then Node (S, N).Ns_Pin <= Owner_Ref (Owner_Count (S))
           and then Node (S, N).Doc_Pin <= Owner_Ref (Owner_Count (S))
-          and then Node (S, N).Content_Pin <= Owner_Ref (Owner_Count (S)))))
+          and then Node (S, N).Content_Pin <= Owner_Ref (Owner_Count (S))
+          and then Node (S, N).Name_Pin <= Owner_Ref (Owner_Count (S)))))
      with Ghost, Global => null, Pre => Well_Sized (S);
    function Pin_Equation (S : State) return Boolean
    is
@@ -659,6 +663,7 @@ package XML3_DOM with SPARK_Mode is
            and then Node (S, N).Ns_Pin = Null_Owner
            and then Node (S, N).Doc_Pin = Doc_Pin
            and then Node (S, N).Content_Pin = Null_Owner
+           and then Node (S, N).Name_Pin = Null_Owner
            and then (for all I in Node_Ref range
              1 .. Node_Ref (Node_Count (S'Old)) =>
                (if I /= N then Node (S, I) = Node (S'Old, I)))
@@ -675,11 +680,13 @@ package XML3_DOM with SPARK_Mode is
       Name : System.Address; Name_Length : Natural;
       Content : System.Address; Content_Length : Natural;
       Document : Node_Ref; Namespace : Namespace_Ref;
-      Namespace_Pin, Doc_Pin, Content_Pin : Owner_Ref) return Node_View
+      Namespace_Pin, Doc_Pin, Content_Pin, Name_Pin : Owner_Ref)
+      return Node_View
    is ((Item with delta Name => Name, Name_Length => Name_Length,
        Content => Content, Content_Length => Content_Length,
        Document => Document, Namespace => Namespace,
-       Ns_Pin => Namespace_Pin, Doc_Pin => Doc_Pin, Content_Pin => Content_Pin))
+       Ns_Pin => Namespace_Pin, Doc_Pin => Doc_Pin, Content_Pin => Content_Pin,
+       Name_Pin => Name_Pin))
    with Global => null, Annotate => (GNATprove, Inline_For_Proof);
 
    function Projection_Allowed
@@ -701,6 +708,7 @@ package XML3_DOM with SPARK_Mode is
       Namespace_Pin : Owner_Ref;
       Doc_Pin : Owner_Ref;
       Content_Pin : Owner_Ref;
+      Name_Pin : Owner_Ref;
       Success : out Boolean)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S)
@@ -713,7 +721,8 @@ package XML3_DOM with SPARK_Mode is
        Allowed : constant Boolean := Projection_Allowed
          (S, N, Projected_View
            (Node (S, N), Name, Name_Length, Content, Content_Length,
-            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin))'Old;
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin,
+            Name_Pin))'Old;
      begin
        Valid (S) and then Can_Edit (S)
        and then (if Facades_Present (S'Old) then Facades_Present (S))
@@ -729,7 +738,7 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S, N) = Projected_View
            (Original_Nodes (Positive (N)),
             Name, Name_Length, Content, Content_Length,
-            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin)
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin, Name_Pin)
          else Projection_Required (S) = Projection_Required (S)'Old)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
          (if not Success or else I /= N then
@@ -953,6 +962,7 @@ package XML3_DOM with SPARK_Mode is
        and then Node (S, N).Ns_Pin = Node (S, N)'Old.Ns_Pin
        and then Node (S, N).Doc_Pin = Node (S, N)'Old.Doc_Pin
        and then Node (S, N).Content_Pin = Node (S, N)'Old.Content_Pin
+       and then Node (S, N).Name_Pin = Node (S, N)'Old.Name_Pin
        and then Node_Count (S) = Node_Count (S)'Old
        and then Namespace_Count (S) = Namespace_Count (S)'Old
        and then Owner_Count (S) = Owner_Count (S)'Old
@@ -1181,6 +1191,8 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S, Target).Content = Content
          and then Node (S, Target).Content_Length = Length
          and then Node (S, Target).Content_Pin = Content_Owner
+         and then Node (S, Target).Name_Pin =
+           Node (S'Old, Target).Name_Pin
          and then Node (S, Target).Parent = Node (S'Old, Target).Parent
          and then Node (S, Source).State = Tombstone
          and then Projection_Required (S)
@@ -1601,6 +1613,7 @@ private
            and then (N.Ns_Pin = 0 or else Live_Owner (S, N.Ns_Pin))
            and then (N.Doc_Pin = 0 or else Live_Owner (S, N.Doc_Pin))
            and then (N.Content_Pin = 0 or else Live_Owner (S, N.Content_Pin))
+           and then (N.Name_Pin = 0 or else Live_Owner (S, N.Name_Pin))
            and then (if N.Document /= 0 then
              N.Document <= Node_Ref (S.Node_Used)
              and then S.Nodes (Positive (N.Document)).Kind = Document_Node
@@ -1782,7 +1795,8 @@ private
         (Node (S, N), Proposed.Name, Proposed.Name_Length,
          Proposed.Content, Proposed.Content_Length,
          Proposed.Document, Proposed.Namespace,
-         Proposed.Ns_Pin, Proposed.Doc_Pin, Proposed.Content_Pin)
+         Proposed.Ns_Pin, Proposed.Doc_Pin, Proposed.Content_Pin,
+         Proposed.Name_Pin)
       and then (Proposed.Ns_Pin = 0 or else
         (Proposed.Ns_Pin <= Owner_Ref (Owner_Count (S))
          and then Owner (S, Proposed.Ns_Pin).State = Live))
@@ -1792,6 +1806,9 @@ private
       and then (Proposed.Content_Pin = 0 or else
         (Proposed.Content_Pin <= Owner_Ref (Owner_Count (S))
          and then Owner (S, Proposed.Content_Pin).State = Live))
+      and then (Proposed.Name_Pin = 0 or else
+        (Proposed.Name_Pin <= Owner_Ref (Owner_Count (S))
+         and then Owner (S, Proposed.Name_Pin).State = Live))
       and then (Proposed.Document = 0 or else
         (Proposed.Document <= Node_Ref (Node_Count (S))
          and then Node (S, Proposed.Document).Kind = Document_Node
@@ -1838,6 +1855,7 @@ private
       Namespace_Pin : Owner_Ref;
       Doc_Pin : Owner_Ref;
       Content_Pin : Owner_Ref;
+      Name_Pin : Owner_Ref;
       Success : out Boolean)
    with Global => null,
      Pre => Valid (S) and then Can_Edit (S)
@@ -1850,7 +1868,8 @@ private
        Allowed : constant Boolean := Projection_Pins_Allowed
          (S, N, Projected_View
            (Node (S, N), Name, Name_Length, Content, Content_Length,
-            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin))'Old;
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin,
+            Name_Pin))'Old;
      begin
        Valid (S) and then Can_Edit (S)
        and then (if Facades_Present (S'Old) then Facades_Present (S))
@@ -1866,7 +1885,8 @@ private
          and then Node (S, N) = Projected_View
            (Original_Nodes (Positive (N)),
             Name, Name_Length, Content, Content_Length,
-            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin)
+            Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin,
+            Name_Pin)
          else Projection_Required (S) = Projection_Required (S)'Old)
        and then (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
          (if not Success or else I /= N then

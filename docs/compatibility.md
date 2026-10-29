@@ -446,6 +446,16 @@ live/range検査、親・兄弟・property chainのbounded traversal、照合、
 行います。C adapterはNULL/lock/Runtime/status/exceptionだけを扱います。proofは内部計算・契約に
 限られ、native pointer readable extent、allocation、byte copy/write、ABI/status mapping、完全な
 public C semanticsはtrusted / not-provedです。
+`xmlNodeSetName` は管理中のelement・attribute・PIだけを対象に、名前を新しい独立所有
+領域へコピーしてから旧名を解放します。空・不正UTF-8・不正NCName、PI targetの
+大文字小文字を無視した `xml`、非namespace属性の `xmlns`、同じnamespace URIと
+local nameを持つ既存属性との衝突はDOM error 115で拒否し、元の名前pointer・値・
+linksを保持します。異なるURIの同じlocal nameは許可し、prefixだけが異なる同URIの
+衝突は拒否します。content置換後もnameは独立して保持され、NULLと未対応kindは
+no-opです。referenceはduplicate expanded nameを許す一方、このsubsetでは競合を原子的に拒否し、
+既存propertyを削除しません。entity referenceと完全な公開C意味論はsubset外です。C adapterはraw pointer、lock、
+status/diagnostic mappingだけを扱い、名前検証・allocation・DOM projectionはSPARKで
+行います。native pointer/readability、allocator、byte writes、ABIはtrusted boundaryです。
 SPARK `Read_Length` は `0..Max_Bytes` を走査し、境界位置のNULを受け入れます。
 その範囲にNULがなければDOM error 115を記録して-1を返します。これはempty stringを
 意味しないerror sentinelなので、呼び出し側はdiagnosticを確認してください。

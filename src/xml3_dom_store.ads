@@ -218,6 +218,24 @@ private
               and then XML3_DOM.Snapshot_Namespaces (S.Current.all) =
                 Old_Namespaces));
 
+   function Find_Registered_Node
+     (S : Store; Facade : System.Address) return XML3_DOM.Node_Ref
+     with Global => null,
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all)),
+       Post => (if Find_Registered_Node'Result /= XML3_DOM.Null_Node then
+         S.Current /= null
+         and then Find_Registered_Node'Result in
+           1 .. XML3_DOM.Node_Ref (XML3_DOM.Node_Count (S.Current.all))
+         and then XML3_DOM.Node
+           (S.Current.all, Find_Registered_Node'Result).State = XML3_DOM.Live
+         and then XML3_DOM.Node
+           (S.Current.all, Find_Registered_Node'Result).Facade = Facade);
+
    function Find_Node
      (S : Store; Facade : System.Address) return XML3_DOM.Node_Ref
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),

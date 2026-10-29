@@ -174,6 +174,192 @@ static void test_node_paths(void) {
     }
 }
 
+static void test_node_set_name(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr element;
+    xmlNodePtr child;
+    xmlAttrPtr attr;
+    xmlNodePtr pi;
+    xmlNsPtr ns;
+    xmlChar *dump = NULL;
+    int dump_size = 0;
+    char caller_name[] = "caller";
+
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    ns = xmlNewNs(root, BAD_CAST "urn:name", BAD_CAST "p");
+    element = xmlNewChild(root, ns, BAD_CAST "old", BAD_CAST "value");
+    attr = xmlNewNsProp(root, ns, BAD_CAST "id", BAD_CAST "attribute");
+    pi = xmlNewPI(BAD_CAST "target", BAD_CAST "data");
+    assert(ns != NULL && element != NULL && attr != NULL && pi != NULL);
+    assert(xmlAddChild(root, pi) == pi);
+    child = element->children;
+
+    xmlNodeSetName(element, BAD_CAST "renamed");
+    assert(element->name != NULL &&
+           strcmp((const char *)element->name, "renamed") == 0);
+    assert(element->parent == root && element->children == child);
+    assert(child->parent == element && element->ns == ns);
+    assert_path(element, "/root/p:renamed");
+    assert_text(element, "value");
+
+    xmlNodeSetName((xmlNodePtr)attr, BAD_CAST "key");
+    assert(attr->parent == root && attr->children != NULL);
+    assert(xmlHasNsProp(root, BAD_CAST "key", BAD_CAST "urn:name") == attr);
+    assert_path((xmlNodePtr)attr, "/root/@p:key");
+    assert_path(attr->children, "/root/@p:key/text()");
+
+    xmlNodeSetName(element, element->name);
+    assert(strcmp((const char *)element->name, "renamed") == 0);
+    xmlNodeSetName(element, element->name + 1);
+    assert(strcmp((const char *)element->name, "enamed") == 0);
+    assert_path(element, "/root/p:enamed");
+    xmlNodeSetName(element, BAD_CAST caller_name);
+    caller_name[0] = 'x';
+    assert(strcmp((const char *)element->name, "caller") == 0);
+    xmlNodeSetName(element, BAD_CAST "名");
+    assert(strcmp((const char *)element->name, "名") == 0);
+    assert_path(element, "/root/p:名");
+
+    xmlNodeSetName(pi, BAD_CAST "renamed-pi");
+    assert(strcmp((const char *)pi->name, "renamed-pi") == 0);
+    assert_text(pi, "data");
+    xmlNodeSetContent(pi, BAD_CAST "pi-source");
+    xmlNodeSetName(pi, pi->content);
+    assert(strcmp((const char *)pi->name, "pi-source") == 0);
+    xmlNodeSetContent(pi, BAD_CAST "updated");
+    assert(strcmp((const char *)pi->name, "pi-source") == 0);
+    assert_text(pi, "updated");
+    assert_path(pi, "/root/processing-instruction('pi-source')");
+
+    xmlResetLastError();
+    xmlNodeSetName(NULL, BAD_CAST "ignored");
+    xmlNodeSetName((xmlNodePtr)doc, BAD_CAST "ignored");
+    xmlNodeSetName(root, NULL);
+    assert(xmlGetLastError() == NULL);
+    assert(strcmp((const char *)doc->version, "1.0") == 0);
+    assert(strcmp((const char *)root->name, "root") == 0);
+
+    xmlDocDumpMemoryEnc(doc, &dump, &dump_size, "UTF-8");
+    assert(dump != NULL && dump_size > 0);
+    {
+        xmlDocPtr reparsed =
+            xmlReadMemory((const char *)dump, dump_size, NULL, NULL, 0);
+        assert(reparsed != NULL);
+        assert(xmlDocGetRootElement(reparsed) != NULL);
+        assert(strcmp((const char *)xmlDocGetRootElement(reparsed)->name,
+                      "root") == 0);
+        xmlFreeDoc(reparsed);
+    }
+    xmlFree(dump);
+    xmlFreeDoc(doc);
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void assert_name_rejected(xmlNodePtr node, const xmlChar *candidate) {
+    const xmlChar *old_name = node->name;
+    const xmlChar *old_content = NULL;
+    xmlNodePtr old_parent = node->parent;
+    xmlNodePtr old_previous = node->prev;
+    xmlNodePtr old_next = node->next;
+    xmlNodePtr old_children = node->children;
+
+    if (node->type != XML_ATTRIBUTE_NODE) {
+        old_content = node->content;
+    }
+    xmlResetLastError();
+    xmlNodeSetName(node, candidate);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->domain == XML_FROM_TREE);
+    assert(xmlGetLastError()->code == 115);
+    assert(node->name == old_name);
+    if (node->type != XML_ATTRIBUTE_NODE) {
+        assert(node->content == old_content);
+    }
+    assert(node->parent == old_parent && node->prev == old_previous);
+    assert(node->next == old_next && node->children == old_children);
+    xmlResetLastError();
+}
+
+static void test_node_set_name_rejections(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr element;
+    xmlNodePtr pi;
+    xmlAttrPtr plain;
+    xmlAttrPtr first;
+    xmlAttrPtr second;
+    xmlAttrPtr other_uri;
+    xmlNsPtr same_p;
+    xmlNsPtr same_q;
+    xmlNsPtr other;
+    xmlNode foreign;
+    xmlChar malformed[] = { (xmlChar)0xff, 0 };
+
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    element = xmlNewChild(root, NULL, BAD_CAST "element", BAD_CAST "value");
+    pi = xmlNewPI(BAD_CAST "target", BAD_CAST "value");
+    plain = xmlNewProp(root, BAD_CAST "plain", BAD_CAST "value");
+    same_p = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "p");
+    same_q = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "q");
+    other = xmlNewNs(root, BAD_CAST "urn:other", BAD_CAST "r");
+    first = xmlNewNsProp(root, same_p, BAD_CAST "first", BAD_CAST "one");
+    second = xmlNewNsProp(root, same_q, BAD_CAST "second", BAD_CAST "two");
+    other_uri = xmlNewNsProp(root, other, BAD_CAST "third", BAD_CAST "three");
+    assert(element != NULL && pi != NULL && plain != NULL);
+    assert(same_p != NULL && same_q != NULL && other != NULL);
+    assert(first != NULL && second != NULL && other_uri != NULL);
+
+    assert_name_rejected(element, BAD_CAST "");
+    assert_name_rejected(element, BAD_CAST "bad:name");
+    assert_name_rejected(element, malformed);
+    assert_name_rejected((xmlNodePtr)plain, BAD_CAST "xmlns");
+    assert_name_rejected(pi, BAD_CAST "XML");
+    assert_name_rejected(pi, BAD_CAST "bad'");
+    assert_name_rejected((xmlNodePtr)second, BAD_CAST "first");
+    xmlNodeSetName((xmlNodePtr)other_uri, BAD_CAST "first");
+    assert(strcmp((const char *)other_uri->name, "first") == 0);
+
+    memset(&foreign, 0, sizeof(foreign));
+    xmlResetLastError();
+    xmlNodeSetName(&foreign, BAD_CAST "foreign");
+    assert(xmlGetLastError() != NULL && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    xmlNodeSetName(NULL, BAD_CAST "ignored");
+    assert(xmlGetLastError() == NULL);
+    xmlFreeNode(pi);
+    xmlFreeDoc(doc);
+
+    doc = xmlNewDoc(BAD_CAST "1.0");
+    root = xmlNewNode(NULL, BAD_CAST "root");
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    {
+        xmlNsPtr retained_ns =
+            xmlNewNs(root, BAD_CAST "urn:retained", BAD_CAST "p");
+        xmlNodePtr retained =
+            xmlNewChild(root, retained_ns, BAD_CAST "detached", BAD_CAST "old");
+        xmlChar *path;
+        assert(retained_ns != NULL && retained != NULL);
+        xmlNodeSetName(retained, BAD_CAST "detached-renamed");
+        assert(strcmp((const char *)retained->name, "detached-renamed") == 0);
+        xmlUnlinkNode(retained);
+        xmlFreeDoc(doc);
+        assert(strcmp((const char *)retained->name, "detached-renamed") == 0);
+        xmlNodeSetContent(retained, BAD_CAST "new");
+        assert(strcmp((const char *)retained->name, "detached-renamed") == 0);
+        xmlNodeSetName(retained, BAD_CAST "detached-again");
+        path = xmlGetNodePath(retained);
+        assert(path != NULL && strcmp((const char *)path, "/p:detached-again") == 0);
+        xmlFree(path);
+        assert_text(retained, "new");
+        xmlFreeNode(retained);
+    }
+}
+#endif
+
 #ifndef XML3_REFERENCE_TEST
 static void test_node_path_rejections(void) {
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
@@ -1070,7 +1256,9 @@ int main(void) {
     test_add_sibling_flow();
     test_adjacent_sibling_flow();
     test_node_paths();
+    test_node_set_name();
 #ifndef XML3_REFERENCE_TEST
+    test_node_set_name_rejections();
     test_node_path_rejections();
     test_sibling_rejections_and_lifetime();
     test_release_list_lifetime_and_rejections();

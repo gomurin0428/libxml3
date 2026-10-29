@@ -111,6 +111,11 @@ is
          Attribute_Mode : Boolean := False)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Set_Name
+        (Facade, Name : System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Set_Content
         (Facade : System.Address; Content : String; Has_Content : Boolean;
          Status : out XML3_DOM_Store.Operation_Status)

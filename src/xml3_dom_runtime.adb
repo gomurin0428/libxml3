@@ -152,6 +152,14 @@ is
            (Current, Facade, Suffix, Status, Has_Input, Text_Only);
       end Add_Content;
 
+      procedure Set_Name
+        (Facade, Name : System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.Set_Name (Current, Facade, Name, Status);
+      end Set_Name;
+
       procedure Set_Content
         (Facade : System.Address; Content : String; Has_Content : Boolean;
          Status : out XML3_DOM_Store.Operation_Status)

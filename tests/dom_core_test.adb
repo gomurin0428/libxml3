@@ -22,7 +22,7 @@ procedure DOM_Core_Test is
       Set_Node_Projection
         (S.all, N, System.Null_Address, 0, System.Null_Address, 0,
          Doc, Declaration, (if Declaration = 0 then 0 else Arena),
-         (if N = Doc then 0 else Arena), 0, OK);
+         (if N = Doc then 0 else Arena), 0, 0, OK);
       pragma Assert (OK);
    end Bind;
 
@@ -230,8 +230,8 @@ procedure DOM_Core_Test is
       Attach_Namespace (T.all, Root, Declaration, Local_OK);
       pragma Assert (Local_OK);
       Set_Node_Projection
-        (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
-         Null_Node, Declaration, Ns_Owner, 0, 0, Local_OK);
+         (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
+         Null_Node, Declaration, Ns_Owner, 0, 0, 0, Local_OK);
       pragma Assert (Local_OK and then Namespace (T.all, Declaration).State = Live);
 
       pragma Assert (not Retained_Declarations_Clear (T.all, Root));
@@ -248,8 +248,8 @@ procedure DOM_Core_Test is
          and then Node (T.all, Borrower).Namespace = Declaration);
 
       Set_Node_Projection
-        (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
-         Null_Node, Null_Namespace, 0, 0, 0, Local_OK);
+         (T.all, Borrower, System.Null_Address, 0, System.Null_Address, 0,
+         Null_Node, Null_Namespace, 0, 0, 0, 0, Local_OK);
       pragma Assert
         (Local_OK and then Owner (T.all, Ns_Owner).State = Releasing
          and then Namespace_Release_Required (T.all, Declaration));
@@ -282,7 +282,7 @@ procedure DOM_Core_Test is
       begin
          Set_Node_Projection
            (T.all, N, System.Null_Address, 0, Token (80), Length,
-            Document, 0, 0, Doc_Pin, Pin, Local_OK);
+            Document, 0, 0, Doc_Pin, Pin, 0, Local_OK);
          pragma Assert (Local_OK);
       end Set_Content;
    begin
@@ -368,7 +368,7 @@ procedure DOM_Core_Test is
       begin
          Set_Node_Projection
            (T.all, N, System.Null_Address, 0, System.Null_Address, 0,
-            Document, 0, 0, Doc_Pin, 0, Local_OK);
+            Document, 0, 0, Doc_Pin, 0, 0, Local_OK);
          pragma Assert (Local_OK);
       end Project_Node;
 
@@ -377,7 +377,7 @@ procedure DOM_Core_Test is
       begin
          Set_Node_Projection
            (T.all, N, System.Null_Address, 0, System.Null_Address, 0,
-            Document, 0, 0, Doc_Pin, 0, Local_OK);
+            Document, 0, 0, Doc_Pin, 0, 0, Local_OK);
       end Try_Project_Node;
    begin
       Initialize (T, 32, Local_OK);
@@ -479,7 +479,7 @@ procedure DOM_Core_Test is
       begin
          Set_Node_Projection
            (T.all, N, System.Null_Address, 0, System.Null_Address, 0,
-            Document, 0, 0, Doc_Pin, 0, Local_OK);
+            Document, 0, 0, Doc_Pin, 0, 0, Local_OK);
          pragma Assert (Local_OK);
       end Project_Node;
    begin
@@ -658,6 +658,92 @@ procedure DOM_Core_Test is
       XML3_DOM_Allocation.Free_State (T);
    end Adjacent_Sibling_Insertion;
 
+   procedure Name_Owner_Lifetime is
+      T : State_Access;
+      Arena, Name_Owner, Content_Owner, Shared_Owner : Owner_Ref;
+      Node_With_Name, Node_With_Shared_Owner : Node_Ref;
+      Local_OK : Boolean;
+
+      procedure Finish_Projection is
+         Projected_Node : Node_Ref;
+         Declaration : Namespace_Ref;
+      begin
+         Begin_Projection (T.all);
+         while Phase (T.all) = Projecting_Nodes loop
+            Next_Node_Projection (T.all, Projected_Node);
+            if Projected_Node /= Null_Node then
+               Acknowledge_Projection (T.all);
+            end if;
+         end loop;
+         while Phase (T.all) = Projecting_Namespaces loop
+            Next_Namespace_Projection (T.all, Declaration);
+            if Declaration /= Null_Namespace then
+               Acknowledge_Projection (T.all);
+            end if;
+         end loop;
+         pragma Assert
+           (Can_Edit (T.all) and then not Projection_Required (T.all));
+      end Finish_Projection;
+   begin
+      Initialize (T, 8, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (920), Arena, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (921), Name_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (922), Content_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (923), Shared_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (924), Arena, 0,
+         Node_With_Name, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node
+        (T.all, Element_Node, Token (925), Arena, 0,
+         Node_With_Shared_Owner, Local_OK);
+      pragma Assert (Local_OK);
+
+      Set_Node_Projection
+        (T.all, Node_With_Name, Token (926), 4,
+         System.Null_Address, 0, Null_Node, Null_Namespace,
+         Null_Owner, Null_Owner, Null_Owner, Name_Owner, Local_OK);
+      pragma Assert (Local_OK);
+      Finish_Projection;
+      Set_Node_Projection
+        (T.all, Node_With_Name, Token (926), 4, Token (927), 3,
+         Null_Node, Null_Namespace, Null_Owner, Null_Owner,
+         Content_Owner, Name_Owner, Local_OK);
+      pragma Assert
+        (Local_OK and then Owner (T.all, Name_Owner).References = 2
+         and then Node (T.all, Node_With_Name).Name_Pin = Name_Owner);
+      Finish_Projection;
+
+      Set_Node_Projection
+        (T.all, Node_With_Shared_Owner, Token (928), 6, Token (929), 5,
+         Null_Node, Null_Namespace, Null_Owner, Null_Owner,
+         Shared_Owner, Shared_Owner, Local_OK);
+      pragma Assert
+        (Local_OK and then Owner (T.all, Shared_Owner).References = 2);
+      Finish_Projection;
+      Release_Reservation (T.all, Arena);
+      Release_Reservation (T.all, Name_Owner);
+      Release_Reservation (T.all, Content_Owner);
+      Release_Reservation (T.all, Shared_Owner);
+      Free_Subtree (T.all, Node_With_Name);
+      Free_Subtree (T.all, Node_With_Shared_Owner);
+      pragma Assert
+        (Node (T.all, Node_With_Name).Name_Pin = Null_Owner
+         and then Node (T.all, Node_With_Name).Content_Pin = Null_Owner
+         and then Owner (T.all, Name_Owner).References = 0
+         and then Owner (T.all, Name_Owner).State = Releasing
+         and then Owner (T.all, Content_Owner).References = 0
+         and then Owner (T.all, Content_Owner).State = Releasing
+         and then Owner (T.all, Shared_Owner).References = 0
+         and then Owner (T.all, Shared_Owner).State = Releasing);
+      XML3_DOM_Allocation.Free_State (T);
+   end Name_Owner_Lifetime;
+
 begin
    Attribute_Children;
    Text_Attribute_Retirement;
@@ -666,6 +752,7 @@ begin
    Document_Propagation;
    Root_Replacement;
    Adjacent_Sibling_Insertion;
+   Name_Owner_Lifetime;
    Initialize (S, 16, OK);
    pragma Assert (OK and then S /= null);
    Register_Owner (S.all, Token (1), Arena, OK);
