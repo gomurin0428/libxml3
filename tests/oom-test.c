@@ -772,21 +772,29 @@ int main(int argc, char **argv) {
             xmlResetError(&copy);
             assert(strcmp(emergency_message, "out of memory\n") == 0);
         }
-    } else if (strcmp(operation, "dom-new-doc") == 0) {
+    } else if (strcmp(operation, "dom-new-doc") == 0 ||
+               strcmp(operation, "dom-new-doc-version") == 0 ||
+               strcmp(operation, "dom-new-doc-empty") == 0) {
+        xmlChar version_text[] = "1.0";
+        const xmlChar *version = strcmp(operation, "dom-new-doc") == 0 ? NULL
+            : version_text + (strcmp(operation, "dom-new-doc-empty") == 0 ? 3 : 0);
         xml3_oom_enable(fail_index);
-        doc = xmlNewDoc(NULL);
+        doc = xmlNewDoc(version);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         if (injected) {
             assert(doc == NULL);
             require_oom_error();
-        } else {
-            assert(doc != NULL);
-            xmlFreeDoc(doc);
-            doc = NULL;
-            assert(xmlGetLastError() == NULL);
+            xmlResetLastError();
+            doc = xmlNewDoc(version);
         }
+        assert(doc != NULL && doc->version != NULL);
+        assert(strcmp((const char *)doc->version, version ? (const char *)version : "1.0") == 0);
+        assert(strcmp((const char *)version_text, "1.0") == 0);
+        xmlFreeDoc(doc);
+        doc = NULL;
+        assert(xmlGetLastError() == NULL);
     } else if (strcmp(operation, "dom-new-node") == 0) {
         xml3_oom_enable(fail_index);
         dom_node = xmlNewNode(NULL, BAD_CAST "new-node");

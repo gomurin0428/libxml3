@@ -726,29 +726,19 @@ package body XML3_C is
    end Doc_Get_Root_Element;
 
    function New_Doc (Version : System.Address) return System.Address is
-      Result, Implicit_Ns : System.Address := System.Null_Address;
-      Name : constant String := "";
+      Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Version_Text : constant String := C_String_Value (Version, "1.0");
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Construct
-              (XML3_DOM.Document_Node, Name, Version_Text, True,
-               System.Null_Address, Result, Implicit_Ns, Status);
-         end;
-         Report_Operation_Status (Status);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.New_Document (Version, Result, Status);
       end;
+      Report_Operation_Status (Status);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

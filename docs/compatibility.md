@@ -217,7 +217,10 @@ namespace facade、未管理 node、または空の結果では 1、結果があ
 `xmlNodeSetSpacePreserve` を実装しています。
 `xmlNewDoc` は
 version が NULL の場合 `"1.0"` を使い、渡された C string は値を検証せずコピー
-します。parser が受け付ける文書は XML 1.0 です。`xmlNewNode` の name と
+します。SPARKの`Measure`で上限内のNULを探し、文書所有の領域へ直接byteコピー
+するため、C側の走査・中間Stringはありません。空文字列も独立した終端領域を持ち、
+元のversion文字列を解放しても利用できます。走査上限超過は従来どおりcode115、
+確保失敗はOOMで、部分的な文書を返しません。parser が受け付ける文書は XML 1.0 です。`xmlNewNode` の name と
 `xmlNewText` の content は NUL 終端 byte string としてコピーされますが、
 XML name/UTF-8 の妥当性検証は行いません。`xmlNewText(NULL)` は content が NULL
 の text node を作ります。

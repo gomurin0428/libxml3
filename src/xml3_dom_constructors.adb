@@ -139,12 +139,15 @@ package body XML3_DOM_Constructors with SPARK_Mode is
      (Is_Doc : Boolean;
       Name, Content : String;
       Has_Content : Boolean;
+      Content_Source : System.Address; Source_Length : Natural;
       Block, Node_Facade, Namespace_Facade, Name_Address, Content_Address,
         Href_Address, Prefix_Address : out System.Address;
       Status : out Construction_Status)
    with Global => (In_Out => Native.Foreign_Memory),
      Pre => (Is_Doc or else Name'Length < Natural'Last)
-       and then (not Has_Content or else Content'Length < Natural'Last),
+       and then (not Has_Content or else
+         (if Content_Source = System.Null_Address then
+            Content'Length < Natural'Last else Source_Length < Natural'Last)),
      Post =>
        (if Status = Created then
           Block /= System.Null_Address
@@ -164,6 +167,9 @@ package body XML3_DOM_Constructors with SPARK_Mode is
       Name_Offset, Content_Offset, Href_Offset, Prefix_Offset :
         Native.Byte_Count := 0;
       Size_Ok : Boolean;
+      Content_Size : constant Natural :=
+        (if Content_Source = System.Null_Address then Content'Length
+         else Source_Length);
    begin
       Block := System.Null_Address;
       Node_Facade := System.Null_Address;
@@ -204,7 +210,7 @@ package body XML3_DOM_Constructors with SPARK_Mode is
       end if;
       if Has_Content then
          Content_Offset := Cursor;
-         Add_Natural (Cursor, Content'Length + 1, Next, Size_Ok);
+         Add_Natural (Cursor, Content_Size + 1, Next, Size_Ok);
          if not Size_Ok then
             Status := Limit_Exceeded;
             return;
@@ -287,11 +293,15 @@ package body XML3_DOM_Constructors with SPARK_Mode is
          Native.Write_Byte (Name_Address, Name'Length, Character'Val (0));
       end if;
       if Has_Content then
-         if Content'Length > 0 then
-            Native.Write_String (Content_Address, 0, Content);
+         if Content_Size > 0 then
+            if Content_Source = System.Null_Address then
+               Native.Write_String (Content_Address, 0, Content);
+            else
+               Native.Copy_Bytes (Content_Source, Content_Address, Content_Size);
+            end if;
          end if;
          Native.Write_Byte
-           (Content_Address, Content'Length, Character'Val (0));
+           (Content_Address, Content_Size, Character'Val (0));
       end if;
       Status := Created;
    end Allocate_Node_Buffer;
@@ -416,7 +426,9 @@ package body XML3_DOM_Constructors with SPARK_Mode is
       Ns : Namespace_Ref;
       N : out Node_Ref;
       Implicit_Ns : out Namespace_Ref;
-      Status : out Construction_Status)
+      Status : out Construction_Status;
+      Content_Source : System.Address := System.Null_Address;
+      Source_Length : Natural := 0)
    is
       Block : System.Address := System.Null_Address;
       Node_Facade, Namespace_Facade : System.Address := System.Null_Address;
@@ -427,6 +439,9 @@ package body XML3_DOM_Constructors with SPARK_Mode is
       Local_Ns : Namespace_Ref := Null_Namespace;
       Local_Ok : Boolean;
       Is_Doc : constant Boolean := Kind = Document_Node;
+      Content_Size : constant Natural :=
+        (if Content_Source = System.Null_Address then Content'Length
+         else Source_Length);
       Entry_Node_Count : constant Natural := Node_Count (Current.all)
         with Ghost;
       Entry_Namespace_Count : constant Natural :=
@@ -443,13 +458,13 @@ package body XML3_DOM_Constructors with SPARK_Mode is
       N := Null_Node;
       Implicit_Ns := Null_Namespace;
       Prepare_Node_Capacity
-        (Current, Kind, Name'Length, Content'Length, Has_Content, Ns, Status);
+        (Current, Kind, Name'Length, Content_Size, Has_Content, Ns, Status);
       if Status /= Created then
          return;
       end if;
 
       Allocate_Node_Buffer
-        (Is_Doc, Name, Content, Has_Content,
+        (Is_Doc, Name, Content, Has_Content, Content_Source, Source_Length,
          Block, Node_Facade, Namespace_Facade, Name_Address, Content_Address,
          Href_Address, Prefix_Address, Status);
       if Status /= Created then
@@ -523,7 +538,7 @@ package body XML3_DOM_Constructors with SPARK_Mode is
             (if Kind in Document_Node | CData_Node then
                System.Null_Address else Name_Address),
             (if Kind in Document_Node | CData_Node then 0 else Name'Length),
-            Content_Address, (if Has_Content then Content'Length else 0),
+            Content_Address, (if Has_Content then Content_Size else 0),
             (if Is_Doc then Local_N else Null_Node), Ns,
             (if Ns = Null_Namespace then Null_Owner
              else Namespace (Current.all, Ns).Owner),
@@ -786,7 +801,7 @@ package body XML3_DOM_Constructors with SPARK_Mode is
          and then (if Kind = CData_Node then
            Node (Current.all, Local_N).Name = System.Null_Address)
          and then Node (Current.all, Local_N).Content_Length =
-           (if Has_Content then Content'Length else 0)
+           (if Has_Content then Content_Size else 0)
          and then Node (Current.all, Local_N).Document =
            (if Kind = Document_Node then Local_N else Null_Node)
          and then (if Kind = Document_Node then

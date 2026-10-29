@@ -1,6 +1,7 @@
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
 with XML3_DOM_Store.Properties;
+with XML3_Text.Buffers;
 
 package body XML3_DOM_Store with SPARK_Mode is
    use XML3_DOM;
@@ -271,7 +272,9 @@ package body XML3_DOM_Store with SPARK_Mode is
      (S : in out Store; Kind : Node_Kind;
       Name, Content : String; Has_Content : Boolean;
       Ns : System.Address; Result, Implicit_Ns : out System.Address;
-      Status : out Operation_Status)
+      Status : out Operation_Status;
+      Content_Source : System.Address := System.Null_Address;
+      Source_Length : Natural := 0)
    is
       N : Node_Ref;
       Xml_Ns : Namespace_Ref;
@@ -293,7 +296,7 @@ package body XML3_DOM_Store with SPARK_Mode is
       end if;
       Create_Node
         (S.Current, Kind, Name, Content, Has_Content, Selected_Ns,
-         N, Xml_Ns, Status);
+         N, Xml_Ns, Status, Content_Source, Source_Length);
       if Status = Created then
          Result := Node (S.Current.all, N).Facade;
          if Xml_Ns /= Null_Namespace then
@@ -303,6 +306,31 @@ package body XML3_DOM_Store with SPARK_Mode is
          Reclaim_Empty (S);
       end if;
    end Construct;
+
+   procedure New_Document
+     (S : in out Store; Version : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+      Implicit_Ns : System.Address;
+   begin
+      Result := System.Null_Address;
+      if Version = System.Null_Address then
+         Construct
+           (S, Document_Node, "", "1.0", True, System.Null_Address,
+            Result, Implicit_Ns, Status);
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Version, Length, Found);
+      if not Found then
+         Status := Invalid_Argument;
+         return;
+      end if;
+      Construct
+        (S, Document_Node, "", "", True, System.Null_Address,
+         Result, Implicit_Ns, Status, Version, Length);
+   end New_Document;
 
    procedure Inspect
      (S : Store; Facade : System.Address;

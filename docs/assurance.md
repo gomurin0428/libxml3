@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
- proved. The refreshed aggregate has 12,972 checks
-(1,391 flow and 11,581 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
+ proved. The refreshed aggregate has 12,988 checks
+(1,399 flow and 11,589 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 160 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -272,6 +272,23 @@ protocol per owner ID, not an unconditional theorem about arbitrary C addresses.
 The native integration test additionally checks real C fields, retained document
 storage, preserved `_private`, and exactly-once frees for its tracked allocations.
 
+`xmlNewDoc` passes its native version address through Runtime to
+`Store.New_Document`. NULL uses the existing `1.0` String construction path;
+non-NULL input is measured by SPARK `Measure` before Store allocation, then
+copied directly into the shared node owner block. `Construct`/`Create_Node`
+accept an optional native content source/length; its precondition forbids
+simultaneous String content and requires `Has_Content`. Existing String callers
+retain their default path. Checked sizing, terminator space, registration and
+rollback are shared; no intermediate version String or extra allocation is
+introduced. Empty and arbitrary raw version bytes remain supported; this does
+not enable XML 1.1 parsing. Guard-page/reference tests cover independent version
+storage and subsequent DOM/output/reparse use; OOM walks cover NULL, explicit
+and empty versions plus retry. Native extents/stability, byte effects,
+allocation/free, ABI and complete public semantics remain trusted.
+GNATprove discharges 7 checks for `Store.New_Document`, 0 for the Runtime
+wrapper, 9 for `Store.Construct`, 461 for `Create_Node`, and 22 for
+`Allocate_Node_Buffer`; shared `Measure` proves 2 checks.
+
 `XML3_DOM_Constructors.Create_Node` performs checked sizing, allocation,
 registration, implicit XML namespace setup, and synchronization. Before
 registration, a failed native block may be freed directly; after registration,
@@ -357,7 +374,7 @@ allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
- successful 12,972-check aggregate proof; see [proof-report.md](proof-report.md)
+ successful 12,988-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
