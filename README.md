@@ -568,7 +568,9 @@ NULLと空のcontentは区別し、NULL contentのコメントは出力しませ
 詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。
 
 UTF-16 の binary input には、明示長を渡せる `xmlReadMemory` を使用します。
-`xmlReadDoc`/`xmlParseDoc` は `strlen` を使うため binary UTF-16 用ではありません。
+`xmlReadDoc`/`xmlParseDoc` はSPARKの上限付き走査で最初のNULまで測るため、
+binary UTF-16 用ではありません。NULL入力は診断を保持してNULLを返し、空文字列は
+空文書として解析エラーになります。長さ計測自体は確保・コピーを行いません。
 DOM の名前と値は常に UTF-8 です。`UTF-8`/`UTF8`、`UTF-16`/`UTF16`、
 `UTF-16LE`、`UTF-16BE` は ASCII case-insensitive で、generic UTF-16 は
 little-endian です。明示encoding名はSPARKで最大9byte（終端込み）を直接読み、

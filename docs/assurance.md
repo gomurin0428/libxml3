@@ -1337,8 +1337,16 @@ per QName component/PI target, 10,000,000 decoded bytes per value, and depth
 256. `XML_PARSE_HUGE` raises these to 10,000,000 bytes, 1,000,000,000 bytes, and
 depth 2,048 respectively; it does not enable DTD, recovery, or other unsupported
 features. The DOM is always UTF-8. UTF-16 input uses the length-taking
-`xmlReadMemory`; `xmlReadDoc`/`xmlParseDoc` use `strlen` and are not binary UTF-16
-entry points. Names `UTF-8`/`UTF8`, `UTF-16`/`UTF16`, `UTF-16LE`, and
+`xmlReadMemory`; `xmlReadDoc`/`xmlParseDoc` use the existing SPARK `Measure`
+to find the first NUL, with inclusive bound `Max_Bytes`, and are not binary
+UTF-16 entry points. Missing terminators within that bound return NULL before
+parsing, without returning a partial length. The C adapter retains NULL-input
+priority and ABI/error mapping; empty strings still reach the empty-document
+diagnostic. The measurement allocates and copies nothing. Guard-page tests
+compare first-NUL behavior and input-protection/DOM/output/reparse lifetimes
+with the pinned reference; small-bound `Measure` tests exercise its limit.
+Native input extents/stability, byte reads, ABI and complete parser behavior
+remain outside proof. Names `UTF-8`/`UTF8`, `UTF-16`/`UTF16`, `UTF-16LE`, and
 `UTF-16BE` are case-insensitive; generic UTF-16 selects little-endian. Explicit
 encoding overrides the declaration while declaration grammar is still checked.
 `Classify_Bytes` now classifies the explicit native encoding name directly,
