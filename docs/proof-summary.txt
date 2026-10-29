@@ -4,7 +4,7 @@ Summary of SPARK analysis
 ---------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total         Flow                                 Provers   Justified   Unproved
 ---------------------------------------------------------------------------------------------------------------
-Data Dependencies               304          304                                       .           .          .
+Data Dependencies               305          305                                       .           .          .
 Flow Dependencies                 .            .                                       .           .          .
 Initialization                  667          667                                       .           .          .
 Non-Aliasing                      .            .                                       .           .          .
@@ -12,10 +12,10 @@ Run-time Checks                5328            .      5328 (CVC5 95%, Trivial 0%
 Assertions                     1623            .    1623 (CVC5 67%, Trivial 11%, Z3 22%)           .          .
 Functional Contracts           3952            .     3952 (CVC5 70%, Trivial 2%, Z3 28%)           .          .
 LSP Verification                  .            .                                       .           .          .
-Termination                     211          153                    58 (CVC5 98%, Z3 2%)           .          .
+Termination                     212          154                    58 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .            .                                       .           .          .
 ---------------------------------------------------------------------------------------------------------------
-Total                         12085    1124 (9%)                             10961 (91%)           .          .
+Total                         12087    1126 (9%)                             10961 (91%)           .          .
 
 
 max steps used for successful proof: 68245
@@ -186,21 +186,22 @@ in unit xml3_dom-import, 23 subprograms and packages out of 23 analyzed
   XML3_DOM.Import.Prove_Transferred_Pins at xml3_dom-import.adb:1142 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (54 checks)
   XML3_DOM.Import.Prove_Unretained_Suffix at xml3_dom-import.adb:601 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (42 checks)
   XML3_DOM.Import.Transfer_Layout at xml3_dom-import.adb:848 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (38 checks)
-in unit xml3_dom-materialize, 19 subprograms and packages out of 19 analyzed
+in unit xml3_dom-materialize, 20 subprograms and packages out of 20 analyzed
   XML3_DOM.Materialize at xml3_dom-materialize.ads:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM.Materialize.Add_Bytes at xml3_dom-materialize.adb:118 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
   XML3_DOM.Materialize.Add_Constant at xml3_dom-materialize.adb:195 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_DOM.Materialize.Add_Natural at xml3_dom-materialize.adb:140 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM.Materialize.Add_Node_Budget at xml3_dom-materialize.adb:327 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_DOM.Materialize.Add_Node_Budget at xml3_dom-materialize.adb:332 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
   XML3_DOM.Materialize.Add_Span at xml3_dom-materialize.adb:174 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_DOM.Materialize.Arena_Namespace at xml3_dom-materialize.adb:43 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
   XML3_DOM.Materialize.Arena_Node at xml3_dom-materialize.adb:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (9 checks)
   XML3_DOM.Materialize.Build at xml3_dom-materialize.ads:11 flow analyzed (0 errors, 0 checks, 30 warnings and 0 pragma Assume statements) and proved (151 checks)
   XML3_DOM.Materialize.Check_Arena at xml3_dom-materialize.adb:52 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (46 checks)
   XML3_DOM.Materialize.Count_Arena_Holders at xml3_dom-materialize.adb:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (9 checks)
-  XML3_DOM.Materialize.Fill_Namespace at xml3_dom-materialize.adb:690 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (40 checks)
-  XML3_DOM.Materialize.Fill_Node at xml3_dom-materialize.adb:415 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (72 checks)
-  XML3_DOM.Materialize.Initialize_Candidate at xml3_dom-materialize.adb:378 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
+  XML3_DOM.Materialize.Fill_Namespace at xml3_dom-materialize.adb:697 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (40 checks)
+  XML3_DOM.Materialize.Fill_Node at xml3_dom-materialize.adb:422 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (72 checks)
+  XML3_DOM.Materialize.Has_PI_Data at xml3_dom-materialize.adb:328 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM.Materialize.Initialize_Candidate at xml3_dom-materialize.adb:385 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
   XML3_DOM.Materialize.Mul_Bytes at xml3_dom-materialize.adb:148 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
   XML3_DOM.Materialize.Put_Constant at xml3_dom-materialize.adb:258 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_DOM.Materialize.Put_Decoded at xml3_dom-materialize.adb:275 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)

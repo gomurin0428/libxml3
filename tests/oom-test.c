@@ -586,6 +586,30 @@ int main(int argc, char **argv) {
             assert(status == XML3_STATUS_OK);
             assert(xmlGetLastError() == NULL);
         }
+    } else if (strcmp(operation, "parsed-pi") == 0) {
+        const char *input = "<r><?bare?><?empty ?></r>";
+        const char *expected = "<?xml version=\"1.0\"?>\n<r><?bare?><?empty ?></r>\n";
+        int status = -1;
+        xml3_oom_enable(fail_index);
+        doc = xml3ReadMemory(input, (int)strlen(input), &status);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(doc == NULL && status == XML3_STATUS_NO_MEMORY);
+            require_oom_error();
+            doc = xml3ReadMemory(input, (int)strlen(input), &status);
+        }
+        assert(doc && status == XML3_STATUS_OK);
+        xmlNodePtr bare = xmlDocGetRootElement(doc)->children;
+        assert(bare->content == NULL && bare->next->content);
+        assert(bare->next->content[0] == 0);
+        xmlChar *memory = NULL;
+        int size = 0;
+        xmlDocDumpMemory(doc, &memory, &size);
+        assert(memory && size == (int)strlen(expected));
+        assert(strcmp((const char *)memory, expected) == 0);
+        xmlFree(memory);
     } else if (strcmp(operation, "malformed") == 0) {
         int status = -1;
         xml3_oom_enable(fail_index);

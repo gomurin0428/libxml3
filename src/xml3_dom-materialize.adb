@@ -324,6 +324,11 @@ package body XML3_DOM.Materialize with SPARK_Mode is
       Address := Target_Address;
    end Put_Decoded;
 
+   --  Value_First follows any separator whitespace after the PI target.
+   function Has_PI_Data (Item : XML3_Parser.Node) return Boolean is
+     (Item.Value_First - 1 > Item.Name_Last)
+     with Global => null;
+
    procedure Add_Node_Budget
      (Nodes : XML3_Parser.Node_Array;
       Names : XML3_Namespaces.Name_Array; Count : XML3_Parser.Node_Id;
@@ -362,7 +367,9 @@ package body XML3_DOM.Materialize with SPARK_Mode is
                Add_Constant (Total, "text", Success);
                Add_Span (Total, Item.Value_First, Item.Value_Last, Success);
             elsif Item.Kind in XML3_Parser.Text_Node | XML3_Parser.CData_Node |
-              XML3_Parser.Comment_Node | XML3_Parser.PI_Node
+              XML3_Parser.Comment_Node
+              or else (Item.Kind = XML3_Parser.PI_Node
+                       and then Has_PI_Data (Item))
             then
                Add_Span (Total, Item.Value_First, Item.Value_Last, Success);
             end if;
@@ -567,8 +574,8 @@ package body XML3_DOM.Materialize with SPARK_Mode is
          Put_Decoded (Base, Arena_Bytes, Cursor, Input, P.Value_First,
            P.Value_Last, False, False, Scratch, Content_Address,
            Content_Length, Ok);
-      elsif P.Kind in XML3_Parser.Comment_Node |
-        XML3_Parser.PI_Node
+      elsif P.Kind = XML3_Parser.Comment_Node
+        or else (P.Kind = XML3_Parser.PI_Node and then Has_PI_Data (P))
       then
          Put_Decoded (Base, Arena_Bytes, Cursor, Input, P.Value_First,
            P.Value_Last, False, False, Scratch, Content_Address,
