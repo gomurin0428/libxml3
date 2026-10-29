@@ -37,10 +37,15 @@ ABI と完全な C semantics は信頼境界に残ります。
 外部で作った構造体や C 構造体フィールドの直接書換えは対象外です。
 
 `libxml/chvalid.h` は upstream で deprecated の `xmlIsChar`, `xmlIsBlank`,
-`xmlIsDigit`, `xmlIsExtender`, `xmlIsIdeographic`, `xmlIsPubidChar` の6関数を公開します。
+`xmlIsBaseChar`, `xmlIsCombining`, `xmlIsDigit`, `xmlIsExtender`,
+`xmlIsIdeographic`, `xmlIsPubidChar` の8関数を公開します。
 `xmlIsChar` は XML 1.0 Char production の TAB/LF/CR, U+0020–D7FF, E000–FFFD,
 10000–10FFFF を 1、それ以外を 0 と判定し、許可範囲内の supplementary noncharacter を追加除外しません。
 `xmlIsBlank` は U+0009・U+000A・U+000D・U+0020 のみ 1、それ以外を 0 とします。
+`xmlIsBaseChar` と `xmlIsCombining` は current name rules ではなく、
+pinned upstream `chvalid.h` / `codegen/ranges.inc` の歴史的 range set を再現します:
+前者は197個の16-bit範囲と sub-256 の5範囲、後者は95個の16-bit範囲です。
+BaseChar 集合に U+4E00 は含まれず、Combining 集合に U+0346 は含まれません。
 `xmlIsDigit` は歴史的な固定集合 U+0030–0039, 0660–0669, 06F0–06F9, 0966–096F,
 09E6–09EF, 0A66–0A6F, 0AE6–0AEF, 0B66–0B6F, 0BE7–0BEF, 0C66–0C6F,
 0CE6–0CEF, 0D66–0D6F, 0E50–0E59, 0ED0–0ED9, 0F20–0F29 のみを 1 とし、
@@ -51,8 +56,9 @@ Tamil の U+0BE6 は含みません。`xmlIsExtender` は U+00B7, 02D0–02D1, 0
 `-'()+,./:=?;!*#@$_%`) のみを 1 とし、TAB は含みません。
 これらは現代の Unicode category や locale ではなく、その他の値はすべて 0 です。
 引数は UTF-8 bytes でなく unsigned scalar number で、高い unsigned 値は安全に false になります。
-関数は pure SPARK classifier を使い、pointer access・allocation・diagnostic・DOM access・lock を行いません。
-歴史的分類は現在の NCName 規則に適用しません (U+0BE6 と U+9FA6 も引き続き受理されます)。
+関数は pure SPARK classifier を使い、pointer/native range-table access・allocation・diagnostic・DOM access・lock を行いません。
+歴史的分類は現在の NCName 規則に適用しません (U+037F, `a` に続く U+0346,
+U+0BE6 と U+9FA6 も引き続き受理されます)。
 この互換面は関数のみで、upstream header macro, range-group APIs, DTD subsystem は未実装です。
 C ABI と完全な upstream 意味論は信頼境界に残ります。
 

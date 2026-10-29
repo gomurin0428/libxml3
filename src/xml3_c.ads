@@ -372,6 +372,12 @@ package XML3_C is
    function Is_XML_Blank (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsBlank";
 
+   function Is_XML_Base_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsBaseChar";
+
+   function Is_XML_Combining (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsCombining";
+
    function Is_XML_Digit (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsDigit";
 

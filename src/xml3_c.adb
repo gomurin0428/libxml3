@@ -2541,6 +2541,14 @@ package body XML3_C is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Blank (Natural (Code))));
 
+   function Is_XML_Base_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Base_Char (Natural (Code))));
+
+   function Is_XML_Combining (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Combining (Natural (Code))));
+
    function Is_XML_Digit (Code : Interfaces.C.unsigned) return Interfaces.C.int is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Digit (Natural (Code))));

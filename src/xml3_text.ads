@@ -13,6 +13,10 @@ package XML3_Text with SPARK_Mode is
 
    function XML_Blank (C : Natural) return Boolean with Global => null;
 
+   function XML_Base_Char (C : Natural) return Boolean with Global => null;
+
+   function XML_Combining (C : Natural) return Boolean with Global => null;
+
    function XML_Digit (C : Natural) return Boolean with Global => null;
 
    function XML_Extender (C : Natural) return Boolean with Global => null;

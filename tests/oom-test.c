@@ -2006,6 +2006,10 @@ int main(int argc, char **argv) {
         assert(xmlIsIdeographic(~0u) == 0);
         assert(xmlIsPubidChar('%') == 1 && xmlIsPubidChar('\t') == 0);
         assert(xmlIsPubidChar(~0u) == 0);
+        assert(xmlIsBaseChar(0xd7a3) == 1 && xmlIsBaseChar(0xd7a4) == 0);
+        assert(xmlIsBaseChar(0x4e00) == 0 && xmlIsBaseChar(~0u) == 0);
+        assert(xmlIsCombining(0x345) == 1 && xmlIsCombining(0x346) == 0);
+        assert(xmlIsCombining(~0u) == 0);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();

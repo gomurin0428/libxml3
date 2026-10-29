@@ -7,7 +7,8 @@ static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
     int (*character_classes[])(unsigned int) = {
-        xmlIsChar, xmlIsBlank, xmlIsDigit, xmlIsExtender, xmlIsIdeographic, xmlIsPubidChar
+        xmlIsChar, xmlIsBlank, xmlIsDigit, xmlIsExtender, xmlIsIdeographic, xmlIsPubidChar,
+        xmlIsBaseChar, xmlIsCombining
     };
     (void)character_classes;
     void (*dump_format)(xmlDocPtr, xmlChar **, int *, int) = xmlDocDumpFormatMemory;

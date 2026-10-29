@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,568 checks
-(1,245 flow and 11,323 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,572 checks
+(1,249 flow and 11,323 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,568-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,572-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -414,7 +414,7 @@ OOM は NULL として返り、source list links は変更しません。
 失敗時は False を返す契約です。C は mutex・結果・例外の変換だけを担当します。
 ネイティブ byte 読み取りの正しさは信頼境界に残り、完全な C API 意味論の証明ではありません。
 
-The six deprecated `chvalid.h` function symbols use pure SPARK scalar
+The eight deprecated `chvalid.h` function symbols use pure SPARK scalar
 classifiers. `xmlIsChar` and `xmlIsBlank` retain the XML 1.0 Char ranges and
 the exact XML blank set documented above. The historical `xmlIsDigit` set is
 U+0030–0039, 0660–0669, 06F0–06F9, 0966–096F, 09E6–09EF, 0A66–0A6F,
@@ -427,12 +427,17 @@ U+0030–0039, 0660–0669, 06F0–06F9, 0966–096F, 09E6–09EF, 0A66–0A6F,
 `-'()+,./:=?;!*#@$_%`, but not TAB. These are fixed historical sets, not
 locale or modern Unicode categories; all other values return 0, including
 high unsigned values before narrowing when they exceed `Natural'Last`.
+`xmlIsBaseChar` reproduces the pinned reference's 197 short ranges plus five
+sub-U+0100 ranges, and excludes U+4E00; `xmlIsCombining` reproduces its 95
+short ranges and excludes U+0346. These sets come from the pinned
+`chvalid.h` / `codegen/ranges.inc`; they are not current NCName rules.
 The legacy name classes do not affect current NCName validation (which
-continues to accept U+0BE6 and U+9FA6). The scalar APIs perform no pointer
-access, allocation, locking, DOM access, or diagnostics. Header macros,
-range-group APIs, and a DTD subsystem are unsupported. Tests exhaust the
-XML-range and unsigned-boundary cases. The C ABI and complete upstream
-semantics are outside the proof.
+continues to accept U+037F, `a` followed by U+0346, U+0BE6, and U+9FA6).
+The scalar APIs perform no pointer or native range-table access, allocation,
+locking, DOM access, or diagnostics. Header macros, range-group APIs, and a
+DTD subsystem are unsupported. Tests sweep code points through U+110000 and
+check unsigned boundary cases. The C ABI and complete upstream semantics are
+outside the proof.
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use the read-only
 `Store.Queries.Get_Inherited_XML_Property` parent walk. Language returns a
