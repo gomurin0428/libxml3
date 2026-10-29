@@ -831,6 +831,10 @@ NUL 終端の `xmlReadDoc`/`xmlParseDoc` は呼び出し側が提供する有効
 です。UTF-16 は matching BOM、XML 宣言を示す BOMless byte signature、または明示
 encoding で判定します。encoding 名は ASCII 大文字小文字を区別せず、
 `UTF-8`/`UTF8`、`UTF-16`/`UTF16`、`UTF-16LE`、`UTF-16BE` を認識します。
+明示名は `XML3_Encoding.Buffers.Classify_Bytes` が最大9byte（終端込み）を直接読み、候補がなくなった
+最初のbyteで停止します。C側の走査・文字列変換を使わず、XML宣言のString分類とも対応表を共用します。
+NULLは自動検出指定、空名・不完全な名前・余分なsuffixはcode 32で拒否します。
+入力buffer/sizeの初期検査は引き続き名前を読む前に行い、不正な名前ではXML本文を読みません。
 generic `UTF-16`/`UTF16` は pinned libxml2 built-in handler の観測に合わせて
 little-endian として扱います。明示 encoding は XML 宣言より優先しますが、
 宣言の文法検査は省略しません。未知の明示 encoding は code 32 で拒否し、

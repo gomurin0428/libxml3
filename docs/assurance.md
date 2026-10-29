@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
- proved. The refreshed aggregate has 12,953 checks
-(1,383 flow and 11,570 prover), no unproved or justified conditions, 0
+ proved. The refreshed aggregate has 12,972 checks
+(1,391 flow and 11,581 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -357,7 +357,7 @@ allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
- successful 12,953-check aggregate proof; see [proof-report.md](proof-report.md)
+ successful 12,972-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -1341,6 +1341,17 @@ features. The DOM is always UTF-8. UTF-16 input uses the length-taking
 entry points. Names `UTF-8`/`UTF8`, `UTF-16`/`UTF16`, `UTF-16LE`, and
 `UTF-16BE` are case-insensitive; generic UTF-16 selects little-endian. Explicit
 encoding overrides the declaration while declaration grammar is still checked.
+`Classify_Bytes` now classifies the explicit native encoding name directly,
+sharing the six-name table with String `Classify`. It reads at most nine bytes,
+stops when no candidate remains, and distinguishes NULL/Unspecified from
+empty/unsupported input. C retains initial buffer/size validation and diagnostic
+mapping, but no encoding-name scan or String conversion. Unsupported names
+still report code 32 before XML input is read. Guard pages and reference-backed
+alias/input-lifetime round trips exercise this path; native readability/stability,
+byte effects, ABI, and full parser semantics remain outside the proof.
+GNATprove reports 3 checks for `Classify_Bytes`; shared `Classify`,
+`Equal_Name`, and `Upper` have 1, 5, and 1 checks. These checks do not establish
+native pointer readability or byte effects.
 Unknown explicit names fail rather than falling back. Auto-detected declaration
 mismatches produce warning 113 on success. Malformed UTF-16 is rejected before
 the parser at IO/code 81 and 1:1; later parser positions use decoded UTF-8

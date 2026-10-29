@@ -571,7 +571,9 @@ UTF-16 の binary input には、明示長を渡せる `xmlReadMemory` を使用
 `xmlReadDoc`/`xmlParseDoc` は `strlen` を使うため binary UTF-16 用ではありません。
 DOM の名前と値は常に UTF-8 です。`UTF-8`/`UTF8`、`UTF-16`/`UTF16`、
 `UTF-16LE`、`UTF-16BE` は ASCII case-insensitive で、generic UTF-16 は
-little-endian です。明示 encoding は宣言より優先しますが宣言文法は検査され、
+little-endian です。明示encoding名はSPARKで最大9byte（終端込み）を直接読み、
+対応する名前がなくなった時点で停止します。C側の走査・文字列変換はありません。
+XML宣言のencoding分類とも対応表を共用します。明示 encoding は宣言より優先しますが宣言文法は検査され、
 不明な encoding を暗黙 fallback しません。自動検出と宣言の不一致は成功時 warning
 113 になります。変換前の malformed UTF-16 は IO/code 81 at 1:1、parser error
 position は変換後 UTF-8 の character column で示されます。

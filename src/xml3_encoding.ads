@@ -50,4 +50,17 @@ package XML3_Encoding with SPARK_Mode is
        Post => (if not Measure_Only then Length <= Output'Length)
          and then (if Status = Success then Error_Position = 0
                    else Error_Position in 1 .. Input'Length);
+private
+   subtype Name_Length is Positive range 1 .. 8;
+   type Name_Entry is record
+      Length : Name_Length;
+      Value : String (1 .. Name_Length'Last);
+      Kind : Concrete_Encoding;
+   end record;
+   Known_Names : constant array (Positive range 1 .. 6) of Name_Entry :=
+     ((5, "UTF-8   ", UTF8), (4, "UTF8    ", UTF8),
+      (6, "UTF-16  ", UTF16), (5, "UTF16   ", UTF16),
+      (8, "UTF-16LE", UTF16LE), (8, "UTF-16BE", UTF16BE));
+
+   function Upper (C : Character) return Character with Global => null;
 end XML3_Encoding;
