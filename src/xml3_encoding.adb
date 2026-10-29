@@ -20,17 +20,12 @@ package body XML3_Encoding with SPARK_Mode is
 
    function Classify (Name : String) return Encoding_Kind is
    begin
-      if Equal_Name (Name, "UTF-8") or else Equal_Name (Name, "UTF8") then
-         return UTF8;
-      elsif Equal_Name (Name, "UTF-16") or else Equal_Name (Name, "UTF16") then
-         return UTF16;
-      elsif Equal_Name (Name, "UTF-16LE") then
-         return UTF16LE;
-      elsif Equal_Name (Name, "UTF-16BE") then
-         return UTF16BE;
-      else
-         return Unsupported;
-      end if;
+      for Item of Known_Names loop
+         if Equal_Name (Name, Item.Value (1 .. Item.Length)) then
+            return Item.Kind;
+         end if;
+      end loop;
+      return Unsupported;
    end Classify;
 
    function Valid_Name (Name : String) return Boolean is

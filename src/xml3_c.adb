@@ -11,6 +11,7 @@ with XML3_DOM_Store;
 with XML3_DOM_Store.Documents;
 with XML3_DOM_Store.Queries;
 with XML3_Encoding;
+with XML3_Encoding.Buffers;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
@@ -414,32 +415,16 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Requested : XML3_Encoding.Encoding_Kind :=
-           XML3_Encoding.Unspecified;
+         Requested : constant XML3_Encoding.Encoding_Kind :=
+           XML3_Encoding.Buffers.Classify_Bytes (Encoding);
       begin
-         if Encoding /= System.Null_Address then
-            declare
-               Encoding_Length : constant Integer := Scan_Length (Encoding, 9);
-            begin
-               if Encoding_Length < 0 then
-                  Status := Status_Unsupported;
-                  XML3_Errors.Report_Simple (1, 32, 3, URL);
-                  if XML3_Errors.Last_Error_Is_OOM then
-                     Status := Status_No_Memory;
-                  end if;
-                  return System.Null_Address;
-               end if;
-               Requested := XML3_Encoding.Classify
-                 (To_String (Encoding, Natural (Encoding_Length)));
-            end;
-            if Requested = XML3_Encoding.Unsupported then
-               Status := Status_Unsupported;
-               XML3_Errors.Report_Simple (1, 32, 3, URL);
-               if XML3_Errors.Last_Error_Is_OOM then
-                  Status := Status_No_Memory;
-               end if;
-               return System.Null_Address;
+         if Requested = XML3_Encoding.Unsupported then
+            Status := Status_Unsupported;
+            XML3_Errors.Report_Simple (1, 32, 3, URL);
+            if XML3_Errors.Last_Error_Is_OOM then
+               Status := Status_No_Memory;
             end if;
+            return System.Null_Address;
          end if;
          if Options < 0 then
             Status := Status_Unsupported;

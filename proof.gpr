@@ -5,6 +5,7 @@ project Proof is
                         "xml3_text-buffers.ads", "xml3_text-buffers.adb",
                         "xml3_namespaces.ads", "xml3_namespaces.adb",
                         "xml3_encoding.ads", "xml3_encoding.adb",
+                        "xml3_encoding-buffers.ads", "xml3_encoding-buffers.adb",
                         "xml3_dom.ads", "xml3_dom.adb",
                         "xml3_dom_constructors.ads", "xml3_dom_constructors.adb",
                         "xml3_dom_store.ads", "xml3_dom_store.adb",

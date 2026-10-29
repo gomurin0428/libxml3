@@ -401,7 +401,7 @@
   },
   "function:parser.h:xmlReadMemory": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c",
@@ -424,7 +424,7 @@
   },
   "function:parser.h:xmlReadDoc": {
     "implementation": "partial",
-    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。",
+    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。 明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c"
