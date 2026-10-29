@@ -84,14 +84,16 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 deprecated な `xmlStringGetNodeList` / `xmlStringLenGetNodeList` は、NULL/empty 入力に NULL を返し、
 predefined/numeric reference だけを展開した独立の detached text node を返す限定サブセットです。
 未知/general entity や malformed reference は拒否し、entity-reference node は作成しません。
+正の長さは最初の NUL または指定長まで、負の長さは NUL 終端です。長さ 0 は入力を読まず
+NULL を返し、固定版の unsafe な先頭 byte read は再現しません。
+
 `xmlGetPredefinedEntity` は `lt`、`gt`、`amp`、`apos`、`quot` の完全一致だけを
 検索します。返る entity record と name/content の文字列は共有された read-only の
 library-lifetime 借用データであり、解放・変更・link・managed DOM 編集 API への受け渡しを
 してはいけません。lookup は allocation せず、DTD/general entity、external entity loading、
 editable entity node は実装しません。native pointer の readability、byte effects、layout、
 lifetime、C ABI と完全な public semantics は trusted/unproved boundary です。
-正の長さは最初の NUL または指定長まで、負の長さは NUL 終端です。長さ 0 は入力を読まず
-NULL を返し、固定版の unsafe な先頭 byte read は再現しません。
+
 `xmlNodeListGetRawString` は managed な開始 node と next-sibling chain の直下だけを走査し、
 text/CDATA のみを連結します。descendant には降りず、他の node kind は飛ばします。`doc` は無視され、
 NULL list は NULL を返します。`inLine != 0` は UTF-8 検査なしで raw bytes をコピーし、
