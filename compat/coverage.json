@@ -497,9 +497,10 @@
   },
   "function:tree.h:xmlNewDoc": {
     "implementation": "partial",
-    "scope": "version NULL 時は1.0、指定 C string はそのままコピー。XML 1.0 制限は parser に適用。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "scope": "version NULL 時は1.0、指定 C string はそのままコピー。SPARK Measureで計測後、共有Construct/Create_Nodeのnative content経路で文書所有領域へ直接コピーしNULを追加。C側の走査・中間Stringなし。空文字列・不正UTF-8も保持し、元入力から独立。上限超過は従来のcode115、確保失敗はOOMで部分文書なし。XML 1.0 制限は parser に適用。DOMの所有権・寿命判断はSPARK Store/Runtime、native extent/stability・byte effects・ABI・allocatorは信頼境界。",
     "tests": [
       "tests/dom-test.c",
+      "tests/serialization-test.c",
       "tests/oom-test.c"
     ],
     "proof": "not-proved"

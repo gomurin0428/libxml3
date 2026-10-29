@@ -49,6 +49,14 @@ is
             Status);
       end Construct;
 
+      procedure New_Document
+        (Version : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.New_Document (Current, Version, Result, Status);
+      end New_Document;
+
       procedure Create_Namespace
         (Element : System.Address; Href, Prefix : String;
          Has_Href, Has_Prefix : Boolean; Result : out System.Address;

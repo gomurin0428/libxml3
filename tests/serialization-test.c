@@ -15,6 +15,48 @@ extern void xml3_oom_disable(void);
 extern int xml3_oom_was_injected(void);
 #endif
 
+static void test_document_version_input(void) {
+    static const char *versions[] = {NULL, "", "1.0", "1.1", "odd version", "\xff"};
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 0; i < sizeof(versions) / sizeof(versions[0]); ++i) {
+        const char *expected = versions[i] ? versions[i] : "1.0";
+        size_t length = strlen(expected);
+        char *input = NULL;
+        if (versions[i]) {
+            input = mapping + page - length - 1;
+            memcpy(input, expected, length + 1);
+        }
+        xmlDocPtr doc = xmlNewDoc((const xmlChar *)input);
+        assert(doc != NULL && doc->version != (const xmlChar *)input);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        assert(doc->version && memcmp(doc->version, expected, length + 1) == 0);
+        if (strcmp(expected, "1.0") == 0) {
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(root && xmlDocSetRootElement(doc, root) == NULL);
+            assert(xmlNewTextChild(root, NULL, BAD_CAST "x", BAD_CAST "A&\xc3\xa9"));
+            xmlChar *output = NULL;
+            int size = 0;
+            xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+            assert(output && size > 0);
+            xmlFreeDoc(doc);
+            doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+            assert(doc != NULL);
+            xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+            assert(content && strcmp((const char *)content, "A&\xc3\xa9") == 0);
+            xmlFree(content);
+            xmlFree(output);
+        }
+        xmlFreeDoc(doc);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void expect_exact_output(const char *input, const char *expected) {
     xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
     xmlChar *memory = NULL;
@@ -1021,6 +1063,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_document_version_input();
     if (argc == 2 && strcmp(argv[1], "--misc") == 0) {
         test_cdata_construction();
         test_constructed_comments_and_pi(0);
@@ -1061,6 +1104,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_document_version_input();
     test_default_serialization();
     test_formatted_serialization();
     test_parsed_pi_content();

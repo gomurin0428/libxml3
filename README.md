@@ -568,6 +568,9 @@ NULLと空のcontentは区別し、NULL contentのコメントは出力しませ
 詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。
 
 UTF-16 の binary input には、明示長を渡せる `xmlReadMemory` を使用します。
+`xmlNewDoc` のversionはSPARKで計測し、文書所有領域へ直接コピーします。
+NULLは`1.0`、それ以外は空文字列や不正UTF-8もそのまま保持する既存仕様で、
+XML 1.1の解析対応を意味しません。C側の中間Stringは作りません。
 `xmlReadDoc`/`xmlParseDoc` はSPARKの上限付き走査で最初のNULまで測るため、
 binary UTF-16 用ではありません。NULL入力は診断を保持してNULLを返し、空文字列は
 空文書として解析エラーになります。長さ計測自体は確保・コピーを行いません。
