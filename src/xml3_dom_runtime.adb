@@ -99,6 +99,16 @@ is
          XML3_DOM_Store.Add_Sibling (Current, Sibling, Child, Result, Status);
       end Add_Sibling;
 
+      procedure Insert_Sibling
+        (Sibling, Child : System.Address; Before : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Insert_Sibling
+           (Current, Sibling, Child, Before, Result, Status);
+      end Insert_Sibling;
+
       procedure Merge_Text
         (First, Second : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

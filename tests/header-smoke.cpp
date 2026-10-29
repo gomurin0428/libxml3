@@ -29,6 +29,10 @@ int main() {
     xmlChar *(*str_n_append)(xmlChar *, const xmlChar *, int) = xmlStrncat;
     (void)str_append;
     (void)str_n_append;
+    xmlNodePtr (*add_prev_sibling)(xmlNodePtr, xmlNodePtr) = xmlAddPrevSibling;
+    xmlNodePtr (*add_next_sibling)(xmlNodePtr, xmlNodePtr) = xmlAddNextSibling;
+    (void)add_prev_sibling;
+    (void)add_next_sibling;
     int (*str_case_compare)(const xmlChar *, const xmlChar *) = xmlStrcasecmp;
     (void)str_case_compare;
     xmlChar *(*str_sub_copy)(const xmlChar *, int, int) = xmlStrsub;

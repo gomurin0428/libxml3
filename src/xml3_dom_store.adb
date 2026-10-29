@@ -498,6 +498,27 @@ package body XML3_DOM_Store with SPARK_Mode is
       Add_Child (S, Node (S.Current.all, P).Facade, Child, Result, Status);
    end Add_Sibling;
 
+   procedure Insert_Sibling
+     (S : in out Store; Sibling, Child : System.Address; Before : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      N : constant Node_Ref := Find_Node (S, Sibling);
+      C : constant Node_Ref := Find_Node (S, Child);
+      Changed : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if N = Null_Node or else C = Null_Node or else N = C then
+         return;
+      end if;
+      XML3_DOM.Insert_Sibling (S.Current.all, N, C, Before, Changed);
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+      if Changed then
+         Result := Child;
+         Status := Created;
+      end if;
+   end Insert_Sibling;
+
    procedure Set_Root
      (S : in out Store; Doc, Root : System.Address;
       Previous : out System.Address; Status : out Operation_Status)

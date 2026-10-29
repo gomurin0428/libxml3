@@ -192,6 +192,35 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "dom-adjacent-sibling") == 0) {
+        xmlNodePtr root;
+        xmlNodePtr left;
+        xmlNodePtr right;
+        xmlNodePtr child;
+
+        doc = xmlNewDoc(BAD_CAST "1.0");
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        left = xmlNewText(BAD_CAST "left");
+        right = xmlNewText(BAD_CAST "right");
+        child = xmlNewText(BAD_CAST "child");
+        assert(doc && root && left && right && child);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        assert(xmlAddChild(root, left) == left);
+        assert(xmlAddPrevSibling(left, right) == right);
+        xml3_oom_enable(fail_index);
+        assert(xmlAddPrevSibling(right, child) == child);
+        assert(xml3_oom_count() == 0);
+        assert(root->children == child && child->next == right);
+        assert(right->prev == child && right->next == left);
+        assert(left->prev == right);
+        assert(left->content != child->content);
+        assert(xmlAddNextSibling(child, left) == left);
+        assert(xml3_oom_count() == 0);
+        assert(child->next == left && left->prev == child);
+        assert(left->content != child->content);
+        xml3_oom_disable();
+        xmlFreeDoc(doc);
+        doc = NULL;
     } else if (strcmp(operation, "utf8-charcmp-error") == 0) {
         const xmlChar invalid[] = {0xe2, 'x', 0};
         xml3_oom_enable(fail_index);
@@ -1909,6 +1938,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "ns-noalloc") == 0) {
         puts("namespace setters and standalone free used no allocations");
+        return 0;
+    }
+    if (strcmp(operation, "dom-adjacent-sibling") == 0) {
+        puts("adjacent sibling insertion used no native allocations");
         return 0;
     }
     if (!injected)

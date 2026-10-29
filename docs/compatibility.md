@@ -60,7 +60,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
   `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
-  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、`xmlAddChild`、
+  `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、`xmlAddChild`、`xmlAddSibling`、`xmlAddPrevSibling`、`xmlAddNextSibling`、
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、
@@ -169,6 +169,17 @@ element/document 親の通常 child と、element 親の属性に対応します
 入力 node を解放します。確保失敗では両 node の内容とリンクを保持します。属性では expanded name
 が一致する旧属性を接続成功後に解放します。親のない兄弟列・属性値内部への兄弟追加は未対応です。
 文書所属・循環・document 直下の text/CDATA・複数 root の制約は `xmlAddChild` と同じです。
+
+`xmlAddPrevSibling` / `xmlAddNextSibling` は親を持つ managed content sibling の直前または
+直後に挿入します。対象は element の通常 child、document 直下の comment/PI と唯一の
+root、および既存 `Attach_Child` が許す attribute-value text です。NULL/self、attribute
+sibling、document node、parentless sibling list、cycle、追加 document root、cross-document
+move は graph を変えずに拒否します。すでに隣接している child は同じ node pointer を返し、
+通常の insert/reorder は node identity を維持して確保を行いません。隣接 text は結合せず、
+attribute sibling・parentless list・cross-document insertion・namespace reconciliation は
+未対応です。公開 C API は partial / not-proved であり、SPARK model の構造・順序・所属
+contract の検証を native pointer/ABI、facade projection、C status mapping、完全な API 意味論の
+証明と同一視しません。
 
 `xmlGetLastChild` は管理中の node の末尾 child を kind で絞らず返します。要素以外にも
 text/comment/CDATA/PI、document の末尾 child、属性値の text を取得できます。

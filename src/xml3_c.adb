@@ -1087,8 +1087,12 @@ package body XML3_C is
          return System.Null_Address;
    end Doc_Set_Root_Element;
 
+   type Node_Operation is
+     (Append_Child, Append_Sibling, Previous_Sibling, Next_Sibling);
+
    function Add_Node
-     (Target, Child : System.Address; As_Sibling : Boolean) return System.Address
+     (Target, Child : System.Address; Operation : Node_Operation)
+      return System.Address
    is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
@@ -1101,11 +1105,18 @@ package body XML3_C is
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         if As_Sibling then
-            XML3_DOM_Runtime.Add_Sibling (Target, Child, Result, Status);
-         else
-            XML3_DOM_Runtime.Add_Child (Target, Child, Result, Status);
-         end if;
+         case Operation is
+            when Append_Child =>
+               XML3_DOM_Runtime.Add_Child (Target, Child, Result, Status);
+            when Append_Sibling =>
+               XML3_DOM_Runtime.Add_Sibling (Target, Child, Result, Status);
+            when Previous_Sibling =>
+               XML3_DOM_Runtime.Insert_Sibling
+                 (Target, Child, True, Result, Status);
+            when Next_Sibling =>
+               XML3_DOM_Runtime.Insert_Sibling
+                 (Target, Child, False, Result, Status);
+         end case;
       end;
       Report_Operation_Status (Status);
       return Result;
@@ -1123,11 +1134,19 @@ package body XML3_C is
 
    function Add_Child
      (Parent, Child : System.Address) return System.Address is
-     (Add_Node (Parent, Child, False));
+     (Add_Node (Parent, Child, Append_Child));
 
    function Add_Sibling
      (Sibling, Child : System.Address) return System.Address is
-     (Add_Node (Sibling, Child, True));
+     (Add_Node (Sibling, Child, Append_Sibling));
+
+   function Add_Previous_Sibling
+     (Sibling, Child : System.Address) return System.Address is
+     (Add_Node (Sibling, Child, Previous_Sibling));
+
+   function Add_Next_Sibling
+     (Sibling, Child : System.Address) return System.Address is
+     (Add_Node (Sibling, Child, Next_Sibling));
 
    function Text_Merge
      (First, Second : System.Address) return System.Address
