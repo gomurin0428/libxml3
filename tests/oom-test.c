@@ -2039,6 +2039,25 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "uri-escape") == 0 ||
+               strcmp(operation, "uri-escape-empty") == 0) {
+        const xmlChar *input = strcmp(operation, "uri-escape-empty") == 0 ?
+                               BAD_CAST "" : BAD_CAST "a b/\xff";
+        const char *expected = input[0] == 0 ? "" : "a%20b/%FF";
+        xmlChar *result;
+        xml3_oom_enable(fail_index);
+        result = xmlURIEscapeStr(input, BAD_CAST "/");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!result);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlURIEscapeStr(input, BAD_CAST "/");
+        }
+        assert(result && strcmp((const char *)result, expected) == 0);
+        xmlFree(result);
     } else if (strcmp(operation, "utf8-write") == 0) {
         xmlChar output[5] = {0xa5, 0xa5, 0xa5, 0xa5, 0xa5};
         xml3_oom_enable(0);

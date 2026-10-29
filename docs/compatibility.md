@@ -138,6 +138,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
+* `libxml/uri.h`: `xmlURIEscapeStr` のみ。他のURI APIは未対応
 * `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -916,6 +917,27 @@ report IO/code 81 at 1:1 before parsing; parser positions refer to decoded
 UTF-8 character columns. The frozen observations in `tests/encoding-oracle.json`
 are compared without normalizing snapshot fields, with explicit per-case reasons
 for intentional libxml3 differences. A 1 GB value allocation is not tested.
+
+## URI の byte エスケープ
+
+`xmlURIEscapeStr` は入力の先頭NULまでをbyte単位で処理します。ASCII英数字、
+`-._~!*'()@`、例外リストに含まれるbyteを保持し、他のbyteをuppercase `%HH` にします。
+固定版の `@` と旧RFCのmarkの扱いを保ち、空白を `+` にするform encodingではありません。
+既存のpercent sequenceも特別扱いせず、`%` が例外にない場合は `%25` にします。
+UTF-8やURIの検証・正規化ではなく、不正UTF-8のbyteやcontrolもencodingし、例外ならそのまま残します。
+URI全体、path/query等の構成要素に適切な例外を選ぶ責任は呼び出し側にあります。
+
+NULL入力はNULL、空入力は独立した空文字列を返します。成功結果はNUL終端され、
+元入力・例外リストを解放しても利用でき、呼び出し側が `xmlFree` で解放します。
+例外リストは必要なbyteに対してのみ検索し、一致/NULで停止します。NULL・空入力や
+既定で保持するbyteだけなら例外リストは読みません。検索結果はbyteごとに記憶します。
+入力と例外リストのaliasを許しますが、実際に読む範囲は安定してreadableである必要があります。
+
+SPARKで出力長を計算して一度だけ正確なサイズを確保し、固定版の余剰容量・再確保手順は再現しません。
+出力長と例外検索には既存の `Max_Bytes` 上限があり、超過は診断115とNULL、確保失敗はOOM診断とNULLです。
+部分的な出力は返さず、元入力を変更・解放しません。成功とNULL入力は既存診断を保持します。
+native allocation/free/read/write、入力の有効性・extent・安定性、C ABIと完全な意味論はtrusted boundaryです。
+他の `uri.h` API、URI解析・解決・正規化は未対応です。
 
 ## 保証について
 

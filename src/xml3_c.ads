@@ -373,6 +373,9 @@ package XML3_C is
    function Check_UTF8 (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCheckUTF8";
 
+   function URI_Escape_Str (Input, Exceptions : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlURIEscapeStr";
+
    function Copy_Char_Multi_Byte
      (Output : System.Address; Code : Interfaces.C.int) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCopyCharMultiByte";
