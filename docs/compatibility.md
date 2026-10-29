@@ -308,6 +308,17 @@ NULL を返し、長さ 0 なら pointer を読まず空の文字列を持つ te
 には接続せず、親は NULL のままです。NULL doc は文書なしの text を作り、non-NULL doc は
 管理中の live document に限ります。文書の owner を保持するため、接続前や unlink 後に
 `xmlFreeDoc` を呼んでも text を編集・解放できます。失敗時は未公開 text を取り除きます。
+deprecated な `xmlStringGetNodeList` / `xmlStringLenGetNodeList` も公開宣言に合わせて限定実装します。
+NULL/empty input は NULL、predefined/numeric reference は展開し、未知/general entity、malformed
+reference、無効 UTF-8/XML は操作全体を拒否します。entity-reference node は作りません。
+返すのは detached text node で、non-NULL doc は登録済み live document に限り、Doc owner pin により
+文書を先に解放しても node を編集・解放できます。長さ指定 API は負数を NUL 終端として扱い、
+正数は最初の NUL または指定 byte 数まで読みます。長さ 0 は pointer を読み取らず NULL を返します。
+固定版はこの場合に先頭 byte を読むため、非empty input で空 node を返す挙動を意図的に再現しません。
+この API は固定版 libxml2 2.15.4 で deprecated です。C boundary は bounded C string conversion、
+lock、Runtime dispatch、status/diagnostic mapping のみで、document 検査・decode・node 作成は SPARK
+Store/Runtime 側です。native pointer/byte validity、allocation/copy、ABI と完全な C semantics は
+信頼境界に残ります。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

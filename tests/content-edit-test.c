@@ -1542,6 +1542,103 @@ static void test_document_property(void) {
 #endif
 }
 
+static void test_string_node_list(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlChar source[] = "left&amp;&#x1F642;\r\n\t&lt;";
+    const xmlChar bounded[] = {'A', '&', '#', '6', '6', ';', 'C'};
+    const xmlChar embedded[] = {'A', 0, '&', 'b', 'a', 'd'};
+    xmlNodePtr text, other;
+    xmlChar *memory = NULL;
+    xmlDocPtr reparsed;
+    int size = 0;
+    assert(doc && root);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    text = xmlStringGetNodeList(doc, source);
+    assert(text && text->type == XML_TEXT_NODE && text->doc == doc);
+    assert(text->parent == NULL && text->next == NULL && text->prev == NULL);
+    source[0] = 'X';
+    assert_content(text, "left&🙂\r\n\t<");
+    assert(xmlAddChild(root, text) == text);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+    assert(memory && size > 0);
+    reparsed = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(reparsed);
+    assert_content(xmlDocGetRootElement(reparsed), "left&🙂\r\n\t<");
+    xmlFreeDoc(reparsed);
+    xmlFree(memory);
+    other = xmlStringLenGetNodeList(doc, bounded, 6);
+    assert(other && other->doc == doc && other->next == NULL);
+    assert_content(other, "AB");
+    xmlFreeNodeList(other);
+    other = xmlStringLenGetNodeList(NULL, embedded, sizeof(embedded));
+    assert(other && other->doc == NULL);
+    assert_content(other, "A");
+    xmlFreeNodeList(other);
+    other = xmlStringLenGetNodeList(NULL, BAD_CAST "é&amp;&apos;&quot;&gt;", -7);
+    assert(other);
+    assert_content(other, "é&'\">");
+    xmlFreeNodeList(other);
+    assert(xmlStringGetNodeList(doc, NULL) == NULL);
+    assert(xmlStringGetNodeList(doc, BAD_CAST "") == NULL);
+    assert(xmlStringLenGetNodeList(doc, NULL, -1) == NULL);
+#ifndef XML3_REFERENCE_TEST
+    {
+        const char *invalid[] = {"&missing;", "&amp", "&#0;", "&#xD800;",
+                                 "&#x110000;", "\xC0\xAF", "\x01"};
+        for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+            xmlResetLastError();
+            assert(xmlStringGetNodeList(doc, BAD_CAST invalid[i]) == NULL);
+            assert(xmlGetLastError() != NULL);
+            assert(root->children == text && root->last == text);
+            assert_content(text, "left&🙂\r\n\t<");
+        }
+        assert(xmlStringLenGetNodeList(doc, BAD_CAST "&amp;", 3) == NULL);
+        assert(xmlStringLenGetNodeList(doc, BAD_CAST "x", 0) == NULL);
+        assert(xmlStringGetNodeList((xmlDocPtr)root, BAD_CAST "x") == NULL);
+        assert(xmlStringGetNodeList((xmlDocPtr)1, BAD_CAST "x") == NULL);
+    }
+    other = xmlStringGetNodeList(doc, BAD_CAST "held&amp;value");
+    assert(other);
+    xmlFreeDoc(doc);
+    assert(other->doc == doc);
+    assert_content(other, "held&value");
+    assert(xmlNodeAddContent(other, BAD_CAST "!") == 0);
+    assert_content(other, "held&value!");
+    xmlFreeNodeList(other);
+    xmlResetLastError();
+#else
+    xmlFreeDoc(doc);
+#endif
+}
+
+#if defined(__unix__)
+static void test_string_node_list_boundary(void) {
+    long page = sysconf(_SC_PAGESIZE);
+    char *mapping;
+    char *value;
+    xmlNodePtr text;
+    assert(page > 0);
+    mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    value = mapping + page - 5;
+    memcpy(value, "&amp;", 5);
+    text = xmlStringLenGetNodeList(NULL, BAD_CAST value, 5);
+    assert(text);
+    assert_content(text, "&");
+    xmlFreeNodeList(text);
+#ifndef XML3_REFERENCE_TEST
+    assert(xmlStringLenGetNodeList(NULL, BAD_CAST (mapping + page), 0) == NULL);
+    memcpy(value, "&ampX", 5);
+    assert(xmlStringLenGetNodeList(NULL, BAD_CAST value, 5) == NULL);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+#endif
+
 int main(void) {
     assert(xmlNodeAddContent(NULL, NULL) == 1);
     assert(xmlNodeSetContent(NULL, NULL) == 1);
@@ -1556,7 +1653,9 @@ int main(void) {
     test_new_text_len();
     test_document_text();
     test_document_property();
+    test_string_node_list();
 #if defined(__unix__)
+    test_string_node_list_boundary();
     test_bounded_content_guard_page();
 #endif
     test_construct_child();

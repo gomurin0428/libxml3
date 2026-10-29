@@ -994,6 +994,48 @@ package body XML3_C is
       return New_Content_Node (XML3_DOM.Text_Node, "text", Content);
    end New_Text;
 
+   function String_Len_Get_Node_List
+     (Doc, Value : System.Address; Length : Interfaces.C.int)
+     return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Value = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Content : constant String := C_String_Prefix (Value, Length);
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Parse_Content_List (Doc, Content, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end String_Len_Get_Node_List;
+
+   function String_Get_Node_List
+     (Doc, Value : System.Address) return System.Address
+   is
+   begin
+      return String_Len_Get_Node_List (Doc, Value, -1);
+   end String_Get_Node_List;
+
    function New_Text_Len
      (Content : System.Address; Length : Interfaces.C.int)
      return System.Address

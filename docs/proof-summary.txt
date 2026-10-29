@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               311           311                                       .           .          .
+Data Dependencies               313           313                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  726           726                                       .           .          .
+Initialization                  734           734                                       .           .          .
 Non-Aliasing                      .             .                                       .           .          .
-Run-time Checks                5399             .     5399 (CVC5 89%, Trivial 0%, Z3 11%)           .          .
-Assertions                     1638             .    1638 (CVC5 58%, Trivial 11%, Z3 31%)           .          .
-Functional Contracts           4124             .     4124 (CVC5 63%, Trivial 2%, Z3 35%)           .          .
+Run-time Checks                5407             .      5407 (CVC5 94%, Trivial 0%, Z3 6%)           .          .
+Assertions                     1638             .    1638 (CVC5 65%, Trivial 11%, Z3 25%)           .          .
+Functional Contracts           4130             .     4130 (CVC5 66%, Trivial 2%, Z3 31%)           .          .
 LSP Verification                  .             .                                       .           .          .
 Termination                     216           157                               59 (CVC5)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         12414    1194 (10%)                             11220 (90%)           .          .
+Total                         12438    1204 (10%)                             11234 (90%)           .          .
 
 
 max steps used for successful proof: 592493
@@ -232,7 +232,7 @@ in unit xml3_dom_constructors, 8 subprograms and packages out of 8 analyzed
   XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (463 checks)
   XML3_DOM_Constructors.Prepare_Node_Capacity at xml3_dom_constructors.adb:299 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (81 checks)
   XML3_DOM_Constructors.Retire_Registered at xml3_dom_constructors.adb:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (121 checks)
-in unit xml3_dom_runtime, 40 subprograms and packages out of 40 analyzed
+in unit xml3_dom_runtime, 41 subprograms and packages out of 41 analyzed
   XML3_DOM_Runtime at xml3_dom_runtime.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Child at xml3_dom_runtime.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Content at xml3_dom_runtime.ads:93 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
@@ -240,39 +240,40 @@ in unit xml3_dom_runtime, 40 subprograms and packages out of 40 analyzed
   XML3_DOM_Runtime.Construct at xml3_dom_runtime.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Copy_Namespace at xml3_dom_runtime.ads:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Create_Namespace at xml3_dom_runtime.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Create_Namespace_Property at xml3_dom_runtime.ads:157 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Create_Property at xml3_dom_runtime.ads:145 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:248 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Find_Property at xml3_dom_runtime.ads:186 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Create_Namespace_Property at xml3_dom_runtime.ads:163 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Create_Property at xml3_dom_runtime.ads:151 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:254 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Find_Property at xml3_dom_runtime.ads:192 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Free_Namespace at xml3_dom_runtime.ads:60 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Get_Content at xml3_dom_runtime.ads:238 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Get_Inherited_XML_Property at xml3_dom_runtime.ads:200 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Get_Namespace_List at xml3_dom_runtime.ads:225 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Get_Path at xml3_dom_runtime.ads:243 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Get_Property at xml3_dom_runtime.ads:193 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_DOM_Runtime.Get_Content at xml3_dom_runtime.ads:244 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Get_Inherited_XML_Property at xml3_dom_runtime.ads:206 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Get_Namespace_List at xml3_dom_runtime.ads:231 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Get_Path at xml3_dom_runtime.ads:249 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Get_Property at xml3_dom_runtime.ads:199 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_DOM_Runtime.Has_Colon at xml3_dom_runtime.adb:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Insert_Sibling at xml3_dom_runtime.ads:75 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Merge_Text at xml3_dom_runtime.ads:88 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.New_Child at xml3_dom_runtime.ads:81 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.New_Doc_Content at xml3_dom_runtime.ads:99 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.New_Doc_Node at xml3_dom_runtime.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Parse_Content_List at xml3_dom_runtime.ads:114 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Read at xml3_dom_runtime.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Release at xml3_dom_runtime.ads:134 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Release_List at xml3_dom_runtime.ads:140 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Search_Namespace at xml3_dom_runtime.ads:230 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Select_Element at xml3_dom_runtime.ads:219 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Set_Content at xml3_dom_runtime.ads:119 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Set_Name at xml3_dom_runtime.ads:114 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Release at xml3_dom_runtime.ads:140 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Runtime.Release_List at xml3_dom_runtime.ads:146 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Runtime.Search_Namespace at xml3_dom_runtime.ads:236 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Select_Element at xml3_dom_runtime.ads:225 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Content at xml3_dom_runtime.ads:125 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Name at xml3_dom_runtime.ads:120 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Set_Namespace at xml3_dom_runtime.ads:55 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Set_Namespace_Property at xml3_dom_runtime.ads:163 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Set_Property at xml3_dom_runtime.ads:151 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Set_Qualified_Property at xml3_dom_runtime.ads:174 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Set_Root at xml3_dom_runtime.ads:124 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Set_XML_Property at xml3_dom_runtime.ads:208 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Test_Node at xml3_dom_runtime.ads:214 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Unlink_Content at xml3_dom_runtime.ads:129 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Unset_Namespace_Property at xml3_dom_runtime.ads:169 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Runtime.Unset_Property at xml3_dom_runtime.ads:180 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Namespace_Property at xml3_dom_runtime.ads:169 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Property at xml3_dom_runtime.ads:157 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Qualified_Property at xml3_dom_runtime.ads:180 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Set_Root at xml3_dom_runtime.ads:130 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Runtime.Set_XML_Property at xml3_dom_runtime.ads:214 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Test_Node at xml3_dom_runtime.ads:220 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Unlink_Content at xml3_dom_runtime.ads:135 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Runtime.Unset_Namespace_Property at xml3_dom_runtime.ads:175 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Runtime.Unset_Property at xml3_dom_runtime.ads:186 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_dom_store, 25 subprograms and packages out of 25 analyzed
   XML3_DOM_Store at xml3_dom_store.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
   XML3_DOM_Store.Add_Child at xml3_dom_store.ads:92 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (35 checks)
@@ -299,15 +300,16 @@ in unit xml3_dom_store, 25 subprograms and packages out of 25 analyzed
   XML3_DOM_Store.Set_Root at xml3_dom_store.ads:128 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
   XML3_DOM_Store.Store at xml3_dom_store.ads:151 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_DOM_Store.Unlink at xml3_dom_store.ads:135 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
-in unit xml3_dom_store-content, 8 subprograms and packages out of 8 analyzed
+in unit xml3_dom_store-content, 9 subprograms and packages out of 9 analyzed
   XML3_DOM_Store.Content at xml3_dom_store-content.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Content.Append at xml3_dom_store-content.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
-  XML3_DOM_Store.Content.New_Child at xml3_dom_store-content.ads:26 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (19 checks)
+  XML3_DOM_Store.Content.Append at xml3_dom_store-content.ads:45 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
+  XML3_DOM_Store.Content.New_Child at xml3_dom_store-content.ads:34 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (19 checks)
   XML3_DOM_Store.Content.New_Doc_Content at xml3_dom_store-content.ads:5 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_DOM_Store.Content.New_Doc_Node at xml3_dom_store-content.ads:15 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (18 checks)
-  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:288 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (71 checks)
-  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
-  XML3_DOM_Store.Content.Set_Name at xml3_dom_store-content.ads:45 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (36 checks)
+  XML3_DOM_Store.Content.Parse_Content_List at xml3_dom_store-content.ads:26 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:325 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (71 checks)
+  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:59 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
+  XML3_DOM_Store.Content.Set_Name at xml3_dom_store-content.ads:53 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (36 checks)
 in unit xml3_dom_store-documents, 3 subprograms and packages out of 3 analyzed
   XML3_DOM_Store.Documents at xml3_dom_store-documents.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Store.Documents.Discard_Arena at xml3_dom_store-documents.adb:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (27 checks)

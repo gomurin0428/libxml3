@@ -154,6 +154,18 @@
     "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlStringGetNodeList": {
+    "implementation": "partial",
+    "scope": "Deprecated public API in pinned libxml2 2.15.4. SPARK Store/Runtime decodes valid UTF-8/XML and predefined/numeric references into one detached text node, preserving literal CR/LF/TAB. NULL/empty input returns NULL; malformed input and unknown/general entities fail atomically; no entity-reference nodes are created. Optional document must be NULL or a registered live document and is retained by the text owner pin. Native pointers/bytes, allocation/copy, ABI, and complete C semantics remain trusted.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlStringLenGetNodeList": {
+    "implementation": "partial",
+    "scope": "Deprecated public API in pinned libxml2 2.15.4. Shares xmlStringGetNodeList decoding and document ownership. Negative length is NUL-terminated; positive length stops at NUL or the bound. Zero length reads no input and returns NULL rather than reproducing the reference's unsafe first-byte read/empty-node result. Malformed input and unknown/general entities fail atomically; native pointer/byte validity, allocation/copy, ABI, and complete C semantics remain trusted.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNewTextLen": {
     "implementation": "partial",
     "scope": "Bounded raw text construction delegates to the existing SPARK constructor. Non-NULL input with negative length fails; zero length never reads input and creates empty non-NULL content. NULL content produces a NULL-content node regardless of length. Positive lengths stop at NUL or len bytes; hidden bytes after NUL are not retained. Native pointer validity remains trusted.",

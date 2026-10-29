@@ -111,6 +111,12 @@ is
          Attribute_Mode : Boolean := False)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Parse_Content_List
+        (Doc : System.Address; Content : String;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Set_Name
         (Facade, Name : System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

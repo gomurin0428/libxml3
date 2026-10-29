@@ -116,6 +116,15 @@ package XML3_C is
    function New_Comment (Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewComment";
 
+   function String_Get_Node_List
+     (Doc, Value : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlStringGetNodeList";
+
+   function String_Len_Get_Node_List
+     (Doc, Value : System.Address; Length : Interfaces.C.int)
+     return System.Address
+     with Export, Convention => C, External_Name => "xmlStringLenGetNodeList";
+
    function New_PI (Name, Content : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewPI";
 

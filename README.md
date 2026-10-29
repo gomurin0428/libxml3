@@ -81,6 +81,11 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
 列挙し、同じ prefix は最初の宣言だけを含めます。組み込み `xml` binding は追加せず、
 `doc` 引数は無視します。返却配列は `xmlFree` で解放し、各 namespace pointer は借用です。
+deprecated な `xmlStringGetNodeList` / `xmlStringLenGetNodeList` は、NULL/empty 入力に NULL を返し、
+predefined/numeric reference だけを展開した独立の detached text node を返す限定サブセットです。
+未知/general entity や malformed reference は拒否し、entity-reference node は作成しません。
+正の長さは最初の NUL または指定長まで、負の長さは NUL 終端です。長さ 0 は入力を読まず
+NULL を返し、固定版の unsafe な先頭 byte read は再現しません。
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
 source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が
