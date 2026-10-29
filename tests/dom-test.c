@@ -273,6 +273,108 @@ static void test_add_sibling_flow(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_adjacent_sibling_flow(void) {
+    static const char input[] = "<r><a/><b/><c/></r>";
+    xmlDocPtr doc =
+        xmlReadMemory(input, (int)sizeof(input) - 1, NULL, NULL, 0);
+    xmlDocPtr parsed;
+    xmlNodePtr root;
+    xmlNodePtr a;
+    xmlNodePtr b;
+    xmlNodePtr c;
+    xmlNodePtr x;
+    xmlNodePtr y;
+    xmlNodePtr text;
+    xmlNodePtr text2;
+    xmlNodePtr cdata;
+    xmlNodePtr comment;
+    xmlNodePtr pi;
+    xmlNodePtr prolog;
+    xmlNodePtr epilog;
+    xmlChar *bytes = NULL;
+    int size = 0;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    a = root->children;
+    b = a->next;
+    c = root->last;
+    x = xmlNewNode(NULL, BAD_CAST "x");
+    y = xmlNewNode(NULL, BAD_CAST "y");
+    assert(x && y);
+    assert(xmlAddPrevSibling(c, x) == x);
+    assert(b->next == x && x->next == c && c->prev == x);
+    assert(xmlAddNextSibling(a, y) == y);
+    assert(a->next == y && y->next == b && b->prev == y);
+    assert(xmlAddPrevSibling(b, y) == y);
+    assert(a->next == y && y->next == b);
+    assert(xmlAddNextSibling(y, x) == x);
+    assert(y->next == x && x->next == b);
+    assert(xmlAddPrevSibling(a, c) == c);
+    assert(root->children == c && c->next == a && a->prev == c);
+    assert(xmlAddNextSibling(c, a) == a);
+    assert(root->children == c && c->next == a);
+    assert(xmlAddNextSibling(root->last, x) == x);
+    assert(root->last == x && x->prev == b);
+    assert(xmlAddPrevSibling(a, a) == NULL);
+
+    prolog = xmlNewComment(BAD_CAST "before root");
+    epilog = xmlNewPI(BAD_CAST "after", BAD_CAST "root");
+    assert(prolog && epilog);
+    assert(xmlAddPrevSibling(root, prolog) == prolog);
+    assert(xmlAddNextSibling(root, epilog) == epilog);
+    assert(doc->children == prolog && prolog->next == root);
+    assert(root->next == epilog && doc->last == epilog);
+    assert(xmlAddNextSibling(epilog, root) == root);
+    assert(doc->last == root && epilog->next == root);
+    assert(xmlAddPrevSibling(epilog, root) == root);
+    assert(prolog->next == root && root->next == epilog && doc->last == epilog);
+
+    text = xmlNewText(BAD_CAST "left");
+    cdata = xmlNewCDataBlock(doc, BAD_CAST "middle", 6);
+    comment = xmlNewComment(BAD_CAST "mark");
+    pi = xmlNewPI(BAD_CAST "p", BAD_CAST "value");
+    text2 = xmlNewText(BAD_CAST "second");
+    assert(text && text2 && cdata && comment && pi);
+    assert(xmlAddNextSibling(c, text) == text);
+    assert(xmlAddNextSibling(text, text2) == text2);
+    assert(xmlAddNextSibling(text2, cdata) == cdata);
+    assert(xmlAddNextSibling(cdata, comment) == comment);
+    assert(xmlAddNextSibling(comment, pi) == pi);
+    assert(text->next == text2 && text2->next == cdata);
+    assert(cdata->next == comment);
+    assert(comment->next == pi && pi->prev == comment);
+    assert(text->next != text);
+    {
+        xmlAttrPtr attr = xmlNewProp(root, BAD_CAST "value", BAD_CAST "old");
+        xmlNodePtr value_tail = xmlNewText(BAD_CAST "tail");
+        assert(attr && value_tail && attr->children);
+        assert(xmlAddNextSibling(attr->children, value_tail) == value_tail);
+        assert(attr->children->next == value_tail);
+        assert(attr->children != value_tail);
+    }
+    xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+    assert(bytes && size > 0);
+    parsed = xmlReadMemory((const char *)bytes, size, NULL, NULL, 0);
+    assert(parsed != NULL);
+    assert_text(xmlDocGetRootElement(parsed), "leftsecondmiddle");
+    assert(parsed->children->type == XML_COMMENT_NODE);
+    assert(parsed->last->type == XML_PI_NODE);
+    {
+        xmlNodePtr element = xmlDocGetRootElement(parsed)->children;
+        while (element && element->type != XML_ELEMENT_NODE)
+            element = element->next;
+        assert(element && strcmp((const char *)element->name, "c") == 0);
+        do {
+            element = element->next;
+        } while (element && element->type != XML_ELEMENT_NODE);
+        assert(element && strcmp((const char *)element->name, "a") == 0);
+    }
+    xmlFreeDoc(parsed);
+    xmlFree(bytes);
+    xmlFreeDoc(doc);
+}
+
 #ifndef XML3_REFERENCE_TEST
 static void test_sibling_rejections_and_lifetime(void) {
     static const char input[] = "<r><a/><b/></r>";
@@ -301,9 +403,24 @@ static void test_sibling_rejections_and_lifetime(void) {
     assert(xmlAddSibling(root, text) == NULL);
     assert(xmlAddSibling(first, root) == NULL);
     assert(xmlAddSibling(first, foreign) == NULL);
+    assert(xmlAddPrevSibling(NULL, detached) == NULL);
+    assert(xmlAddNextSibling(first, NULL) == NULL);
+    assert(xmlAddPrevSibling(&unmanaged, detached) == NULL);
+    assert(xmlAddNextSibling(first, &unmanaged) == NULL);
+    assert(xmlAddPrevSibling(root, (xmlNodePtr)doc) == NULL);
+    assert(xmlAddNextSibling((xmlNodePtr)doc, detached) == NULL);
+    assert(xmlAddPrevSibling(detached, text) == NULL);
+    assert(xmlAddNextSibling(first, first) == NULL);
+    assert(xmlAddPrevSibling(first, root) == NULL);
+    assert(xmlAddPrevSibling(first, (xmlNodePtr)attr) == NULL);
+    assert(xmlAddNextSibling((xmlNodePtr)attr, detached) == NULL);
+    assert(xmlAddPrevSibling(root, detached) == NULL);
+    assert(xmlAddNextSibling(first, root) == NULL);
+    assert(xmlAddNextSibling(first, foreign) == NULL);
     assert(foreign->parent == xmlDocGetRootElement(other) && foreign->doc == other);
     assert(root->properties == attr && attr->parent == root);
     assert(root->children == first && first->next == last && root->last == last);
+    assert(root->parent == (xmlNodePtr)doc && doc->children == root);
     assert(detached->parent == NULL && detached->doc == NULL);
     assert(text->parent == NULL && text->doc == NULL);
     xmlFreeNode(text);
@@ -319,33 +436,58 @@ static void test_sibling_rejections_and_lifetime(void) {
 
 static void test_cross_document_detached_lifetime(void) {
     static const char input[] =
-        "<r><sub xmlns:p='urn:retained'><p:leaf>retained</p:leaf></sub></r>";
+        "<r><before/><sub xmlns:p='urn:retained'><p:leaf>retained</p:leaf></sub><after/></r>";
     static const char second_input[] = "<target/>";
     xmlDocPtr first = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
     xmlDocPtr second = xmlReadMemory(second_input,
                                     (int)strlen(second_input), NULL, NULL, 0);
     xmlNodePtr first_root;
+    xmlNodePtr before;
     xmlNodePtr subtree;
     xmlNodePtr leaf;
+    xmlNodePtr after;
+    xmlNodePtr inserted;
+    xmlDocPtr parsed;
     xmlNsPtr ns;
     xmlAttrPtr literal_attr;
     xmlAttrPtr duplicate_attr;
     xmlAttrPtr null_attr;
     xmlAttrPtr empty_attr;
     xmlChar *value;
+    xmlChar *bytes = NULL;
+    int size = 0;
     char literal[] = "original&amp;<";
     xmlDocPtr fresh;
 
     assert(first != NULL && second != NULL);
     first_root = xmlDocGetRootElement(first);
-    subtree = first_root->children;
+    before = first_root->children;
+    subtree = before->next;
     leaf = subtree->children;
-    assert(first_root->children == subtree && first_root->last == subtree);
+    after = subtree->next;
+    assert(before->next == subtree && subtree->next == after);
     assert(subtree->parent == first_root && subtree->doc == first);
-    assert(subtree->prev == NULL && subtree->next == NULL);
+    assert(subtree->prev == before);
     assert(leaf->parent == subtree && leaf->doc == first);
     ns = xmlSearchNs(first, subtree, BAD_CAST "p");
     assert(ns != NULL && subtree->nsDef == ns);
+    assert(xmlAddNextSibling(after, subtree) == subtree);
+    assert(before->next == after && after->next == subtree);
+    assert(first_root->last == subtree && subtree->prev == after);
+    xmlDocDumpMemoryEnc(first, &bytes, &size, "UTF-8");
+    assert(bytes != NULL && size > 0);
+    parsed = xmlReadMemory((const char *)bytes, size, NULL, NULL, 0);
+    assert(parsed != NULL);
+    {
+        xmlNodePtr serialized_last = xmlDocGetRootElement(parsed)->last;
+        assert(serialized_last != NULL &&
+               strcmp((const char *)serialized_last->name, "sub") == 0);
+        assert(serialized_last->prev != NULL &&
+               strcmp((const char *)serialized_last->prev->name, "after") == 0);
+    }
+    xmlFreeDoc(parsed);
+    xmlFree(bytes);
+    bytes = NULL;
 
     literal_attr = xmlNewProp(subtree, BAD_CAST "duplicate", BAD_CAST literal);
     duplicate_attr = xmlNewProp(subtree, BAD_CAST "duplicate", BAD_CAST "second");
@@ -370,7 +512,8 @@ static void test_cross_document_detached_lifetime(void) {
     xmlFree(value);
 
     xmlUnlinkNode(subtree);
-    assert(first_root->children == NULL && first_root->last == NULL);
+    assert(first_root->children == before && before->next == after);
+    assert(first_root->last == after && after->next == NULL);
     assert(subtree->parent == NULL && subtree->prev == NULL && subtree->next == NULL);
     assert(subtree->doc == first);
     xmlFreeDoc(first);
@@ -378,6 +521,10 @@ static void test_cross_document_detached_lifetime(void) {
     assert(subtree->parent == NULL && subtree->children == leaf);
     assert(subtree->properties == literal_attr && literal_attr->next == duplicate_attr);
     assert(xmlSearchNs(NULL, subtree, BAD_CAST "p") == ns);
+    inserted = xmlNewComment(BAD_CAST "retained sibling");
+    assert(inserted != NULL);
+    assert(xmlAddNextSibling(leaf, inserted) == inserted);
+    assert(leaf->next == inserted && inserted->prev == leaf);
     value = xmlNodeGetContent(subtree);
     assert(value != NULL && strcmp((const char *)value, "retained") == 0);
     xmlFree(value);
@@ -402,6 +549,42 @@ static void test_cross_document_detached_lifetime(void) {
     fresh = xmlNewDoc(NULL);
     assert(fresh != NULL);
     xmlFreeDoc(fresh);
+}
+
+static void test_adjacent_sibling_document_and_namespace_pins(void) {
+    static const char input[] =
+        "<r><sub xmlns:p='urn:retained'><p:leaf>retained</p:leaf></sub>"
+        "<target/></r>";
+    xmlDocPtr doc = xmlReadMemory(input, (int)sizeof(input) - 1, NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNodePtr subtree;
+    xmlNodePtr target;
+    xmlNodePtr leaf;
+    xmlNodePtr inserted;
+    xmlNsPtr ns;
+    xmlChar *content;
+
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    subtree = root->children;
+    target = subtree->next;
+    leaf = subtree->children;
+    ns = xmlSearchNs(doc, subtree, BAD_CAST "p");
+    assert(ns != NULL);
+    assert(xmlAddNextSibling(target, subtree) == subtree);
+    assert(root->children == target && target->next == subtree);
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+
+    inserted = xmlNewText(BAD_CAST "inserted");
+    assert(inserted != NULL);
+    assert(xmlAddNextSibling(leaf, inserted) == inserted);
+    assert(leaf->next == inserted && inserted->parent == subtree);
+    assert(xmlSearchNs(NULL, subtree, BAD_CAST "p") == ns);
+    content = xmlNodeGetContent(subtree);
+    assert(content != NULL && strcmp((const char *)content, "retainedinserted") == 0);
+    xmlFree(content);
+    xmlFreeNode(root);
 }
 #endif
 
@@ -665,10 +848,12 @@ int main(void) {
     test_text_merge_and_edit_flow();
     test_parsed_unlink_and_reinsert();
     test_add_sibling_flow();
+    test_adjacent_sibling_flow();
 #ifndef XML3_REFERENCE_TEST
     test_sibling_rejections_and_lifetime();
     test_release_list_lifetime_and_rejections();
     test_cross_document_detached_lifetime();
+    test_adjacent_sibling_document_and_namespace_pins();
     test_sticky_mutator_errors();
     test_safe_ownership();
     test_free_rejects_unsupported_types();

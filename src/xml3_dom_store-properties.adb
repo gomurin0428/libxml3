@@ -680,6 +680,8 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
                return;
             end if;
          end if;
+         pragma Assert
+           (Attachment_In_State (S.Current.all, Ns) = Was_Attached);
          if E /= Null_Node then
             declare
                Checkpoint : constant State := S.Current.all with Ghost;
@@ -711,6 +713,8 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
                return;
             end if;
          end if;
+         pragma Assert
+           (Attachment_In_State (S.Current.all, Ns) = Was_Attached);
          declare
             Checkpoint : constant State := S.Current.all with Ghost;
          begin

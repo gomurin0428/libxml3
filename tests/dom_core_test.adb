@@ -591,6 +591,73 @@ procedure DOM_Core_Test is
       pragma Assert (T = null);
    end Root_Replacement;
 
+   procedure Adjacent_Sibling_Insertion is
+      T : State_Access;
+      Own : Owner_Ref;
+      Owner_References : Natural;
+      Right_Ns_Pin, Right_Doc_Pin, Right_Content_Pin : Owner_Ref;
+      Doc, Root, Left, Middle, Right, Other, Moved : Node_Ref;
+      Local_OK : Boolean;
+   begin
+      Initialize (T, 12, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Owner (T.all, Token (900), Own, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Document_Node, Token (901), Own, 0, Doc, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (902), Own, 0, Root, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (903), Own, 0, Left, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (904), Own, 0, Middle, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (905), Own, 0, Right, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (906), Own, 0, Other, Local_OK);
+      pragma Assert (Local_OK);
+      Register_Node (T.all, Element_Node, Token (907), Own, 0, Moved, Local_OK);
+      pragma Assert (Local_OK);
+      Release_Reservation (T.all, Own);
+      Attach_Child (T.all, Doc, Root, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Root, Left, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Root, Middle, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Root, Right, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Root, Other, Local_OK);
+      pragma Assert (Local_OK);
+      Attach_Child (T.all, Other, Moved, Local_OK);
+      pragma Assert (Local_OK);
+      Owner_References := Owner (T.all, Own).References;
+      Right_Ns_Pin := Node (T.all, Right).Ns_Pin;
+      Right_Doc_Pin := Node (T.all, Right).Doc_Pin;
+      Right_Content_Pin := Node (T.all, Right).Content_Pin;
+      Insert_Sibling (T.all, Left, Right, True, Local_OK);
+      pragma Assert
+        (Local_OK and then Node (T.all, Right).Next = Left
+         and then Node (T.all, Root).First_Child = Right);
+      Insert_Sibling (T.all, Moved, Right, True, Local_OK);
+      pragma Assert
+        (Local_OK and then Node (T.all, Right).Parent = Other
+         and then Node (T.all, Right).Document = Doc
+         and then Node (T.all, Other).First_Child = Right
+         and then Node (T.all, Right).Next = Moved);
+      Insert_Sibling (T.all, Moved, Right, False, Local_OK);
+      pragma Assert
+        (Local_OK and then Node (T.all, Other).First_Child = Moved
+         and then Node (T.all, Moved).Next = Right
+         and then Node (T.all, Right).Previous = Moved);
+      pragma Assert
+        (Owner (T.all, Own).References = Owner_References
+         and then Node (T.all, Right).Ns_Pin = Right_Ns_Pin
+         and then Node (T.all, Right).Doc_Pin = Right_Doc_Pin
+         and then Node (T.all, Right).Content_Pin = Right_Content_Pin);
+      Free_Subtree (T.all, Doc);
+      XML3_DOM_Allocation.Free_State (T);
+   end Adjacent_Sibling_Insertion;
+
 begin
    Attribute_Children;
    Text_Attribute_Retirement;
@@ -598,6 +665,7 @@ begin
    Text_Merging;
    Document_Propagation;
    Root_Replacement;
+   Adjacent_Sibling_Insertion;
    Initialize (S, 16, OK);
    pragma Assert (OK and then S /= null);
    Register_Owner (S.all, Token (1), Arena, OK);

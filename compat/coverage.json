@@ -252,6 +252,28 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlAddPrevSibling": {
+    "implementation": "partial",
+    "scope": "Managed content sibling insertion immediately before an attached anchor. Supports element children, document comments/PIs and the single root, plus attribute-value text under existing Attach_Child rules. Rejects NULL/self, attribute sibling operands, document nodes, parentless lists, cycles, extra roots, and cross-document moves unchanged. Preserves node identity, returns the child for adjacency no-ops, performs no normal allocation, and never coalesces adjacent text. Native pointers, facade synchronization, ABI/status mapping, and full public semantics remain trusted/unproved.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp",
+      "tests/dom_core_test.adb"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlAddNextSibling": {
+    "implementation": "partial",
+    "scope": "Managed content sibling insertion immediately after an attached anchor. Supports element children, document comments/PIs and the single root, plus attribute-value text under existing Attach_Child rules. Rejects NULL/self, attribute sibling operands, document nodes, parentless lists, cycles, extra roots, and cross-document moves unchanged. Preserves node identity, returns the child for adjacency no-ops, performs no normal allocation, and never coalesces adjacent text. Native pointers, facade synchronization, ABI/status mapping, and full public semantics remain trusted/unproved.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp",
+      "tests/dom_core_test.adb"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlUnlinkNode": {
     "implementation": "partial",
     "scope": "管理中の通常 child と attribute を切り離す。parent/prev/next をクリアし、文書所属・値・namespace・owner pin を保持する。NULL/既に未接続なら no-op。document/namespace/未登録 facade は拒否。SPARK Store/Runtime 経由、native pointer・ABI は信頼境界。",

@@ -75,7 +75,7 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 コメント・PI の DOM 閲覧、namespace lookup に加え、
 限定的な DOM 作成・編集・解放 API、文字列関数、所有権付き getter です。
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
-`xmlAddChild`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
+`xmlAddChild`、`xmlAddSibling`、`xmlAddPrevSibling`、`xmlAddNextSibling`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
 `xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
 `xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
@@ -301,6 +301,12 @@ href による expanded name で行い、接続成功後に一致属性を置き
 `xmlAddSibling` は親に接続された node の兄弟列の末尾へ追加します。通常 child と属性は
 混在させず、text の結合・同じ expanded name の属性の置換は `xmlAddChild` と共通です。
 親のない兄弟列、文書間移動、属性値内部への兄弟追加は未対応です。
+`xmlAddPrevSibling` / `xmlAddNextSibling` は、親に接続された managed content sibling の
+直前・直後へ node identity を保って挿入します。通常 child、document の comment/PI と
+唯一の root、既存 `Attach_Child` 規則に従う attribute-value text が対象で、隣接 text は
+結合しません。NULL/self、attribute sibling、parentless list、cycle、追加 document root、
+cross-document move は変更せず拒否します。属性 sibling、親なしの sibling list、
+namespace reconciliation は対象外です。
 `xmlGetLastChild` は要素に限定せず、document・element・属性値の末尾 child を取得します。
 `xmlFreeNodeList` / `xmlFreePropList` は指定位置から末尾までの兄弟列と子ツリーを解放し、
 残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。

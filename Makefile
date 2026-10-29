@@ -339,6 +339,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-length 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-check 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-charcmp-error 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test dom-adjacent-sibling 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test substring-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0
@@ -391,7 +392,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection test-text-buffers
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
-		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
+		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlAddPrevSibling xmlAddNextSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
 		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp xmlFreePropList \
 	xmlNewNs xmlSetNs xmlFreeNs xmlCopyNamespace xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \

@@ -1018,6 +1018,9 @@ package XML3_DOM with SPARK_Mode is
          and then Node (S, I).Facade = Node (S'Old, I).Facade)
        and then (if not Success then Same_Graph (S, S'Old))
        and then (if Success then Node (S, Child).Parent = Parent)
+       and then (if Success and then Node (S, Child).Kind /= Attribute_Node
+         then Node (S, Parent).Last_Child = Child
+           and then Node (S, Child).Next = Null_Node)
        and then (if Node (S'Old, Child).Parent = Null_Node then
            (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
              Node (S, I).First_Prop = Node (S'Old, I).First_Prop
@@ -1050,6 +1053,24 @@ package XML3_DOM with SPARK_Mode is
                     (if Node (S'Old, Parent).Kind = Document_Node
                      then Parent else Node (S'Old, Parent).Document)).Owner))))
        );
+
+   procedure Insert_Sibling
+     (S : in out State; Sibling, Child : Node_Ref; Before : Boolean;
+      Success : out Boolean)
+   with Global => null,
+     Pre => Valid (S) and then Can_Edit (S)
+       and then Sibling in 1 .. Node_Ref (Node_Count (S))
+       and then Child in 1 .. Node_Ref (Node_Count (S))
+       and then Node (S, Sibling).State = Live
+       and then Node (S, Child).State = Live,
+     Post => Valid (S) and then Can_Edit (S)
+       and then (if Facades_Present (S'Old) then Facades_Present (S))
+       and then (if not Success then Same_Graph (S, S'Old))
+       and then (if Success then
+         Node (S, Child).Parent = Node (S, Sibling).Parent
+         and then (if Before then
+           Node (S, Child).Next = Sibling
+         else Node (S, Child).Previous = Sibling));
 
    procedure Replace_Root
      (S : in out State; Doc, Root : Node_Ref;

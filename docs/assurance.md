@@ -29,8 +29,10 @@ The recorded result is listed in [proof-report.md](proof-report.md). It covers
 the parser/decoder, DOM, parser-arena materializer, and the Store/Runtime
 operations used by public C APIs, including bounded content append, namespace
 lookup through `Runtime.Search_Namespace` / `Store.Queries.Lookup_Namespace`,
-namespace editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and `xmlIsBlankNode`
-through `Store.Queries.Test_Node`, inherited `xml:lang` / `xml:space` lookup
+namespace editing, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`, and
+`xmlIsBlankNode` through `Store.Queries.Test_Node`, previous/next sibling
+insertion through `Runtime.Insert_Sibling` / `Store.Insert_Sibling`, inherited
+`xml:lang` / `xml:space` lookup
 through `Store.Queries.Get_Inherited_XML_Property` and mutation through
 `Store.Properties.Set_Qualified_Property`, reverse element navigation through
 `Store.Queries.Select_Element` (including `xmlGetLastChild`), detached
@@ -53,8 +55,8 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 11,484 checks
-(1,088 flow and 10,396 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,043 checks
+(1,114 flow and 10,929 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 137 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -178,7 +180,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 11,484-check aggregate proof; see
+new units are included in the current successful 12,043-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the
@@ -237,6 +239,26 @@ status and exception mapping with `xmlAddChild`, and reads no native DOM links.
 Parentless sibling chains and children of attributes remain unsupported. Tests
 cover append/reorder/merge and serialize/reparse, namespaced attribute replacement,
 invalid and cross-document cases, document-first lifetime, and OOM retry.
+
+`xmlAddPrevSibling` and `xmlAddNextSibling` are separate Store/Runtime operations:
+Store resolves managed references once, then SPARK `Insert_Sibling` delegates
+attachment, cycle, document affiliation, and pin changes to `Attach_Child`.
+After attachment, a direct-tail placement relinks the affected endpoint nodes
+once and shifts the affected suffix's `Sibling_Order` values monotonically.
+The placement mapping preserves facade identity, owner and namespace snapshots,
+document affiliation, pins, counts, capacity, marks, and node identity while
+maintaining strict `Sibling_Order`; it sets the dirty effect and performs no
+allocation. Attribute siblings, parentless lists, cycles, extra document roots,
+and cross-document moves are rejected without graph changes; adjacent text is
+not coalesced. The C adapter only selects the operation and shares locking,
+status, and exception handling. Public C behavior remains partial / not-proved:
+native pointers/layout, synchronization, allocator, ABI mapping, and full API
+semantics are outside SPARK proof.
+The direct-placement preservation contracts are included in the successful
+full proof: `XML3_DOM.Insert_Sibling` proves 80 checks, `Store.Insert_Sibling`
+proves 10, and `Runtime.Insert_Sibling` proves 1. This covers the written SPARK
+contracts, not native pointer validity, ABI mapping, synchronization, allocator
+behavior, or complete public C semantics.
 
 `XML3_DOM_Store.Properties` adds internal namespace-free property creation and
 replacement. Creation appends attributes, including duplicates; replacement
