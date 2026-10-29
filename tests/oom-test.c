@@ -2003,6 +2003,29 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "replace-node") == 0) {
+        xmlNodePtr root;
+        xmlNodePtr old;
+        xmlNodePtr replacement;
+        doc = xmlReadMemory("<r><before/><old/><after/></r>", 30,
+                            NULL, NULL, 0);
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        old = root->children->next;
+        replacement = xmlNewNode(NULL, BAD_CAST "replacement");
+        assert(old != NULL && replacement != NULL);
+        xml3_oom_enable(0);
+        assert(xmlReplaceNode(old, replacement) == old);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        assert(root->children->next == replacement &&
+               replacement->parent == root &&
+               replacement->prev == root->children &&
+               replacement->next == root->last);
+        assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+        xmlFreeNode(old);
     } else if (strcmp(operation, "character-classes") == 0) {
         xml3_oom_enable(0);
         assert(xmlIsChar('x') == 1 && xmlIsChar(0x10ffff) == 1);
@@ -2180,6 +2203,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {
         puts("XHTML identification used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "replace-node") == 0) {
+        puts("node replacement used no native allocations");
         return 0;
     }
     if (strcmp(operation, "attr-unlink") == 0) {

@@ -327,6 +327,15 @@ href による expanded name で行い、接続成功後に一致属性を置き
 結合しません。NULL/self、attribute sibling、parentless list、cycle、追加 document root、
 cross-document move は変更せず拒否します。属性 sibling、親なしの sibling list、
 namespace reconciliation は対象外です。
+`xmlReplaceNode` は同一文書の managed node を old の正確な位置へ移し、old を detached
+node として返します。middle/first/last child、同一文書内の別 parent に接続中の node の移動、
+明示的に切り離した node、
+document root の置換、old の子孫を root へ昇格する置換、`cur == NULL` の unlink を扱い、
+adjacent text は結合しません。attribute と non-attribute の不一致は upstream の harmless
+quirk として old を変更せず返します。一方、両方が attribute の置換、cross-document move、
+cycle、extra document root は DOM graph の安全性のため変更せず拒否します。old == cur、
+NULL/unmanaged/parentless old も拒否します。返された old は独立して編集・解放でき、
+document を先に解放した後も detached ownership の範囲で使用できます。
 `xmlGetLastChild` は要素に限定せず、document・element・属性値の末尾 child を取得します。
 `xmlFreeNodeList` / `xmlFreePropList` は指定位置から末尾までの兄弟列と子ツリーを解放し、
 残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。

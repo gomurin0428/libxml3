@@ -113,7 +113,17 @@ package XML3_DOM_Store with SPARK_Mode is
        Post => Ready (S) and then
          (if Status = XML3_DOM_Constructors.Created then
                   Result /= System.Null_Address
-                else Result = System.Null_Address);
+               else Result = System.Null_Address);
+
+   procedure Replace_Node
+     (S : in out Store; Old, Cur : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Ready (S) and then
+         (if Status = XML3_DOM_Constructors.Created
+          then Result = Old
+          else Result = System.Null_Address);
 
    procedure Merge_Text
      (S : in out Store; First, Second : System.Address;

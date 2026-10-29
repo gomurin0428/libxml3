@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,589 checks
-(1,254 flow and 11,335 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,642 checks
+(1,265 flow and 11,377 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,589-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,642-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -450,6 +450,16 @@ locking, DOM access, or diagnostics. Header macros, range-group APIs, and a
 DTD subsystem are unsupported. Tests sweep code points through U+110000 and
 check unsigned boundary cases. The C ABI and complete upstream semantics are
 outside the proof.
+
+`xmlReplaceNode` は Store の managed graph 操作として、同一文書内の node を old の位置へ
+移し、old を切り離します。root replacement には既存の `Replace_Root` 契約を、通常の sibling
+replacement には `Insert_Sibling` と `Unlink` の rollback/ownership 制約を再利用します。
+このため別 parent に接続中または detached の同一文書 node、descendant-root promotion、
+`cur == NULL`、隣接 text の非結合を扱えますが、
+両方が attribute の置換、cross-document move、cycle、extra root は安全に拒否します。C 境界は
+lock、Store/Runtime dispatch、status と native pointer の変換だけで、pointer validity、native
+link projection、ABI、allocator/free、facade synchronization と complete public semantics は
+trusted boundary に残り、public API の proof status は partial / not-proved です。
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use the read-only
 `Store.Queries.Get_Inherited_XML_Property` parent walk. Language returns a
