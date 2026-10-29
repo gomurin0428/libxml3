@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,909 checks, 1,368 by flow analysis and 11,541
+It completed successfully: **12,920 checks, 1,371 by flow analysis and 11,549
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -179,21 +179,21 @@ Early mismatches return immediately; equality requiring reads beyond the
 Native reads, foreign
 pointer validity/bounds, actual bytes, address arithmetic, C mapping, and full
 equivalence remain trusted. XML-name and UTF-8 validation are not performed.
-`xmlStrdup` and `xmlStrndup` convert bounded C inputs in the adapter and call
-`XML3_Text.Buffers.Duplicate`, also reused by `xmlSplitQName2`. The SPARK proof
-covers input-size constraints, arithmetic/range checks and native-call
-preconditions; C conversion, native allocation/writes, pointer validity and
-the actual native bytes remain trusted. Raw-byte cases, including embedded
-NUL and length-zero behavior, run in both library and pinned-reference test
-builds; over-limit rejection and OOM injection are libxml3-only.
-`xmlCharStrdup` and `xmlCharStrndup` are thin C adapters over the existing
-duplication helper; the latter converts a bounded NUL-terminated prefix rather
-than the exact raw span used by `xmlStrndup`. This addition makes no SPARK
-source changes. The reference's `len + 1` allocation can leave an unspecified
-tail after early NUL, whereas libxml3 allocates only the copied prefix and
-terminator; tests compare defined contents only and claim no spare capacity or
-allocation-size equivalence. C conversion, native pointers, allocation/writes,
-ABI and complete public semantics remain trusted.
+`xmlStrdup`, `xmlStrndup` and `xmlCharStrdup` delegate to the direct SPARK
+`Concatenate_Bytes` path. `xmlCharStrndup` uses `Copy_Byte_Prefix` to scan at
+most the requested byte count, stopping at NUL without reading beyond that
+count, then calls the shared `Copy_Span` allocator/copier. NULL/negative and
+over-limit requests return before any input reads; non-NULL zero-length input
+gets an owned empty allocation. No C-string materialization is needed.
+`Copy_Byte_Prefix` proves 8 checks.
+The SPARK proof checks scalar bounds, written status/result contracts and native
+preconditions, not native pointer validity/extents, allocation freshness,
+actual bytes/effects, ABI or full public semantics. Raw-byte, guard-page and
+free-input→parse-output cases run against the pinned reference; small-cap and
+OOM/retry tests are libxml3-only. The reference may allocate `len + 1` even
+after an early NUL, whereas libxml3 allocates only the copied prefix and
+terminator. Tests compare defined contents, not unspecified spare capacity or
+allocation-size equivalence. `Duplicate` remains for internal Ada strings.
 `xmlStrchr` uses `XML3_Text.Buffers.Find_Byte` to perform a bounded raw-byte
 search and return the first matching non-NUL position. The written
 status/position contract and loop bounds are proved; NULL input and search
@@ -572,7 +572,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 495 entity
+The 496 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -606,13 +606,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 358 |
-| Initialization | 824 |
-| Runtime checks | 5,538 |
-| Assertions | 1,662 |
-| Functional contracts | 4,269 |
-| Termination | 258 |
-| **Total** | **12,909** |
+| Data dependencies | 359 |
+| Initialization | 826 |
+| Runtime checks | 5,540 |
+| Assertions | 1,664 |
+| Functional contracts | 4,272 |
+| Termination | 259 |
+| **Total** | **12,920** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1168,7 +1168,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-8574dc393eaeff72e125db8e5f8897ae9635d3877348f76a676b912464847e01  src/xml3_c.adb
+adb619b2a08aa3ee568bd850a32aac2dce6346b63b82336d0a657a1c9a3f61ea  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1222,13 +1222,13 @@ eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
-97b2fb0a8624e1babd13f6e7296f1228f7a9c9fdd619159e0df1611169405aa7  src/xml3_text-buffers.adb
-293ada7da2cc039ca836103d61d6c581ce0c221272348cbe2c4a70be84be2092  src/xml3_text-buffers.ads
+0ae7b87d5f0a4dfff4f2fa1555766fbfccdc90fe5d5db543c1720c3db64190c0  src/xml3_text-buffers.adb
+82ad66dff40d9b3716aaba0e4cefa5e6e4b81f2d46b169eb5f546ced02a71156  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-e4b95d9c35f54ffe34b28b1ad6f97f12cf99b6c8dc8b1db122246b2ba27dfe1e  Makefile
+65098019b727bb87c63e307f87104603cb6bcf1d90b5c97e4033f5628b3cfca5  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

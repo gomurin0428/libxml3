@@ -592,6 +592,29 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Status := Sliced;
    end Copy_Span;
 
+   procedure Copy_Byte_Prefix
+     (Item : System.Address; Length : Integer;
+      Result : out System.Address; Status : out Slice_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Span : Byte_Count := 0;
+   begin
+      Result := System.Null_Address;
+      Status := No_Slice;
+      if Item = System.Null_Address or else Length < 0 then
+         return;
+      elsif Length > Limit then
+         Status := Slice_Limit_Exceeded;
+         return;
+      end if;
+      while Span < Length and then Native.Byte_At (Item, Span) /= Character'Val (0) loop
+         pragma Loop_Invariant (Span <= Length);
+         pragma Loop_Variant (Decreases => Length - Span);
+         Span := Span + 1;
+      end loop;
+      Copy_Span (Item, 0, Span, Result, Status);
+   end Copy_Byte_Prefix;
+
    procedure Copy_UTF8_Prefix
      (Item : System.Address; Characters : Integer;
       Result : out System.Address; Status : out Slice_Status;

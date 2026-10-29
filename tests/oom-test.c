@@ -293,14 +293,17 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
-    } else if (strcmp(operation, "char-strdup") == 0 || strcmp(operation, "char-strndup") == 0) {
+    } else if (strcmp(operation, "char-strdup") == 0 || strcmp(operation, "char-strndup") == 0 ||
+               strcmp(operation, "char-strndup-empty") == 0) {
         char source[] = {'a', (char)0xff, 0, 'z'};
         const xmlChar expected[] = {'a', 0xff, 0};
-        int bounded = strcmp(operation, "char-strndup") == 0;
+        int bounded = strcmp(operation, "char-strdup") != 0;
+        int empty = strcmp(operation, "char-strndup-empty") == 0;
+        int length = empty ? 0 : (int)sizeof(source);
         xml3_oom_enable(fail_index);
         assert(!xmlCharStrdup(NULL) && !xmlCharStrndup(NULL, 0));
         assert(!xmlCharStrndup(source, -1) && xml3_oom_count() == 0);
-        xmlChar *copy = bounded ? xmlCharStrndup(source, sizeof(source)) : xmlCharStrdup(source);
+        xmlChar *copy = bounded ? xmlCharStrndup(source, length) : xmlCharStrdup(source);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -308,12 +311,14 @@ int main(int argc, char **argv) {
             assert(!copy);
             require_oom_error();
         } else {
-            assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+            assert(copy && (empty ? copy[0] == 0 :
+                           memcmp(copy, expected, sizeof(expected)) == 0));
         }
         xmlFree(copy);
         assert(source[0] == 'a' && (unsigned char)source[1] == 0xff && source[2] == 0 && source[3] == 'z');
-        copy = bounded ? xmlCharStrndup(source, sizeof(source)) : xmlCharStrdup(source);
-        assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+        copy = bounded ? xmlCharStrndup(source, length) : xmlCharStrdup(source);
+        assert(copy && (empty ? copy[0] == 0 :
+                       memcmp(copy, expected, sizeof(expected)) == 0));
         xmlFree(copy);
     } else if (strcmp(operation, "string-compare") == 0) {
         xml3_oom_enable(0);

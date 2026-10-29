@@ -148,8 +148,8 @@ namespace-list traversal through
 `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
 `Collect_Namespaces`, namespace copying through `Runtime.Copy_Namespace` /
 `Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Locate_Prefix`
-and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
-bounded native concatenation through `XML3_Text.Buffers.Concatenate_Bytes`,
+and `Split`, raw-string duplication and bounded native concatenation through
+`XML3_Text.Buffers.Concatenate_Bytes` and `Copy_Byte_Prefix`,
 fresh-allocation appending through `XML3_Text.Buffers.Append`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,909 checks
-(1,368 flow and 11,541 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,920 checks
+(1,371 flow and 11,549 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,909-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,920-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -873,15 +873,18 @@ APIs `xmlNewProp`, `xmlSetProp`, `xmlUnsetProp`, `xmlRemoveProp`, and
 NUL-terminated results; `xmlStrndup` copies exactly the requested length,
 including embedded NUL bytes, and length zero does not read its input.
 `xmlCharStrdup` delegates to the existing `xmlStrdup` adapter. `xmlCharStrndup`
-uses the C `char *` prefix conversion and the existing SPARK duplication helper:
+uses SPARK `Copy_Byte_Prefix` and the shared `Copy_Span` allocator/copier:
 it stops at NUL within `len`, while raw `xmlStrndup` copies the exact span.
-Length zero performs no input read; NULL/negative and over-`Max_Input` inputs
+`Copy_Byte_Prefix` proves 8 checks.
+The other duplication adapters use `Concatenate_Bytes` directly. No C-string
+conversion is needed in these APIs. Length zero performs no input read;
+NULL/negative and over-`Max_Bytes` inputs
 are rejected. Input bytes, including high-bit bytes, are copied without
 transcoding or UTF-8 validation. The pinned reference allocates `len + 1`
 even after an early NUL and leaves the tail unspecified; libxml3 allocates
 only the copied prefix plus terminator. Tests compare defined contents only;
-spare capacity and allocation-size equivalence are not promised. C conversion,
-native pointer validity, allocation/writes, ABI, and complete semantics remain
+spare capacity and allocation-size equivalence are not promised. Native pointer
+validity/extents, allocation/byte effects, ABI, and complete semantics remain
 trusted.
 `xmlStrchr` calls the SPARK `XML3_Text.Buffers.Find_Byte` search. It returns a
 borrowed input pointer to the first matching non-NUL byte; NULL input and a

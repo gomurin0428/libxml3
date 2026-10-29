@@ -904,15 +904,21 @@ static void test_char_string_duplicates(void) {
     copy = xmlCharStrndup("", 7);
     assert(copy && copy[0] == 0);
     xmlFree(copy);
-    copy = xmlCharStrdup("<r>名</r>");
-    assert(copy);
-    xmlDocPtr doc = xmlReadMemory((const char *)copy, xmlStrlen(copy), NULL, NULL, 0);
-    xmlFree(copy);
-    assert(doc);
-    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
-    assert(content && strcmp((const char *)content, "名") == 0);
-    xmlFree(content);
-    xmlFreeDoc(doc);
+    for (int bounded = 0; bounded < 2; ++bounded) {
+        xmlChar *original = xmlStrdup(BAD_CAST (bounded ? "<r>名</r>ignored" : "<r>名</r>"));
+        assert(original);
+        copy = bounded ? xmlCharStrndup((const char *)original, (int)strlen("<r>名</r>")) :
+                         xmlCharStrdup((const char *)original);
+        assert(copy && copy != original);
+        xmlFree(original);
+        xmlDocPtr doc = xmlReadMemory((const char *)copy, xmlStrlen(copy), NULL, NULL, 0);
+        xmlFree(copy);
+        assert(doc);
+        xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+        assert(content && strcmp((const char *)content, "名") == 0);
+        xmlFree(content);
+        xmlFreeDoc(doc);
+    }
 }
 
 static unsigned reference_case_map(unsigned value) {

@@ -3079,6 +3079,21 @@ package body XML3_C is
          return System.Null_Address;
    end Encode_Entities_Reentrant;
 
+   function Slice_Result
+     (Result : System.Address; Status : XML3_Text.Buffers.Slice_Status)
+      return System.Address
+   is
+   begin
+      case Status is
+         when XML3_Text.Buffers.No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Slice_Limit_Exceeded =>
+            Report_Dom_Error (115);
+         when others => null;
+      end case;
+      return Result;
+   end Slice_Result;
+
    function Str_Duplicate (Item : System.Address) return System.Address is
    begin
       return Str_N_Concat_New (System.Null_Address, Item, -1);
@@ -3093,19 +3108,12 @@ package body XML3_C is
      (Item : System.Address; Length : Interfaces.C.int) return System.Address
    is
       Result : System.Address;
+      Status : XML3_Text.Buffers.Slice_Status;
    begin
-      if Item = System.Null_Address or else Length < 0 then
-         return System.Null_Address;
-      end if;
-      XML3_Text.Buffers.Duplicate (C_String_Prefix (Item, Length), Result);
-      if Result = System.Null_Address then
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-      end if;
-      return Result;
+      XML3_Text.Buffers.Copy_Byte_Prefix
+        (Item, Integer (Length), Result, Status);
+      return Slice_Result (Result, Status);
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;
@@ -3122,21 +3130,6 @@ package body XML3_C is
       end if;
       return Str_N_Concat_New (System.Null_Address, Item, Length);
    end Str_N_Duplicate;
-
-   function Slice_Result
-     (Result : System.Address; Status : XML3_Text.Buffers.Slice_Status)
-      return System.Address
-   is
-   begin
-      case Status is
-         when XML3_Text.Buffers.No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         when XML3_Text.Buffers.Slice_Limit_Exceeded =>
-            Report_Dom_Error (115);
-         when others => null;
-      end case;
-      return Result;
-   end Slice_Result;
 
    function Str_Sub_Copy
      (Item : System.Address; Start, Length : Interfaces.C.int)

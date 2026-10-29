@@ -266,4 +266,12 @@ package XML3_Text.Buffers with SPARK_Mode is
    procedure Duplicate (Input : String; Result : out System.Address)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Input'Length <= Max_Bytes;
+
+   procedure Copy_Byte_Prefix
+     (Item : System.Address; Length : Integer;
+      Result : out System.Address; Status : out Slice_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Sliced then Result /= System.Null_Address
+                else Result = System.Null_Address);
 end XML3_Text.Buffers;
