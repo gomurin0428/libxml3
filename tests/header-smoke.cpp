@@ -26,6 +26,8 @@ int main() {
     xmlChar *(*raw_list)(const xmlDoc *, const xmlNode *, int) =
         xmlNodeListGetRawString;
     (void)raw_list;
+    xmlChar *(*node_list)(xmlDoc *, const xmlNode *, int) = xmlNodeListGetString;
+    (void)node_list;
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;

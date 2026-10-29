@@ -1797,11 +1797,14 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
 
    procedure Get_List_Content
      (S : Store; Facade : System.Address; Escape : Boolean;
-      Result : out System.Address; Status : out Operation_Status)
+      Result : out System.Address; Status : out Operation_Status;
+      Doc : System.Address := System.Null_Address;
+      Default_Entities : Boolean := False)
    is
-      First, Current : Node_Ref;
+      First, Current, Document, Parent : Node_Ref;
       Item : Node_View;
       Total : XML3_Text.Byte_Count := 0;
+      Attribute : Boolean := False;
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
@@ -1811,6 +1814,22 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       First := Find_Registered_Node (S, Facade);
       if First = Null_Node then
          return;
+      end if;
+      if Escape and then Default_Entities then
+         Document := Find_Registered_Node (S, Doc);
+         if Doc /= System.Null_Address
+           and then (Document = Null_Node
+             or else Node (S.Current.all, Document).Kind /= Document_Node)
+         then
+            return;
+         end if;
+         Parent := Node (S.Current.all, First).Parent;
+         if Parent /= Null_Node then
+            if not Live_Node (S, Parent) then
+               return;
+            end if;
+            Attribute := Node (S.Current.all, Parent).Kind = Attribute_Node;
+         end if;
       end if;
       Status := Internal_Error;
       Current := First;
@@ -1873,7 +1892,9 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
             return;
          end if;
          if Escape then
-            XML3_Text.Buffers.Escape_Special (Content, Result, Escaping);
+            XML3_Text.Buffers.Escape_Special
+              (Content, Result, Escaping, Non_ASCII => Default_Entities,
+               Attribute => Attribute, Quotes => not Default_Entities);
             case Escaping is
                when XML3_Text.Buffers.Escaped => Status := Created;
                when XML3_Text.Buffers.Invalid_Text => Status := Invalid_Argument;

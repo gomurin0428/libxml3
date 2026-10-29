@@ -415,11 +415,13 @@ is
 
       procedure Get_List_Content
         (Facade : System.Address; Escape : Boolean; Result : out System.Address;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Doc : System.Address := System.Null_Address;
+         Default_Entities : Boolean := False)
       is
       begin
          XML3_DOM_Store.Queries.Get_List_Content
-           (Current, Facade, Escape, Result, Status);
+           (Current, Facade, Escape, Result, Status, Doc, Default_Entities);
       end Get_List_Content;
 
       procedure Get_Path

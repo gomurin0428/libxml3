@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,477 checks
-(1,214 flow and 11,263 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,537 checks
+(1,226 flow and 11,311 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -215,7 +215,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,477-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,537-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -382,7 +382,20 @@ entity-reference node は subset 外です。SPARK の proof は query の bound
 契約を対象とします。C pointer readability、native byte reads/writes、allocation/copy/free、ABI と全 C semantics
 は信頼境界です。raw byte preservation、escaping/invalid split-UTF-8、sibling selection、empty result、
 foreign facade、OOM retry は `tests/dom-test.c` / `tests/oom-test.c`、宣言は
-`tests/header-smoke.cpp` で検査します。`xmlNodeListGetString` は未実装です。
+`tests/header-smoke.cpp` で検査します。
+
+`xmlNodeListGetString` は同じ bounded sibling query を使います。inline mode は raw bytes を複製し
+`doc` を無視します。escaped mode は NULL または登録済み document のみを受け入れ、開始 node の親から
+attribute context を決定して各 node の UTF-8 を検証します。XML special characters は escape し、
+attribute の tab/LF と CR/全非 ASCII は数値参照、attribute の quote は `&quot;`、
+text の tab/LF/quote は raw のままです。
+Document encoding は model に保持されないため、明示 UTF-8 document でも default encoding の数値参照を使います。
+NULL list は NULL、選択 text のない non-NULL list は独立した空文字列です。返却値は独立した
+`xmlFree` 所有文字列です。HTML/entity expansion は未対応です。Proof は SPARK query /
+escaping contracts に限られ、native pointer/byte access, allocation/copy/free, ABI は信頼境界に残ります。
+Escaping mode, doc validation/ignore, attribute context, default-encoding divergence, output lifetime は
+`tests/dom-test.c`、allocation failure/retry は `tests/oom-test.c`、宣言は `tests/header-smoke.cpp` で検査します。
+OOM は NULL として返り、source list links は変更しません。
 
 `xmlNodeIsText` / `xmlIsBlankNode` は `Runtime.Test_Node` / `Store.Queries.Test_Node`
 で kind と XML 空白を判定します。Runtime の `Global` は managed state / native memory

@@ -30,6 +30,7 @@ procedure Text_Buffers_Test is
    procedure Check_Escape is
       Output : System.Address;
       Status : XML3_Text.Buffers.Escape_Status;
+      Unicode : constant String := Character'Val (16#C3#) & Character'Val (16#A9#);
    begin
       XML3_Text.Buffers.Escape_Special ("", Output, Status, 0);
       pragma Assert (Status = XML3_Text.Buffers.Escaped
@@ -54,6 +55,22 @@ procedure Text_Buffers_Test is
         ((1 => Character'Val (1)), Output, Status);
       pragma Assert (Status = XML3_Text.Buffers.Invalid_Text
                      and Output = System.Null_Address);
+      XML3_Text.Buffers.Escape_Special
+        (Unicode, Output, Status, 5, Non_ASCII => True);
+      pragma Assert (Status = XML3_Text.Buffers.Escape_Limit_Exceeded
+                     and Output = System.Null_Address);
+      XML3_Text.Buffers.Escape_Special
+        (Unicode, Output, Status, 6, Non_ASCII => True);
+      pragma Assert (Status = XML3_Text.Buffers.Escaped
+                     and Output /= System.Null_Address);
+      declare
+         Value : String (1 .. 6);
+      begin
+         XML3_Native_Memory.Read_String (Output, Value);
+         pragma Assert (Value = "&#xE9;"
+                        and XML3_Native_Memory.Byte_At (Output, 6) = Character'Val (0));
+      end;
+      XML3_Native_Memory.Free (Output);
    end Check_Escape;
 
    procedure Check_Append is

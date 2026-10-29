@@ -29,6 +29,87 @@ static void assert_raw_list(const xmlNode *list, int inline_value,
     xmlFree(value);
 }
 
+static void assert_list_string(xmlDocPtr doc, const xmlNode *list,
+                               int inline_value, const char *expected) {
+    xmlChar *value = xmlNodeListGetString(doc, list, inline_value);
+    assert(value && strcmp((const char *)value, expected) == 0);
+    xmlFree(value);
+}
+
+static void test_node_list_string(void) {
+    static const char value[] = "<&>\"'\r\n\té中🙂";
+    static const char escaped[] =
+        "&lt;&amp;&gt;\"'&#13;\n\t&#xE9;&#x4E2D;&#x1F642;";
+    static const char attr_escaped[] =
+        "&lt;&amp;&gt;&quot;'&#13;&#10;&#9;&#xE9;&#x4E2D;&#x1F642;";
+    static const char encoded_doc[] =
+        "<?xml version='1.0' encoding='UTF-8'?><r>é</r>";
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    xmlNodePtr text, restored, boundary;
+    xmlAttrPtr attr;
+    xmlChar *copy;
+    char buffer[512];
+    xmlDocPtr reparsed;
+    assert(doc && root);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    text = xmlNewDocText(doc, BAD_CAST value);
+    assert(text && xmlAddChild(root, text) == text);
+    assert_list_string(doc, text, 0, escaped);
+    assert_list_string(NULL, text, -1, value);
+    assert_list_string((xmlDocPtr)1, text, 1, value);
+    assert_list_string(doc, root, 0, "");
+    assert(xmlNodeListGetString((xmlDocPtr)1, NULL, 0) == NULL);
+    attr = xmlNewProp(root, BAD_CAST "a", BAD_CAST value);
+    assert(attr && attr->children);
+    assert_list_string(doc, attr->children, 0, attr_escaped);
+    assert_list_string(doc, attr->children, 1, value);
+    copy = xmlNodeListGetString(doc, attr->children, 0);
+    assert(copy);
+    assert(snprintf(buffer, sizeof(buffer), "<r a=\"%s\"/>", copy) > 0);
+    reparsed = xmlReadMemory(buffer, (int)strlen(buffer), NULL, NULL, 0);
+    assert(reparsed && xmlDocGetRootElement(reparsed)->properties);
+    assert_text((xmlNodePtr)xmlDocGetRootElement(reparsed)->properties, value);
+    xmlFreeDoc(reparsed);
+    xmlUnlinkNode((xmlNodePtr)attr);
+    assert_list_string(NULL, attr->children, 0, attr_escaped);
+    xmlFreeProp(attr);
+#ifndef XML3_REFERENCE_TEST
+    xmlResetLastError();
+    assert(xmlNodeListGetString((xmlDocPtr)1, text, 0) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlNodeListGetString((xmlDocPtr)root, text, 0) == NULL);
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    assert_list_string(NULL, text, 0, escaped);
+    xmlFreeNode(root);
+    xmlResetLastError();
+#else
+    xmlFreeDoc(doc);
+#endif
+    restored = xmlStringGetNodeList(NULL, copy);
+    xmlFree(copy);
+    assert(restored);
+    assert_text(restored, value);
+    xmlFreeNodeList(restored);
+    boundary = xmlNewText(BAD_CAST
+        "\xC2\x80\xDF\xBF\xE0\xA0\x80\xF0\x90\x80\x80\xF4\x8F\xBF\xBF");
+    assert(boundary);
+    assert_list_string(NULL, boundary, 0,
+                      "&#x80;&#x7FF;&#x800;&#x10000;&#x10FFFF;");
+    xmlFreeNode(boundary);
+    doc = xmlReadMemory(encoded_doc, (int)strlen(encoded_doc), NULL, NULL, 0);
+    assert(doc);
+    text = xmlDocGetRootElement(doc)->children;
+    assert_list_string(NULL, text, 0, "&#xE9;");
+#ifdef XML3_REFERENCE_TEST
+    assert_list_string(doc, text, 0, "é");
+#else
+    assert_list_string(doc, text, 0, "&#xE9;");
+#endif
+    xmlFreeDoc(doc);
+}
+
 static void test_raw_node_list(void) {
     static const char input[] =
         "<r>one&lt;&amp;\"&#13;\t\né<!--ignored--><e>nested</e>"
@@ -92,6 +173,7 @@ static void test_raw_node_list_rejections(void) {
     xmlResetLastError();
     assert(xmlNodeListGetRawString(NULL, first, 0) == NULL);
     assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlNodeListGetString(NULL, first, 0) == NULL);
     assert(root->children == first && root->last == second && first->next == second);
     assert(xmlNodeSetContent(first, BAD_CAST "valid") == 0);
     assert(xmlNodeSetContent(second, BAD_CAST " &") == 0);
@@ -100,7 +182,9 @@ static void test_raw_node_list_rejections(void) {
     assert_raw_list(first, 1, "\x01 &");
     assert(xmlNodeListGetRawString(NULL, first, 0) == NULL);
     xmlResetLastError();
+    assert(xmlNodeListGetString(NULL, first, 0) == NULL);
     assert(xmlNodeListGetRawString(NULL, (const xmlNode *)1, 1) == NULL);
+    assert(xmlNodeListGetString(NULL, (const xmlNode *)1, 1) == NULL);
     assert(xmlGetLastError() && xmlGetLastError()->code == 115);
     xmlFreeNode(root);
     xmlResetLastError();
@@ -1332,6 +1416,7 @@ static void test_release_list_lifetime_and_rejections(void) {
 #endif
 
 int main(void) {
+    test_node_list_string();
     test_raw_node_list();
     test_free_node_list();
     test_constructors_and_root_replacement();

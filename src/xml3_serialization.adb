@@ -275,26 +275,12 @@ package body XML3_Serialization with SPARK_Mode is
         renames XML3_Text.Buffers.Valid_Name;
 
       procedure Put_Character_Reference (Code : Natural) is
-         Hex : constant String := "0123456789ABCDEF";
-         Buffer : String (1 .. 6) := (others => '0');
-         First : Positive := Buffer'Last;
-         Value : Natural := Code;
       begin
-         loop
-            pragma Loop_Invariant (First in Buffer'Range);
-            pragma Loop_Variant (Decreases => Value);
-            Buffer (First) := Hex ((Value mod 16) + 1);
-            Value := Value / 16;
-            exit when Value = 0;
-            if First = Buffer'First then
-               Good := False;
-               return;
-            end if;
-            First := First - 1;
-         end loop;
-         Put ("&#x");
-         Put (Buffer (First .. Buffer'Last));
-         Put (";");
+         if Code > 16#10FFFF# then
+            Good := False;
+            return;
+         end if;
+         Put (XML3_Text.Buffers.Character_Reference (Code));
       end Put_Character_Reference;
 
       procedure Emit_Text

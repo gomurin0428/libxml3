@@ -253,7 +253,9 @@ is
 
       procedure Get_List_Content
         (Facade : System.Address; Escape : Boolean; Result : out System.Address;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Doc : System.Address := System.Null_Address;
+         Default_Entities : Boolean := False)
         with Global => (Input => Managed,
                         In_Out => XML3_Native_Memory.Foreign_Memory);
 

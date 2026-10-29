@@ -101,7 +101,9 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
 
    procedure Get_List_Content
      (S : Store; Facade : System.Address; Escape : Boolean;
-      Result : out System.Address; Status : out Operation_Status)
+      Result : out System.Address; Status : out Operation_Status;
+      Doc : System.Address := System.Null_Address;
+      Default_Entities : Boolean := False)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => (if Status = XML3_DOM_Constructors.Created then

@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,477 checks, 1,214 by flow analysis and 11,263
+It completed successfully: **12,537 checks, 1,226 by flow analysis and 11,311
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -29,7 +29,9 @@ Store/Runtime. `xmlStringGetNodeList` and `xmlStringLenGetNodeList` route
 through `Runtime.Parse_Content_List` / `Store.Content.Parse_Content_List`,
 the analyzed strict text decoder, and the existing document-owned text
 constructor. `xmlNodeListGetRawString` routes through `Runtime.Get_List_Content`
-and `Store.Queries.Get_List_Content`. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
+and `Store.Queries.Get_List_Content`. `xmlNodeListGetString` shares that bounded
+query and uses the analyzed `XML3_Text.Buffers.Escape_Special` and
+`Character_Reference` helpers. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
 its C status/output-pointer mapping is outside the proof. The public
 `xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
@@ -446,7 +448,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 450 entity
+The 453 entity
 summaries report 0 flow errors, 152 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -475,13 +477,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 315 |
-| Initialization | 742 |
-| Runtime checks | 5,423 |
-| Assertions | 1,640 |
-| Functional contracts | 4,141 |
-| Termination | 216 |
-| **Total** | **12,477** |
+| Data dependencies | 318 |
+| Initialization | 748 |
+| Runtime checks | 5,453 |
+| Assertions | 1,644 |
+| Functional contracts | 4,153 |
+| Termination | 221 |
+| **Total** | **12,537** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -961,16 +963,37 @@ bytes without UTF-8/XML validation. Zero `inLine` validates each selected node's
 UTF-8 independently before concatenation, then validates XML characters and
 escapes special characters, rejecting malformed content split across node
 boundaries. A non-NULL list with no selected text produces an independently
-`xmlFree`-owned empty string. Entity-reference nodes are unsupported and
-`xmlNodeListGetString` remains deferred. The proof covers the query's bounded
+`xmlFree`-owned empty string. Entity-reference nodes are unsupported. The proof covers the query's bounded
 walk, size arithmetic, and status/result contracts, not native pointer
 validity/readability, allocation/copy/free, ABI, or complete C semantics.
+
+## `xmlNodeListGetString`
+
+The thin C adapter performs scalar handling, locking, Runtime dispatch, and
+status/diagnostic mapping. The SPARK query shares the direct text/CDATA bounded
+next-sibling walk and does not descend or mutate the DOM. Nonzero `inLine`
+duplicates raw bytes and ignores `doc`. Escaped mode accepts a NULL or registered
+document and validates each selected node's UTF-8 independently before
+concatenation; XML character validation and escaping then operate on the joined
+content. Attribute escaping is selected from the starting node's parent.
+Attribute tabs and line feeds are numeric references and quotes use `&quot;`, while text tabs,
+line feeds, and quotes remain literal. Non-ASCII characters become uppercase
+hexadecimal character references because this subset does not retain document
+encoding; explicit UTF-8 documents can therefore differ from reference output.
+The returned allocation is independent and freed with `xmlFree`; NULL list
+returns NULL, while a non-NULL list with no selected text returns an allocated
+empty string. Output-allocation failure returns NULL without changing the
+source links, as exercised by the OOM integration tests. HTML-specific behavior
+and entity expansion are unsupported.
+The proof covers the bounded query, strict per-node UTF-8 checks, escaper,
+character-reference helper, and written status/result contracts—not C pointer
+validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 
 ## Source identity (SHA-256)
 
 ```text
-1936c6890878b1c466eb5bf68034b9e0466cd01fc2b065f70e69c64b66bd3938  src/xml3_c.adb
-4317fb8c5abd1cc9741d65e32f664f5d9c9569cb3cba0ff0f2c4003a5741dc98  src/xml3_c.ads
+699cde20cff7995d6de5c6d978c3905f6a87ad48b1772d6adb9f3426cb98f6aa  src/xml3_c.adb
+85383caa7bd1cf17f249a13b61dd3c75189524f628be2a9e6cdb372314bab1a5  src/xml3_c.ads
 e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
 52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 386ab8e57be684a44d9cb5b31c45317bda8e887196525db4fb3bcfaf01b2af51  src/xml3_dom-import.adb
@@ -988,16 +1011,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-0b86d0486b75ab221584074960d875f576157e26aaa721bc92e3ecc95229c868  src/xml3_dom_runtime.adb
-19281c309c4dc15c6d9ef4db370e857f5792f99335f24e41d74619b071df2133  src/xml3_dom_runtime.ads
+63773ed9f5d139f4a223bfb2768e57bfa9718c5dadad2b8004c657d7fd5e1973  src/xml3_dom_runtime.adb
+4feb6b794582887eba91d2f3e965ccc898d3ef079caecb070b2d9013ccdd5b77  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 6e08b02a697ce359a874fd8af497e7f6b644ece1e4ab418e5c5acc433d01e017  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-60ba57d3be4bef95dd56c4fa4702cf3bf3e652b260cade18170a481fcad89ea8  src/xml3_dom_store-queries.adb
-5dbec6c402543f20e51156b5054606ac39787012b50534fc0cdb586cf0c2cff7  src/xml3_dom_store-queries.ads
+cf647372b45255c8d30bd3d9b7d845b124acf8f2086afb8e66a9972a2e3bbca1  src/xml3_dom_store-queries.adb
+d4f29bd5372b8583046d130db89a64ccd86b1451eab99fb2a5219ab77c45c731  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 5a3c45a728e39776affbdacfd6ce7832626641eb85546b2d3d79387459d683b7  src/xml3_dom_store.adb
@@ -1012,20 +1035,20 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 802bbc0d3a2ad887e38814c149d3e63d5f0ace9952c0a54821399164143e2fcb  src/xml3_native_memory.adb
 4aa72f5756913f1f58af134cf221972157f672054e1df4c3f64dd6e4432b3a56  src/xml3_native_memory.ads
 2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
-9985d817ee3fb57517e770c87a644edcd8d710bdeb23373e6339d88d1c106e58  src/xml3_serialization.adb
+aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_serialization.adb
 4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 1c7ab0d6e5a4588ed61292e2d89bed80fb1ead008c31cfe648b9a9d326bdc000  src/xml3_text.adb
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-da00cfa85abfbc26c7fd8231ed11bc0e6f015f45b4c816903b2454ab0ee61fac  src/xml3_text-buffers.adb
-92fe9f1c1bb8236dee2b667f7799c5eb287998e0d9ed1bd82621072236545a8d  src/xml3_text-buffers.ads
-97a89722735ed7f63b9b77d38f14f371f1ccf99e467ad0c9ca230aa40edc5fe6  include/libxml/tree.h
+383f864cb9b0a82b6c274054e330b0ddf0b38c9bc96a2fff8463e9ff8d0c2c1a  src/xml3_text-buffers.adb
+5ef62de4f049443e6731d9746ccda685072dee420213c3c9b0995027788177be  src/xml3_text-buffers.ads
+9956987bf3c6ca61504bd7621b85909cfec8d42f0b8816b552bed4219ccc048c  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-519e605fc903fee67edb19ca85264fbea28cf85db27acc286fe8bbb27d7b2337  Makefile
+cf8c869b560a5dc5b333f387a0526a19af224d8b6753eb7f2e1b016a8ceb8402  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
