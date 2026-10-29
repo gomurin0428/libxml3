@@ -442,7 +442,7 @@ is
       end Get_Document_Entity;
 
       procedure Encode_Entities
-        (Document : System.Address; Input : String; Result : out System.Address;
+        (Document, Input : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin

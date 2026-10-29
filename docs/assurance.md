@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,954 checks
-(1,383 flow and 11,571 prover), no unproved or justified conditions, 0
+ proved. The refreshed aggregate has 12,953 checks
+(1,383 flow and 11,570 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -194,16 +194,22 @@ preconditions and status/result contracts, not full C output semantics. Native
 pointers/extents, byte effects, allocation/free, ABI/status
 mapping, and complete libxml2 behavior remain trusted; the API is partial and
 not-proved at the public C level, and does not implement DTD/entity expansion.
-`xmlEncodeEntitiesReentrant` routes through registered-document
-validation and the String-based `Escape_Special` implementation. Less-than, greater-than and
+`xmlEncodeEntitiesReentrant` passes the native address through Store/Runtime.
+Registered-document validation precedes all input reads; rejection does not
+dereference the document or input. It then uses `Escape_Special_Bytes` with
+`Non_ASCII => True, Quotes => False`, sharing bounded direct validation and
+ construction with `xmlEncodeSpecialChars`, not C-string conversion. The Store
+ query proves 3 checks and the Runtime wrapper 1. Less-than, greater-than and
 ampersand use named references, CR becomes `&#13;`, and valid non-ASCII uses
 uppercase hexadecimal references; quotes, TAB and LF remain literal. NULL
 input bypasses document validation; otherwise only NULL or a registered
 document is accepted. The shared helper provides strict UTF-8/XML validation
 and bounded sizing. Output is independent, OOM returns NULL without DOM
 mutation, and the source document encoding is not retained, so explicit UTF-8
-documents can differ from reference output. The public C conversions,
-pointer/byte access, allocation/free, ABI, and complete libxml2 semantics
+documents can differ from reference output. Both scan and expansion caps map
+to resource-limit diagnostic 114; invalid text/document maps to 115.
+Public C NULL/diagnostic mapping, native pointer extents/stability and byte
+effects, allocation/free, ABI, and complete libxml2 semantics
 remain trusted; DTD/general-entity expansion and HTML behavior are unsupported.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
@@ -343,7 +349,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,954-check aggregate proof; see [proof-report.md](proof-report.md)
+ successful 12,953-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

@@ -10,12 +10,12 @@ Initialization                  836           836                               
 Non-Aliasing                      .             .                                       .           .          .
 Run-time Checks                5550             .      5550 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1666             .    1666 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           4281             .     4281 (CVC5 68%, Trivial 2%, Z3 30%)           .          .
+Functional Contracts           4280             .     4280 (CVC5 67%, Trivial 2%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     260           186                    74 (CVC5 95%, Z3 5%)           .          .
+Termination                     260           186                    74 (CVC5 96%, Z3 4%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         12954    1383 (11%)                             11571 (89%)           .          .
+Total                         12953    1383 (11%)                             11570 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
@@ -242,7 +242,7 @@ in unit xml3_dom_runtime, 46 subprograms and packages out of 46 analyzed
   XML3_DOM_Runtime.Create_Namespace at xml3_dom_runtime.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Create_Namespace_Property at xml3_dom_runtime.ads:168 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Create_Property at xml3_dom_runtime.ads:156 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:283 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:282 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Encode_Entities at xml3_dom_runtime.ads:276 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Find_Property at xml3_dom_runtime.ads:197 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Free_Namespace at xml3_dom_runtime.ads:60 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -345,7 +345,7 @@ in unit xml3_dom_store-queries, 50 subprograms and packages out of 50 analyzed
   XML3_DOM_Store.Queries.Candidate_Allowed at xml3_dom_store-queries.adb:611 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
   XML3_DOM_Store.Queries.Collect_Namespaces at xml3_dom_store-queries.adb:490 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
   XML3_DOM_Store.Queries.Copy_Content at xml3_dom_store-queries.adb:1023 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_DOM_Store.Queries.Encode_Entities at xml3_dom_store-queries.ads:130 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Encode_Entities at xml3_dom_store-queries.ads:130 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_DOM_Store.Queries.Encoding_Status at xml3_dom_store-queries.adb:86 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Store.Queries.Equal_Address_Bytes at xml3_dom_store-queries.adb:307 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_DOM_Store.Queries.Equal_Bytes at xml3_dom_store-queries.adb:287 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)

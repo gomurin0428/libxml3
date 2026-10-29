@@ -26,6 +26,10 @@ pointerの有効性・読み取り可能範囲と安定性、native byte effects
 
 `xmlEncodeEntitiesReentrant` は NULL input なら `doc` を検証せず、診断なしで NULL を返します。
 non-NULL input では `doc == NULL` または登録済み Document_Node を受け付け、空 input も独立した空文字列にします。
+Store/Runtime は入力をaddressのまま受け取り、文書の登録確認に失敗すると入力を読まずに拒否します。
+成功後に `Escape_Special_Bytes` で直接検証・計測・構築し、C文字列の中間コピーは作りません。
+走査・展開上限の超過は共通の resource-limit 診断（code 114）です。旧C文字列変換で走査上限を
+検出した場合の code 115 とは異なります。不正UTF-8/XML・不正文書は引き続き code 115 です。
 `<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、quote・TAB・LF は保持します。
 document encoding はモデルに保持しないため、明示 UTF-8 文書でも非ASCIIを文字参照にします。
 不正UTF-8/XMLは診断と NULL で拒否し、不正文字置換・保持の reference 動作は再現しません。

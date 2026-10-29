@@ -109,7 +109,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    end Get_Document_Entity;
 
    procedure Encode_Entities
-     (S : Store; Document : System.Address; Input : String;
+     (S : Store; Document, Input : System.Address;
       Result : out System.Address; Status : out Operation_Status)
    is
       Escaping : XML3_Text.Buffers.Escape_Status;
@@ -119,7 +119,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       if not Registered_Document (S, Document) then
          return;
       end if;
-      XML3_Text.Buffers.Escape_Special
+      XML3_Text.Buffers.Escape_Special_Bytes
         (Input, Result, Escaping, Non_ASCII => True, Quotes => False);
       Status := Encoding_Status (Escaping);
    end Encode_Entities;

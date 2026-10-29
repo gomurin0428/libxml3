@@ -3060,14 +3060,11 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Encode_Entities
-           (Document, C_String_Value (Input), Result, Status);
+           (Document, Input, Result, Status);
       end;
       Report_Operation_Status (Status, Validation_Error => True);
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;
