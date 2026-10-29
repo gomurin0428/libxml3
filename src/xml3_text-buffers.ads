@@ -7,6 +7,14 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Concatenate_Status is (Copied, No_Input, No_Memory, Limit_Exceeded);
 
+   type Name_Value_Kind is (Single_Name, Name_List, Single_NMToken, NMToken_List);
+
+   function Valid_Name_Value
+     (Source : System.Address; Kind : Name_Value_Kind;
+      Last : Byte_Count := Max_Bytes) return Boolean
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Source = System.Null_Address then not Valid_Name_Value'Result);
+
    function Get_Predefined_Entity (Name : System.Address) return System.Address
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 

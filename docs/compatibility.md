@@ -277,6 +277,18 @@ attribute にも対応し、namespace 宣言や残る利用者の参照は保持
 参照版テストはこのリンクだけを呼び出し側で修復し、解放済み pointer を利用しません。
 一覧の走査・解放・寿命判断はSPARK側で行い、最後に一度 native facade を同期します。
 
+`libxml/valid.h` の `xmlValidateNameValue` / `xmlValidateNamesValue` /
+`xmlValidateNmtokenValue` / `xmlValidateNmtokensValue` は字句検査のみです。
+XML 1.0 の Name / Names / Nmtoken / Nmtokens を既存の名前分類・厳密な UTF-8
+復号と共有し、有効なら 1、NULL/空/不正文字/走査上限超過なら 0 を返します。
+DTD 検証・ID の一意性・IDREF の参照解決は行いません。colon は各位置で許され、QName
+検証とは異なります。Names は SPACE 区切りで前後の空白を禁止します。Nmtokens は
+固定版同様、先頭だけ XML 空白全般を飛ばし、末尾の SPACE も受け付けます。
+区切りや末尾の TAB/LF/CR は受け付けません。確保・文書参照・診断変更はなく、NUL や
+最初の不正文字で走査を止めます。上限は `Max_Bytes` で、巨大な C 入力の構築ではなく
+小さい上限の Ada 検査で境界を確認します。native pointer readability/extent、byte effects、
+C ABI と完全な public semantics は trusted/unproved です。
+
 `xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
 はXML 1.0第五版の名前文字をUTF-8で検査します。Nameはコロンを許可し、NCNameは禁止、
 QNameは任意のprefixと必須のlocal nameをそれぞれNCNameとして検査します。

@@ -9,6 +9,7 @@
 #include <libxml/chvalid.h>
 #include <libxml/parserInternals.h>
 #include <libxml/uri.h>
+#include <libxml/valid.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -2483,7 +2484,104 @@ static void test_document_entities(void) {
     xmlFree(serialized);
 }
 
+static void test_name_values(void) {
+    int (*validators[])(const xmlChar *) = {
+        xmlValidateNameValue, xmlValidateNamesValue,
+        xmlValidateNmtokenValue, xmlValidateNmtokensValue
+    };
+    static const struct { const char *value; int expected[4]; } cases[] = {
+        {NULL, {0, 0, 0, 0}}, {"", {0, 0, 0, 0}}, {" \t\r\n", {0, 0, 0, 0}},
+        {"a", {1, 1, 1, 1}}, {":", {1, 1, 1, 1}}, {"a:b:c", {1, 1, 1, 1}},
+        {"9", {0, 0, 1, 1}}, {"-a", {0, 0, 1, 1}}, {".a", {0, 0, 1, 1}},
+        {"a  b", {0, 1, 0, 1}}, {"a :b", {0, 1, 0, 1}},
+        {"a 9", {0, 0, 0, 1}}, {"a b ", {0, 0, 0, 1}},
+        {" a", {0, 0, 0, 1}}, {"\ta b ", {0, 0, 0, 1}},
+        {"a\tb", {0, 0, 0, 0}}, {"a\t", {0, 0, 0, 0}},
+        {"a \n", {0, 0, 0, 0}}, {"a/b", {0, 0, 0, 0}},
+        {"\xC2\xB7", {0, 0, 1, 1}}, {"\xCC\x81", {0, 0, 1, 1}},
+        {"a\xC2\xB7", {1, 1, 1, 1}}, {"名前 名前", {0, 1, 0, 1}},
+        {"\xF0\x90\x80\x80", {1, 1, 1, 1}},
+        {"\xF3\xAF\xBF\xBF", {1, 1, 1, 1}},
+        {"\xF3\xB0\x80\x80", {0, 0, 0, 0}},
+        {"\xEF\xBF\xBE", {0, 0, 0, 0}}, {"\xC3", {0, 0, 0, 0}},
+        {"\xF0\x90\x80", {0, 0, 0, 0}}, {"\xC1\xA1", {0, 0, 0, 0}},
+        {"\xED\xA0\x80", {0, 0, 0, 0}}, {"a\0 bad", {1, 1, 1, 1}}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i)
+        for (size_t j = 0; j < sizeof(validators) / sizeof(*validators); ++j)
+            assert(validators[j](BAD_CAST cases[i].value) == cases[i].expected[j]);
+    for (unsigned int byte = 0; byte <= 255; ++byte) {
+        xmlChar value[5] = {(xmlChar)byte, 0, 0, 0, 0};
+        int name = byte == ':' || byte == '_' || (byte >= 'a' && byte <= 'z') ||
+                   (byte >= 'A' && byte <= 'Z');
+        int token = name || byte == '-' || byte == '.' || (byte >= '0' && byte <= '9');
+        assert(xmlValidateNameValue(value) == name);
+        assert(xmlValidateNamesValue(value) == name);
+        assert(xmlValidateNmtokenValue(value) == token);
+        assert(xmlValidateNmtokensValue(value) == token);
+    }
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 1; i < sizeof(cases) / sizeof(*cases); ++i) {
+        size_t size = strlen(cases[i].value) + 1;
+        char *value = mapping + page - size;
+        memcpy(value, cases[i].value, size);
+        for (size_t j = 0; j < sizeof(validators) / sizeof(*validators); ++j)
+            assert(validators[j](BAD_CAST value) == cases[i].expected[j]);
+    }
+    mapping[page - 1] = '!';
+    for (size_t j = 0; j < sizeof(validators) / sizeof(*validators); ++j)
+        assert(validators[j](BAD_CAST (mapping + page - 1)) == 0);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky != NULL);
+    int code = sticky->code;
+    const char *message = sticky->message;
+    for (size_t j = 0; j < sizeof(validators) / sizeof(*validators); ++j) {
+        assert(validators[j](BAD_CAST "name") == 1);
+        assert(validators[j](BAD_CAST "!") == 0);
+        assert(validators[j](NULL) == 0);
+    }
+    assert(xmlGetLastError() == sticky && sticky->code == code && sticky->message == message);
+    xmlResetLastError();
+
+    assert(xmlValidateNameValue(BAD_CAST "record") == 1);
+    assert(xmlValidateNamesValue(BAD_CAST "alpha beta") == 1);
+    assert(xmlValidateNmtokensValue(BAD_CAST "9 -tag") == 1);
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "record");
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlSetProp(root, BAD_CAST "refs", BAD_CAST "alpha beta") != NULL);
+    assert(xmlSetProp(root, BAD_CAST "tokens", BAD_CAST "9 -tag") != NULL);
+    xmlChar *serialized = NULL;
+    int size = 0;
+    xmlDocDumpMemory(doc, &serialized, &size);
+    assert(serialized != NULL && size > 0);
+    xmlFreeDoc(doc);
+    doc = xmlReadMemory((const char *)serialized, size, NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    xmlChar *refs = xmlGetProp(root, BAD_CAST "refs");
+    xmlChar *tokens = xmlGetProp(root, BAD_CAST "tokens");
+    assert(refs && strcmp((const char *)refs, "alpha beta") == 0);
+    assert(tokens && strcmp((const char *)tokens, "9 -tag") == 0);
+    assert(xmlValidateNamesValue(refs) == 1 && xmlValidateNmtokensValue(tokens) == 1);
+    xmlFree(refs);
+    xmlFree(tokens);
+    xmlFree(serialized);
+    xmlFreeDoc(doc);
+}
+
 int main(void) {
+    test_name_values();
     test_uri_paths();
     test_uri_unescaping();
     test_uri_escaping();

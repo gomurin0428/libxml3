@@ -222,6 +222,15 @@ package body XML3_Text with SPARK_Mode is
       or C in 16#3001# .. 16#D7FF# or C in 16#F900# .. 16#FDCF#
       or C in 16#FDF0# .. 16#FFFD# or C in 16#10000# .. 16#EFFFF#);
 
+   function Name_Character
+     (Code : Natural; Initial : Boolean; Allow_Colon : Boolean := True)
+      return Boolean is
+     ((Allow_Colon and then Code = Character'Pos (':'))
+      or else NCName_Start (Code)
+      or else (not Initial and then
+        (Code in 16#2D# .. 16#2E# | 16#30# .. 16#39# | 16#B7#
+           | 16#300# .. 16#36F# | 16#203F# .. 16#2040#)));
+
    function Name_Width
      (Input : String; First : Positive; Initial : Boolean) return Natural
    is
@@ -266,12 +275,7 @@ package body XML3_Text with SPARK_Mode is
       if C < Minimum then
          return 0;
       end if;
-      if NCName_Start (C) or else
-        (not Initial and then
-          (C = 16#2D# or C = 16#2E# or C in 16#30# .. 16#39#
-           or C = 16#B7# or C in 16#300# .. 16#36F#
-           or C in 16#203F# .. 16#2040#))
-      then
+      if Name_Character (C, Initial, Allow_Colon => False) then
          return Extra + 1;
       end if;
       return 0;

@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,843 checks, 1,332 by flow analysis and 11,511
+It completed successfully: **12,852 checks, 1,339 by flow analysis and 11,513
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -43,6 +43,14 @@ its C status/output-pointer mapping is outside the proof. The public
 `xmlValidateNMToken` adapters call the analyzed pure `XML3_Text.Valid_Name`;
 its character traversal, bounds, and termination are proved. C pointer
 validity, string conversion, and return-code mapping remain outside the proof.
+The four `valid.h` value validators delegate to
+`XML3_Text.Buffers.Valid_Name_Value`, which discharges 7 checks. It reuses
+`Name_Character` (0 checks), also used by `Name_Width` (19),
+`XML3_Text.Valid_Name` (23, via `Name_Width`), and
+`XML3_Text.Buffers.Valid_Name` (4). These checks cover the bounded
+scan's control flow, termination, and written contract, not native pointer
+readability/extents, byte effects, C ABI, or complete lexical equivalence.
+No DTD or ID/IDREF semantics are proved or implemented by these APIs.
 `xmlSplitQName2` and `xmlSplitQName3` use the analyzed
 `XML3_Text.QNames.Prefix_Length` and `Split`: the proof covers first-colon
 length bounds, output/status contracts, and split allocation/cleanup control
@@ -535,7 +543,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 487 entity
+The 489 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -569,13 +577,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 350 |
-| Initialization | 801 |
+| Data dependencies | 352 |
+| Initialization | 804 |
 | Runtime checks | 5,532 |
-| Assertions | 1,660 |
-| Functional contracts | 4,248 |
-| Termination | 252 |
-| **Total** | **12,843** |
+| Assertions | 1,662 |
+| Functional contracts | 4,247 |
+| Termination | 255 |
+| **Total** | **12,852** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1131,13 +1139,14 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-2f2bbeb21812971f476d4ca37a08b92ebe23675f7ea1ce794cdfcbe135110402  src/xml3_c.adb
-2520c6d82652adf69f178e5e37ac6251b55c22fbc562ce68efd9da9f53e4beb4  src/xml3_c.ads
-0b41a15610acc9c8439969f520a192d0939fadf9c7555797c6718c538a29abcd  include/libxml3.h
+defd0f9a32a806f58a05561b833b60018289183177e42cc2f4753df54ac77d41  src/xml3_c.adb
+d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
+761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
 c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml/entities.h
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
 e8286ea54caf89b1bf0d7501530fb072eebfde5d16e24107096b0935748fbc6c  include/libxml/uri.h
+c688643449bc09c9977197b5b78325eaced0b8852e6bf0dd3497952bb081a5c6  include/libxml/valid.h
 c627882f6a5e1fbaa14e99ac93231980994a550c2b25439581417c0c4fd40dc8  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 af96365a55310b08822701ae7765f861d6009b5369cdc9d972b4bc52654fea35  src/xml3_dom-materialize.adb
@@ -1180,17 +1189,17 @@ a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parse
 aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_serialization.adb
 4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
-a5107991ef2878b186653ab0a0ce616c2902e084a71fa58c7b514f6733bc2e96  src/xml3_text.adb
-79ada47366676c52ad3648b92082c3211e552cba280ad1f5b585616f99758b07  src/xml3_text.ads
+eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
+26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-f926fe9eb41c64f75af97d6cd173121478a7840ae0723c89c5c490f30f9f83e3  src/xml3_text-buffers.adb
-396bd3c544f8ed6748221570aac0b0ef0493458a8266edb6f1c4f95542c1bf9e  src/xml3_text-buffers.ads
+92783cca0936d2c702d6b4828b943e1f6baf9a0e15c2b57d70cb03c2c54c0ae4  src/xml3_text-buffers.adb
+6b865a21345a01f366409aa072edb2bb39866e8eeae65dce7dd0ef7bdc000c70  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-515cdf5c6f13eefb0df6100042a1144e1202dcbdd78abc5c35611b24241892e2  Makefile
+347c715fe63ee9b7e20a398ba515265157a6f633e378f482d749cda8cd4f3890  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

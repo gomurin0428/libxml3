@@ -887,9 +887,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
       I : Natural := 0;
       Width : Natural;
       Code : Integer;
-      pragma Unreferenced (Code);
       Initial : Boolean := True;
-      Window : String (1 .. 4) := (others => Character'Val (0));
    begin
       if Source_Length = 0 or else Source = System.Null_Address then
          return False;
@@ -899,17 +897,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
          Get_UTF8_Char
            (Native.Offset (Source, Native.Byte_Count (I)),
             Natural'Min (4, Source_Length - I), Code, Width);
-         if Width = 0 then
-            return False;
-         end if;
-         for J in 0 .. Width - 1 loop
-            Window (J + 1) := Native.Byte_At (Source, I + J);
-         end loop;
-         if Window (1) = ':' then
-            if not Allow_Colon then
-               return False;
-            end if;
-         elsif XML3_Text.Name_Width (Window (1 .. Width), 1, Initial) /= Width then
+         if Width = 0 or else not Name_Character (Code, Initial, Allow_Colon) then
             return False;
          end if;
          Initial := False;
@@ -917,6 +905,48 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end loop;
       return True;
    end Valid_Name;
+
+   function Valid_Name_Value
+     (Source : System.Address; Kind : Name_Value_Kind;
+      Last : Byte_Count := Max_Bytes) return Boolean
+   is
+      Position : Natural := 0;
+      Width : Natural;
+      Code : Integer;
+      In_Token, Seen_Token : Boolean := False;
+      Token_Syntax : constant Boolean := Kind in Single_NMToken | NMToken_List;
+      List_Syntax : constant Boolean := Kind in Name_List | NMToken_List;
+   begin
+      if Source = System.Null_Address then
+         return False;
+      end if;
+      while Position <= Last loop
+         pragma Loop_Invariant (Position <= Last + 4);
+         pragma Loop_Variant (Increases => Position);
+         Get_UTF8_Char
+           (Native.Offset (Source, Native.Byte_Count (Position)),
+            Natural'Min (4, Last - Position + 1), Code, Width);
+         if Width = 0 then
+            return False;
+         elsif Code = 0 then
+            return In_Token or else (Kind = NMToken_List and then Seen_Token);
+         elsif Kind = NMToken_List and then not Seen_Token
+           and then XML_Blank (Code)
+         then
+            null;
+         elsif List_Syntax and then Code = Character'Pos (' ') and then Seen_Token then
+            In_Token := False;
+         else
+            if not Name_Character (Code, not In_Token and then not Token_Syntax) then
+               return False;
+            end if;
+            In_Token := True;
+            Seen_Token := True;
+         end if;
+         Position := Position + Width;
+      end loop;
+      return False;
+   end Valid_Name_Value;
 
    procedure Read_Length
      (Item : System.Address; Last : Byte_Count;
