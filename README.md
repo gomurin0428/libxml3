@@ -400,9 +400,10 @@ DOM access・lock・native range-table access を行いません。
 それ以外なら full unsigned domain の long table を選び、inclusive な `low..high`
 range を overflow-safe な lower-middle binary search で調べます。
 選択された count が正で byte span を `ptrdiff_t` で表せ、table が非NULLの場合だけ検索し、
-NULL group・不正な選択 count/pointer では診断なしで0を返します。未選択側は読みません。
-table は caller 所有の borrowed data で、昇順・非重複かつ readable/aligned で、
-呼び出し中に変更されない必要があります。全表の順序検証や巨大な実配列はテストしません。
+NULL group・非正の count・NULL table・表現上限を超える count では診断なしで0を返します。未選択の配列は読みません。
+descriptor 全体と選択された table は readable/aligned で、呼び出し中に変更されない必要があります。
+table は caller 所有の borrowed data で、昇順・非重複を前提とします。
+全表の順序検証は行わず、巨大な実配列を使うテストもありません。
 global `xmlIs*Group` tables, header macros, DTD subsystem は対象外です。
 C ABI、native layout/pointer/extents/byte reads と完全な upstream 意味論は信頼境界です。
 `libxml/tree.h` の `xmlIsXHTML` は、固定版 `tree.c:8851` に合わせて

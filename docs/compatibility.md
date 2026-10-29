@@ -63,8 +63,9 @@ U+0BE6 と U+9FA6 も引き続き受理されます)。
 `xmlCharInRange` は別の generic lookup です。`val < 0x10000` なら short table、
 それ以外なら full unsigned domain の long table を選び、inclusive `low..high`
 range を overflow-safe な lower-middle binary search で調べます。選択された count が正で
-byte span を `ptrdiff_t` で表せ、table が非NULLの場合だけ検索し、NULL group・不正な選択
-count/pointer では診断なしで0を返します。未選択側は読みません。range table は caller 所有の
+byte span を `ptrdiff_t` で表せ、table が非NULLの場合だけ検索します。NULL group・非正の count・
+NULL table・表現上限を超える count では診断なしで0を返します。descriptor 全体は readable/aligned
+である必要がありますが、未選択の配列は読みません。range table は caller 所有の
 borrowed data で、昇順・非重複かつ readable/aligned であり、呼び出し中に変更されない必要があります。
 global `xmlIs*Group` tables, upstream header macros, DTD subsystem は未対応です。
 C ABI、native layout/pointer/extents/byte reads と完全な upstream 意味論は信頼境界に残ります。

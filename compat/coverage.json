@@ -49,7 +49,7 @@
   },
   "function:chvalid.h:xmlCharInRange": {
     "implementation": "partial",
-    "scope": "Generic caller-supplied range lookup over the full unsigned domain: val below 65536 selects the short table, otherwise the long table. Uses overflow-safe lower-middle binary search over inclusive low..high endpoints and requires selected ranges to be sorted and disjoint. Returns 0 without diagnostics for a NULL group, nonpositive selected count, NULL selected table, or count whose byte span exceeds ptrdiff_t capacity; the unused half is not read. No Unicode/XML validation, allocation, or table-order validation. Caller-owned descriptor/table must be readable, aligned, and stable during the call. Native layout, pointer validity/extents/byte reads, C ABI, and complete semantics remain trusted; tests do not allocate huge physical arrays.",
+    "scope": "Generic caller-supplied range lookup over the full unsigned domain: val below 65536 selects the short table, otherwise the long table. Uses overflow-safe lower-middle binary search over inclusive low..high endpoints and requires selected ranges to be sorted and disjoint. Returns 0 without diagnostics for a NULL group, nonpositive selected count, NULL selected table, or count whose byte span exceeds ptrdiff_t capacity; the unused array is not dereferenced. No Unicode/XML validation, allocation, or table-order validation. Caller-owned descriptor/table must be readable, aligned, and stable during the call. Native layout, pointer validity/extents/byte reads, C ABI, and complete semantics remain trusted; tests do not allocate huge physical arrays.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
@@ -61,7 +61,7 @@
   },
   "struct:chvalid.h:_xmlChRangeGroup": {
     "implementation": "partial",
-    "scope": "Public C descriptor containing short/long counts and borrowed range-array pointers. xmlCharInRange reads only the selected count and pointer. Native layout, alignment, pointer validity/extents, C ABI, and complete semantics remain trusted and unproved.",
+    "scope": "Public C descriptor containing short/long counts and borrowed range-array pointers. xmlCharInRange copies the complete descriptor, then uses the selected count and pointer without dereferencing the other array. Native layout, alignment, pointer validity/extents, C ABI, and complete semantics remain trusted and unproved.",
     "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
     "proof": "not-proved"
   },
