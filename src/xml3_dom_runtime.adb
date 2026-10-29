@@ -187,13 +187,14 @@ is
 
       procedure New_Doc_Content
         (Doc : System.Address; Kind : XML3_DOM.Node_Kind;
-         Name, Content : String; Has_Content : Boolean;
+         Name : String; Content : System.Address; Length : Integer;
+         Terminated : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
-         XML3_DOM_Store.Content.New_Doc_Content
-           (Current, Doc, Kind, Name, Content, Has_Content, Result, Status);
+         XML3_DOM_Store.Content.New_Doc_Content_Bytes
+           (Current, Doc, Kind, Name, Content, Length, Terminated, Result, Status);
       end New_Doc_Content;
 
       procedure Parse_Content_List
