@@ -256,6 +256,10 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Get_Line_Number
+        (Facade : System.Address; Result : out Integer)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Get_List_Content
         (Facade : System.Address; Escape : Boolean; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status;

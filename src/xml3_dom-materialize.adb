@@ -592,7 +592,7 @@ package body XML3_DOM.Materialize with SPARK_Mode is
          Last_Namespace => 0, Document => 1, Namespace => Ns_Value,
          Owner => 1, Ns_Pin => (if Ns_Value = 0 then 0 else 1),
          Doc_Pin => 1, Content_Pin => 0, Name_Pin => 0,
-         Tree_Rank => Natural (Current));
+         Tree_Rank => Natural (Current), Source_Line => P.Source_Line);
       if P.Kind = XML3_Parser.Attribute_Node then
          Node_Value.Content := System.Null_Address;
          Node_Value.Content_Length := 0;
@@ -683,7 +683,7 @@ package body XML3_DOM.Materialize with SPARK_Mode is
                Last_Namespace => 0, Document => 1, Namespace => 0,
                Owner => 1, Ns_Pin => 0, Doc_Pin => 1,
                Content_Pin => 0, Name_Pin => 0,
-               Tree_Rank => Natural (Value_Id));
+               Tree_Rank => Natural (Value_Id), Source_Line => 0);
             S.Graph.Nodes (Positive (Current)).First_Child :=
               Value_Id;
             S.Graph.Nodes (Positive (Current)).Last_Child :=
@@ -1121,7 +1121,8 @@ package body XML3_DOM.Materialize with SPARK_Mode is
          Sibling_Order => 0, First_Prop => 0, Last_Prop => 0,
          First_Namespace => 0, Last_Namespace => 0, Document => 1,
          Namespace => 0, Owner => 1, Ns_Pin => 0, Doc_Pin => 0,
-         Content_Pin => 0, Name_Pin => 0, Tree_Rank => 0);
+         Content_Pin => 0, Name_Pin => 0, Tree_Rank => 0,
+         Source_Line => 0);
       Add_Bytes (Node_Bytes, Native.Metadata_Bytes, Facade_Offset, Ok);
       if Facade_Offset < Node_Bytes or else Facade_Offset > Bytes
         or else Ns_Facade_Bytes > Bytes - Facade_Offset

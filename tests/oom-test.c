@@ -2026,6 +2026,19 @@ int main(int argc, char **argv) {
                replacement->next == root->last);
         assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
         xmlFreeNode(old);
+    } else if (strcmp(operation, "node-line-number") == 0) {
+        doc = xmlReadMemory("<r>\n<a/></r>",
+                            (int)strlen("<r>\n<a/></r>"), NULL, NULL, 0);
+        assert(doc != NULL);
+        xml3_oom_enable(0);
+        assert(xmlGetLineNo((xmlNodePtr)doc) == -1);
+        assert(xmlGetLineNo(xmlDocGetRootElement(doc)) == 1);
+        assert(xmlGetLineNo(xmlDocGetRootElement(doc)->children) == 2);
+        assert(xmlGetLineNo(NULL) == -1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "character-classes") == 0) {
         xml3_oom_enable(0);
         assert(xmlIsChar('x') == 1 && xmlIsChar(0x10ffff) == 1);
@@ -2207,6 +2220,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "replace-node") == 0) {
         puts("node replacement used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "node-line-number") == 0) {
+        puts("node line-number queries used no native allocations");
         return 0;
     }
     if (strcmp(operation, "attr-unlink") == 0) {

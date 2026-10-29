@@ -449,6 +449,13 @@ is
          XML3_DOM_Store.Queries.Get_Path (Current, Facade, Result, Status);
       end Get_Path;
 
+      procedure Get_Line_Number
+        (Facade : System.Address; Result : out Integer)
+      is
+      begin
+         XML3_DOM_Store.Queries.Get_Line_Number (Current, Facade, Result);
+      end Get_Line_Number;
+
       procedure Dump_Memory_Encoding
         (Document : System.Address; Encoding : String;
          Result : out System.Address; Length : out Natural;

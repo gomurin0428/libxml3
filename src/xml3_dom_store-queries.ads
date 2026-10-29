@@ -100,6 +100,12 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
        Post => (if Status = XML3_DOM_Constructors.Created then
          Result /= System.Null_Address else Result = System.Null_Address);
 
+   procedure Get_Line_Number
+     (S : Store; Facade : System.Address; Result : out Integer)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Result in -1 .. 65_535;
+
    procedure Get_List_Content
      (S : Store; Facade : System.Address; Escape : Boolean;
       Result : out System.Address; Status : out Operation_Status;

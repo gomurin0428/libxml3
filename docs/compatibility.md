@@ -124,7 +124,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
-  `xmlNodeGetContent`、`xmlGetNodePath`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
+  `xmlNodeGetContent`、`xmlGetNodePath`、`xmlGetLineNo`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
@@ -534,6 +534,17 @@ live/range検査、親・兄弟・property chainのbounded traversal、照合、
 行います。C adapterはNULL/lock/Runtime/status/exceptionだけを扱います。proofは内部計算・契約に
 限られ、native pointer readable extent、allocation、byte copy/write、ABI/status mapping、完全な
 public C semanticsはtrusted / not-provedです。
+`xmlGetLineNo` は parser が記録した元入力上の行番号を返し、シリアライズ後の行位置は追跡しません。
+LFだけを1行として数え、CRは単独でもCRLFの一部でも行を進めません。これは固定版の
+standalone-CRに合わせた harmless な挙動です。文字参照で復号された改行は行を進めません。
+parsed の element/text/comment/PI は解析時の行を保持しますが、65535 に飽和した値は
+neighbor fallback に依存します。attribute と CDATA は bounded sibling/parent fallback を使い、
+detached 時に -1 となることがあり、移動後は継承する行が変わることがあります。構築 element/text/comment/PI
+と合成attribute-value textは0、NULL/document/未登録facadeは-1です。65535を上限とし、
+fallbackは最大5 nodeをたどります。
+`XML_PARSE_BIG_LINES` は parser option として未対応です。行番号は内部SPARK Storeに保持し、
+public node struct fieldや直接書き込みAPIは追加しません。完全なC意味論、native pointerとABIは
+trusted / not-provedです。
 `xmlNodeSetName` は管理中のelement・attribute・PIだけを対象に、名前を新しい独立所有
 領域へコピーしてから旧名を解放します。空・不正UTF-8・不正NCName、PI targetの
 大文字小文字を無視した `xml`、非namespace属性の `xmlns`、同じnamespace URIと

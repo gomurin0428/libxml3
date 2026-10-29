@@ -22,6 +22,7 @@ package XML3_Parser with SPARK_Mode is
       Name_Last   : Offset := 0;
       Value_First : Position := 1;
       Value_Last  : Offset := 0;
+      Source_Line : Natural range 0 .. 65_535 := 0;
    end record;
    type Node_Array is array (Positive range <>) of Node;
    type Parse_Status is

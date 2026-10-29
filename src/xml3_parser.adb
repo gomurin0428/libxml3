@@ -30,6 +30,8 @@ package body XML3_Parser with SPARK_Mode is
       Encoding : XML3_Encoding.Encoding_Info := (others => <>))
    is
       P : Position := 1;
+      Line_Cursor : Position := 1;
+      Source_Line : Positive range 1 .. 65_535 := 1;
       Error_Position : Positive range 1 .. Input'Length + 1 := 1;
       Encoding_Warning : Natural range 0 .. Input'Length + 1 := 0;
       Depth : Natural range 0 .. Max_Depth := 0;
@@ -74,6 +76,25 @@ package body XML3_Parser with SPARK_Mode is
          end loop;
          return Line;
       end Line_At;
+
+      procedure Advance_Line (Location : Position; Result : out Natural)
+        with Pre => Input'First = 1
+          and then Input'Length <= XML3_Text.Max_Bytes
+          and then Location <= Input'Length + 1,
+          Post => Result in 1 .. 65_535
+      is
+      begin
+         while Line_Cursor < Location and then Line_Cursor in Input'Range loop
+            pragma Loop_Variant (Increases => Line_Cursor);
+            if Input (Line_Cursor) = Character'Val (10) then
+               if Source_Line < 65_535 then
+                  Source_Line := Source_Line + 1;
+               end if;
+            end if;
+            Line_Cursor := Line_Cursor + 1;
+         end loop;
+         Result := Source_Line;
+      end Advance_Line;
 
       procedure Set_Diagnostic
         (Code : Natural; Location : Position; Domain : Natural := 1;
@@ -366,6 +387,7 @@ package body XML3_Parser with SPARK_Mode is
          Name_First : Position; Name_Last : Offset;
          Value_First : Position; Value_Last : Offset)
         with Pre => Input'First = 1 and then Input'Length <= XML3_Text.Max_Bytes
+          and then P <= Input'Length + 1
           and then Layout (Nodes, Count, Input'Length)
           and then Scratch'First = 1
           and then Scratch'Length = Input'Length
@@ -405,7 +427,9 @@ package body XML3_Parser with SPARK_Mode is
          end if;
          pragma Assert (Count < Nodes'Last);
          Count := Count + 1;
-         Nodes (Count) := (Kind, Owner, Name_First, Name_Last, Value_First, Value_Last);
+         Nodes (Count) :=
+           (Kind, Owner, Name_First, Name_Last, Value_First, Value_Last, 0);
+         Advance_Line (P, Nodes (Count).Source_Line);
       end Add;
 
       procedure Pseudo_Attribute
@@ -791,6 +815,7 @@ package body XML3_Parser with SPARK_Mode is
                   exit Parse_Body;
                end if;
             end loop;
+            Advance_Line (P, Nodes (Element).Source_Line);
             if not Closed then
                if Depth >= Max_Depth then
                   Status := Limit_Exceeded;

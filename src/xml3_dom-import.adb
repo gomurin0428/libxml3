@@ -387,7 +387,8 @@ package body XML3_DOM.Import with SPARK_Mode is
          Doc_Pin => Mapped_Pin (Original.Doc_Pin, New_Owner),
          Content_Pin => Mapped_Pin (Original.Content_Pin, New_Owner),
          Name_Pin => Mapped_Pin (Original.Name_Pin, New_Owner),
-         Tree_Rank => Original.Tree_Rank);
+         Tree_Rank => Original.Tree_Rank,
+         Source_Line => Original.Source_Line);
    end Imported_Node;
 
    function Imported_Namespace

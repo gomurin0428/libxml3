@@ -437,6 +437,19 @@ URIは比較しません。従ってこれはURI解決済みの一意なXPathで
 不正なUTF-8/XML名・prefix・PI targetは不正な経路文字列を生成せず診断付きで拒否します
 （固定版のraw malformed name挙動との差）。完全な公開C意味論は未証明で、native pointer/readability、
 allocation/byte write、ABI/status mappingはtrusted boundaryです。
+`xmlGetLineNo` は管理中 node の parser source line を 0..65535 で返します。
+これは元入力の解析位置であり、編集・再シリアライズ後の位置ではありません。
+行の走査は LF のみを改行として数え、CR は単独でも CRLF の一部でも行を進めません。
+この standalone-CR の扱いは固定版の harmless な互換性クィークに合わせたものです。文字参照で
+得た改行は入力改行として数えません。
+parsed の element/text/comment/PI は保存した source position を unlink・移動・rename・
+content edit 後も保持しますが、65535 に達した値は bounded neighbor fallback の結果に
+依存することがあります。構築 element/text/comment/PI と合成 attribute-value text は0です。
+attribute と CDATA は previous-sibling/element-parent fallback を使い、detached 時に -1 と
+なることがあり、移動後は継承する行が変わることがあります。NULL・document・未登録 facade は-1です。
+65535 の fallback は最大5 nodeの範囲で行い、`XML_PARSE_BIG_LINES` は未対応です。
+line 情報は内部 Store に保持し、public node struct field や直接書き込みAPIは追加しません。
+native pointer/ABI と完全な公開 C 意味論は trusted boundary です。
 `xmlNodeSetName` は管理中の element・attribute・PI の名前を独立所有領域へ
 コピーして変更します。空・不正UTF-8・不正NCName、PIの予約名 `xml`、
 非namespace属性の `xmlns`、expanded name が衝突する属性名は診断付きで拒否し、

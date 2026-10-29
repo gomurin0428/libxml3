@@ -1584,6 +1584,31 @@ package body XML3_C is
       return Get_Node_String (Node, True);
    end Node_Get_Path;
 
+   function Node_Get_Line_No (Node : System.Address) return Interfaces.C.long is
+      Result : Integer := -1;
+   begin
+      if Node = System.Null_Address then
+         return -1;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Get_Line_Number (Node, Result);
+      end;
+      return Interfaces.C.long (Result);
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Dom_Error (1);
+         return -1;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return -1;
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end Node_Get_Line_No;
+
    procedure Get_Inherited_XML_Property
      (Node : System.Address;
       Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
