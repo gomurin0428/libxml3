@@ -71,10 +71,14 @@ package XML3_DOM_Store with SPARK_Mode is
       Ns : System.Address; Result, Implicit_Ns : out System.Address;
       Status : out Operation_Status;
       Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+      Source_Length : Natural := 0;
+      Name_Source : System.Address := System.Null_Address;
+      Source_Name_Length : Natural := 0)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => (if Content_Source = System.Null_Address then Source_Length = 0
-         else Has_Content and then Content'Length = 0),
+         else Has_Content and then Content'Length = 0)
+         and then (if Name_Source = System.Null_Address then Source_Name_Length = 0
+           else Name'Length = 0),
        Post => (if Status = XML3_DOM_Constructors.Created then
                   Result /= System.Null_Address
                 else Result = System.Null_Address

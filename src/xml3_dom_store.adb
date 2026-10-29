@@ -274,7 +274,9 @@ package body XML3_DOM_Store with SPARK_Mode is
       Ns : System.Address; Result, Implicit_Ns : out System.Address;
       Status : out Operation_Status;
       Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+      Source_Length : Natural := 0;
+      Name_Source : System.Address := System.Null_Address;
+      Source_Name_Length : Natural := 0)
    is
       N : Node_Ref;
       Xml_Ns : Namespace_Ref;
@@ -296,7 +298,8 @@ package body XML3_DOM_Store with SPARK_Mode is
       end if;
       Create_Node
         (S.Current, Kind, Name, Content, Has_Content, Selected_Ns,
-         N, Xml_Ns, Status, Content_Source, Source_Length);
+         N, Xml_Ns, Status, Content_Source, Source_Length,
+         Name_Source, Source_Name_Length);
       if Status = Created then
          Result := Node (S.Current.all, N).Facade;
          if Xml_Ns /= Null_Namespace then

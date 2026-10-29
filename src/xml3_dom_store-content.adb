@@ -115,7 +115,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       Name, Content : String; Has_Content : Boolean; Result : out System.Address;
       Status : out Operation_Status; Ns : System.Address := System.Null_Address;
       Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+      Source_Length : Natural := 0;
+      Name_Source : System.Address := System.Null_Address;
+      Source_Name_Length : Natural := 0)
    is
       D : Node_Ref := Find_Registered_Node (S, Doc);
       N : Node_Ref;
@@ -141,7 +143,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
       Construct
         (S, Kind, Name, Content, Has_Content, Ns,
-         Facade, Ignored_Ns, Status, Content_Source, Source_Length);
+         Facade, Ignored_Ns, Status, Content_Source, Source_Length,
+         Name_Source, Source_Name_Length);
       if Status /= Created then
          return;
       end if;
@@ -184,10 +187,12 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
      (S : in out Store; Doc : System.Address; Kind : Node_Kind;
       Name : String; Content : System.Address; Length : Integer;
       Terminated : Boolean; Result : out System.Address;
-      Status : out Operation_Status)
+      Status : out Operation_Status;
+      Name_Source : System.Address := System.Null_Address)
    is
       D : constant Node_Ref := Find_Registered_Node (S, Doc);
       Span : XML3_Text.Byte_Count := 0;
+      Name_Length : XML3_Text.Byte_Count := 0;
       Found : Boolean;
    begin
       Result := System.Null_Address;
@@ -196,8 +201,16 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
         Processing_Instruction_Node
         or else (Doc /= System.Null_Address and then
           (D = Null_Node or else Node (S.Current.all, D).Kind /= Document_Node))
+        or else (Name_Source /= System.Null_Address and then
+          (Kind /= Processing_Instruction_Node or else Name'Length /= 0))
       then
          return;
+      end if;
+      if Name_Source /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Name_Source, Name_Length, Found);
+         if not Found then
+            return;
+         end if;
       end if;
       if Content /= System.Null_Address then
          if Terminated then
@@ -215,7 +228,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
       New_Doc_Content
         (S, Doc, Kind, Name, "", Content /= System.Null_Address, Result, Status,
-         Content_Source => Content, Source_Length => Span);
+         Content_Source => Content, Source_Length => Span,
+         Name_Source => Name_Source, Source_Name_Length => Name_Length);
    end New_Doc_Content_Bytes;
 
    procedure Parse_Content_List

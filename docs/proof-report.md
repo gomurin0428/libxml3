@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,006 checks, 1,405 by flow analysis and 11,601
+It completed successfully: **13,008 checks, 1,405 by flow analysis and 11,603
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -624,11 +624,11 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | --- | ---: |
 | Data dependencies | 368 |
 | Initialization | 849 |
-| Runtime checks | 5,561 |
-| Assertions | 1,666 |
-| Functional contracts | 4,300 |
+| Runtime checks | 5,560 |
+| Assertions | 1,667 |
+| Functional contracts | 4,302 |
 | Termination | 262 |
-| **Total** | **13,006** |
+| **Total** | **13,008** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -807,7 +807,7 @@ preserves owner reference invariants; failed affiliation releases the
 unpublished node. The C constructors share one private `New_Content_Node`
 helper for address/mode forwarding, locking, status reporting, and exception mapping;
 this removes the duplicate document-text adapter but does not move graph or
-ownership decisions into C. PI target String conversion remains in C; content
+ownership decisions into C. PI target and content
 scan bounds and size/status relations are in SPARK. Native readability, input
 stability, byte effects and ABI remain trusted. These existing contracts do not establish complete
 public API semantics or rollback; NULL/bounded input behavior, document
@@ -1239,7 +1239,7 @@ serialization/free/reparse. OOM walks cover default, explicit and empty versions
 with retry. These contracts do not prove native readability, input stability,
 actual byte effects, allocation/free, ABI or full public semantics.
 GNATprove discharges 7 checks for `Store.New_Document`, 0 for the Runtime
-wrapper, 9 for `Store.Construct`, 461 for `Create_Node`, and 22 for
+wrapper, 9 for `Store.Construct`, 462 for `Create_Node`, and 22 for
 `Allocate_Node_Buffer`; the shared `Measure` proves 2 checks.
 
 ## Direct raw-content constructors
@@ -1251,14 +1251,13 @@ kind and registered-document status before reading content. NULL content skips
 length checks and reads; terminated input uses `Measure`, while bounded input
 rejects negative or oversized lengths before `Measure_Byte_Prefix` scans up to
 the count or first NUL. The resulting span enters the existing
-`New_Doc_Content` / `Construct` / `Create_Node` owner and rollback path. PI
-target conversion remains in C. Zero-length input reads nothing; NULL and
-empty content remain distinct.
+`New_Doc_Content` / `Construct` / `Create_Node` owner and rollback path.
+Zero-length input reads nothing; NULL and empty content remain distinct.
 
-GNATprove discharges 11 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
+GNATprove discharges 12 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
 wrapper, 22 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
 `Measure_Byte_Prefix`, and 3 for `Copy_Byte_Prefix`; `Create_Node` and
-`Allocate_Node_Buffer` prove 461 and 22 checks, respectively. The shared
+`Allocate_Node_Buffer` prove 462 and 22 checks, respectively. The shared
 `Measure` proves 2 checks. Small-bound Ada tests cover NULL, zero, exact count,
 and early NUL; guard-page/reference tests cover all nine APIs, source
 protection, DOM use, serialization/free/reparse, and invalid document/content
@@ -1266,19 +1265,30 @@ combinations. Existing OOM walks cover retry and document-first release.
 Native extents/readability/stability, byte effects, allocation/free, ABI, and
 complete API semantics remain trusted or outside proof.
 
+### Direct PI targets
+
+`xmlNewPI` and `xmlNewDocPI` forward the non-NULL target address through the
+same byte entry as PI content. It rejects an unregistered document before
+measuring either input, then uses `Measure` for the target span. That span
+drives checked sizing, direct copy/NUL termination, and the existing name
+projection contract; target syntax remains deferred to serialization, while
+the C NULL-target early return and diagnostic behavior are retained. Tests
+cover guard-page ASCII, Unicode, empty, reserved, malformed, and raw-byte
+targets, source protection, independent target/content ownership, output for
+valid names, and empty-target OOM retry. The shared proof covers 12 checks for
+`New_Doc_Content_Bytes`, 462 for `Create_Node`, 22 for
+`Allocate_Node_Buffer`, and 2 for `Measure`. Native pointer extents/stability,
+byte effects, allocation/free, ABI, and complete public semantics remain
+trusted or outside proof.
+
 ## Source identity (SHA-256)
 
-The raw-content constructor path checks document registration before input
-reads, then shares existing owner sizing, copying, affiliation and rollback.
-`Measure_Byte_Prefix` is also used by `Copy_Byte_Prefix`; small-bound tests cover
-NULL, zero, exact count and early NUL. Guard-page tests cover all nine content
-constructors against the pinned reference, protect sources before DOM use,
-then serialize/free/reparse. Libxml3-only checks cover unreadable documents and
-content, zero length, rejected negative/oversized lengths and early NUL before a
-protected tail. Existing OOM/retry/document-retention tests remain in the gate.
+The following 67 hashes identify the source files and build/test configuration
+for the proof result above; feature behavior and trust boundaries are described
+in the preceding sections.
 
 ```text
-502eca5bae8d4ec0691804cfe1df5bbe5a30bb6090f12fff1c61fd84046f0580  src/xml3_c.adb
+63dbf84425e510b368b180401a5736b63af9c35ce89fb8ed3e2797e3515ab780  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1296,15 +1306,15 @@ af96365a55310b08822701ae7765f861d6009b5369cdc9d972b4bc52654fea35  src/xml3_dom-m
 38c4ff80e2a8bafa63579a0cb03026926cb4ad4ee44d2324d86842e119ac1c05  src/xml3_dom_allocation.ads
 c25f8e859f3b568737e637ba9e1c8eb0238fcb83aa8de34a09cea35ab1b345aa  src/xml3_dom_bridge.adb
 a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
-d175f1ae546a351dcd864da6714baefff8bcb462c0922993db41ec8eee4ec796  src/xml3_dom_constructors.adb
-95335077d513de91222968aafa1a572f7723a06fd1c56308c71fa42af69f5e92  src/xml3_dom_constructors.ads
+16e82429e74dcdbaa3b1fec8da28538b01232e21ff2ac7c24b8bc7cde56c3343  src/xml3_dom_constructors.adb
+8bb87036e5063a4d4e5ae33a1e03a2fe460e6f75966f4c4f39b409f8dd9141e8  src/xml3_dom_constructors.ads
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-171b83cf6f9d1086f069968af78639eb7ada1514e4aaa748c912d60fafb0b70c  src/xml3_dom_runtime.adb
-9c5e3d4d7ea5250bface3f3dd652e4880a453f22e1eba76cc9a5c8e3507fab1a  src/xml3_dom_runtime.ads
-e6265a5759e655ddb6ad16a7c550787d1f8c0636749344f73fe03ba5beb220c0  src/xml3_dom_store-content.adb
-70b6220c16e323df7e7b1df19c59ee21468b5149cc0a33f3c4394ccb9be6a8b2  src/xml3_dom_store-content.ads
+9bacbb04f82c412f13d446bed047a56baf2527580658178b47db614bd38a65a8  src/xml3_dom_runtime.adb
+9fa3ba6687af86500a2c31ddf4e6aed99a4b9664c167560c713f5660a2d1ec49  src/xml3_dom_runtime.ads
+c8e05ebe663b90641a64ed03dca60a9bd47ed26f2f945b23100165b7bf2fee5a  src/xml3_dom_store-content.adb
+7b4683ed85e87c530aa8d4684d7c386f0a3d75931a51c1892c7321528446aefd  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
@@ -1313,8 +1323,8 @@ f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_s
 f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
 34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
 af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
-acca55491df896e86dd6dacfeaa990779e732a761890782d9f93759eb64cbdc4  src/xml3_dom_store.adb
-e33b2645c14cf3cd8aa142b2e5a04313e76e8285bde1d3848eea3407bf95d103  src/xml3_dom_store.ads
+69188688698adfbfb5a5e0e8bf16f6860d0228687a60a4b8aa61fcb300c2aeca  src/xml3_dom_store.adb
+8af44f2344c98c08e5b5346135c63b0ca196659d94fe648f93ab818a298162da  src/xml3_dom_store.ads
 d6e1af24bbd85fb650716149f6a027e398b36daecba00be6179d6a910bcaf34d  src/xml3_encoding.adb
 9ceb46a1797cfb01ee7a6ecb3a73ad5901bd264edb9715929d6c5f5882e2683e  src/xml3_encoding.ads
 ebe2fb7188a68cf66761bc33a6667f1d2a51b6bedc5fa6ace8d746bd0ac33cca  src/xml3_encoding-buffers.adb
@@ -1340,9 +1350,9 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-f5e2f660508cdabb23c66ecfb623e55f6c227c4d30b04e2613d4dee3a0c56eb0  Makefile
-84094a4852a64b6e63784571d5e38d2fc380eaa5aab518745575e17e23b36373  tests/oom-test.c
-ab5b1513251b12a9014fa7b5506052ff367d23f8567ab901c475560d98c2a5be  tests/serialization-test.c
+9caf83872228b36227ad3a6dcafb9fa1bf09b99d091e1f394d6cd20c79a414a8  Makefile
+f8684434c8ee371920786d1586adc38277fada588070746f48f22c626e5c21b8  tests/oom-test.c
+14b558c8ae33c22661420637452e8db33f8bb7203f9307b1a420e3ac2fb83a74  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```

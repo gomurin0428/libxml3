@@ -538,7 +538,9 @@ NULL contentのcommentは出力しません。`xmlNewDocComment` / `xmlNewDocPI`
 comment/PI とコピー済みの target/content は編集・解放できます。node登録callback は未対応です。
 `xmlNewText` / `xmlNewTextLen`、文書付きtext、comment、PI、CDATAの本文入力は
 共通のSPARK直接走査・コピーを使い、C側で中間Stringを作りません。文書付きでは
-登録済み文書の照合を本文読み取りより先に行います。PI targetのC文字列変換は別経路で残ります。
+登録済み文書の照合を名前・本文読み取りより先に行います。PI targetもSPARKで計測し、
+同じ所有領域へ直接コピーします。NULL targetは入力を読まず診断を変更せずNULLを返し、
+空・不正UTF-8・予約targetは作成時に拒否せず、従来どおり出力時に検査します。
 長さ指定は指定byte数を越えず、NULL本文と空本文を区別し、従来のcode115診断を保ちます。
 `xmlNewCDataBlock` も同じ文書保持と bounded input 計測を使います。name は NULL、
 raw content はコピーされ、NULL/empty は区別します。non-NULL content の負の長さは拒否、
