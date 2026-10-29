@@ -366,6 +366,12 @@ package XML3_C is
    function Check_UTF8 (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCheckUTF8";
 
+   function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsChar";
+
+   function Is_XML_Blank (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsBlank";
+
    function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlUTF8Strlen";
 

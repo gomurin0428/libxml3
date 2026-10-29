@@ -5,6 +5,7 @@
  * ABI-compatible with libxml2 and must not be used as libxml2.so.2. */
 #include <libxml/xmlversion.h>
 #include <libxml/xmlstring.h>
+#include <libxml/chvalid.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/tree.h>
 #include <libxml/entities.h>

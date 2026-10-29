@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,557 checks
-(1,235 flow and 11,322 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,559 checks
+(1,237 flow and 11,322 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,557-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,559-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -413,6 +413,17 @@ OOM は NULL として返り、source list links は変更しません。
 とも `Input` で、Store も読み取り専用です。管理中の content 長を走査上限とし、
 失敗時は False を返す契約です。C は mutex・結果・例外の変換だけを担当します。
 ネイティブ byte 読み取りの正しさは信頼境界に残り、完全な C API 意味論の証明ではありません。
+
+`xmlIsChar` and `xmlIsBlank` are scalar classifiers backed by the pure
+`XML3_Text.XML_Char` and `XML3_Text.XML_Blank` functions. They return exactly
+1 or 0 for the XML 1.0 character ranges and the four XML blank characters,
+respectively; values above `Natural'Last` return false before narrowing, and
+the allowed supplementary range receives no extra noncharacter filtering.
+These deprecated upstream function symbols perform no allocation, locking,
+DOM access, or diagnostics. Only the functions are included; header macros
+and range-group APIs remain unsupported. Tests exhaust the XML code-point
+range and unsigned boundary cases. C ABI and complete upstream semantics are
+not proved.
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use the read-only
 `Store.Queries.Get_Inherited_XML_Property` parent walk. Language returns a

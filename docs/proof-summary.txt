@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               321           321                                       .           .          .
+Data Dependencies               322           322                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  752           752                                       .           .          .
 Non-Aliasing                      .             .                                       .           .          .
-Run-time Checks                5458             .      5458 (CVC5 94%, Trivial 0%, Z3 6%)           .          .
+Run-time Checks                5458             .      5458 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1644             .    1644 (CVC5 65%, Trivial 11%, Z3 25%)           .          .
 Functional Contracts           4159             .     4159 (CVC5 66%, Trivial 2%, Z3 31%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     223           162                               61 (CVC5)           .          .
+Termination                     224           163                               61 (CVC5)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         12557    1235 (10%)                             11322 (90%)           .          .
+Total                         12559    1237 (10%)                             11322 (90%)           .          .
 
 
 max steps used for successful proof: 592493
@@ -469,15 +469,16 @@ in unit xml3_serialization, 28 subprograms and packages out of 28 analyzed
   XML3_Serialization.Render.Valid_Namespace_Value at xml3_serialization.adb:410 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Serialization.Render.Valid_Text at xml3_serialization.adb:250 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_Serialization.Same_Bytes at xml3_serialization.adb:31 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-in unit xml3_text, 9 subprograms and packages out of 9 analyzed
+in unit xml3_text, 10 subprograms and packages out of 10 analyzed
   XML3_Text at xml3_text.ads:1 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Decode at xml3_text.ads:40 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (82 checks)
-  XML3_Text.NCName_Start at xml3_text.adb:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Name_Width at xml3_text.ads:26 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
+  XML3_Text.Decode at xml3_text.ads:42 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (82 checks)
+  XML3_Text.NCName_Start at xml3_text.adb:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text.Name_Width at xml3_text.ads:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
   XML3_Text.Valid_Name at xml3_text.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (23 checks)
-  XML3_Text.Valid_Name.Blank at xml3_text.adb:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.Valid_UTF8 at xml3_text.ads:34 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Text.Validate_UTF8 at xml3_text.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
+  XML3_Text.Valid_Name.Blank at xml3_text.adb:83 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text.Valid_UTF8 at xml3_text.ads:36 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text.Validate_UTF8 at xml3_text.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
+  XML3_Text.XML_Blank at xml3_text.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.XML_Char at xml3_text.ads:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_text-buffers, 33 subprograms and packages out of 33 analyzed
   XML3_Text.Buffers at xml3_text-buffers.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

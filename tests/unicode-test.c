@@ -6,6 +6,7 @@
 #include <libxml3.h>
 #endif
 #include <libxml/entities.h>
+#include <libxml/chvalid.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,6 +21,35 @@ typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
 static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
+
+typedef int (*character_class_fn)(unsigned int);
+#ifdef XML3_REFERENCE_VERSION
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+static const character_class_fn character_classes[] = {xmlIsChar, xmlIsBlank};
+#ifdef XML3_REFERENCE_VERSION
+#pragma GCC diagnostic pop
+#endif
+
+static void test_character_classes(void) {
+    xmlResetLastError();
+    for (unsigned int code = 0; code <= 0x110000; ++code) {
+        int blank = code == 9 || code == 10 || code == 13 || code == 32;
+        int valid = code == 9 || code == 10 || code == 13 ||
+            (code >= 0x20 && code <= 0xd7ff) ||
+            (code >= 0xe000 && code <= 0xfffd) ||
+            (code >= 0x10000 && code <= 0x10ffff);
+        assert(character_classes[0](code) == valid);
+        assert(character_classes[1](code) == blank);
+    }
+    const unsigned int high[] = {0x1fffffu, UINT_MAX / 2, UINT_MAX / 2 + 1u, UINT_MAX};
+    for (size_t i = 0; i < sizeof(high) / sizeof(*high); ++i) {
+        assert(character_classes[0](high[i]) == 0);
+        assert(character_classes[1](high[i]) == 0);
+    }
+    assert(xmlGetLastError() == NULL);
+}
 
 static xmlChar *encode_chars(xmlDocPtr doc, const xmlChar *input, int entities) {
     return entities ? xmlEncodeEntitiesReentrant(doc, input)
@@ -1594,6 +1624,7 @@ static void test_ranges(void) {
 }
 
 int main(void) {
+    test_character_classes();
     test_escaping(0);
     test_escaping(1);
     test_string_duplicates();

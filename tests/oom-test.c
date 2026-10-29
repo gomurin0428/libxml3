@@ -1992,6 +1992,16 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         assert(root->properties == NULL && root->children == NULL && root->last == NULL);
+    } else if (strcmp(operation, "character-classes") == 0) {
+        xml3_oom_enable(0);
+        assert(xmlIsChar('x') == 1 && xmlIsChar(0x10ffff) == 1);
+        assert(xmlIsChar(0xd800) == 0 && xmlIsChar(~0u) == 0);
+        assert(xmlIsBlank('\t') == 1 && xmlIsBlank(' ') == 1);
+        assert(xmlIsBlank(0xa0) == 0 && xmlIsBlank(~0u) == 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "last-child") == 0) {
         static const char input[] = "<root a='value'><one/>text<!--last--></root>";
         xmlNodePtr root;
@@ -2139,6 +2149,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "last-child") == 0) {
         puts("last-child queries used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "character-classes") == 0) {
+        puts("character classification used no native allocations");
         return 0;
     }
     if (strcmp(operation, "attr-unlink") == 0) {

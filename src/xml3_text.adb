@@ -5,6 +5,9 @@ package body XML3_Text with SPARK_Mode is
       or (C in 16#E000# .. 16#FFFD#)
       or (C in 16#10000# .. 16#10FFFF#));
 
+   function XML_Blank (C : Natural) return Boolean is
+     (C in 9 | 10 | 13 | 32);
+
    function NCName_Start (C : Natural) return Boolean is
      (C in 16#41# .. 16#5A# or C = 16#5F# or C in 16#61# .. 16#7A#
       or C in 16#C0# .. 16#D6# or C in 16#D8# .. 16#F6#
@@ -78,7 +81,7 @@ package body XML3_Text with SPARK_Mode is
       Colon_Seen : Boolean := False;
       Width : Natural;
       function Blank (C : Character) return Boolean is
-        (C = ' ' or else Character'Pos (C) in 9 | 10 | 13);
+        (XML_Blank (Character'Pos (C)));
    begin
       if Allow_Space then
          while Position <= Last and then Blank (Input (Position)) loop

@@ -1,3 +1,4 @@
+#include <libxml/chvalid.h>
 #include <libxml3.h>
 
 static_assert(XML_PARSE_HUGE == (1 << 19));
@@ -5,6 +6,8 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    int (*character_classes[])(unsigned int) = {xmlIsChar, xmlIsBlank};
+    (void)character_classes;
     void (*dump_format)(xmlDocPtr, xmlChar **, int *, int) = xmlDocDumpFormatMemory;
     void (*dump_format_enc)(xmlDocPtr, xmlChar **, int *, const char *, int) =
         xmlDocDumpFormatMemoryEnc;

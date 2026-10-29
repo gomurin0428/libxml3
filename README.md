@@ -361,6 +361,13 @@ scan cap があり、上限を越える追加読み取りが必要なら診断�
 要素・属性は変更せず拒否し、負の長さでは NUL 終端文字列を読みます。
 `xmlNodeIsText` / `xmlIsBlankNode` は、SPARK 管理中の node の種別と XML 空白を
 読み取り専用で判定します。CDATA は後者の対象ですが、前者では text としません。
+`libxml/chvalid.h` は upstream で deprecated の `xmlIsChar` と `xmlIsBlank` のみを公開します。
+前者は XML 1.0 Char の範囲 (TAB/LF/CR, U+0020–D7FF, E000–FFFD, 10000–10FFFF) に
+入る数値を厳密に 1、それ以外を 0 と判定します。後者は U+0009・U+000A・U+000D・
+U+0020 のみ 1、それ以外を 0 とします。引数は UTF-8 byte でなく unsigned の文字番号です。
+範囲外の値は false になり、XML の許す supplementary range に追加の noncharacter 除外は行いません。
+判定は pure SPARK helper を使い、allocation・diagnostic・DOM access・lock を行いません。
+header macros と range-group APIs は実装対象外です。C ABI と完全な upstream 意味論は未証明です。
 `xmlNodeGetLang` は node と ancestor の最寄りの `xml:lang` を所有権付きで返し、
 空の値も継承を止めます。`xmlNodeGetSpacePreserve` は element のみを対象にし、
 `default` / `preserve` 以外の値は ancestor まで探索します。対応する setter は
