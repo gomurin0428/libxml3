@@ -44,9 +44,10 @@ its C status/output-pointer mapping is outside the proof. The public
 its character traversal, bounds, and termination are proved. C pointer
 validity, string conversion, and return-code mapping remain outside the proof.
 The four `valid.h` value validators delegate to
-`XML3_Text.Buffers.Valid_Name_Value`, which discharges 7 checks. They reuse
-`Name_Character` (0 checks), `Name_Width` (19), `XML3_Text.Valid_Name`
-(23), and `XML3_Text.Buffers.Valid_Name` (4). These checks cover the bounded
+`XML3_Text.Buffers.Valid_Name_Value`, which discharges 7 checks. It reuses
+`Name_Character` (0 checks), also used by `Name_Width` (19),
+`XML3_Text.Valid_Name` (23, via `Name_Width`), and
+`XML3_Text.Buffers.Valid_Name` (4). These checks cover the bounded
 scan's control flow, termination, and written contract, not native pointer
 readability/extents, byte effects, C ABI, or complete lexical equivalence.
 No DTD or ID/IDREF semantics are proved or implemented by these APIs.
