@@ -340,12 +340,20 @@ references. Names, comments, processing instructions, and CDATA retain raw
 UTF-8. Explicit UTF-8 output remains supported, while an empty encoding name
 is rejected. `Render` validates and measures immutable Store state before
 allocation, then repeats the iterative traversal into an exact-size result.
-GNATprove discharges 8 checks for `Put_Character_Reference`, 17 for
-`Emit_Text`, and 23 for `Pass`; this does not prove complete C semantics or
-libxml2 lexical equivalence. The C adapter converts scalar/string/null
-arguments, initializes output slots, acquires the existing lock, maps
-status/exceptions, and publishes the result. Native pointer validity,
-C-string conversion, allocation, byte reads/writes, and mutex behavior remain
+GNATprove reports 1 check for Runtime `Dump_Memory_Encoding`, 7 for Store
+`Serialization.Dump`, 3 each for `Read_UTF8_Name` and `Matches_UTF8_Byte`, 4
+for `Is_UTF8`, and 9 for `Render`. Within `Render`, `Put_Character_Reference`
+has 1 check, `Emit_Text` 17, and `Pass` 23. These checks do not prove native
+pointer readability, complete C semantics, or libxml2 lexical equivalence.
+Store validates the document by comparing registered
+live facade addresses before inspecting encoding. `Read_UTF8_Name` reads at most
+six native bytes, stopping at the first mismatch; its fixed five-character output
+preserves the caller's case. It shares `Matches_UTF8_Byte` with the String-based
+renderer check. NULL selects default encoding in SPARK; empty/unsupported names
+fail without fallback. There is no C-string conversion on this path.
+The C adapter passes pointers and scalar flags, initializes output slots, acquires the existing lock, maps
+status/exceptions, and publishes the result. Native pointer extents/stability,
+allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current

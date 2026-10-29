@@ -48,36 +48,45 @@ package body XML3_Serialization with SPARK_Mode is
       return True;
    end Same_Bytes;
 
-   function Is_UTF8 (Encoding : String) return Boolean is
-      Expected : constant String := "UTF-8";
+   function Matches_UTF8_Byte (Item : Character; Index : Positive)
+     return Boolean
+     with Pre => Index <= 5
+   is
+      Expected : constant UTF8_Name := "UTF-8";
    begin
-      if Encoding'Length /= Expected'Length then
+      return Item = Expected (Index)
+        or else (Expected (Index) in 'A' .. 'Z'
+          and then Character'Pos (Item) =
+            Character'Pos (Expected (Index)) + 32);
+   end Matches_UTF8_Byte;
+
+   procedure Read_UTF8_Name
+     (Input : System.Address; Name : out UTF8_Name; Valid : out Boolean)
+   is
+   begin
+      Name := "UTF-8";
+      Valid := False;
+      if Input = System.Null_Address then
+         return;
+      end if;
+      for I in Name'Range loop
+         Name (I) := Native.Byte_At (Input, I - 1);
+         if not Matches_UTF8_Byte (Name (I), I) then
+            return;
+         end if;
+      end loop;
+      Valid := Native.Byte_At (Input, 5) = Character'Val (0);
+   end Read_UTF8_Name;
+
+   function Is_UTF8 (Encoding : String) return Boolean is
+   begin
+      if Encoding'Length /= UTF8_Name'Length then
          return False;
       end if;
       for I in Encoding'Range loop
-         declare
-            A : constant Character := Encoding (I);
-            B : constant Character :=
-              Expected (Expected'First + (I - Encoding'First));
-         begin
-            if A = B then
-               null;
-            elsif Character'Pos (A) in Character'Pos ('a') ..
-                  Character'Pos ('z')
-              and then Character'Pos (A) - Character'Pos ('a') =
-                Character'Pos (B) - Character'Pos ('A')
-            then
-               null;
-            elsif Character'Pos (A) in Character'Pos ('A') ..
-                  Character'Pos ('Z')
-              and then Character'Pos (A) - Character'Pos ('A') =
-                Character'Pos (B) - Character'Pos ('a')
-            then
-               null;
-            else
-               return False;
-            end if;
-         end;
+         if not Matches_UTF8_Byte (Encoding (I), I - Encoding'First + 1) then
+            return False;
+         end if;
       end loop;
       return True;
    end Is_UTF8;

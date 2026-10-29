@@ -7,12 +7,15 @@ package body XML3_DOM_Store.Serialization with SPARK_Mode is
    use type XML3_DOM.Node_Kind;
 
    procedure Dump
-     (S : Store; Document : System.Address; Encoding : String;
+     (S : Store; Document, Encoding : System.Address;
       Result : out System.Address; Length : out Natural;
       Status : out Operation_Status;
-      Default_Encoding, Formatted : Boolean := False)
+      Formatted : Boolean := False)
    is
       N : XML3_DOM.Node_Ref;
+      Name : XML3_Serialization.UTF8_Name := "UTF-8";
+      Valid : Boolean;
+      Default_Encoding : constant Boolean := Encoding = System.Null_Address;
    begin
       Result := System.Null_Address;
       Length := 0;
@@ -20,15 +23,21 @@ package body XML3_DOM_Store.Serialization with SPARK_Mode is
       if S.Current = null or else Document = System.Null_Address then
          return;
       end if;
-      N := Find_Node (S, Document);
+      N := Find_Registered_Node (S, Document);
       if N = XML3_DOM.Null_Node
         or else XML3_DOM.Node (S.Current.all, N).Kind /=
           XML3_DOM.Document_Node
       then
          return;
       end if;
+      if not Default_Encoding then
+         XML3_Serialization.Read_UTF8_Name (Encoding, Name, Valid);
+         if not Valid then
+            return;
+         end if;
+      end if;
       XML3_Serialization.Render
-        (S.Current.all, N, Encoding, Result, Length, Status,
+        (S.Current.all, N, Name, Result, Length, Status,
          Default_Encoding, Formatted);
    end Dump;
 end XML3_DOM_Store.Serialization;

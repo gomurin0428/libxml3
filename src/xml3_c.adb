@@ -815,13 +815,11 @@ package body XML3_C is
          return;
       end if;
       declare
-         Encoding_Text : constant String := C_String_Value (Encoding);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Dump_Memory_Encoding
-           (Document, Encoding_Text, Result, Length, Status,
-            Default_Encoding => Encoding = System.Null_Address,
+           (Document, Encoding, Result, Length, Status,
             Formatted => Format /= 0);
       end;
       if Status = XML3_DOM_Constructors.Created then
@@ -832,9 +830,6 @@ package body XML3_C is
       Report_Operation_Status (Status);
       return;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return;

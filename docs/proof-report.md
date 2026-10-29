@@ -588,7 +588,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 498 entity
+The 500 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -687,7 +687,18 @@ and reparsing without a serializer or C-adapter special case.
 NULL encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode.
 The two format variants share that adapter and pass the scalar format flag as
 a Boolean through Runtime and Store into `XML3_Serialization.Render`. All four
-APIs reach the same SPARK serializer. The unformatted APIs and `format=0`
+APIs reach the same SPARK serializer. Runtime/Store pass the encoding address
+without C-string conversion. Store compares registered live document facades
+before reading encoding, including rejecting unregistered/wrong-kind pointers
+without dereferencing them. `Read_UTF8_Name` uses at most six native byte reads
+and stops at the first mismatch; a fixed five-character field preserves case.
+Its `Matches_UTF8_Byte` predicate is shared with the renderer's String check.
+NULL selects default mode in Store; empty/unsupported names and suffixes fail
+without fallback. Guard pages cover short names, invalid prefixes/suffixes,
+valid names ending at the page boundary, and unreadable document/encoding
+pointers; all eight ASCII-case combinations preserve their spelling. The
+round-trip test frees the encoding name and source document before reparsing.
+The unformatted APIs and `format=0`
 retain compact output. Any nonzero format value, including negative values,
 enables two-space indentation capped at 60 spaces. Before descending, the
 serializer scans an element's immediate children; a direct Text or CDATA child
@@ -701,12 +712,15 @@ scalar text, attribute values, and namespace URIs as uppercase hexadecimal
 character references; names, comments, processing instructions, and CDATA
 retain raw UTF-8. `Render` reads immutable Store state, validates and measures
 iteratively before allocation, then emits through the same traversal into an
-exact-size native buffer. GNATprove discharges 8 checks for
-`Put_Character_Reference`, 17 for `Emit_Text`, and 23 for `Pass`, including
-the formatting traversal. These SPARK checks and written contracts do not
-prove complete XML conformance or libxml2 lexical equivalence. Native
-allocation, pointer validity, C-string conversion, mutex behavior, and native
-byte reads/writes remain trusted. The C adapter handles scalar/string/null
+exact-size native buffer. GNATprove reports 1 check for Runtime
+`Dump_Memory_Encoding`, 7 for Store `Serialization.Dump`, 3 each for
+`Read_UTF8_Name` and `Matches_UTF8_Byte`, 4 for `Is_UTF8`, and 9 for `Render`.
+Within `Render`, `Put_Character_Reference` has 1 check, `Emit_Text` has 17,
+and `Pass` has 23, including the formatting traversal. These SPARK checks and
+written contracts do not prove native pointer readability, complete XML
+conformance, or libxml2 lexical equivalence. Native
+allocation, pointer extents/stability, mutex behavior, and native
+byte reads/writes remain trusted. The C adapter handles pointer/scalar/null
 conversion, output initialization, lock acquisition, and status/exception
 mapping. Source encoding and standalone metadata are not retained; default
 output therefore does not restore the parsed source encoding.
@@ -1184,7 +1198,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-c197814f93302bb3672efc1fa855ae60dc86f6d7e4cb1d5a7c14bfa4c879faf6  src/xml3_c.adb
+76c982cd12f39076c2cf3ac89314f143ba877c0ca01784de731134a9a5a7dba0  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1207,8 +1221,8 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-3df42595187cf9c662d719d5b53a0434940d453f851e2b608a4f1ebafc432586  src/xml3_dom_runtime.adb
-0bd45fbcb184105c8b437a9fc249deaf7c7c0b9d5bb3a785267c56cbfdd8943c  src/xml3_dom_runtime.ads
+60468a5397b526755d69964b15dc5ea8c53ccd76a02c3b7734b50707098bddc4  src/xml3_dom_runtime.adb
+ad6bf14b471b3955f55cb46ac5bfefade69c954f338b926e771f9892e8615e3c  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
@@ -1217,8 +1231,8 @@ d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_s
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
 f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_store-queries.adb
 f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
-0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
-0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
+34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
+af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
 c58013fd806a30acb401ec56d6f6cf17010e026440b258e129b2a27bf574b302  src/xml3_dom_store.adb
 050295d0cc9898f349737c3504194b2f822a7d4ee930f424c381c7e2c43f6d76  src/xml3_dom_store.ads
 ac3abcfe6eb32e78a973e36e4b689ddeef0b40d45cadf7f7804b8ee6d102afcc  src/xml3_encoding.adb
@@ -1231,8 +1245,8 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 27864d51e26e31e6459e0201d2932aa596592cc020366a3e60efd894a2f8ac92  src/xml3_native_memory.adb
 253b7461252644c8b3d4135feba70582d31163dc1d2e6d44813beb1cc18dad6b  src/xml3_native_memory.ads
 a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parser.adb
-aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_serialization.adb
-4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
+8a8a1072a61711b93dcd35e5d7f10f2850d7180f6768b601478e0cde8364dc5c  src/xml3_serialization.adb
+80ac8796a138b37de53368b154c0d1b0c9a98038d26d774f3a50658b670dd7ce  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
 eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
