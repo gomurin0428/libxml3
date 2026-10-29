@@ -546,7 +546,7 @@ Reference comparison covers returned namespace values and links; the
 node-pin-lifetime scenario and OOM injection are libxml3-only tests.
 `Compare_UTF8_Character` proves 1 check for its result-range and invalid-status
 contract, not full byte-order or Unicode equivalence. The QName proof includes
-5 checks for `Locate_Prefix` (termination and its written output/status contract),
+5 checks for `Locate_Prefix` (bounds and its written output/status contract),
 15 for `Build`, 8 for `Compare`, 10 for `Prefix_Length`, and 6 for `Split`.
 `Locate_Prefix` does not prove native byte contents or `Native.Offset` pointer
 semantics. `XML3_Text.Buffers.Case_Map` has 1 check,
