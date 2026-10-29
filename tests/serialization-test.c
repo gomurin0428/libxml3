@@ -3,6 +3,7 @@
 #include <libxml/tree.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,110 @@ extern void xml3_oom_enable(long index);
 extern void xml3_oom_disable(void);
 extern int xml3_oom_was_injected(void);
 #endif
+
+enum content_api {
+    NEW_TEXT, NEW_TEXT_LEN, NEW_DOC_TEXT, NEW_DOC_TEXT_LEN,
+    NEW_COMMENT, NEW_DOC_COMMENT, NEW_CDATA, NEW_PI, NEW_DOC_PI, CONTENT_API_COUNT
+};
+
+static int bounded_content(enum content_api api) {
+    return api == NEW_TEXT_LEN || api == NEW_DOC_TEXT_LEN || api == NEW_CDATA;
+}
+
+static int affiliated_content(enum content_api api) {
+    return api == NEW_DOC_TEXT || api == NEW_DOC_TEXT_LEN ||
+           api == NEW_DOC_COMMENT || api == NEW_CDATA || api == NEW_DOC_PI;
+}
+
+static xmlNodePtr make_content(enum content_api api, xmlDocPtr doc,
+                               const xmlChar *content, int length) {
+    switch (api) {
+    case NEW_TEXT: return xmlNewText(content);
+    case NEW_TEXT_LEN: return xmlNewTextLen(content, length);
+    case NEW_DOC_TEXT: return xmlNewDocText(doc, content);
+    case NEW_DOC_TEXT_LEN: return xmlNewDocTextLen(doc, content, length);
+    case NEW_COMMENT: return xmlNewComment(content);
+    case NEW_DOC_COMMENT: return xmlNewDocComment(doc, content);
+    case NEW_CDATA: return xmlNewCDataBlock(doc, content, length);
+    case NEW_PI: return xmlNewPI(BAD_CAST "p", content);
+    case NEW_DOC_PI: return xmlNewDocPI(doc, BAD_CAST "p", content);
+    default: assert(0); return NULL;
+    }
+}
+
+static void test_content_input(void) {
+    static const char text[] = "A&\xc3\xa9";
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (enum content_api api = NEW_TEXT; api < CONTENT_API_COUNT; ++api) {
+        size_t bytes = sizeof(text) - (bounded_content(api) ? 1 : 0);
+        char *input = mapping + page - bytes;
+        memcpy(input, text, bytes);
+        xmlDocPtr doc = xmlNewDoc(NULL);
+        assert(doc != NULL);
+        xmlNodePtr node = make_content(api, doc, (const xmlChar *)input, sizeof(text) - 1);
+        assert(node && node->content != (const xmlChar *)input);
+        if (affiliated_content(api)) assert(node->doc == doc);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        assert(node->content && strcmp((const char *)node->content, text) == 0);
+        xmlElementType type = node->type;
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(root && xmlDocSetRootElement(doc, root) == NULL);
+        assert(xmlAddChild(root, node) == node);
+        xmlChar *output = NULL;
+        int size = 0;
+        xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+        assert(output && size > 0);
+        xmlFreeDoc(doc);
+        doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+        assert(doc != NULL);
+        node = xmlDocGetRootElement(doc)->children;
+        assert(node && node->type == type && node->content);
+        assert(strcmp((const char *)node->content, text) == 0);
+        xmlFree(output);
+        xmlFreeDoc(doc);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+
+        doc = xmlNewDoc(NULL);
+        assert(doc != NULL);
+        node = make_content(api, doc, NULL, 0);
+        assert(node && node->content == NULL);
+        xmlFreeNode(node);
+        input = mapping + page - 1;
+        *input = '\0';
+        node = make_content(api, doc, (const xmlChar *)input, 1);
+        assert(node && node->content && node->content[0] == 0);
+        xmlFreeNode(node);
+#ifndef XML3_REFERENCE_TEST
+        const xmlChar *protected = (const xmlChar *)(mapping + page);
+        if (affiliated_content(api)) {
+            assert(make_content(api, (xmlDocPtr)(mapping + page), protected, 1) == NULL);
+            assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        }
+        if (bounded_content(api)) {
+            node = make_content(api, doc, protected, 0);
+            assert(node && node->content && node->content[0] == 0);
+            xmlFreeNode(node);
+            assert(make_content(api, doc, protected, -1) == NULL);
+            assert(make_content(api, doc, (const xmlChar *)input, INT_MAX) == NULL);
+            assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+            node = make_content(api, doc, (const xmlChar *)input, 32);
+            assert(node && node->content && node->content[0] == 0);
+            xmlFreeNode(node);
+            node = make_content(api, doc, NULL, INT_MIN);
+            assert(node && node->content == NULL);
+            xmlFreeNode(node);
+        }
+        xmlResetLastError();
+#endif
+        xmlFreeDoc(doc);
+    }
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
 
 static void test_document_version_input(void) {
     static const char *versions[] = {NULL, "", "1.0", "1.1", "odd version", "\xff"};
@@ -1063,6 +1168,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_content_input();
     test_document_version_input();
     if (argc == 2 && strcmp(argv[1], "--misc") == 0) {
         test_cdata_construction();
@@ -1104,6 +1210,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_content_input();
     test_document_version_input();
     test_default_serialization();
     test_formatted_serialization();

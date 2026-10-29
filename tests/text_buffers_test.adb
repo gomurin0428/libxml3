@@ -493,6 +493,22 @@ procedure Text_Buffers_Test is
       pragma Assert (Success and Length = 0);
    end Check_Measure;
 
+   procedure Check_Measure_Byte_Prefix is
+      Text : aliased String := "ab" & Character'Val (0);
+      Length : XML3_Text.Byte_Count;
+   begin
+      XML3_Text.Buffers.Measure_Byte_Prefix
+        (System.Null_Address, XML3_Text.Max_Bytes, Length);
+      pragma Assert (Length = 0);
+      for Limit in 0 .. 3 loop
+         XML3_Text.Buffers.Measure_Byte_Prefix (Text'Address, Limit, Length);
+         pragma Assert (Length = Natural'Min (Limit, 2));
+      end loop;
+      Text (1) := Character'Val (0);
+      XML3_Text.Buffers.Measure_Byte_Prefix (Text'Address, 3, Length);
+      pragma Assert (Length = 0);
+   end Check_Measure_Byte_Prefix;
+
    procedure Check_UTF8 is
       Text : aliased String := Character'Val (16#E2#) & Character'Val (16#82#)
         & Character'Val (16#AC#) & Character'Val (0);
@@ -800,6 +816,7 @@ begin
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;
+   Check_Measure_Byte_Prefix;
    Check_UTF8;
    Check_UTF8_Count;
    Check_UTF8_Position;

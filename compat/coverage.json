@@ -570,14 +570,22 @@
   },
   "function:tree.h:xmlNewDocText": {
     "implementation": "partial",
-    "scope": "SPARK-owned raw text construction and document affiliation without attachment. NULL doc is supported; non-NULL doc must be a registered live document. Document owner retention keeps detached text safe after document release. Unpublished text is released if affiliation fails. Native pointers and complete API semantics remain outside the formal claim.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "SPARK-owned raw text construction and document affiliation without attachment. NULL doc is supported; non-NULL doc must be a registered live document. Document owner retention keeps detached text safe after document release. Unpublished text is released if affiliation fails. Native pointers and complete API semantics remain outside the formal claim. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
+    ],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewDocTextLen": {
     "implementation": "partial",
-    "scope": "Length-bounded raw text construction with the same SPARK document affiliation and retention as xmlNewDocText. Input length/NULL semantics match xmlNewTextLen, retaining only the visible prefix before NUL. Native pointer validity remains trusted.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "Length-bounded raw text construction with the same SPARK document affiliation and retention as xmlNewDocText. Input length/NULL semantics match xmlNewTextLen, retaining only the visible prefix before NUL. Native pointer validity remains trusted. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
+    "tests": [
+      "tests/content-edit-test.c",
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
+    ],
     "proof": "not-proved"
   },
   "function:tree.h:xmlStringGetNodeList": {
@@ -594,10 +602,11 @@
   },
   "function:tree.h:xmlNewTextLen": {
     "implementation": "partial",
-    "scope": "Bounded raw text construction delegates to the existing SPARK constructor. Non-NULL input with negative length fails; zero length never reads input and creates empty non-NULL content. NULL content produces a NULL-content node regardless of length. Positive lengths stop at NUL or len bytes; hidden bytes after NUL are not retained. Native pointer validity remains trusted.",
+    "scope": "Bounded raw text construction delegates to the existing SPARK constructor. Non-NULL input with negative length fails; zero length never reads input and creates empty non-NULL content. NULL content produces a NULL-content node regardless of length. Positive lengths stop at NUL or len bytes; hidden bytes after NUL are not retained. Native pointer validity remains trusted. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
     "tests": [
       "tests/content-edit-test.c",
-      "tests/oom-test.c"
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
     ],
     "proof": "not-proved"
   },
@@ -657,40 +666,41 @@
   },
   "function:tree.h:xmlNewCDataBlock": {
     "implementation": "partial",
-    "scope": "Bounded raw CDATA construction with optional live document, no attachment and NULL name. Non-NULL negative length rejected; zero length reads no content; NULL/empty distinct. Early NUL ends retained bytes. SPARK construction/owner pin path; document-first release supported. UTF-8/XML validation and CDATA delimiter splitting occur at serialization. Native input validity/callbacks/full API semantics not proved.",
+    "scope": "Bounded raw CDATA construction with optional live document, no attachment and NULL name. Non-NULL negative length rejected; zero length reads no content; NULL/empty distinct. Early NUL ends retained bytes. SPARK construction/owner pin path; document-first release supported. UTF-8/XML validation and CDATA delimiter splitting occur at serialization. Native input validity/callbacks/full API semantics not proved. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
     "tests": ["tests/serialization-test.c", "tests/content-edit-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewDocComment": {
     "implementation": "partial",
-    "scope": "Document-affiliated comment construction through shared SPARK Store.Content.New_Doc_Content, without tree attachment. NULL doc supported; non-NULL doc must be registered/live. Owner retention protects detached nodes after document release. NULL/empty content distinction and deferred serializer validation match xmlNewComment. Registration callbacks excluded; complete API semantics not formally proved.",
+    "scope": "Document-affiliated comment construction through shared SPARK Store.Content.New_Doc_Content, without tree attachment. NULL doc supported; non-NULL doc must be registered/live. Owner retention protects detached nodes after document release. NULL/empty content distinction and deferred serializer validation match xmlNewComment. Registration callbacks excluded; complete API semantics not formally proved. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
     "tests": ["tests/serialization-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewDocPI": {
     "implementation": "partial",
-    "scope": "Document-affiliated PI construction with copied target/content and shared SPARK document-owner retention. NULL doc supported and NULL target rejected. Target/XML syntax validation occurs at serialization, as for xmlNewPI. Native pointer validity, callbacks, dictionary interning and complete public semantics are outside the proof claim.",
+    "scope": "Document-affiliated PI construction with copied target/content and shared SPARK document-owner retention. NULL doc supported and NULL target rejected. Target/XML syntax validation occurs at serialization, as for xmlNewPI. Native pointer validity, callbacks, dictionary interning and complete public semantics are outside the proof claim. Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted. PI target still uses the existing C String conversion.",
     "tests": ["tests/serialization-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewComment": {
     "implementation": "partial",
-    "scope": "SPARK Store/Runtimeで独立commentを作成。raw contentをコピーしNULLと空文字列を区別。XML文字・comment構文検査は出力時。NULL contentのcommentは出力なし。登録callbackは未対応。所有権・寿命はSPARK、ABI/native memoryは信頼境界。",
+    "scope": "SPARK Store/Runtimeで独立commentを作成。raw contentをコピーしNULLと空文字列を区別。XML文字・comment構文検査は出力時。NULL contentのcommentは出力なし。登録callbackは未対応。所有権・寿命はSPARK、ABI/native memoryは信頼境界。 Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
     "tests": ["tests/serialization-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewPI": {
     "implementation": "partial",
-    "scope": "SPARK Store/Runtimeで独立PIを作成。NULL targetを拒否、raw target/contentをコピーしNULLと空contentを区別。XML名・文字・予約target・PI構文検査は出力時。登録callbackは未対応。所有権・寿命はSPARK、ABI/native memoryは信頼境界。",
+    "scope": "SPARK Store/Runtimeで独立PIを作成。NULL targetを拒否、raw target/contentをコピーしNULLと空contentを区別。XML名・文字・予約target・PI構文検査は出力時。登録callbackは未対応。所有権・寿命はSPARK、ABI/native memoryは信頼境界。 Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted. PI target still uses the existing C String conversion.",
     "tests": ["tests/serialization-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewText": {
     "implementation": "partial",
-    "scope": "raw C string content をコピーし UTF-8 検証なし。NULL content は NULL のまま。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "scope": "raw C string content をコピーし UTF-8 検証なし。NULL content は NULL のまま。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。 Content is measured directly in SPARK and copied into shared owner storage without a C intermediate String. When a document is supplied its registration is checked before content reads. NULL/empty distinction and code115 limits are retained; native extents/stability remain trusted.",
     "tests": [
       "tests/dom-test.c",
-      "tests/oom-test.c"
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
     ],
     "proof": "not-proved"
   },

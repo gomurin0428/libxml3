@@ -921,32 +921,24 @@ package body XML3_C is
 
    function New_Content_Node
      (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address;
-      Length : Interfaces.C.int := -1; Doc : System.Address := System.Null_Address)
+      Length : Interfaces.C.int := -1; Doc : System.Address := System.Null_Address;
+      Terminated : Boolean := True)
      return System.Address
    is
       Result : System.Address := System.Null_Address;
-      Has_Content : constant Boolean := Content /= System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Content_Text : constant String :=
-           C_String_Prefix (Content, Length);
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.New_Doc_Content
-              (Doc, Kind, Name, Content_Text, Has_Content, Result, Status);
-         end;
-         Report_Operation_Status (Status);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.New_Doc_Content
+           (Doc, Kind, Name, Content, Integer (Length), Terminated, Result, Status);
       end;
+      Report_Operation_Status (Status);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;
@@ -1010,11 +1002,8 @@ package body XML3_C is
      return System.Address
    is
    begin
-      if Content /= System.Null_Address and then Length < 0 then
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      end if;
-      return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length);
+      return New_Content_Node
+        (XML3_DOM.Text_Node, "text", Content, Length, Terminated => False);
    end New_Text_Len;
 
    function New_Doc_Text
@@ -1029,11 +1018,8 @@ package body XML3_C is
      return System.Address
    is
    begin
-      if Content /= System.Null_Address and then Length < 0 then
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      end if;
-      return New_Content_Node (XML3_DOM.Text_Node, "text", Content, Length, Doc);
+      return New_Content_Node
+        (XML3_DOM.Text_Node, "text", Content, Length, Doc, Terminated => False);
    end New_Doc_Text_Len;
 
    function New_Comment (Content : System.Address) return System.Address is
@@ -1054,12 +1040,8 @@ package body XML3_C is
       return System.Address
    is
    begin
-      if Content /= System.Null_Address and then Length < 0 then
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      end if;
       return New_Content_Node
-        (XML3_DOM.CData_Node, "", Content, Length, Doc);
+        (XML3_DOM.CData_Node, "", Content, Length, Doc, Terminated => False);
    end New_CData_Block;
 
    function New_PI

@@ -113,9 +113,11 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    procedure New_Doc_Content
      (S : in out Store; Doc : System.Address; Kind : Node_Kind;
       Name, Content : String; Has_Content : Boolean; Result : out System.Address;
-      Status : out Operation_Status; Ns : System.Address := System.Null_Address)
+      Status : out Operation_Status; Ns : System.Address := System.Null_Address;
+      Content_Source : System.Address := System.Null_Address;
+      Source_Length : Natural := 0)
    is
-      D : Node_Ref := Find_Node (S, Doc);
+      D : Node_Ref := Find_Registered_Node (S, Doc);
       N : Node_Ref;
       Facade, Ignored_Ns : System.Address := System.Null_Address;
       Changed : Boolean;
@@ -139,12 +141,12 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
       Construct
         (S, Kind, Name, Content, Has_Content, Ns,
-         Facade, Ignored_Ns, Status);
+         Facade, Ignored_Ns, Status, Content_Source, Source_Length);
       if Status /= Created then
          return;
       end if;
       if Doc /= System.Null_Address then
-         D := Find_Node (S, Doc);
+         D := Find_Registered_Node (S, Doc);
          N := Find_Node (S, Facade);
          if D = Null_Node or else N = Null_Node
            or else Node (S.Current.all, D).Kind /= Document_Node
@@ -177,6 +179,44 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          end if;
       end if;
    end New_Doc_Content;
+
+   procedure New_Doc_Content_Bytes
+     (S : in out Store; Doc : System.Address; Kind : Node_Kind;
+      Name : String; Content : System.Address; Length : Integer;
+      Terminated : Boolean; Result : out System.Address;
+      Status : out Operation_Status)
+   is
+      D : constant Node_Ref := Find_Registered_Node (S, Doc);
+      Span : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Kind not in Text_Node | CData_Node | Comment_Node |
+        Processing_Instruction_Node
+        or else (Doc /= System.Null_Address and then
+          (D = Null_Node or else Node (S.Current.all, D).Kind /= Document_Node))
+      then
+         return;
+      end if;
+      if Content /= System.Null_Address then
+         if Terminated then
+            XML3_Text.Buffers.Measure (Content, Span, Found);
+            if not Found then
+               return;
+            end if;
+         else
+            if Length not in 0 .. XML3_Text.Max_Bytes then
+               return;
+            end if;
+            XML3_Text.Buffers.Measure_Byte_Prefix
+              (Content, XML3_Text.Byte_Count (Length), Span);
+         end if;
+      end if;
+      New_Doc_Content
+        (S, Doc, Kind, Name, "", Content /= System.Null_Address, Result, Status,
+         Content_Source => Content, Source_Length => Span);
+   end New_Doc_Content_Bytes;
 
    procedure Parse_Content_List
      (S : in out Store; Doc : System.Address; Content : String;

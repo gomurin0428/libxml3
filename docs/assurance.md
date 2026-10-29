@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
- proved. The refreshed aggregate has 12,988 checks
-(1,399 flow and 11,589 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 160 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,006 checks
+(1,405 flow and 11,601 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 161 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -314,10 +314,26 @@ Store as SPARK abstract state. Public DOM wrappers serialize complete Runtime
 calls with the trusted `XML3_DOM_Lock` guard; the C layer does not maintain a
 parallel DOM graph. `xmlNewComment`, `xmlNewPI`, `xmlNewDocComment`,
 `xmlNewDocPI`, `xmlNewDocText`, `xmlNewDocTextLen`, and `xmlNewCDataBlock`
-share `Runtime.New_Doc_Content` and `Store.Content.New_Doc_Content`. The
-private C `New_Content_Node` helper handles input conversion, locking, status
-reporting, and exception mapping for these content constructors without adding
-a C ownership path.
+share `Runtime.New_Doc_Content`, `Store.Content.New_Doc_Content_Bytes`, and the
+existing `Store.Content.New_Doc_Content` ownership path, as do `xmlNewText` and
+`xmlNewTextLen`. The C helper forwards the content address and bounded/terminated
+mode, handles locking, status reporting and exceptions, and does not copy the
+content. PI targets still use the existing C String conversion. The SPARK byte
+entry point checks document registration before reading content, uses `Measure`
+or `Measure_Byte_Prefix`, and passes the span into shared constructor storage.
+NULL content skips all length checks/reads and retains a NULL content field;
+non-NULL empty input gets independent NUL storage. Bounded negative/oversized
+lengths are rejected before reads; zero length reads nothing. Missing unbounded
+terminators and invalid arguments retain code115. The shared prefix scan is
+also used by `Copy_Byte_Prefix` (`xmlCharStrndup`). Guard-page/reference tests
+exercise all nine constructors, source protection before DOM/output/reparse,
+and invalid document/content combinations; existing OOM walks retain retry and
+document-first-release coverage. Foreign extents/stability, actual byte effects,
+allocation/free, ABI and full API semantics remain trusted.
+GNATprove discharges 11 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
+wrapper, 22 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
+`Measure_Byte_Prefix`, and 3 for `Copy_Byte_Prefix`; `Create_Node` and
+`Allocate_Node_Buffer` prove 461 and 22 checks, respectively.
 
 `xmlNewDocProp` adapter uses `Runtime.New_Doc_Node` and
 `Store.Content.New_Doc_Node` with `Attribute_Mode`; it supports only detached,
@@ -742,8 +758,9 @@ namespace reconciliation と detached attribute の単独シリアライズは�
 API 全体の意味論や C pointer validity を証明した主張ではありません。
 
 `xmlNewCDataBlock` も共通の C `New_Content_Node` と SPARK
-`New_Doc_Content` を使います。C wrapper は non-NULL content の負の長さを走査前に拒否し、
-bounded prefix を作ります。NULL content は長さを問わず受け入れ、長さ 0 は pointer を読みません。
+`New_Doc_Content_Bytes` から共有の `New_Doc_Content` を使います。SPARK側で non-NULL
+content の負の長さを走査前に拒否し、bounded prefix を計測して直接コピーします。
+NULL content は長さを問わず受け入れ、長さ 0 は pointer を読みません。
 core `Create_Node` の postcondition は CDATA の `Name` が NULL、`Name_Length` が 0 であることを
 保証します。これは限定された構造保証であり、API 全体の意味論証明ではありません。内容コピー、
 CDATA delimiter の出力分割、serialize/reparse、無効 UTF-8 の拒否と修復、document 先行解放後の

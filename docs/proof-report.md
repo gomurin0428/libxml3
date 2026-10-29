@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,988 checks, 1,399 by flow analysis and 11,589
+It completed successfully: **13,006 checks, 1,405 by flow analysis and 11,601
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -588,8 +588,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 504 entity
-summaries report 0 flow errors, 160 warnings, and 0 `pragma Assume`
+The 506 entity
+summaries report 0 flow errors, 161 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -622,13 +622,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 366 |
-| Initialization | 845 |
-| Runtime checks | 5,555 |
+| Data dependencies | 368 |
+| Initialization | 849 |
+| Runtime checks | 5,561 |
 | Assertions | 1,666 |
-| Functional contracts | 4,294 |
+| Functional contracts | 4,300 |
 | Termination | 262 |
-| **Total** | **12,988** |
+| **Total** | **13,006** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -785,19 +785,19 @@ namespace behavior, serialization rejection and repair of invalid content,
 detached-parent lifetime, and allocation-failure retry are test evidence.
 
 `xmlNewTextLen` selects `Text_Node` in the shared
-`Runtime.New_Doc_Content` / `Store.Content.New_Doc_Content` path. Its C adapter
-rejects negative lengths only when content is non-NULL, then uses a trusted
-bounded `C_String_Prefix`/`Scan_Length` conversion for raw bytes. NULL content
+`Runtime.New_Doc_Content` / `Store.Content.New_Doc_Content_Bytes` path. SPARK
+rejects negative lengths only when content is non-NULL, then measures the raw
+prefix with `Measure_Byte_Prefix` and copies it into shared owner storage. NULL content
 remains NULL for any length; a non-NULL zero-length input creates empty content
 without reading the pointer. Embedded NUL ends the retained prefix. Pointer
-scanning and validity remain outside GNATprove; guard-page, NULL/empty,
+validity and actual byte effects remain outside GNATprove; guard-page, NULL/empty,
 serialization, detached-node, and allocation-failure cases are runtime
 evidence for the API wrapper, not a pointer-safety proof claim.
 
 `xmlNewDocText`, `xmlNewDocTextLen`, `xmlNewDocComment`, `xmlNewDocPI`, and
 `xmlNewCDataBlock`
-route through `Runtime.New_Doc_Content` and
-`XML3_DOM_Store.Content.New_Doc_Content`. The Store operation accepts
+route through `Runtime.New_Doc_Content`, `Store.Content.New_Doc_Content_Bytes`,
+and the existing `XML3_DOM_Store.Content.New_Doc_Content`. The shared Store operation accepts
 text, CDATA, comment, PI, and empty element kinds, requires and restores `Ready (S)`, and relates a
 non-NULL result to `Created` status. It validates a non-NULL document before
 constructing the node, re-finds the document and new node after construction,
@@ -805,10 +805,11 @@ then uses the existing `Set_Node_Projection` contract to set `Document` and
 `Doc_Pin` without attaching the node as a child. The projection contract
 preserves owner reference invariants; failed affiliation releases the
 unpublished node. The C constructors share one private `New_Content_Node`
-helper for input conversion, locking, status reporting, and exception mapping;
+helper for address/mode forwarding, locking, status reporting, and exception mapping;
 this removes the duplicate document-text adapter but does not move graph or
-ownership decisions into C. String conversion and bounded pointer scanning
-remain outside GNATprove. These existing contracts do not establish complete
+ownership decisions into C. PI target String conversion remains in C; content
+scan bounds and size/status relations are in SPARK. Native readability, input
+stability, byte effects and ABI remain trusted. These existing contracts do not establish complete
 public API semantics or rollback; NULL/bounded input behavior, document
 validation, unattached construction, serialization, document-first release,
 and allocation-failure retry are runtime evidence. Registration callbacks and
@@ -872,10 +873,10 @@ public C semantics remain outside the proof.
 `xmlNewCDataBlock` selects `CData_Node` in the same C/Runtime/Store path. The
 core `Create_Node` postcondition explicitly guarantees a null `Name` address
 and zero `Name_Length` for CDATA; this is a specific proved projection
-guarantee, not a full API semantics claim. The C wrapper rejects a negative
-length before reading non-NULL content, then performs a trusted bounded-prefix
+guarantee, not a full API semantics claim. SPARK rejects a negative
+length before reading non-NULL content, then performs the shared bounded-prefix
 scan. NULL content is accepted at any length, and zero length does not read the
-pointer. Pointer validity and scanning remain outside GNATprove. Copying,
+pointer. Native pointer validity and actual byte effects remain outside GNATprove. Copying,
 NULL/empty distinction, CDATA delimiter splitting and serialization/reparse,
 invalid UTF-8 rejection and repair, document-first release, and OOM retry are
 runtime evidence for behavior rather than complete semantic proof.
@@ -1241,10 +1242,43 @@ GNATprove discharges 7 checks for `Store.New_Document`, 0 for the Runtime
 wrapper, 9 for `Store.Construct`, 461 for `Create_Node`, and 22 for
 `Allocate_Node_Buffer`; the shared `Measure` proves 2 checks.
 
+## Direct raw-content constructors
+
+The nine text, document-text, comment, document-comment, CDATA, PI, and
+document-PI constructors pass the content address and mode through the C
+adapter and Runtime to `Store.Content.New_Doc_Content_Bytes`. The Store checks
+kind and registered-document status before reading content. NULL content skips
+length checks and reads; terminated input uses `Measure`, while bounded input
+rejects negative or oversized lengths before `Measure_Byte_Prefix` scans up to
+the count or first NUL. The resulting span enters the existing
+`New_Doc_Content` / `Construct` / `Create_Node` owner and rollback path. PI
+target conversion remains in C. Zero-length input reads nothing; NULL and
+empty content remain distinct.
+
+GNATprove discharges 11 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
+wrapper, 22 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
+`Measure_Byte_Prefix`, and 3 for `Copy_Byte_Prefix`; `Create_Node` and
+`Allocate_Node_Buffer` prove 461 and 22 checks, respectively. The shared
+`Measure` proves 2 checks. Small-bound Ada tests cover NULL, zero, exact count,
+and early NUL; guard-page/reference tests cover all nine APIs, source
+protection, DOM use, serialization/free/reparse, and invalid document/content
+combinations. Existing OOM walks cover retry and document-first release.
+Native extents/readability/stability, byte effects, allocation/free, ABI, and
+complete API semantics remain trusted or outside proof.
+
 ## Source identity (SHA-256)
 
+The raw-content constructor path checks document registration before input
+reads, then shares existing owner sizing, copying, affiliation and rollback.
+`Measure_Byte_Prefix` is also used by `Copy_Byte_Prefix`; small-bound tests cover
+NULL, zero, exact count and early NUL. Guard-page tests cover all nine content
+constructors against the pinned reference, protect sources before DOM use,
+then serialize/free/reparse. Libxml3-only checks cover unreadable documents and
+content, zero length, rejected negative/oversized lengths and early NUL before a
+protected tail. Existing OOM/retry/document-retention tests remain in the gate.
+
 ```text
-8f48254e043d90ff4de8cf36a7424fc6a20f1d562e0ef8cf09131dc3fc81555a  src/xml3_c.adb
+502eca5bae8d4ec0691804cfe1df5bbe5a30bb6090f12fff1c61fd84046f0580  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1267,10 +1301,10 @@ d175f1ae546a351dcd864da6714baefff8bcb462c0922993db41ec8eee4ec796  src/xml3_dom_c
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-2824c1d54846f7c0a88b53e1225478ee5053b1b9f19c6da318c77042eeea9e22  src/xml3_dom_runtime.adb
-78aeb206e4265b2301fffab1ad0f070d9fd246d7f4d2bb650167e20b07892d65  src/xml3_dom_runtime.ads
-8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
-d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
+171b83cf6f9d1086f069968af78639eb7ada1514e4aaa748c912d60fafb0b70c  src/xml3_dom_runtime.adb
+9c5e3d4d7ea5250bface3f3dd652e4880a453f22e1eba76cc9a5c8e3507fab1a  src/xml3_dom_runtime.ads
+e6265a5759e655ddb6ad16a7c550787d1f8c0636749344f73fe03ba5beb220c0  src/xml3_dom_store-content.adb
+70b6220c16e323df7e7b1df19c59ee21468b5149cc0a33f3c4394ccb9be6a8b2  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
@@ -1300,15 +1334,16 @@ eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
-e90a052a7062323a771955dcd002050cfb1cc097a74785dc59b823aa8c2a9317  src/xml3_text-buffers.adb
-0ee5951176132380664985a03e7044f487e1b274899ef388d3f8ee677fcfd8d4  src/xml3_text-buffers.ads
+c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-buffers.adb
+0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 f5e2f660508cdabb23c66ecfb623e55f6c227c4d30b04e2613d4dee3a0c56eb0  Makefile
 84094a4852a64b6e63784571d5e38d2fc380eaa5aab518745575e17e23b36373  tests/oom-test.c
-579832ca8b340946e82698493ca43b0ab84409a67b5b72410a43cf8ba308d074  tests/serialization-test.c
+ab5b1513251b12a9014fa7b5506052ff367d23f8567ab901c475560d98c2a5be  tests/serialization-test.c
+405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

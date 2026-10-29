@@ -694,11 +694,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
          Status := Slice_Limit_Exceeded;
          return;
       end if;
-      while Span < Length and then Native.Byte_At (Item, Span) /= Character'Val (0) loop
-         pragma Loop_Invariant (Span <= Length);
-         pragma Loop_Variant (Decreases => Length - Span);
-         Span := Span + 1;
-      end loop;
+      Measure_Byte_Prefix (Item, Byte_Count (Length), Span);
       Copy_Span (Item, 0, Span, Result, Status);
    end Copy_Byte_Prefix;
 
@@ -1135,6 +1131,23 @@ package body XML3_Text.Buffers with SPARK_Mode is
          Read_Length (Item, Last, Length, Success, Start);
       end if;
    end Measure;
+
+   procedure Measure_Byte_Prefix
+     (Item : System.Address; Limit : Byte_Count; Length : out Byte_Count)
+   is
+   begin
+      Length := 0;
+      if Item = System.Null_Address then
+         return;
+      end if;
+      while Length < Limit
+        and then Native.Byte_At (Item, Length) /= Character'Val (0)
+      loop
+         pragma Loop_Invariant (Length <= Limit);
+         pragma Loop_Variant (Decreases => Limit - Length);
+         Length := Length + 1;
+      end loop;
+   end Measure_Byte_Prefix;
 
    procedure Copy_Pair
      (Left, Right : System.Address; Left_Length, Right_Length : Byte_Count;

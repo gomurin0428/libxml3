@@ -191,6 +191,12 @@ package XML3_Text.Buffers with SPARK_Mode is
        Pre => Start <= Last,
        Post => Length <= Last - Start and then (if not Success then Length = 0);
 
+   procedure Measure_Byte_Prefix
+     (Item : System.Address; Limit : Byte_Count; Length : out Byte_Count)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Length <= Limit
+         and then (if Item = System.Null_Address then Length = 0);
+
    procedure Append
      (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
       Result : out System.Address; Status : out Append_Status;
