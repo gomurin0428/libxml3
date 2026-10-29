@@ -224,6 +224,26 @@
     ],
     "proof": "not-proved"
   },
+  "function:parserInternals.h:xmlCopyChar": {
+    "implementation": "partial",
+    "scope": "Deprecated public low-level UTF-8 writer only; len is ignored and the caller must provide enough writable, stable output space. Encodes every Unicode scalar, including XML-forbidden controls and noncharacters, without an extra terminator; U+0000 writes one NUL byte. Negative/out-of-range values, surrogates, and NULL output return 0 without writes; rejecting surrogates is an intentional strict-UTF-8 safety difference. Ordinary paths allocate nothing and preserve diagnostics. Destination validity/extent, native byte contents, C ABI, and complete upstream semantics remain trusted; the rest of parserInternals.h is unsupported.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parserInternals.h:xmlCopyCharMultiByte": {
+    "implementation": "partial",
+    "scope": "Deprecated public low-level UTF-8 writer only. Encodes every Unicode scalar, including XML-forbidden controls and noncharacters, without an extra terminator; U+0000 writes one NUL byte. Negative/out-of-range values, surrogates, and NULL output return 0 without writes; rejecting surrogates is an intentional strict-UTF-8 safety difference. Ordinary paths allocate nothing and preserve diagnostics. The caller must provide enough writable, stable output space. Destination validity/extent, native byte contents, C ABI, and complete upstream semantics remain trusted; the rest of parserInternals.h is unsupported.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlDocGetRootElement": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

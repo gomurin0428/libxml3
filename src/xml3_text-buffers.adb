@@ -4,6 +4,26 @@ package body XML3_Text.Buffers with SPARK_Mode is
    use type Interfaces.C.int;
    use type Interfaces.C.unsigned;
 
+   procedure Write_UTF8_Char
+     (Target : System.Address; Code : Integer; Written : out Natural)
+   is
+   begin
+      Written := 0;
+      if Target = System.Null_Address or else Code not in 0 .. 16#10FFFF#
+        or else Code in 16#D800# .. 16#DFFF#
+      then
+         return;
+      end if;
+      declare
+         Bytes : constant String := UTF8_Image (Code);
+      begin
+         for I in Bytes'Range loop
+            Native.Write_Byte (Target, I - 1, Bytes (I));
+         end loop;
+         Written := Bytes'Length;
+      end;
+   end Write_UTF8_Char;
+
    function Character_In_Range
      (Code : Interfaces.C.unsigned; Group : System.Address) return Boolean
    is

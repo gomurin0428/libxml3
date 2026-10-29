@@ -373,6 +373,15 @@ package XML3_C is
    function Check_UTF8 (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCheckUTF8";
 
+   function Copy_Char_Multi_Byte
+     (Output : System.Address; Code : Interfaces.C.int) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCopyCharMultiByte";
+
+   function Copy_Char
+     (Length : Interfaces.C.int; Output : System.Address; Code : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCopyChar";
+
    function Char_In_Range
      (Code : Interfaces.C.unsigned; Group : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCharInRange";

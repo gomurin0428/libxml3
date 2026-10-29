@@ -237,6 +237,14 @@ preconditionsを対象にし、foreign pointer validity/readable extent、actual
 結果の範囲・NULL時のcontract・native-callの前提を証明しますが、foreign byte、pointer validity/readable byte、C mapping、完全なAPI意味論はtrusted boundaryです。
 全256先頭byteをそれぞれPROT_NONE直前の最後のreadable byteに置くguard test、単独の非NUL終端1-byte input、
 allocationなしの挙動をtestします。
+`libxml/parserInternals.h` から公開するのは deprecated な低level UTF-8 writer
+`xmlCopyCharMultiByte(xmlChar *out, int val)` と `xmlCopyChar(int len, xmlChar *out, int val)` の2つだけです。
+Unicode scalar valueをUTF-8 byte列として1..4 byte書き、追加のNUL terminatorは付けません。`val == 0` は1 byteのNULを書きます。
+`xmlCopyChar` の `len` は互換性のため無視され、capacityではありません。呼出側は実際の幅に十分な書込み可能で安定した領域を用意します。
+全scalar value（XMLで禁止されるcontrolやnoncharacterを含む）をencodingし、XML character validationはしません。
+負値、U+10FFFF超、surrogate、NULL outputは0を返し、surrogate拒否はstrict UTF-8の安全差です。
+通常の成功・拒否ではallocationやdiagnosticを行わず、sticky errorを変更しません。output pointerの有効性・extentは検査せず、
+他の `parserInternals.h` APIも対応範囲に含みません。既存のXML parser/name validationは引き続きstrictです。
 `xmlUTF8Charcmp` は最初の文字のbyteを比較し、Unicode code pointの減算ではありません。両方NULLなら0、左だけNULLなら-1、右だけNULLなら1で、NULL分岐では非NULL側を読みません。両方nonNULLなら左leadを `UTF8_Lead_Size` で分類し、無効なleadは右を読む前に診断付き-1です。分類幅（1..4、NULは1）の範囲で最初のunsigned-byte差を返し、差・NUL・幅で停止します。不一致なら直ちに返して残りをdecodeも検証もしないため、`E2 x` 対 `E3 y` は診断なしの-1、`a` 対 `0xff` は診断なしの-158です。byte比較が等しい場合だけ `Get_UTF8_Char` で左の先頭scalarを検証してから0を返し、same-pointer比較でも検証を省きません。equalなmalformed/truncated/overlong/surrogate/out-of-range prefixは診断付き-1となり、pinned referenceの0と意図的に異なります。有効な先頭文字ではpinned referenceと同じbyte差を返し、suffixは無視します。case folding、normalization、grapheme matching、XML character validationは行わず、controlとnoncharacterもUTF-8として許可します。無効文字の診断は通常 `XML_FROM_TREE` / `XML_ERR_INVALID_CHAR`（error 9）ですが、診断allocation失敗時は標準OOM error 2、予期しない例外はerror 1となり、いずれも結果は-1です。通常比較はallocationせず入力も変更しませんが、診断はallocationすることがあります。成功比較は既存last errorを消さないため、診断された-1と通常のbyte差-1を区別するには呼び出し前にerrorをresetし、呼び出し後に確認します。上限は左leadが示す最大4 byteです。入力は実際に触れるbyte範囲でreadableかつ安定している必要があり、equal prefixではaliasでも先頭scalar全体またはNULまで読むことがあります。SPARKは結果範囲 `-255..255` と `Invalid => -1` のcontractおよびnative-call preconditionsを対象とし、native byte、readability、pointer validity/stability、C mapping/ABI、完全なUnicode意味論はtrusted boundaryです。
 `xmlUTF8Strloc` はpatternの最初のUnicode scalarと一致するsource内の最初のscalar indexを返し、byte offsetではありません。
 patternのsuffixは無視しますが、最初のpattern scalarとmatchまでのsource scalarはstrict UTF-8として検証します。

@@ -23,6 +23,15 @@ package XML3_Text.Buffers with SPARK_Mode is
      (Code : Interfaces.C.unsigned; Group : System.Address) return Boolean
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 
+   procedure Write_UTF8_Char
+     (Target : System.Address; Code : Integer; Written : out Natural)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => Written in 0 .. 4
+         and then (if Target = System.Null_Address
+                     or else Code not in 0 .. 16#10FFFF#
+                     or else Code in 16#D800# .. 16#DFFF#
+                   then Written = 0 else Written = UTF8_Width (Code));
+
    function Valid_Name
      (Source : System.Address; Source_Length : Natural;
       Allow_Colon : Boolean) return Boolean

@@ -138,6 +138,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
+* `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
 * `libxml3.h`: 上記の包括ヘッダーと `xml3ReadMemory`
@@ -656,6 +657,9 @@ lead結果にallocation・mutation・diagnosticはなく、予期しないC例�
 有効性検証やdecodeには `xmlCheckUTF8` / `xmlGetUTF8Char` を使います。全256 byte valuesをPROT_NONE直前の最後のreadable byteに
 それぞれ置くguard test、単独の非NUL終端1-byte input、OOM no-allocation testを実施します。SPARK helperはlead分類とresult contractを担いますが、native byte/readable pointer、
 pointer validity、C mapping/ABI、完全なAPI意味論はtrusted boundaryです。
+
+`xmlCopyCharMultiByte` と `xmlCopyChar` は `parserInternals.h` で公開する deprecated writerです。Unicode scalarを1..4 byteのUTF-8として出力し、追加のNUL terminatorは付けません（scalar 0はliteral NUL 1 byte）。`xmlCopyChar` の `len` は無視され、書込みcapacityではありません。呼出側は実際の出力幅に足る、書込み可能で安定した領域を用意する必要があります。XMLで禁止されるcontrolやnoncharacterもUTF-8としてencodingし、XML character validationは行いません。負値、U+10FFFF超、surrogate、NULL outputは0を返して書込みません。surrogate拒否はstrict UTF-8を守る意図的な安全差です。通常の成功・拒否ではallocationやdiagnosticを行わず、sticky errorを保持します。output pointerの有効性・extent、native byte内容、C ABIと完全なupstream semanticsは信頼境界です。既存のXML character/parser/name validationは変更せず、parser-internals subsystemの他APIも未対応です。
+
 `xmlUTF8Strloc` はpatternの最初のUnicode scalarと一致する最初のsource位置を、byte offsetではなく0-based scalar indexで返します。
 `Find_UTF8_Character` は `Measure_UTF8_Prefix` でpatternの最初のscalarだけをstrictに検証し、残りのpattern suffixは無視します。
 sourceはmatch scalarを含む訪問scalarごとにstrict UTF-8検証し、match後は読みません。malformed・truncated・overlong・surrogate・

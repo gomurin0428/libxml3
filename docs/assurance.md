@@ -1002,6 +1002,26 @@ byte, readable extent, pointer validity, C mapping/ABI, or complete API
 semantics. The guard-page loop places each of the 256 byte values at the final
 readable byte before `PROT_NONE`; standalone non-terminated one-byte inputs and
 no-allocation behavior are also tested.
+`xmlCopyCharMultiByte` and `xmlCopyChar` are the only deprecated writer
+declarations provided from `parserInternals.h`; the rest of that subsystem is
+unsupported. They encode Unicode scalar values as 1–4 UTF-8 bytes, without an
+extra NUL terminator (`U+0000` writes one literal NUL byte). `xmlCopyChar`
+deliberately ignores `len`; it is not an output-capacity parameter, so callers
+must provide enough writable, suitably aligned, stable output space. XML-
+forbidden controls and noncharacters are encoded because these functions do
+UTF-8 encoding, not XML character validation. Negative and out-of-range
+values, surrogates, and NULL output return 0 without writes; surrogate
+rejection is an intentional strict-UTF-8 safety difference. Ordinary success
+and rejected-input paths allocate nothing, emit no diagnostic, and preserve a
+sticky error. GNATprove proves `UTF8_Width` (1 check), `UTF8_Image` (25
+checks), and `Write_UTF8_Char` (10 checks), covering scalar calculations,
+loop/index bounds, and written contracts. These checks do not prove native
+byte contents, destination validity/extent/stability, C ABI, or complete
+upstream semantics. `Write_UTF8_Char` uses the existing trusted
+`XML3_Native_Memory.Write_Byte`; exhaustive scalar round trips, sentinel and
+guard-page cases, ignored-`len` values, and no-allocation/sticky-error behavior
+are tested. Existing XML character and parser/name validation is unchanged.
+
 `xmlUTF8Charcmp` uses `XML3_Text.Buffers.Compare_UTF8_Character`. Both NULL
 pointers return 0; a NULL left or right pointer returns -1 or 1 respectively
 without reading the non-NULL pointer. Otherwise the helper classifies only the

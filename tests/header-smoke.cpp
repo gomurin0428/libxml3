@@ -13,6 +13,10 @@ int main() {
     (void)character_classes;
     int (*range_check)(unsigned int, const xmlChRangeGroup *) = xmlCharInRange;
     (void)range_check;
+    int (*copy_char)(int, xmlChar *, int) = xmlCopyChar;
+    int (*copy_multibyte)(xmlChar *, int) = xmlCopyCharMultiByte;
+    (void)copy_char;
+    (void)copy_multibyte;
     void (*dump_format)(xmlDocPtr, xmlChar **, int *, int) = xmlDocDumpFormatMemory;
     void (*dump_format_enc)(xmlDocPtr, xmlChar **, int *, const char *, int) =
         xmlDocDumpFormatMemoryEnc;

@@ -160,8 +160,7 @@ package body XML3_Encoding with SPARK_Mode is
          else
             C := High;
          end if;
-         Width := (if C < 16#80# then 1 elsif C < 16#800# then 2
-                   elsif C < 16#10000# then 3 else 4);
+         Width := XML3_Text.UTF8_Width (C);
          if Width > XML3_Text.Max_Bytes - Length
            or else (not Measure_Only and then Width > Output'Length - Length)
          then
@@ -169,22 +168,7 @@ package body XML3_Encoding with SPARK_Mode is
             return;
          end if;
          if not Measure_Only then
-            case Width is
-               when 1 =>
-                  Output (Length + 1) := Character'Val (C);
-               when 2 =>
-                  Output (Length + 1) := Character'Val (16#C0# + C / 64);
-                  Output (Length + 2) := Character'Val (16#80# + C mod 64);
-               when 3 =>
-                  Output (Length + 1) := Character'Val (16#E0# + C / 4096);
-                  Output (Length + 2) := Character'Val (16#80# + (C / 64) mod 64);
-                  Output (Length + 3) := Character'Val (16#80# + C mod 64);
-               when 4 =>
-                  Output (Length + 1) := Character'Val (16#F0# + C / 262144);
-                  Output (Length + 2) := Character'Val (16#80# + (C / 4096) mod 64);
-                  Output (Length + 3) := Character'Val (16#80# + (C / 64) mod 64);
-                  Output (Length + 4) := Character'Val (16#80# + C mod 64);
-            end case;
+            Output (Length + 1 .. Length + Width) := XML3_Text.UTF8_Image (C);
          end if;
          Length := Length + Width;
          I := I + Consumed;

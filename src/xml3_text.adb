@@ -1,4 +1,23 @@
 package body XML3_Text with SPARK_Mode is
+   function UTF8_Image (Code : Natural) return String is
+   begin
+      if Code < 16#80# then
+         return (1 => Character'Val (Code));
+      elsif Code < 16#800# then
+         return Character'Val (16#C0# + Code / 64)
+           & Character'Val (16#80# + Code mod 64);
+      elsif Code < 16#10000# then
+         return Character'Val (16#E0# + Code / 4096)
+           & Character'Val (16#80# + (Code / 64) mod 64)
+           & Character'Val (16#80# + Code mod 64);
+      else
+         return Character'Val (16#F0# + Code / 262_144)
+           & Character'Val (16#80# + (Code / 4096) mod 64)
+           & Character'Val (16#80# + (Code / 64) mod 64)
+           & Character'Val (16#80# + Code mod 64);
+      end if;
+   end UTF8_Image;
+
    function XML_Char (C : Natural) return Boolean is
      (C = 9 or C = 10 or C = 13
       or (C in 16#20# .. 16#D7FF#)
@@ -464,34 +483,11 @@ package body XML3_Text with SPARK_Mode is
             if not XML_Char (Code) then
                return;
             end if;
-            if Code <= 16#7F# then
-               Bytes := 1;
-            elsif Code <= 16#7FF# then
-               Bytes := 2;
-            elsif Code <= 16#FFFF# then
-               Bytes := 3;
-            else
-               Bytes := 4;
-            end if;
+            Bytes := UTF8_Width (Code);
             if Bytes > J - I + 1 or else Bytes > Output'Length - Length then
                return;
             end if;
-            case Bytes is
-               when 1 =>
-                  Output (Length + 1) := Character'Val (Code);
-               when 2 =>
-                  Output (Length + 1) := Character'Val (16#C0# + Code / 64);
-                  Output (Length + 2) := Character'Val (16#80# + Code mod 64);
-               when 3 =>
-                  Output (Length + 1) := Character'Val (16#E0# + Code / 4096);
-                  Output (Length + 2) := Character'Val (16#80# + (Code / 64) mod 64);
-                  Output (Length + 3) := Character'Val (16#80# + Code mod 64);
-               when others =>
-                  Output (Length + 1) := Character'Val (16#F0# + Code / 262_144);
-                  Output (Length + 2) := Character'Val (16#80# + (Code / 4096) mod 64);
-                  Output (Length + 3) := Character'Val (16#80# + (Code / 64) mod 64);
-                  Output (Length + 4) := Character'Val (16#80# + Code mod 64);
-            end case;
+            Output (Length + 1 .. Length + Bytes) := UTF8_Image (Code);
             Length := Length + Bytes;
             I := J + 1;
          else
