@@ -2039,6 +2039,41 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "uri-unescape-inplace") == 0) {
+        char buffer[] = "a%20%00x+";
+        const char expected[] = {'a', ' ', 0, 'x', '+', 0};
+        xml3_oom_enable(fail_index);
+        assert(xmlURIUnescapeString(buffer, 0, buffer) == buffer);
+        assert(memcmp(buffer, expected, sizeof(expected)) == 0);
+        assert(!xmlURIUnescapeString(NULL, 0, buffer));
+        assert(xmlURIUnescapeString("", 0, buffer) == buffer && buffer[0] == 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "uri-unescape") == 0 ||
+               strcmp(operation, "uri-unescape-empty") == 0 ||
+               strcmp(operation, "uri-unescape-buffer") == 0) {
+        char input[] = "a%20%FF";
+        char target[16] = "unchanged";
+        const char *source = strcmp(operation, "uri-unescape-empty") == 0 ? "" : input;
+        char *destination = strcmp(operation, "uri-unescape-buffer") == 0 ? target : NULL;
+        const char *expected = source[0] == 0 ? "" : "a \xff";
+        xml3_oom_enable(fail_index);
+        char *result = xmlURIUnescapeString(source, 0, destination);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!result && strcmp(target, "unchanged") == 0);
+            assert(strcmp(input, "a%20%FF") == 0);
+            require_oom_error();
+            xmlResetLastError();
+            result = xmlURIUnescapeString(source, 0, destination);
+        }
+        assert(result && strcmp(result, expected) == 0);
+        if (destination) assert(result == destination);
+        else xmlFree(result);
     } else if (strcmp(operation, "uri-escape") == 0 ||
                strcmp(operation, "uri-escape-empty") == 0) {
         const xmlChar *input = strcmp(operation, "uri-escape-empty") == 0 ?
@@ -2268,6 +2303,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "utf8-write") == 0) {
         puts("UTF-8 character writing used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "uri-unescape-inplace") == 0) {
+        puts("in-place URI unescaping used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

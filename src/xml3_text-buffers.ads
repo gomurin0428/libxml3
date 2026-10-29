@@ -19,6 +19,15 @@ package XML3_Text.Buffers with SPARK_Mode is
    type Escape_Status is
      (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
 
+   procedure Unescape_URI
+     (Input : System.Address; Length : Integer; Target : System.Address;
+      Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Escaped then Result /= System.Null_Address
+                  and then (if Target /= System.Null_Address then Result = Target)
+                else Result = System.Null_Address);
+
    procedure Escape_URI
      (Input, Exceptions : System.Address;
       Result : out System.Address; Status : out Escape_Status;

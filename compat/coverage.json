@@ -224,9 +224,15 @@
     ],
     "proof": "not-proved"
   },
+  "function:uri.h:xmlURIUnescapeString": {
+    "implementation": "partial",
+    "scope": "SPARK byte unescaping: case-insensitive %HH to raw bytes including NUL; malformed escapes and plus remain literal. Positive lengths process exactly that many bytes including NUL; nonpositive lengths scan to first NUL. NULL input returns NULL without touching target or diagnostics. NULL target returns an independent xmlFree-owned allocation; provided targets are returned unchanged as pointers, with decoded bytes plus trailing NUL written. Exact in-place and provided empty output allocate nothing; other nonempty provided targets use scratch allocation to avoid forward-overlap corruption, introducing possible OOM compared with upstream. Limits/OOM return NULL without modifying inputs/targets. Not URI/path/UTF-8/XML validation. Native spans, capacity/stability, allocation/copy/free/write, ABI and full public semantics remain trusted.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/text_buffers_test.adb", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:uri.h:xmlURIEscapeStr": {
     "implementation": "partial",
-    "scope": "Byte-wise percent-encoding only: preserve ASCII alphanumerics, -._~!*'()@ and exception-list bytes, otherwise emit uppercase %HH. Not URI/UTF-8 validation or normalization; arbitrary nonzero bytes are accepted and exceptions may preserve them. NULL input returns NULL; empty input returns an allocated empty string. The result is independent and caller-freed with xmlFree. Bounded SPARK measurement, lazy cached exception lookup, and one exact native allocation replace upstream growth/reallocation; limit/OOM failures return NULL, never partial output. Successful/NULL calls preserve diagnostics. Native pointer validity/readability/stability, native writes/allocation/free, ABI and full public semantics remain trusted; other URI APIs are unsupported.",
+    "scope": "Byte-wise percent-encoding only: preserve ASCII alphanumerics, -._~!*'()@ and exception-list bytes, otherwise emit uppercase %HH. Not URI/UTF-8 validation or normalization; arbitrary nonzero bytes are accepted and exceptions may preserve them. NULL input returns NULL; empty input returns an allocated empty string. The result is independent and caller-freed with xmlFree. Bounded SPARK measurement, lazy cached exception lookup, and one exact native allocation replace upstream growth/reallocation; limit/OOM failures return NULL, never partial output. Successful/NULL calls preserve diagnostics. Native pointer validity/readability/stability, native writes/allocation/free, ABI and full public semantics remain trusted; URI parsing/resolution/normalization are unsupported.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",

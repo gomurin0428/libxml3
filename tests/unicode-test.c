@@ -20,6 +20,105 @@
 #endif
 
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
+static void check_uri_unescape(const char *input, int length,
+                               const char *expected, size_t size) {
+    char *result = xmlURIUnescapeString(input, length, NULL);
+    assert(result && result != input);
+    assert(memcmp(result, expected, size) == 0 && result[size] == 0);
+    xmlFree(result);
+    char target[128], inplace[128];
+    size_t span = length > 0 ? (size_t)length : strlen(input);
+    assert(size + 3 <= sizeof(target) && span + 2 <= sizeof(inplace));
+    memset(target, '~', sizeof(target));
+    result = xmlURIUnescapeString(input, length, target + 1);
+    assert(result == target + 1);
+    assert(memcmp(result, expected, size) == 0 && result[size] == 0);
+    assert(target[0] == '~' && target[size + 2] == '~');
+    memset(inplace, '~', sizeof(inplace));
+    memcpy(inplace, input, span);
+    inplace[span] = 0;
+    result = xmlURIUnescapeString(inplace, length, inplace);
+    assert(result == inplace);
+    assert(memcmp(result, expected, size) == 0 && result[size] == 0);
+    assert(inplace[span + 1] == '~');
+}
+
+static void test_uri_unescaping(void) {
+    assert(!xmlURIUnescapeString(NULL, INT_MAX, NULL));
+    check_uri_unescape("", 0, "", 0);
+    check_uri_unescape("a%20b+%2f%aF", -1, "a b+/\xaf", 6);
+    check_uri_unescape("%", 0, "%", 1);
+    check_uri_unescape("%A", 0, "%A", 2);
+    check_uri_unescape("%G1%1G%%41", 0, "%G1%1G%A", 8);
+    check_uri_unescape("%41ignored", 3, "A", 1);
+    check_uri_unescape("%41", 1, "%", 1);
+    check_uri_unescape("%41", 2, "%4", 2);
+    check_uri_unescape("%00tail", 0, "\0tail", 5);
+    const char binary[] = {'a', 0, '%', '4', '2', 'c'};
+    check_uri_unescape(binary, sizeof(binary), "a\0Bc", 4);
+    check_uri_unescape(binary, INT_MIN, "a", 1);
+    const char *hex[] = {"0123456789ABCDEF", "0123456789abcdef"};
+    for (unsigned value = 0; value <= 255; ++value) {
+        for (unsigned casing = 0; casing < 2; ++casing) {
+            char input[] = {'%', hex[casing][value >> 4], hex[casing][value & 15], 0};
+            char expected[] = {(char)value};
+            check_uri_unescape(input, 3, expected, 1);
+        }
+    }
+    xmlChar raw[256];
+    for (unsigned i = 0; i < 255; ++i) raw[i] = (xmlChar)(i + 1);
+    raw[255] = 0;
+    xmlChar *encoded = xmlURIEscapeStr(raw, NULL);
+    assert(encoded);
+    char *decoded = xmlURIUnescapeString((const char *)encoded, 0, NULL);
+    xmlFree(encoded);
+    assert(decoded && memcmp(decoded, raw, sizeof(raw)) == 0);
+    xmlFree(decoded);
+    char overlap[32] = "xa%42c";
+    assert(xmlURIUnescapeString(overlap + 1, 0, overlap) == overlap);
+    assert(strcmp(overlap, "aBc") == 0);
+#ifndef XML3_REFERENCE_VERSION
+    strcpy(overlap, "a%42c");
+    assert(xmlURIUnescapeString(overlap, 0, overlap + 1) == overlap + 1);
+    assert(strcmp(overlap + 1, "aBc") == 0);
+#endif
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky);
+    int error_code = sticky->code;
+    check_uri_unescape("a%20b", 0, "a b", 3);
+    assert(!xmlURIUnescapeString(NULL, 0, overlap));
+    assert(xmlGetLastError() == sticky && sticky->code == error_code);
+    xmlResetLastError();
+#if defined(__unix__)
+    long page_size = sysconf(_SC_PAGESIZE);
+    assert(page_size > 0);
+    size_t page = (size_t)page_size;
+    char *mapping = mmap(NULL, page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    char *guard = mapping + page;
+    assert(mprotect(guard, page, PROT_NONE) == 0);
+    assert(!xmlURIUnescapeString(NULL, 0, guard));
+    guard[-1] = 0;
+    check_uri_unescape(guard - 1, 0, "", 0);
+    memcpy(guard - 3, "%41", 3);
+    check_uri_unescape(guard - 3, 3, "A", 1);
+    assert(xmlURIUnescapeString(guard - 3, 3, guard - 2) == guard - 2);
+    assert(guard[-2] == 'A' && guard[-1] == 0);
+    guard[-1] = '%';
+    check_uri_unescape(guard - 1, 1, "%", 1);
+    memcpy(guard - 2, "%4", 2);
+    check_uri_unescape(guard - 2, 2, "%4", 2);
+#ifndef XML3_REFERENCE_VERSION
+    assert(!xmlURIUnescapeString(guard, INT_MAX, guard));
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, page * 2) == 0);
+#endif
+}
+
 static void check_uri_escape(const xmlChar *input, const xmlChar *exceptions,
                              const xmlChar *expected) {
     xmlChar *escaped = xmlURIEscapeStr(input, exceptions);
@@ -100,7 +199,10 @@ static void test_uri_escaping(void) {
     xmlChar *value = xmlGetProp(xmlDocGetRootElement(doc), BAD_CAST "href");
     xmlFreeDoc(doc);
     assert(value && strcmp((const char *)value, "dir/%E9%A1%94%20a?x=1&y=2") == 0);
+    char *decoded = xmlURIUnescapeString((const char *)value, 0, NULL);
     xmlFree(value);
+    assert(decoded && strcmp(decoded, "dir/\xe9\xa1\x94 a?x=1&y=2") == 0);
+    xmlFree(decoded);
 }
 
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
@@ -2087,6 +2189,7 @@ static void test_xhtml_identifiers(void) {
 }
 
 int main(void) {
+    test_uri_unescaping();
     test_uri_escaping();
     test_utf8_writing();
     test_character_range_groups();

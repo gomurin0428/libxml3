@@ -3,6 +3,35 @@
 This project is an experimental, independent Ada/SPARK implementation, not a
 release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
+## URI byte unescaping
+
+`xmlURIUnescapeString` delegates to `XML3_Text.Buffers.Unescape_URI`.
+SPARK bounds the input span, interprets hex through `URI_Hex`, chooses an owned
+or caller-provided output and advances output by at most the consumed input.
+Positive lengths include literal NUL bytes; nonpositive lengths use the bounded
+terminator scan. Valid `%HH` becomes a raw byte, including `%00`; malformed
+escapes and `+` remain literal. This is not URI/path, UTF-8 or XML validation.
+The caller must validate decoded bytes as appropriate for their use.
+
+Exact in-place decoding is allocation-free. Other nonempty provided targets
+receive only the completed scratch result, preventing forward-overlap input
+corruption and leaving targets unchanged on OOM. This intentionally allocates
+where the reference need not; NULL targets return an independent `xmlFree`-owned
+result, including for empty input. Input limits apply before allocation/writes;
+NULL input does not touch the target or diagnostics. Success retains diagnostics.
+Native bytes and effects, stable readable input extents, writable output extent
+(decoded size plus one), copy/allocation/free and ABI are trusted. The public
+interface has no target capacity parameter and cannot validate it. Contracts
+cover status/result/target relationships, not full functional semantics.
+GNATprove discharges 1 check for `URI_Hex` and 18 for `Unescape_URI`, covering
+the helper's hex result range, bounded traversal, native-call preconditions
+and status/result/target contracts—not decoded byte equivalence or native
+memory effects.
+Tests compare both hex cases and all byte values with the pinned reference,
+include binary NULs, truncated spans, guarded extents, exact in-place and backward
+overlap, safe forward overlap on libxml3 only, URI roundtrips, XML reuse,
+small limits and OOM retry with unchanged targets.
+
 ## URI byte escaping
 
 `xmlURIEscapeStr` dispatches directly to `XML3_Text.Buffers.Escape_URI`.
@@ -28,7 +57,7 @@ not a partial string, and do not modify or consume the input. The result is
 freed with `xmlFree`. Callers must supply stable, readable native spans and
 choose appropriate exceptions for their URI component. Native bytes,
 allocation/free/write effects, pointer validity/extent, C ABI and full public
-semantics are trusted, not proved. Other URI APIs are unsupported.
+semantics are trusted, not proved. URI parsing/resolution/normalization are unsupported.
 
 ## Intended proof claims
 
@@ -86,9 +115,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,751 checks
-(1,296 flow and 11,455 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 157 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,781 checks
+(1,307 flow and 11,474 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -253,7 +282,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,751-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,781-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

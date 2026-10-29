@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 xmlChar *xmlURIEscapeStr(const xmlChar *str, const xmlChar *list);
+char *xmlURIUnescapeString(const char *str, int len, char *target);
 
 #ifdef __cplusplus
 }

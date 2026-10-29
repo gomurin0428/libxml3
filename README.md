@@ -237,13 +237,19 @@ preconditionsを対象にし、foreign pointer validity/readable extent、actual
 結果の範囲・NULL時のcontract・native-callの前提を証明しますが、foreign byte、pointer validity/readable byte、C mapping、完全なAPI意味論はtrusted boundaryです。
 全256先頭byteをそれぞれPROT_NONE直前の最後のreadable byteに置くguard test、単独の非NUL終端1-byte input、
 allocationなしの挙動をtestします。
-`libxml/uri.h` は `xmlURIEscapeStr` のみ対応します。byte単位のpercent-encodingで、英数字と
+`libxml/uri.h` は `xmlURIEscapeStr` / `xmlURIUnescapeString` に対応します。前者はbyte単位のpercent-encodingで、英数字と
 `-._~!*'()@` および例外リストに含まれるbyteを保持し、それ以外をuppercase `%HH` にします。
 URI/UTF-8の検証や正規化ではなく、例外指定なしの `%` は `%25`、空白は `%20` となります。
 結果は独立したNUL終端領域で `xmlFree` が必要です。NULL入力はNULL、空入力は空文字列のコピーです。
 SPARK側で長さを計算して一度だけ確保し、上限・確保失敗では部分結果を返しません。入力・例外リストの
 実際に読む範囲は安定してreadableである必要があり、native memoryとC ABIはtrusted boundaryです。
-他のURI APIは未対応です。
+`xmlURIUnescapeString` は `%HH` をbyteへ戻します。不完全・不正な `%` と `+` はそのままです。
+正の長さは埋め込みNULを含む指定byte数、0以下は最初のNULまでを処理します。`%00` もNULへ戻す
+低level処理で、URI/UTF-8の検証ではありません。出力先がNULLなら `xmlFree` が必要な独立領域を返し、
+指定済みならその領域を返します。出力先は結果と終端NULを保持できる容量が必要です。同一ポインタでの
+in-place処理は確保不要、それ以外の非空出力は一時領域を経由して部分overlapにも対応します。
+そのため指定済みの別出力先でもOOMになり得ますが、その場合は元の出力先を変更しません。
+URI解析・解決・正規化は未対応です。
 `libxml/parserInternals.h` から公開するのは deprecated な低level UTF-8 writer
 `xmlCopyCharMultiByte(xmlChar *out, int val)` と `xmlCopyChar(int len, xmlChar *out, int val)` の2つだけです。
 Unicode scalar valueをUTF-8 byte列として1..4 byte書き、追加のNUL terminatorは付けません。`val == 0` は1 byteのNULを書きます。
