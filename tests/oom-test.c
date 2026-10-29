@@ -509,9 +509,17 @@ int main(int argc, char **argv) {
         const xmlChar input[] = "p:name";
         xmlChar *prefix = (xmlChar *)1;
         int length = -1;
+        xmlResetLastError();
+        assert(xmlReadMemory("<broken>", 8, NULL, NULL, 0) == NULL);
+        assert(xmlGetLastError() != NULL);
+        int saved_error = xmlGetLastError()->code;
         xml3_oom_enable(fail_index);
         assert(xmlSplitQName3(input, &length) == input + 2 && length == 1);
+        assert(xmlSplitQName3(BAD_CAST ":", &length) == NULL && length == 1);
+        assert(xmlSplitQName3(BAD_CAST "p:", &length) == NULL && length == 1);
+        assert(xmlSplitQName3(NULL, &length) == NULL && length == 1);
         assert(xml3_oom_count() == 0);
+        assert(xmlGetLastError() && xmlGetLastError()->code == saved_error);
         xmlChar *local = xmlSplitQName2(input, &prefix);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();

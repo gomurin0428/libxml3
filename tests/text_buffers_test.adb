@@ -3,9 +3,11 @@ with System;
 with XML3_Native_Memory;
 with XML3_Text;
 with XML3_Text.Buffers;
+with XML3_Text.QNames;
 
 procedure Text_Buffers_Test is
    use type System.Address;
+   use type XML3_Text.QNames.Prefix_Status;
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
@@ -27,6 +29,33 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_QName_Prefix is
+      Input : aliased String := "p:x";
+      Empty_Local : aliased String := "p:" & Character'Val (0);
+      Empty_Prefix : aliased String := ":";
+      Count : XML3_Text.Byte_Count;
+      Local : System.Address;
+      Status : XML3_Text.QNames.Prefix_Status;
+   begin
+      XML3_Text.QNames.Locate_Prefix (System.Null_Address, Count, Local, Status, 0);
+      pragma Assert (Status = XML3_Text.QNames.Prefix_Absent and then Count = 0
+        and then Local = System.Null_Address);
+      for Last in 0 .. 1 loop
+         XML3_Text.QNames.Locate_Prefix (Input'Address, Count, Local, Status, Last);
+         pragma Assert (Status = XML3_Text.QNames.Prefix_Limit_Exceeded and then Count = 0
+           and then Local = System.Null_Address);
+      end loop;
+      XML3_Text.QNames.Locate_Prefix (Input'Address, Count, Local, Status, 2);
+      pragma Assert (Status = XML3_Text.QNames.Prefix_Found and then Count = 1
+        and then Local = Input (3)'Address);
+      XML3_Text.QNames.Locate_Prefix (Empty_Local'Address, Count, Local, Status, 2);
+      pragma Assert (Status = XML3_Text.QNames.Prefix_Absent and then Count = 0
+        and then Local = System.Null_Address);
+      XML3_Text.QNames.Locate_Prefix (Empty_Prefix'Address, Count, Local, Status, 0);
+      pragma Assert (Status = XML3_Text.QNames.Prefix_Absent and then Count = 0
+        and then Local = System.Null_Address);
+   end Check_QName_Prefix;
 
    procedure Check_Name_Values is
       Input : aliased String := "ab" & Character'Val (0);
@@ -585,6 +614,7 @@ begin
    Check_URI_Unescape;
    Check_URI_Path;
    Check_Name_Values;
+   Check_QName_Prefix;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;

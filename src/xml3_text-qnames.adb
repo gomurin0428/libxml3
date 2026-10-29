@@ -3,6 +3,40 @@ with XML3_Text.Buffers;
 package body XML3_Text.QNames with SPARK_Mode is
    package Native renames XML3_Native_Memory;
 
+   procedure Locate_Prefix
+     (Input : System.Address; Count : out Byte_Count; Local : out System.Address;
+      Status : out Prefix_Status; Last : Byte_Count := Max_Bytes)
+   is
+      Item : Character;
+   begin
+      Count := 0;
+      Local := System.Null_Address;
+      Status := Prefix_Absent;
+      if Input = System.Null_Address then
+         return;
+      end if;
+      for Index in 0 .. Last loop
+         Item := Native.Byte_At (Input, Index);
+         if Item = Character'Val (0) then
+            return;
+         elsif Item = ':' then
+            if Index = 0 then
+               return;
+            elsif Index = Last then
+               Status := Prefix_Limit_Exceeded;
+               return;
+            elsif Native.Byte_At (Input, Index + 1) = Character'Val (0) then
+               return;
+            end if;
+            Count := Index;
+            Local := Native.Offset (Input, Native.Byte_Count (Index + 1));
+            Status := Prefix_Found;
+            return;
+         end if;
+      end loop;
+      Status := Prefix_Limit_Exceeded;
+   end Locate_Prefix;
+
    procedure Compare
      (Prefix, Name, Value : System.Address; Status : out Comparison_Status)
    is

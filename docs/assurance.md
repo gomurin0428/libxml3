@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,864 checks
-(1,345 flow and 11,519 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,874 checks
+(1,350 flow and 11,524 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,864-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,874-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -640,13 +640,15 @@ NULLと判定不能な走査上限は-1、名前の不正は1、正常は0です
 native pointer readability/extent、byte effects、C ABI、status写像は証明外です。
 
 `xmlSplitQName2` / `xmlSplitQName3` は validation や namespace 解決ではなく、SPARK
-`XML3_Text.QNames.Prefix_Length` が NUL 終端 byte 列の最初の colon と prefix byte length
-を求める raw split です。QName2 の `Split` は prefix/local の independent copy、終端 byte、
-部分確保失敗時の cleanup を管理し、QName3 は input 内の borrowed local suffix と成功時だけ
-更新する length slot を返します。後続 colon、空白、不正 UTF-8 は検査せず raw bytes のままです。
-DOM/Store は変更せず、C conversion limit/error mapping、native allocator/copy、pointer arithmetic
-と ABI は trusted boundary です。Unicode 比較は pinned reference と libxml3 の両方で行い、
-OOM allocation injection は libxml3 のみで実行します。
+`XML3_Text.QNames.Prefix_Length` / `Split` はQName2のraw splitと独立したprefix/localコピー、
+終端byte、部分確保失敗時のcleanupを管理します。QName3は `Locate_Prefix` がコピーなしで
+入力を走査し、最初のcolonの次の1byteだけを確認してborrowed local suffixを返します。
+Cは成功時だけlength slotを更新し、走査上限はNULLと診断115へ写像します。通常は確保も
+診断変更もありません。後続colon、空白、不正UTF-8は検査せずraw bytesのままです。
+範囲・停止性・status契約は証明対象で、native pointer readability/extents、byte effects、
+allocator/copy、pointer arithmetic、C ABI、完全な分割意味論はtrusted/unprovedです。
+保護ページで先頭colon・NUL・最初のlocal byteで停止すること、借用先をコピーしてから
+元入力を解放しDOMへ再利用する流れを固定版と比較します。OOM検査はlibxml3のみです。
 
 `xmlBuildQName` は SPARK `XML3_Text.QNames.Build` で size bound、buffer selection、
 result/status 契約を扱います。NULL prefix は borrowed original pointer、empty prefix は colon

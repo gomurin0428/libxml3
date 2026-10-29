@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,864 checks, 1,345 by flow analysis and 11,519
+It completed successfully: **12,874 checks, 1,350 by flow analysis and 11,524
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -56,13 +56,16 @@ scan's control flow, termination, and written result contracts, not native
 pointer readability/extents, byte effects, C ABI, or complete lexical
 equivalence.
 No DTD or ID/IDREF semantics are proved or implemented by these APIs.
-`xmlSplitQName2` and `xmlSplitQName3` use the analyzed
-`XML3_Text.QNames.Prefix_Length` and `Split`: the proof covers first-colon
-length bounds, output/status contracts, and split allocation/cleanup control
-flow. Native allocation, copying/writes, C-string conversion, pointer
-arithmetic, ABI mapping, and complete public semantics remain trusted or
-outside proof. The Unicode comparison runs against the pinned reference and
-libxml3; OOM injection is libxml3-only.
+`xmlSplitQName2` uses the analyzed `XML3_Text.QNames.Prefix_Length` and `Split`.
+`xmlSplitQName3` now uses `Locate_Prefix` to scan the input directly and return
+the borrowed local address after checking only its first byte, without a
+C-string copy or a scan through the local tail. The proof covers first-colon
+length bounds, output/status contracts, and allocation/cleanup control flow
+for copying splits. Native pointer readability/extents, byte effects,
+allocation/copy/free, pointer arithmetic, C ABI/status mapping, and complete
+public semantics remain trusted or outside proof. Reference/guard-page tests
+cover early stops and copying the borrowed suffix before freeing its owner;
+small-cap Ada tests cover unresolved lookup limits. OOM injection is libxml3-only.
 `xmlCharInRange` selects the short table below 65536 and the long table for the
 rest of the unsigned domain, then searches inclusive endpoints using the
 overflow-safe lower-middle calculation. GNATprove discharges 16 checks for
@@ -543,12 +546,14 @@ Reference comparison covers returned namespace values and links; the
 node-pin-lifetime scenario and OOM injection are libxml3-only tests.
 `Compare_UTF8_Character` proves 1 check for its result-range and invalid-status
 contract, not full byte-order or Unicode equivalence. The QName proof includes
-15 checks for `Build`, 8 for `Compare`, 10 for
-`Prefix_Length`, and 6 for `Split`; `XML3_Text.Buffers.Case_Map` has 1 check,
+5 checks for `Locate_Prefix` (bounds and its written output/status contract),
+15 for `Build`, 8 for `Compare`, 10 for `Prefix_Length`, and 6 for `Split`.
+`Locate_Prefix` does not prove native byte contents or `Native.Offset` pointer
+semantics. `XML3_Text.Buffers.Case_Map` has 1 check,
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 491 entity
+The 492 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -582,13 +587,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 354 |
-| Initialization | 806 |
-| Runtime checks | 5,532 |
+| Data dependencies | 355 |
+| Initialization | 810 |
+| Runtime checks | 5,534 |
 | Assertions | 1,662 |
-| Functional contracts | 4,253 |
+| Functional contracts | 4,256 |
 | Termination | 257 |
-| **Total** | **12,864** |
+| **Total** | **12,874** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1144,7 +1149,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-92ccc372bc15cb50deac126ca71a35a273fd40238de70fc7f3dc88ed733759a3  src/xml3_c.adb
+496ea62319b4f1f2f08047e5ec85eb2acdd37ed2f9020cf3e899097a7dc19fdf  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1196,8 +1201,8 @@ aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_seria
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
 eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
-7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
-191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
+07104697120d9c5400b7228db293f42a5c3029a1e2c8848b716ad9e9051ed038  src/xml3_text-qnames.adb
+6b95212fc17e30dc2af0c24a5831ff21fbb02bbfa91f7d20b27539f555416fb0  src/xml3_text-qnames.ads
 8d8e27991648cba3cee657a3e4bf04426cfb9ab14426f2c3e68e8903ffed1cb0  src/xml3_text-buffers.adb
 f382df1e41d6d3b9f8f8c9b275271434509714665ea391d29e38620e86632ea4  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h

@@ -8,6 +8,17 @@ package XML3_Text.QNames with SPARK_Mode is
 
    type Comparison_Status is (Different, Same, Comparison_Limit_Exceeded);
 
+   type Prefix_Status is (Prefix_Absent, Prefix_Found, Prefix_Limit_Exceeded);
+
+   procedure Locate_Prefix
+     (Input : System.Address; Count : out Byte_Count; Local : out System.Address;
+      Status : out Prefix_Status; Last : Byte_Count := Max_Bytes)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Prefix_Found then
+         Input /= System.Null_Address and then Count > 0 and then Count < Last
+         else Count = 0 and then Local = System.Null_Address)
+         and then (if Input = System.Null_Address then Status = Prefix_Absent);
+
    procedure Compare
      (Prefix, Name, Value : System.Address; Status : out Comparison_Status)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
