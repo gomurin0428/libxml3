@@ -23,6 +23,9 @@ int main() {
         xmlStringLenGetNodeList;
     (void)string_list;
     (void)string_len_list;
+    xmlChar *(*raw_list)(const xmlDoc *, const xmlNode *, int) =
+        xmlNodeListGetRawString;
+    (void)raw_list;
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;

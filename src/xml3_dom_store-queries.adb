@@ -1795,6 +1795,99 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Status := Created;
    end Get_Path;
 
+   procedure Get_List_Content
+     (S : Store; Facade : System.Address; Escape : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      First, Current : Node_Ref;
+      Item : Node_View;
+      Total : XML3_Text.Byte_Count := 0;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if S.Current = null then
+         return;
+      end if;
+      First := Find_Registered_Node (S, Facade);
+      if First = Null_Node then
+         return;
+      end if;
+      Status := Internal_Error;
+      Current := First;
+      for Step in 1 .. Node_Count (S.Current.all) loop
+         exit when Current = Null_Node;
+         if not Live_Node (S, Current) then
+            return;
+         end if;
+         Item := Node (S.Current.all, Current);
+         if Is_Text_Content (Item.Kind) then
+            if Item.Content_Length > 0
+              and then Item.Content = System.Null_Address
+            then
+               return;
+            end if;
+            if Item.Content_Length > XML3_Text.Max_Bytes - Total then
+               Status := Limit_Exceeded;
+               return;
+            end if;
+            Total := Total + Item.Content_Length;
+         end if;
+         Current := Item.Next;
+      end loop;
+      if Current /= Null_Node then
+         return;
+      end if;
+      declare
+         Content_Length : constant XML3_Text.Byte_Count := Total;
+         Content : String (1 .. Content_Length) := (others => Character'Val (0));
+         Cursor : Natural := 0;
+         Escaping : XML3_Text.Buffers.Escape_Status;
+      begin
+         Current := First;
+         for Step in 1 .. Node_Count (S.Current.all) loop
+            pragma Loop_Invariant (Cursor <= Total);
+            exit when Current = Null_Node;
+            if not Live_Node (S, Current) then
+               return;
+            end if;
+            Item := Node (S.Current.all, Current);
+            if Is_Text_Content (Item.Kind) and then Item.Content_Length > 0 then
+               if Item.Content = System.Null_Address
+                 or else Item.Content_Length > Total - Cursor
+               then
+                  return;
+               end if;
+               Native.Read_String
+                 (Item.Content, Content (Cursor + 1 .. Cursor + Item.Content_Length));
+               if Escape and then not XML3_Text.Valid_UTF8
+                 (Content (Cursor + 1 .. Cursor + Item.Content_Length))
+               then
+                  Status := Invalid_Argument;
+                  return;
+               end if;
+               Cursor := Cursor + Item.Content_Length;
+            end if;
+            Current := Item.Next;
+         end loop;
+         if Current /= Null_Node or else Cursor /= Total then
+            return;
+         end if;
+         if Escape then
+            XML3_Text.Buffers.Escape_Special (Content, Result, Escaping);
+            case Escaping is
+               when XML3_Text.Buffers.Escaped => Status := Created;
+               when XML3_Text.Buffers.Invalid_Text => Status := Invalid_Argument;
+               when XML3_Text.Buffers.Escape_No_Memory => Status := No_Memory;
+               when XML3_Text.Buffers.Escape_Limit_Exceeded =>
+                  Status := Limit_Exceeded;
+            end case;
+         else
+            XML3_Text.Buffers.Duplicate (Content, Result);
+            Status := (if Result = System.Null_Address then No_Memory else Created);
+         end if;
+      end;
+   end Get_List_Content;
+
    procedure Get_Content
      (S : Store; Facade : System.Address;
       Result : out System.Address; Status : out Operation_Status)

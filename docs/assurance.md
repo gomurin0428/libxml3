@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,438 checks
-(1,204 flow and 11,234 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,477 checks
+(1,214 flow and 11,263 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -215,7 +215,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,438-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,477-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -370,6 +370,19 @@ Store/decoder の書かれた契約は proof 範囲ですが、C string conversi
 allocation/copy、ABI、diagnostic delivery と完全な public semantics は信頼境界です。通常、Unicode、
 reference、bounded input、guard-page、document lifetime、rollback は
 `tests/content-edit-test.c`、OOM retry は `tests/oom-test.c`、宣言は `tests/header-smoke.cpp` で検査します。
+
+`xmlNodeListGetRawString` は thin C adapter から Runtime の read-only query を呼び、
+`Store.Queries.Get_List_Content` が登録済み開始 facade と bounded sibling walk を扱います。
+Query は text/CDATA の raw bytes を一時文字列に連結し、`inLine != 0` では検証せず複製、
+`inLine == 0` では各 node の content を結合前に個別に UTF-8 検証し、連結後に
+XML 文字を検証して escape します。
+descendant traversal や DOM mutation はなく、`doc` は未使用です。NULL list は NULL、選択内容のない
+non-NULL list は独立した空文字列を返します。foreign facade は native metadata を読む前に拒否され、
+entity-reference node は subset 外です。SPARK の proof は query の bounded walk、サイズ算術、status/result
+契約を対象とします。C pointer readability、native byte reads/writes、allocation/copy/free、ABI と全 C semantics
+は信頼境界です。raw byte preservation、escaping/invalid split-UTF-8、sibling selection、empty result、
+foreign facade、OOM retry は `tests/dom-test.c` / `tests/oom-test.c`、宣言は
+`tests/header-smoke.cpp` で検査します。`xmlNodeListGetString` は未実装です。
 
 `xmlNodeIsText` / `xmlIsBlankNode` は `Runtime.Test_Node` / `Store.Queries.Test_Node`
 で kind と XML 空白を判定します。Runtime の `Global` は managed state / native memory

@@ -86,6 +86,13 @@ predefined/numeric reference だけを展開した独立の detached text node �
 未知/general entity や malformed reference は拒否し、entity-reference node は作成しません。
 正の長さは最初の NUL または指定長まで、負の長さは NUL 終端です。長さ 0 は入力を読まず
 NULL を返し、固定版の unsafe な先頭 byte read は再現しません。
+`xmlNodeListGetRawString` は managed な開始 node と next-sibling chain の直下だけを走査し、
+text/CDATA のみを連結します。descendant には降りず、他の node kind は飛ばします。`doc` は無視され、
+NULL list は NULL を返します。`inLine != 0` は UTF-8 検査なしで raw bytes をコピーし、
+`inLine == 0` は各 node の bytes を個別に UTF-8 検証し、連結後に XML 文字を検証して
+特殊文字を escape します。
+選択可能な text がない non-NULL list は独立した空文字列を返し、返却値は `xmlFree` で解放します。
+entity-reference node は未対応で、`xmlNodeListGetString` は未実装です。
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
 source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が

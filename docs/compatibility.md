@@ -319,6 +319,15 @@ reference、無効 UTF-8/XML は操作全体を拒否します。entity-referenc
 lock、Runtime dispatch、status/diagnostic mapping のみで、document 検査・decode・node 作成は SPARK
 Store/Runtime 側です。native pointer/byte validity、allocation/copy、ABI と完全な C semantics は
 信頼境界に残ります。
+`xmlNodeListGetRawString` は `doc` 引数を無視し、NULL list には NULL を返します。開始 list facade は
+Store の registered live node でなければならず、foreign pointer は native dereference 前に拒否します。
+開始 node と next-sibling chain の直下だけを進み、text/CDATA の content を順に連結します。
+descendant は走査せず、comment/element/PI 等は飛ばします。`inLine != 0` は raw bytes をそのまま保持し、
+UTF-8/XML 検査はしません。`inLine == 0` は各 content node を結合前に個別に UTF-8 検証し、
+連結後に XML 文字を検証して特殊文字を escape するため、node 境界で分割された不正 UTF-8 も拒否します。
+non-NULL list に選択対象の
+text/CDATA がなければ、独立した `xmlFree` 所有の空文字列を返します。entity-reference node は未対応で、
+`xmlNodeListGetString` は未実装です。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。

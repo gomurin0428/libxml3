@@ -120,6 +120,11 @@ package XML3_C is
      (Doc, Value : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStringGetNodeList";
 
+   function Node_List_Get_Raw_String
+     (Doc, List : System.Address; Inline_Value : Interfaces.C.int)
+     return System.Address
+     with Export, Convention => C, External_Name => "xmlNodeListGetRawString";
+
    function String_Len_Get_Node_List
      (Doc, Value : System.Address; Length : Interfaces.C.int)
      return System.Address

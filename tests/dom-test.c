@@ -22,6 +22,91 @@ static void assert_path(xmlNodePtr node, const char *expected) {
     xmlFree(path);
 }
 
+static void assert_raw_list(const xmlNode *list, int inline_value,
+                            const char *expected) {
+    xmlChar *value = xmlNodeListGetRawString(NULL, list, inline_value);
+    assert(value && strcmp((const char *)value, expected) == 0);
+    xmlFree(value);
+}
+
+static void test_raw_node_list(void) {
+    static const char input[] =
+        "<r>one&lt;&amp;\"&#13;\t\né<!--ignored--><e>nested</e>"
+        "<![CDATA[two<>]]><?p ignored?>tail</r>";
+    static const char expected[] = "one<&\"\r\t\nétwo<>tail";
+    static const char encoded[] = "one&lt;&amp;&quot;&#13;\t\nétwo&lt;&gt;tail";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlNodePtr root, first, restored, empty;
+    xmlAttrPtr attr;
+    xmlChar *raw, *escaped;
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    first = root->children;
+    assert(first && first->next && first->next->type == XML_COMMENT_NODE);
+    raw = xmlNodeListGetRawString((const xmlDoc *)1, first, -1);
+    escaped = xmlNodeListGetRawString(doc, first, 0);
+    assert(raw && escaped && raw != first->content);
+    assert(strcmp((const char *)raw, expected) == 0);
+    assert(strcmp((const char *)escaped, encoded) == 0);
+    assert_raw_list(first->next, 1, "two<>tail");
+    assert_raw_list(root, 0, "");
+    assert_raw_list(root->last, 1, "tail");
+    assert(xmlNodeListGetRawString(doc, NULL, 0) == NULL);
+    assert(xmlNodeListGetRawString(doc, NULL, 1) == NULL);
+    attr = xmlNewProp(root, BAD_CAST "a", BAD_CAST "A\"&\r\t\né");
+    assert(attr && attr->children);
+    assert_raw_list(attr->children, 1, "A\"&\r\t\né");
+    assert_raw_list(attr->children, 0, "A&quot;&amp;&#13;\t\né");
+    empty = xmlNewText(NULL);
+    assert(empty);
+    assert_raw_list(empty, 0, "");
+    assert_raw_list(empty, 1, "");
+    xmlFreeNode(empty);
+#ifndef XML3_REFERENCE_TEST
+    xmlUnlinkNode(root);
+    xmlFreeDoc(doc);
+    assert_raw_list(first, 0, encoded);
+    xmlFreeNode(root);
+#else
+    xmlFreeDoc(doc);
+#endif
+    assert(strcmp((const char *)raw, expected) == 0);
+    restored = xmlStringGetNodeList(NULL, escaped);
+    assert(restored);
+    xmlFree(escaped);
+    assert_text(restored, expected);
+    xmlFreeNodeList(restored);
+    xmlFree(raw);
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void test_raw_node_list_rejections(void) {
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr first = xmlNewText(BAD_CAST "\xC3");
+    xmlNodePtr second = xmlNewText(BAD_CAST "\xA9");
+    assert(root && first && second);
+    assert(xmlAddChild(root, first) == first);
+    assert(xmlAddNextSibling(first, second) == second);
+    assert(first->next == second);
+    assert_raw_list(first, 1, "é");
+    xmlResetLastError();
+    assert(xmlNodeListGetRawString(NULL, first, 0) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(root->children == first && root->last == second && first->next == second);
+    assert(xmlNodeSetContent(first, BAD_CAST "valid") == 0);
+    assert(xmlNodeSetContent(second, BAD_CAST " &") == 0);
+    assert_raw_list(first, 0, "valid &amp;");
+    assert(xmlNodeSetContent(first, BAD_CAST "\x01") == 0);
+    assert_raw_list(first, 1, "\x01 &");
+    assert(xmlNodeListGetRawString(NULL, first, 0) == NULL);
+    xmlResetLastError();
+    assert(xmlNodeListGetRawString(NULL, (const xmlNode *)1, 1) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlFreeNode(root);
+    xmlResetLastError();
+}
+#endif
+
 #ifndef XML3_REFERENCE_TEST
 static void assert_invalid_path(xmlNodePtr node) {
     xmlResetLastError();
@@ -1247,6 +1332,7 @@ static void test_release_list_lifetime_and_rejections(void) {
 #endif
 
 int main(void) {
+    test_raw_node_list();
     test_free_node_list();
     test_constructors_and_root_replacement();
     test_promote_descendant_to_root();
@@ -1259,6 +1345,7 @@ int main(void) {
     test_node_set_name();
 #ifndef XML3_REFERENCE_TEST
     test_node_set_name_rejections();
+    test_raw_node_list_rejections();
     test_node_path_rejections();
     test_sibling_rejections_and_lifetime();
     test_release_list_lifetime_and_rejections();
