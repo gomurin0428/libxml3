@@ -21,7 +21,7 @@ path, not a full URI or filesystem path: no percent/UTF-8 decoding, query or
 fragment parsing, backslash conversion, symlink handling or sandbox guarantee.
 Native readable/writable extents, stable input, byte values/effects, C ABI and
 complete normalization semantics remain trusted, not formally proved.
-GNATprove discharges 31 checks for `Normalize_URI_Path`, covering bounded
+GNATprove discharges 32 checks for `Normalize_URI_Path`, covering bounded
 measurement, segment/output arithmetic, in-place copy preconditions, loop
 termination and the status contract—not normalized byte equivalence or native
 memory effects.
@@ -147,7 +147,7 @@ managed list release through `Runtime.Release_List` / `Store.Release_List`,
 namespace-list traversal through
 `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` /
 `Collect_Namespaces`, namespace copying through `Runtime.Copy_Namespace` /
-`Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Prefix_Length`
+`Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Locate_Prefix`
 and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
 bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
 fresh-allocation appending through `XML3_Text.Buffers.Append`,
@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,874 checks
-(1,350 flow and 11,524 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,884 checks
+(1,355 flow and 11,529 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,874-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,884-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -640,11 +640,13 @@ NULLと判定不能な走査上限は-1、名前の不正は1、正常は0です
 native pointer readability/extent、byte effects、C ABI、status写像は証明外です。
 
 `xmlSplitQName2` / `xmlSplitQName3` は validation や namespace 解決ではなく、SPARK
-`XML3_Text.QNames.Prefix_Length` / `Split` はQName2のraw splitと独立したprefix/localコピー、
-終端byte、部分確保失敗時のcleanupを管理します。QName3は `Locate_Prefix` がコピーなしで
-入力を走査し、最初のcolonの次の1byteだけを確認してborrowed local suffixを返します。
-Cは成功時だけlength slotを更新し、走査上限はNULLと診断115へ写像します。通常は確保も
-診断変更もありません。後続colon、空白、不正UTF-8は検査せずraw bytesのままです。
+`XML3_Text.QNames.Locate_Prefix` が入力を直接走査し、最初のcolonの次の1byteだけを
+確認します。QName3はそのborrowed local suffixを返し、Cは成功時だけlengthを更新します。
+QName2の `Split` は共通検索後に `Buffers.Measure` の開始offsetを指定し、元入力からの
+上限を変えずlocalを計測します。既存の `Copy_Span` を共用してprefix/localをコピーし、
+2つ目の確保失敗ではprefixを解放し両出力をNULLに保ちます。C文字列の中間コピーはなく、
+走査上限はNULLと診断115、確保失敗はmemory診断へ写像します。通常は診断変更なしで、
+分割不能とQName3の成功時は確保不要です。後続colon、空白、不正UTF-8はraw bytesのままです。
 範囲・停止性・status契約は証明対象で、native pointer readability/extents、byte effects、
 allocator/copy、pointer arithmetic、C ABI、完全な分割意味論はtrusted/unprovedです。
 保護ページで先頭colon・NUL・最初のlocal byteで停止すること、借用先をコピーしてから
@@ -958,7 +960,7 @@ deliberate safe subset: unlike
 the pinned reference's zero for lengths above `INT_MAX`, an over-cap scan is
 diagnosed and must not be treated as an empty string. Tests exercise the
 helper with reduced `Last` values instead of constructing an enormous public
-C string. SPARK proves `Read_Length` (2 checks) and `Measure` (2 checks),
+C string. SPARK proves `Read_Length` (4 checks) and `Measure` (2 checks),
 including scan bounds, result/status contracts, and the native read
 precondition; actual bytes, foreign pointer validity/readable bounds,
 C-side mapping/exception behavior, and full semantics remain trusted. No
@@ -1218,7 +1220,7 @@ pointer that aliases it, including a raw suffix after an embedded NUL. This is
 an intentional safety difference from the reference's realloc path; always
 copying can increase peak memory and copy work. SPARK proves bounded length and
 size arithmetic, native-call preconditions, and the status/result contract
-(`Read_Length`: 2 checks, `Build_Append`: 14, `Append`: 1). Native allocation
+(`Read_Length`: 4 checks, `Build_Append`: 14, `Append`: 1). Native allocation
 freshness, actual reads/writes/free, pointer validity, correct caller
 ownership, C diagnostics/mapping, and complete API semantics remain trusted.
 Shared ordinary/null/empty/raw-span/negative/parse and guard-page cases run

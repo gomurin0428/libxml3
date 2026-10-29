@@ -3263,9 +3263,11 @@ package body XML3_C is
       if Name = System.Null_Address or else Prefix = System.Null_Address then
          return System.Null_Address;
       end if;
-      XML3_Text.QNames.Split (C_String_Value (Name), Prefix_Value, Local, Status);
+      XML3_Text.QNames.Split (Name, Prefix_Value, Local, Status);
       if Status = XML3_Text.QNames.No_Memory then
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+      elsif Status = XML3_Text.QNames.Split_Limit_Exceeded then
+         Report_Dom_Error (115);
       end if;
       Set_Address (Prefix, Prefix_Value);
       return Local;

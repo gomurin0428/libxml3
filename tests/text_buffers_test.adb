@@ -8,6 +8,7 @@ with XML3_Text.QNames;
 procedure Text_Buffers_Test is
    use type System.Address;
    use type XML3_Text.QNames.Prefix_Status;
+   use type XML3_Text.QNames.Split_Status;
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
@@ -29,6 +30,33 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_QName_Copy is
+      Input : aliased String := "p:x" & Character'Val (0);
+      Empty_Prefix : aliased String := ":";
+      Prefix, Local : System.Address;
+      Status : XML3_Text.QNames.Split_Status;
+   begin
+      XML3_Text.QNames.Split (System.Null_Address, Prefix, Local, Status, 0);
+      pragma Assert (Status = XML3_Text.QNames.No_Prefix and then
+        Prefix = System.Null_Address and then Local = System.Null_Address);
+      for Last in 0 .. 2 loop
+         XML3_Text.QNames.Split (Input'Address, Prefix, Local, Status, Last);
+         pragma Assert (Status = XML3_Text.QNames.Split_Limit_Exceeded and then
+           Prefix = System.Null_Address and then Local = System.Null_Address);
+      end loop;
+      XML3_Text.QNames.Split (Input'Address, Prefix, Local, Status, 3);
+      pragma Assert (Status = XML3_Text.QNames.Split_Done);
+      pragma Assert (XML3_Native_Memory.Byte_At (Prefix, 0) = 'p'
+        and then XML3_Native_Memory.Byte_At (Prefix, 1) = Character'Val (0)
+        and then XML3_Native_Memory.Byte_At (Local, 0) = 'x'
+        and then XML3_Native_Memory.Byte_At (Local, 1) = Character'Val (0));
+      XML3_Native_Memory.Free (Prefix);
+      XML3_Native_Memory.Free (Local);
+      XML3_Text.QNames.Split (Empty_Prefix'Address, Prefix, Local, Status, 0);
+      pragma Assert (Status = XML3_Text.QNames.No_Prefix and then
+        Prefix = System.Null_Address and then Local = System.Null_Address);
+   end Check_QName_Copy;
 
    procedure Check_QName_Prefix is
       Input : aliased String := "p:x";
@@ -615,6 +643,7 @@ begin
    Check_URI_Path;
    Check_Name_Values;
    Check_QName_Prefix;
+   Check_QName_Copy;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;

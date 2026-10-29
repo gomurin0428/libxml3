@@ -315,13 +315,14 @@ byte length を成功時だけ `int` 出力します。失敗時は length を�
 有効期間は original input と同じで、入力を書き換えると参照先も変わります。QName3 の suffix は
 解放せず、input が生存する間だけ使います。どちらも DOM/Store 状態を変更せず、stateless な C
 adapter は mutex を使いません。
-QName2 の bounded C-string conversion の上限超過・非 memory conversion error は既存の DOM error
-diagnostic、`Storage_Error` と QName2 の native allocation failure は既存の memory diagnostic
-に写像されます。QName3 は `QNames.Locate_Prefix` が直接入力を走査し、先頭コロンやNULで
+両方とも `QNames.Locate_Prefix` が直接入力を走査し、先頭コロンやNULで
 直ちに停止します。最初のコロンの次の1byteが非NULなら、local の残り・終端・UTF-8は読まず
-借用位置を返すため、C文字列のコピーは不要です。判定がつかない走査上限はNULLと診断115で、
+借用位置を返します。QName2はその後、localの終端まで元入力からの同じ上限内で計測し、
+既存の `Buffers.Copy_Span` でprefixとlocalを独立にコピーします。C文字列の中間コピーは
+不要です。2つ目の確保に失敗したらprefixを解放し、両出力をNULLに保ち、既存のmemory診断を
+報告します。判定不能な走査上限はNULLと診断115で、QName2のprefix出力はNULL、QName3の
 lengthは変更しません。上限は小さい `Last` のAda検査で確認し、巨大なC入力は構築していません。
-通常の成功・分割不能は確保も診断変更もありません。エラー診断経路は確保を伴う場合があります。
+通常は診断を変更せず、分割不能とQName3成功時は確保不要です。エラー診断経路は確保を伴う場合があります。
 native pointer readability/extents、byte effects、pointer/array ABI、完全な公開意味論は
 proof 範囲外です。Unicode test は library と
 固定版の両方で実行しますが、OOM allocation injection は libxml3 側だけで、固定版には実行しません。

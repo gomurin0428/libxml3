@@ -518,6 +518,9 @@ int main(int argc, char **argv) {
         assert(xmlSplitQName3(BAD_CAST ":", &length) == NULL && length == 1);
         assert(xmlSplitQName3(BAD_CAST "p:", &length) == NULL && length == 1);
         assert(xmlSplitQName3(NULL, &length) == NULL && length == 1);
+        xmlChar *unused = (xmlChar *)1;
+        assert(xmlSplitQName2(BAD_CAST ":ignored", &unused) == NULL && unused == NULL);
+        assert(xmlSplitQName2(BAD_CAST "name", &unused) == NULL && unused == NULL);
         assert(xml3_oom_count() == 0);
         assert(xmlGetLastError() && xmlGetLastError()->code == saved_error);
         xmlChar *local = xmlSplitQName2(input, &prefix);
