@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,833 checks, 1,326 by flow analysis and 11,507
+It completed successfully: **12,843 checks, 1,332 by flow analysis and 11,511
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -97,6 +97,15 @@ shared decoder. Its bounded native-name lookup proves 1 check for
 address effects are not formally proved. The public API remains partial and
 not-proved: C-string conversion, native pointer readability, C ABI, and
 complete entity semantics remain trusted boundaries.
+`xmlGetDocEntity` delegates to the analyzed
+`Runtime.Get_Document_Entity` (1 check) and
+`Store.Queries.Get_Document_Entity` (3 checks); its registration guard
+`Registered_Document` discharges 8 checks. A NULL name returns before document
+registration or name access; otherwise the Store query validates NULL or
+registered document facades before calling the already-bounded predefined
+lookup. This covers the SPARK query and its status/result contract, not C
+diagnostic mapping, C ABI, native name readability, static record layout or
+lifetime, byte contents, or complete public semantics.
 `xmlBuildQName` uses `XML3_Text.QNames.Build`, which proves the bounded output
 size, buffer-selection branches, and result/status contract (15 checks).
 Native allocation/writes, C-string conversion and pointer/ABI behavior remain
@@ -526,7 +535,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 485 entity
+The 487 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -560,13 +569,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 348 |
-| Initialization | 797 |
-| Runtime checks | 5,531 |
+| Data dependencies | 350 |
+| Initialization | 801 |
+| Runtime checks | 5,532 |
 | Assertions | 1,660 |
-| Functional contracts | 4,245 |
+| Functional contracts | 4,248 |
 | Termination | 252 |
-| **Total** | **12,833** |
+| **Total** | **12,843** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1122,11 +1131,11 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-bd36285316f142c5df9e5481dbf632a586ea49945ba55189bae3c2caf74d8bb5  src/xml3_c.adb
-45c0d7e0d6ed6d9ece148aa339d69a1fb13360857859aae5deb0916078285063  src/xml3_c.ads
+2f2bbeb21812971f476d4ca37a08b92ebe23675f7ea1ce794cdfcbe135110402  src/xml3_c.adb
+2520c6d82652adf69f178e5e37ac6251b55c22fbc562ce68efd9da9f53e4beb4  src/xml3_c.ads
 0b41a15610acc9c8439969f520a192d0939fadf9c7555797c6718c538a29abcd  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
-b420271837eaa9e280e3b5bec7e989614148a307dc900d0c6089356883e4e7f0  include/libxml/entities.h
+c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml/entities.h
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
 e8286ea54caf89b1bf0d7501530fb072eebfde5d16e24107096b0935748fbc6c  include/libxml/uri.h
 c627882f6a5e1fbaa14e99ac93231980994a550c2b25439581417c0c4fd40dc8  src/xml3_dom-import.adb
@@ -1144,16 +1153,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-725ab2e87e4448c90c8011eea813e4f4cae1d83725d3e8aecdfe1079f6109248  src/xml3_dom_runtime.adb
-2e2745843fd4f116d3caef8d8801048857dfeaffcbefda099c43c2a30c74c76f  src/xml3_dom_runtime.ads
+40ca5f4dbef64b792e5fb42c8feec378c13da28c636310d789d8a04c4aa1bbe0  src/xml3_dom_runtime.adb
+52a484c26f9269732983ad798dffbf8dd6ef350d9ef22dca0a5e60f678c709c5  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-88da1b2b81938c2da0919af63c70230126c9bd381d195185c404f811cc14f31f  src/xml3_dom_store-queries.adb
-e12002da8b15896931e1f1cb047e54cd53373fb4651c64d2a8847dab2d6da996  src/xml3_dom_store-queries.ads
+834ec74ad048496a5ae842850b190393ade6a5c675d671962db4337354fc67aa  src/xml3_dom_store-queries.adb
+d83a6c0e1625a9d2fcdae3d1ca016191ce08fd905e231912d74af0f9c44adcde  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 c58013fd806a30acb401ec56d6f6cf17010e026440b258e129b2a27bf574b302  src/xml3_dom_store.adb
@@ -1181,7 +1190,7 @@ f926fe9eb41c64f75af97d6cd173121478a7840ae0723c89c5c490f30f9f83e3  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-afa013f97863557b729ce5d04ebda9fbec3bcd002c0f70c3efe08eece51d9869  Makefile
+515cdf5c6f13eefb0df6100042a1144e1202dcbdd78abc5c35611b24241892e2  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

@@ -432,6 +432,15 @@ is
            (Current, Facade, Escape, Result, Status, Doc, Default_Entities);
       end Get_List_Content;
 
+      procedure Get_Document_Entity
+        (Document, Name : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Queries.Get_Document_Entity
+           (Current, Document, Name, Result, Status);
+      end Get_Document_Entity;
+
       procedure Encode_Entities
         (Document : System.Address; Input : String; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

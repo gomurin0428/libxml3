@@ -10,7 +10,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 ## ヘッダーと API
 
 `libxml/entities.h` は `xmlEncodeSpecialChars`、`xmlEncodeEntitiesReentrant`、
-`xmlGetPredefinedEntity` を公開します。`xmlEncodeSpecialChars` の文書引数は
+`xmlGetPredefinedEntity`、`xmlGetDocEntity` を公開します。`xmlEncodeSpecialChars` の文書引数は
 固定版と同じく未使用です。NULL入力は診断なしでNULL、空入力は独立した空文字列を
 返します。`<`・`>`・`&`・二重引用符を定義済み実体参照、CRを `&#13;` に置換し、
 apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参照も通常の文字列として
@@ -849,6 +849,12 @@ borrowed data で、呼び出し側は free、mutation、link、managed-DOM edit
 entity loading、editable entity node はありません。public enum と record layout の宣言は
 これら未実装の entity kind を有効にしません。native pointer readability、byte effects、
 layout、lifetime、C ABI、完全な public C semantics は trusted または未証明です。
+`xmlGetDocEntity` は DTD のない対応 document または NULL に限り、同じ定義済み実体を
+返します。一般実体や外部 subset を黙って読み飛ばす実装ではなく、DTD の作成・読み込み
+自体が未対応です。NULL name は document を調べず NULL を返します。non-NULL name では
+SPARK の登録情報で document を先に確認し、不正・異種の pointer は直接参照せず
+診断 115 と NULL で拒否します。この場合 name も読みません。正常な検索・不一致は
+確保せず診断を保持し、返却データの寿命・借用制約は `xmlGetPredefinedEntity` と同じです。
 名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
 単一 prefix/local-name 組だけを受理し、prefix は宣言済みでなければなりません。
 無効な QName、予約 namespace binding、未束縛 prefix、または同じ expanded

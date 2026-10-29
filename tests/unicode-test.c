@@ -2405,6 +2405,84 @@ static void test_predefined_entities(void) {
     xmlInitParser();
 }
 
+static void test_document_entities(void) {
+    static const char *names[] = {"lt", "gt", "amp", "apos", "quot"};
+    const char expected[] = "<>&'\"";
+    xmlEntityPtr entities[5];
+    xmlDocPtr doc = xmlReadMemory("<root/>", 7, NULL, NULL, 0);
+    assert(doc != NULL);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root != NULL);
+    for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i) {
+        entities[i] = xmlGetDocEntity(doc, BAD_CAST names[i]);
+        assert(entities[i] == xmlGetPredefinedEntity(BAD_CAST names[i]));
+        assert(entities[i] != NULL);
+        assert(xmlGetDocEntity(NULL, BAD_CAST names[i]) == entities[i]);
+        xmlNodePtr text = xmlNewText(entities[i]->content);
+        assert(text != NULL && xmlAddChild(root, text) != NULL);
+    }
+
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky != NULL);
+    int code = sticky->code;
+    const char *message = sticky->message;
+    assert(xmlGetDocEntity(doc, BAD_CAST "amp") == entities[2]);
+    assert(xmlGetDocEntity(doc, BAD_CAST "custom") == NULL);
+    assert(xmlGetDocEntity(doc, BAD_CAST "AMP") == NULL);
+    assert(xmlGetDocEntity(doc, BAD_CAST "") == NULL);
+    assert(xmlGetDocEntity(doc, NULL) == NULL);
+    assert(xmlGetDocEntity(NULL, NULL) == NULL);
+#ifndef XML3_REFERENCE_VERSION
+    assert(xmlGetDocEntity((xmlDocPtr)1, NULL) == NULL);
+#endif
+    assert(xmlGetLastError() == sticky && sticky->code == code);
+    assert(sticky->message == message);
+    xmlResetLastError();
+
+#ifndef XML3_REFERENCE_VERSION
+    assert(xmlGetDocEntity((xmlDocPtr)root, BAD_CAST "amp") == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    assert(xmlGetDocEntity((xmlDocPtr)1, (const xmlChar *)1) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+#endif
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    memcpy(mapping + page - 4, "amp", 4);
+    assert(xmlGetDocEntity(doc, BAD_CAST (mapping + page - 4)) == entities[2]);
+#ifndef XML3_REFERENCE_VERSION
+    assert(xmlGetDocEntity((xmlDocPtr)(mapping + page),
+                           BAD_CAST (mapping + page)) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
+
+    xmlChar *serialized = NULL;
+    int size = 0;
+    xmlDocDumpMemory(doc, &serialized, &size);
+    assert(serialized != NULL && size > 0);
+    xmlFreeDoc(doc);
+    for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i)
+        assert(entities[i]->content[0] == (xmlChar)expected[i]);
+    xmlDocPtr parsed = xmlReadMemory((const char *)serialized, size, NULL, NULL, 0);
+    assert(parsed != NULL);
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(parsed));
+    assert(content != NULL && strcmp((const char *)content, expected) == 0);
+    assert(xmlGetDocEntity(parsed, BAD_CAST "amp") == entities[2]);
+    xmlFree(content);
+    xmlFreeDoc(parsed);
+    xmlFree(serialized);
+}
+
 int main(void) {
     test_uri_paths();
     test_uri_unescaping();
@@ -2448,5 +2526,6 @@ int main(void) {
     test_qname_splitting();
     test_qname_building();
     test_predefined_entities();
+    test_document_entities();
     puts("Unicode name tests passed");
 }

@@ -268,6 +268,11 @@ is
         with Global => (Input => Managed,
                         In_Out => XML3_Native_Memory.Foreign_Memory);
 
+      procedure Get_Document_Entity
+        (Document, Name : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (Input => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Encode_Entities
         (Document : System.Address; Input : String; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

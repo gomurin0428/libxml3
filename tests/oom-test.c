@@ -2053,6 +2053,20 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "document-entity") == 0) {
+        xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+        assert(doc != NULL);
+        xml3_oom_enable(fail_index);
+        assert(xmlGetDocEntity(doc, BAD_CAST "amp") != NULL);
+        assert(xmlGetDocEntity(NULL, BAD_CAST "lt") != NULL);
+        assert(xmlGetDocEntity(doc, BAD_CAST "missing") == NULL);
+        assert(xmlGetDocEntity(doc, NULL) == NULL);
+        assert(xmlGetDocEntity(NULL, NULL) == NULL);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        xmlFreeDoc(doc);
     } else if (strcmp(operation, "predefined-entity") == 0) {
         static const char *names[] = {"lt", "gt", "amp", "apos", "quot"};
         xml3_oom_enable(fail_index);
@@ -2340,6 +2354,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "predefined-entity") == 0) {
         puts("predefined entity lookup used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "document-entity") == 0) {
+        puts("valid document entity queries used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

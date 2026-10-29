@@ -40,6 +40,7 @@ struct _xmlEntity {
 };
 
 xmlEntity *xmlGetPredefinedEntity(const xmlChar *name);
+xmlEntity *xmlGetDocEntity(const xmlDoc *doc, const xmlChar *name);
 xmlChar *xmlEncodeSpecialChars(const xmlDoc *doc, const xmlChar *input);
 xmlChar *xmlEncodeEntitiesReentrant(xmlDoc *doc, const xmlChar *input);
 
