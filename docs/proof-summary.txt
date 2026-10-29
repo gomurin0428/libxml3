@@ -6,16 +6,16 @@ SPARK Analysis results        Total         Flow                                
 ---------------------------------------------------------------------------------------------------------------
 Data Dependencies               304          304                                       .           .          .
 Flow Dependencies                 .            .                                       .           .          .
-Initialization                  664          664                                       .           .          .
+Initialization                  666          666                                       .           .          .
 Non-Aliasing                      .            .                                       .           .          .
-Run-time Checks                5319            .      5319 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
-Assertions                     1621            .    1621 (CVC5 67%, Trivial 11%, Z3 22%)           .          .
+Run-time Checks                5326            .      5326 (CVC5 95%, Trivial 0%, Z3 5%)           .          .
+Assertions                     1623            .    1623 (CVC5 67%, Trivial 11%, Z3 22%)           .          .
 Functional Contracts           3950            .     3950 (CVC5 70%, Trivial 2%, Z3 28%)           .          .
 LSP Verification                  .            .                                       .           .          .
-Termination                     210          153                    57 (CVC5 98%, Z3 2%)           .          .
+Termination                     211          153                    58 (CVC5 98%, Z3 2%)           .          .
 Concurrency                       .            .                                       .           .          .
 ---------------------------------------------------------------------------------------------------------------
-Total                         12068    1121 (9%)                             10947 (91%)           .          .
+Total                         12080    1123 (9%)                             10957 (91%)           .          .
 
 
 max steps used for successful proof: 68245
@@ -412,34 +412,35 @@ in unit xml3_parser, 15 subprograms and packages out of 15 analyzed
   XML3_Parser.Parse.Skip_Space at xml3_parser.adb:216 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
   XML3_Parser.Parse.Validate_Value at xml3_parser.adb:314 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
   XML3_Parser.Space at xml3_parser.adb:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-in unit xml3_serialization, 27 subprograms and packages out of 27 analyzed
+in unit xml3_serialization, 28 subprograms and packages out of 28 analyzed
   XML3_Serialization at xml3_serialization.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Serialization.Equal_Bytes at xml3_serialization.adb:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Serialization.Is_UTF8 at xml3_serialization.adb:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Serialization.Equal_Bytes at xml3_serialization.adb:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Serialization.Is_UTF8 at xml3_serialization.adb:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_Serialization.Render at xml3_serialization.ads:13 flow analyzed (0 errors, 0 checks, 6 warnings and 0 pragma Assume statements) and proved (9 checks)
-  XML3_Serialization.Render.Add at xml3_serialization.adb:97 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Serialization.Render.Child_Link_Valid at xml3_serialization.adb:523 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Serialization.Render.Contains_Pair at xml3_serialization.adb:193 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Serialization.Render.Emit_Text at xml3_serialization.adb:311 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
-  XML3_Serialization.Render.Equal_ASCII_Case_Insensitive at xml3_serialization.adb:158 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Serialization.Render.Equal_ASCII_Case_Insensitive.Fold_ASCII at xml3_serialization.adb:162 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Serialization.Render.In_Scope at xml3_serialization.adb:365 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Serialization.Render.Name_Namespace_Valid at xml3_serialization.adb:449 flow analyzed (0 errors, 0 checks, 4 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_Serialization.Render.Node_Is_Live at xml3_serialization.adb:145 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Serialization.Render.Pass at xml3_serialization.adb:904 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
-  XML3_Serialization.Render.Put at xml3_serialization.adb:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Serialization.Render.Put_Byte at xml3_serialization.adb:126 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_Serialization.Render.Put_Name at xml3_serialization.adb:566 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_Serialization.Render.Put_Namespaces at xml3_serialization.adb:624 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Serialization.Render.Put_Node at xml3_serialization.adb:796 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
-  XML3_Serialization.Render.Put_Properties at xml3_serialization.adb:697 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Serialization.Render.Put_Source at xml3_serialization.adb:563 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Serialization.Render.Same_Expanded_Name at xml3_serialization.adb:490 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Serialization.Render.Scalar_Width at xml3_serialization.adb:211 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
-  XML3_Serialization.Render.Valid_Name at xml3_serialization.adb:270 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
-  XML3_Serialization.Render.Valid_Namespace_Value at xml3_serialization.adb:420 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Serialization.Render.Valid_Text at xml3_serialization.adb:248 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Serialization.Same_Bytes at xml3_serialization.adb:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Serialization.Render.Add at xml3_serialization.adb:99 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Serialization.Render.Child_Link_Valid at xml3_serialization.adb:563 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Serialization.Render.Contains_Pair at xml3_serialization.adb:195 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Serialization.Render.Emit_Text at xml3_serialization.adb:336 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_Serialization.Render.Equal_ASCII_Case_Insensitive at xml3_serialization.adb:160 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Serialization.Render.Equal_ASCII_Case_Insensitive.Fold_ASCII at xml3_serialization.adb:164 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Serialization.Render.In_Scope at xml3_serialization.adb:405 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Serialization.Render.Name_Namespace_Valid at xml3_serialization.adb:489 flow analyzed (0 errors, 0 checks, 4 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Serialization.Render.Node_Is_Live at xml3_serialization.adb:147 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Serialization.Render.Pass at xml3_serialization.adb:946 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
+  XML3_Serialization.Render.Put at xml3_serialization.adb:109 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_Serialization.Render.Put_Byte at xml3_serialization.adb:128 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Serialization.Render.Put_Character_Reference at xml3_serialization.adb:313 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_Serialization.Render.Put_Name at xml3_serialization.adb:606 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Serialization.Render.Put_Namespaces at xml3_serialization.adb:664 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_Serialization.Render.Put_Node at xml3_serialization.adb:837 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_Serialization.Render.Put_Properties at xml3_serialization.adb:737 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_Serialization.Render.Put_Source at xml3_serialization.adb:603 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Serialization.Render.Same_Expanded_Name at xml3_serialization.adb:530 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Serialization.Render.Scalar_Width at xml3_serialization.adb:213 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
+  XML3_Serialization.Render.Valid_Name at xml3_serialization.adb:272 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_Serialization.Render.Valid_Namespace_Value at xml3_serialization.adb:460 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Serialization.Render.Valid_Text at xml3_serialization.adb:250 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Serialization.Same_Bytes at xml3_serialization.adb:31 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
 in unit xml3_text, 9 subprograms and packages out of 9 analyzed
   XML3_Text at xml3_text.ads:1 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text.Decode at xml3_text.ads:40 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (82 checks)

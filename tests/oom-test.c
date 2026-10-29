@@ -1642,30 +1642,41 @@ int main(int argc, char **argv) {
         }
         assert(escaped && strcmp((const char *)escaped, expected) == 0);
         xmlFree(escaped);
-    } else if (strcmp(operation, "serialization") == 0) {
-        static const char input[] = "<r a='v'>text</r>";
+    } else if (strcmp(operation, "serialization") == 0 ||
+               strcmp(operation, "serialization-default") == 0 ||
+               strcmp(operation, "serialization-null-encoding") == 0) {
+        int wrapper = strcmp(operation, "serialization-default") == 0;
+        int implicit = strcmp(operation, "serialization") != 0;
+        const char *encoding = implicit ? NULL : "UTF-8";
+        const char *input = implicit ? "<r a='名'>é</r>" : "<r a='v'>text</r>";
         xmlNodePtr root;
         xmlChar *memory = (xmlChar *)1;
         int size = 77;
 
-        doc = xmlReadMemory(input, (int)sizeof(input) - 1, NULL, NULL, 0);
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
         assert(doc != NULL);
         root = xmlDocGetRootElement(doc);
         assert(root != NULL && root->properties != NULL);
         xml3_oom_enable(fail_index);
-        xmlDocDumpMemoryEnc(doc, &memory, &size, "UTF-8");
+        if (wrapper) xmlDocDumpMemory(doc, &memory, &size);
+        else xmlDocDumpMemoryEnc(doc, &memory, &size, encoding);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         if (injected) {
             assert(memory == NULL && size == 0);
             require_oom_error();
-        } else {
-            assert(memory != NULL && size > 0);
-            xmlFree(memory);
+            if (wrapper) xmlDocDumpMemory(doc, &memory, &size);
+            else xmlDocDumpMemoryEnc(doc, &memory, &size, encoding);
         }
-        assert(strcmp((const char *)root->properties->children->content, "v") == 0);
-        assert(strcmp((const char *)root->children->content, "text") == 0);
+        assert(memory != NULL && size > 0 && memory[size] == 0);
+        if (implicit) assert(strcmp((const char *)memory,
+            "<?xml version=\"1.0\"?>\n<r a=\"&#x540D;\">&#xE9;</r>\n") == 0);
+        xmlFree(memory);
+        assert(strcmp((const char *)root->properties->children->content,
+                      implicit ? "名" : "v") == 0);
+        assert(strcmp((const char *)root->children->content,
+                      implicit ? "é" : "text") == 0);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");

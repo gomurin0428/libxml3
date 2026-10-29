@@ -238,7 +238,8 @@ is
       procedure Dump_Memory_Encoding
         (Document : System.Address; Encoding : String;
          Result : out System.Address; Length : out Natural;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Default_Encoding : Boolean := False)
         with Global =>
           (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
 

@@ -1,5 +1,6 @@
 with XML3_Namespaces;
 with XML3_Text;
+with XML3_Text.Buffers;
 
 package body XML3_Serialization with SPARK_Mode is
    package Native renames XML3_Native_Memory;
@@ -85,7 +86,8 @@ package body XML3_Serialization with SPARK_Mode is
      (Tree : XML3_DOM.State; Document : XML3_DOM.Node_Ref;
       Encoding : String; Result : out System.Address;
       Length : out Natural;
-      Status : out XML3_DOM_Constructors.Construction_Status)
+      Status : out XML3_DOM_Constructors.Construction_Status;
+      Default_Encoding : Boolean := False)
    is
       Cursor : Natural := 0;
       Capacity : Natural := Max_Output_Bytes;
@@ -308,13 +310,39 @@ package body XML3_Serialization with SPARK_Mode is
          return not Initial;
       end Valid_Name;
 
+      procedure Put_Character_Reference (Code : Natural) is
+         Hex : constant String := "0123456789ABCDEF";
+         Buffer : String (1 .. 6) := (others => '0');
+         First : Positive := Buffer'Last;
+         Value : Natural := Code;
+      begin
+         loop
+            pragma Loop_Invariant (First in Buffer'Range);
+            pragma Loop_Variant (Decreases => Value);
+            Buffer (First) := Hex ((Value mod 16) + 1);
+            Value := Value / 16;
+            exit when Value = 0;
+            if First = Buffer'First then
+               Good := False;
+               return;
+            end if;
+            First := First - 1;
+         end loop;
+         Put ("&#x");
+         Put (Buffer (First .. Buffer'Last));
+         Put (";");
+      end Put_Character_Reference;
+
       procedure Emit_Text
         (Source : System.Address; Source_Length : Natural;
-         Attribute : Boolean; Uri : Boolean)
+         Attribute : Boolean; Uri : Boolean;
+         Escape_Non_ASCII : Boolean)
       is
          I : Natural := 0;
          W : Natural;
          C : Character;
+         Code : Integer;
+         Decoded : Natural;
       begin
          if Source_Length = 0 then
             return;
@@ -351,6 +379,18 @@ package body XML3_Serialization with SPARK_Mode is
                W := Scalar_Width (Source, Source_Length, I);
                if W = 0 or else W > Source_Length - I then
                   Good := False;
+               elsif Default_Encoding and then Escape_Non_ASCII
+                 and then W > 1
+               then
+                  XML3_Text.Buffers.Get_UTF8_Char
+                    (Native.Offset (Source, Native.Byte_Count (I)), W,
+                     Code, Decoded);
+                  if Code < 0 or else Decoded /= W then
+                     Good := False;
+                  else
+                     Put_Character_Reference (Natural (Code));
+                  end if;
+                  I := I + W;
                else
                   for J in 0 .. W - 1 loop
                      pragma Loop_Invariant (J < W);
@@ -603,7 +643,7 @@ package body XML3_Serialization with SPARK_Mode is
          then
             Good := False;
          else
-            Emit_Text (Item.Name, Item.Name_Length, False, False);
+            Emit_Text (Item.Name, Item.Name_Length, False, False, False);
          end if;
       end Put_Name;
 
@@ -681,7 +721,7 @@ package body XML3_Serialization with SPARK_Mode is
                Put_Source (Item.Prefix, Item.Prefix_Length);
             end if;
             Put ("=""");
-            Emit_Text (Item.Href, Item.Href_Length, True, True);
+            Emit_Text (Item.Href, Item.Href_Length, True, True, True);
             Put ("""");
             Previous := Ns;
             Last := Ns;
@@ -774,7 +814,8 @@ package body XML3_Serialization with SPARK_Mode is
                   Good := False;
                   return;
                end if;
-               Emit_Text (Child.Content, Child.Content_Length, True, False);
+               Emit_Text
+                 (Child.Content, Child.Content_Length, True, False, True);
                Child_Previous := Child_Ref;
                Child_Ref := Child.Next;
             end loop;
@@ -831,7 +872,8 @@ package body XML3_Serialization with SPARK_Mode is
                if not Valid_Text (Item.Content, Item.Content_Length) then
                   Good := False;
                else
-                  Emit_Text (Item.Content, Item.Content_Length, False, False);
+                  Emit_Text
+                    (Item.Content, Item.Content_Length, False, False, True);
                end if;
             when CData_Node =>
                if (Item.Content_Length > 0
@@ -917,9 +959,11 @@ package body XML3_Serialization with SPARK_Mode is
          D := Node (Tree, Document);
          Current := D.First_Child;
          Put ("<?xml version=""");
-         Emit_Text (D.Content, D.Content_Length, True, False);
-         Put (""" encoding=""");
-         Put (Encoding);
+         Emit_Text (D.Content, D.Content_Length, True, False, False);
+         if not Default_Encoding then
+            Put (""" encoding=""");
+            Put (Encoding);
+         end if;
          Put ("""?>");
          Put_Byte (Character'Val (10));
          if (D.First_Child = Null_Node) /= (D.Last_Child = Null_Node) then
@@ -1030,7 +1074,7 @@ package body XML3_Serialization with SPARK_Mode is
       Result := System.Null_Address;
       Length := 0;
       Status := Invalid_Argument;
-      if not Is_UTF8 (Encoding)
+      if (not Default_Encoding and then not Is_UTF8 (Encoding))
         or else Document = Null_Node
         or else Document > Node_Ref (Capacity_Of (Tree))
         or else Document > Node_Ref (Node_Count (Tree))

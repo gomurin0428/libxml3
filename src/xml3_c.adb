@@ -776,6 +776,13 @@ package body XML3_C is
          return System.Null_Address;
    end New_Doc;
 
+   procedure Doc_Dump_Memory
+     (Document, Memory, Size : System.Address)
+   is
+   begin
+      Doc_Dump_Memory_Enc (Document, Memory, Size, System.Null_Address);
+   end Doc_Dump_Memory;
+
    procedure Doc_Dump_Memory_Enc
      (Document, Memory, Size, Encoding : System.Address)
    is
@@ -788,7 +795,6 @@ package body XML3_C is
       Set_Status (Size, 0);
       if Document = System.Null_Address
         or else Memory = System.Null_Address
-         or else Encoding = System.Null_Address
       then
          Report_Dom_Error (115);
          return;
@@ -799,7 +805,8 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Dump_Memory_Encoding
-           (Document, Encoding_Text, Result, Length, Status);
+           (Document, Encoding_Text, Result, Length, Status,
+            Default_Encoding => Encoding = System.Null_Address);
       end;
       if Status = XML3_DOM_Constructors.Created then
          Set_Address (Memory, Result);
