@@ -1096,9 +1096,10 @@
   },
   "function:xmlstring.h:xmlStrncatNew": {
     "implementation": "partial",
-    "scope": "Copies the NUL-terminated left prefix plus the effective right byte span into a new xmlFree-owned, NUL-terminated allocation. Negative length uses the right NUL-terminated length; NULL left delegates to bounded duplication, while NULL right or zero effective length with non-NULL left copies the left. Positive spans preserve embedded NUL and raw bytes. Combined-size limits are checked before reading a positive right span. C conversion, native pointer validity, allocation, writes, and full API semantics remain outside proof.",
+    "scope": "Direct bounded SPARK concatenation without C-string conversion into a new xmlFree-owned NUL-terminated allocation. Negative length measures the right terminator; NULL left gives bounded duplication, NULL right or zero effective length copies a non-NULL left. Positive spans preserve embedded NUL and raw bytes. Right length is obtained first, left measurement uses the remaining cap, and oversized positive lengths fail before either read. Copy_Pair is shared with consuming append, but this API never consumes or modifies inputs. Native pointer validity/extents, allocation, byte effects, ABI and complete semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
       "tests/oom-test.c",
       "tests/header-smoke.cpp"
     ],

@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,895 checks, 1,361 by flow analysis and 11,534
+It completed successfully: **12,909 checks, 1,368 by flow analysis and 11,541
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -500,13 +500,18 @@ sentinels, exact-width guard pages, ignored-`len` values, sticky-error
 preservation, and no-allocation behavior are tested; the C adapters and native
 writes remain outside the proof.
 
-`xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` for a bounded
-sum and status/result contract. The adapter checks a positive right-hand span
-before converting it, and maps the reference's negative-length and NULL-input
-cases. SPARK proves sizing, range checks and native-call preconditions; C
-conversion, native allocation, pointer validity, actual byte contents and ABI
-remain trusted. Raw-byte and edge-case comparisons run against the pinned
-reference; over-limit and OOM cases are libxml3-only.
+`xmlStrncatNew` uses `XML3_Text.Buffers.Concatenate_Bytes` directly without
+C-string conversion. It obtains the effective right length first, then measures
+the left under the remaining cap. Excessive positive lengths fail before reading
+either input; a combined overflow fails before copying the right span.
+`Concatenate_Bytes` proves 6 checks and `Copy_Pair` proves 9 checks. `Copy_Pair`
+shares fresh allocation and raw-span copying with `Build_Append`,
+but this API never frees its inputs. The String-based `Concatenate`/`Fits`
+remain available for Ada `Duplicate`. Scalar bounds and written contracts are
+checked; native allocation, pointer validity/readable extents, actual bytes and
+effects, ABI and complete public semantics remain outside proof. Raw-byte,
+guard-page and lifecycle cases run against the pinned reference; bounded-failure
+and OOM cases are libxml3-only.
 `xmlStrcat` and `xmlStrncat` use `XML3_Text.Buffers.Append`, whose
 `Read_Length`/`Build_Append` helpers scan bounded lengths, allocate a fresh
 result, copy the selected raw-byte spans and append NUL. `Append` frees the old
@@ -525,7 +530,7 @@ scan reports DOM error 115. `xmlStrncat` rejects lengths above the cap before
 reading either source. Cap failures return diagnostic NULL and consume `cur`;
 OOM uses the existing diagnostic and also consumes `cur`. SPARK proves
 `Read_Length` (4 checks),
-`Build_Append` (14), `Append` (1), bounded arithmetic, native-call
+`Build_Append` (6), `Concatenate_Bytes` (6), `Copy_Pair` (9), `Append` (1), bounded arithmetic, native-call
 preconditions, and status/result contracts; actual native reads/writes,
 allocation freshness/free, pointer validity, caller ownership, C mapping, and
 complete API semantics remain trusted. Shared ordinary/null/empty/raw-span/
@@ -567,7 +572,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 493 entity
+The 495 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -601,13 +606,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 356 |
-| Initialization | 820 |
-| Runtime checks | 5,537 |
+| Data dependencies | 358 |
+| Initialization | 824 |
+| Runtime checks | 5,538 |
 | Assertions | 1,662 |
-| Functional contracts | 4,263 |
-| Termination | 257 |
-| **Total** | **12,895** |
+| Functional contracts | 4,269 |
+| Termination | 258 |
+| **Total** | **12,909** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1163,7 +1168,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-53b62692c1c545c1d6e8fb69259e6f2aa1cf2c07945beba961eaa2401109d791  src/xml3_c.adb
+8574dc393eaeff72e125db8e5f8897ae9635d3877348f76a676b912464847e01  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1217,13 +1222,13 @@ eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
-b4549718e28f7cc64ae737f9cc213857976e6d976aa09e4e50f5d2bb4b00b3bd  src/xml3_text-buffers.adb
-cf6a70a56ac26875b7d5f770698c05ffc294ca968ae5d53472fc5b615ba12a28  src/xml3_text-buffers.ads
+97b2fb0a8624e1babd13f6e7296f1228f7a9c9fdd619159e0df1611169405aa7  src/xml3_text-buffers.adb
+293ada7da2cc039ca836103d61d6c581ce0c221272348cbe2c4a70be84be2092  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-bb27afebc699792c1476afd67f3c680c47606ee63c92063ae933dac79ff5b91c  Makefile
+e4b95d9c35f54ffe34b28b1ad6f97f12cf99b6c8dc8b1db122246b2ba27dfe1e  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

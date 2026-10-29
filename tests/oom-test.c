@@ -326,12 +326,15 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
-    } else if (strcmp(operation, "strncat-new") == 0) {
+    } else if (strcmp(operation, "strncat-new") == 0 ||
+               strcmp(operation, "strncat-new-empty") == 0) {
+        int empty = strcmp(operation, "strncat-new-empty") == 0;
         xmlChar left[] = "L", right[] = {'a', 0, 'b', 0xff};
         const xmlChar expected[] = {'L', 'a', 0, 'b', 0xff, 0};
         xml3_oom_enable(fail_index);
         assert(!xmlStrncatNew(NULL, NULL, -1) && xml3_oom_count() == 0);
-        xmlChar *copy = xmlStrncatNew(left, right, sizeof(right));
+        xmlChar *copy = xmlStrncatNew(empty ? NULL : left, right,
+                                     empty ? 0 : (int)sizeof(right));
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -339,13 +342,15 @@ int main(int argc, char **argv) {
             assert(!copy);
             require_oom_error();
         } else {
-            assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+            assert(copy && (empty ? copy[0] == 0 :
+                           memcmp(copy, expected, sizeof(expected)) == 0));
         }
         xmlFree(copy);
         assert(left[0] == 'L' && left[1] == 0);
         assert(right[0] == 'a' && right[1] == 0 && right[2] == 'b' && right[3] == 0xff);
-        copy = xmlStrncatNew(left, right, sizeof(right));
-        assert(copy && memcmp(copy, expected, sizeof(expected)) == 0);
+        copy = xmlStrncatNew(empty ? NULL : left, right, empty ? 0 : (int)sizeof(right));
+        assert(copy && (empty ? copy[0] == 0 :
+                       memcmp(copy, expected, sizeof(expected)) == 0));
         xmlFree(copy);
     } else if (strcmp(operation, "utf8-strsub") == 0) {
         const xmlChar source[] = "A名\xf0\x9f\x98\x80";

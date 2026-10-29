@@ -781,10 +781,13 @@ checkはlibxml3-onlyです。SPARKはloop bounds、result range、native precond
 `str1 == NULL` なら `xmlStrndup` 相当、非NULLの `str1` ではNULLの `str2` または
 有効長0なら `str1` の複製、それ以外では `str1` と `str2` の指定byte spanを連結します。
 正の長さでは埋め込みNULや部分UTF-8もそのままコピーし、入力は変更しません。
-返却値は `xmlFree` で解放してください。変換入力と合計長は `Max_Input` 以下に制限し、
-合計上限超過では正の右側spanを読む前に拒否します。pinned reference build も共通の
+返却値は `xmlFree` で解放してください。SPARKの `Concatenate_Bytes` が直接計測・コピーし、
+C文字列の中間コピーは不要です。右側の有効長を先に決め、残りの `Max_Bytes` 上限内で左側を
+計測します。合計上限超過では正の右側spanを読む前に拒否し、右側の指定長だけで上限を超える
+場合は両入力を読みません。`Copy_Pair` は消費型の追記とも共有しますが、このAPIは失敗時も
+入力を解放・変更しません。pinned reference build も共通の
 文字列テストを実行し、上限超過・OOM注入はlibxml3-onlyで検査します。
-native pointer、読み取り可能性、C conversion、allocation、byte writes、ABIは信頼境界です。
+native pointer、読み取り可能性、allocation、byte reads/writes、ABI、完全な公開意味論は信頼境界です。
 `xmlStrcat` / `xmlStrncat` はno-op以外で `cur` を消費します。`cur` はNULLまたは呼び出し側所有の
 `xmlFree` 互換allocationの先頭に限り、literalやDOMから借りたpointerは渡せません。消費する呼び出し後に
 旧 `cur` を使ったり解放したりしてはいけません。`xmlStrcat` は `add` のNUL終端byte列を追加し、

@@ -2999,25 +2999,8 @@ package body XML3_C is
       Result : System.Address;
       Status : XML3_Text.Buffers.Concatenate_Status;
    begin
-      declare
-         Head : constant String := C_String_Value (Left);
-      begin
-         if Right /= System.Null_Address and then Length > 0
-           and then not XML3_Text.Buffers.Fits (Head'Length, Natural (Length))
-         then
-            raise Invalid_C_String;
-         end if;
-         declare
-            Tail : constant String :=
-              (if Right = System.Null_Address or else Length = 0 then ""
-               elsif Length < 0 then C_String_Value (Right)
-               else To_String (Right, Natural (Length)));
-         begin
-            XML3_Text.Buffers.Concatenate
-              (Head, Tail, Left /= System.Null_Address,
-               Right /= System.Null_Address, Result, Status);
-         end;
-      end;
+      XML3_Text.Buffers.Concatenate_Bytes
+        (Left, Right, Integer (Length), Result, Status);
       case Status is
          when XML3_Text.Buffers.Copied | XML3_Text.Buffers.No_Input => null;
          when XML3_Text.Buffers.No_Memory =>
@@ -3026,9 +3009,6 @@ package body XML3_C is
       end case;
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;

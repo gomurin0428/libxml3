@@ -1026,6 +1026,70 @@ package body XML3_Text.Buffers with SPARK_Mode is
       end if;
    end Measure;
 
+   procedure Copy_Pair
+     (Left, Right : System.Address; Left_Length, Right_Length : Byte_Count;
+      Result : out System.Address)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Right_Length <= Max_Bytes - Left_Length
+         and then (if Left_Length > 0 then Left /= System.Null_Address)
+         and then (if Right_Length > 0 then Right /= System.Null_Address)
+   is
+      Current : Character;
+   begin
+      Native.Allocate (Native.Byte_Count (Left_Length + Right_Length) + 1, Result);
+      if Result = System.Null_Address then
+         return;
+      end if;
+      for Index in 0 .. Left_Length - 1 loop
+         Current := Native.Byte_At (Left, Index);
+         Native.Write_Byte (Result, Index, Current);
+      end loop;
+      for Index in 0 .. Right_Length - 1 loop
+         Current := Native.Byte_At (Right, Index);
+         Native.Write_Byte (Result, Left_Length + Index, Current);
+      end loop;
+      Native.Write_Byte (Result, Left_Length + Right_Length, Character'Val (0));
+   end Copy_Pair;
+
+   procedure Concatenate_Bytes
+     (Left, Right : System.Address; Length : Integer;
+      Result : out System.Address; Status : out Concatenate_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Left_Length, Right_Length : Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := No_Input;
+      if Left = System.Null_Address and then Right = System.Null_Address then
+         return;
+      end if;
+      Status := Limit_Exceeded;
+      if Right /= System.Null_Address then
+         if Length < 0 then
+            Read_Length (Right, Limit, Right_Length, Found);
+            if not Found then
+               return;
+            end if;
+         elsif Length > Limit then
+            return;
+         else
+            Right_Length := Length;
+         end if;
+      end if;
+      if Left /= System.Null_Address then
+         Read_Length (Left, Limit - Right_Length, Left_Length, Found);
+         if not Found then
+            return;
+         end if;
+      end if;
+      Status := No_Memory;
+      Copy_Pair (Left, Right, Left_Length, Right_Length, Result);
+      if Result /= System.Null_Address then
+         Status := Copied;
+      end if;
+   end Concatenate_Bytes;
+
    procedure Build_Append
      (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
       Result : out System.Address; Status : out Append_Status; Limit : Byte_Count)
@@ -1037,7 +1101,6 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Prefix_Length : Byte_Count := 0;
       Added_Length : Byte_Count;
       Found : Boolean;
-      Current : Character;
    begin
       Result := System.Null_Address;
       Status := Unchanged;
@@ -1071,22 +1134,10 @@ package body XML3_Text.Buffers with SPARK_Mode is
          end if;
       end if;
       Status := Append_No_Memory;
-      Native.Allocate (Native.Byte_Count (Prefix_Length + Added_Length) + 1, Result);
-      if Result = System.Null_Address then
-         return;
+      Copy_Pair (Item, Addition, Prefix_Length, Added_Length, Result);
+      if Result /= System.Null_Address then
+         Status := Appended;
       end if;
-      if Item /= System.Null_Address then
-         for Index in 0 .. Prefix_Length - 1 loop
-            Current := Native.Byte_At (Item, Index);
-            Native.Write_Byte (Result, Index, Current);
-         end loop;
-      end if;
-      for Index in 0 .. Added_Length - 1 loop
-         Current := Native.Byte_At (Addition, Index);
-         Native.Write_Byte (Result, Prefix_Length + Index, Current);
-      end loop;
-      Native.Write_Byte (Result, Prefix_Length + Added_Length, Character'Val (0));
-      Status := Appended;
    end Build_Append;
 
    procedure Append

@@ -10,6 +10,7 @@ procedure Text_Buffers_Test is
    use type XML3_Text.QNames.Prefix_Status;
    use type XML3_Text.QNames.Split_Status;
    use type XML3_Text.QNames.Build_Status;
+   use type XML3_Text.Buffers.Concatenate_Status;
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
@@ -31,6 +32,43 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_Concatenate is
+      Left : aliased String := "ab" & Character'Val (0);
+      Right : aliased String := "c" & Character'Val (0);
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Concatenate_Status;
+   begin
+      XML3_Text.Buffers.Concatenate_Bytes
+        (System.Null_Address, System.Null_Address, Integer'Last, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Input
+        and then Result = System.Null_Address);
+      for Length in -1 .. 1 loop
+         if Length /= 0 then
+            XML3_Text.Buffers.Concatenate_Bytes
+              (Left'Address, Right'Address, Length, Result, Status, 2);
+            pragma Assert (Status = XML3_Text.Buffers.Limit_Exceeded
+              and then Result = System.Null_Address);
+            XML3_Text.Buffers.Concatenate_Bytes
+              (Left'Address, Right'Address, Length, Result, Status, 3);
+            pragma Assert (Status = XML3_Text.Buffers.Copied);
+            pragma Assert (XML3_Native_Memory.Byte_At (Result, 0) = 'a'
+              and then XML3_Native_Memory.Byte_At (Result, 1) = 'b'
+              and then XML3_Native_Memory.Byte_At (Result, 2) = 'c'
+              and then XML3_Native_Memory.Byte_At (Result, 3) = Character'Val (0));
+            XML3_Native_Memory.Free (Result);
+         end if;
+      end loop;
+      XML3_Text.Buffers.Concatenate_Bytes
+        (System.Null_Address, Right'Address, 2, Result, Status, 1);
+      pragma Assert (Status = XML3_Text.Buffers.Limit_Exceeded
+        and then Result = System.Null_Address);
+      XML3_Text.Buffers.Concatenate_Bytes
+        (System.Null_Address, Right'Address, 0, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Copied
+        and then XML3_Native_Memory.Byte_At (Result, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+   end Check_Concatenate;
 
    procedure Check_QName_Build is
       Name : aliased String := "x" & Character'Val (0);
@@ -669,6 +707,7 @@ begin
    Check_QName_Prefix;
    Check_QName_Copy;
    Check_QName_Build;
+   Check_Concatenate;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;
