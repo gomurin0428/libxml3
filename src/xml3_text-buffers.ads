@@ -15,6 +15,13 @@ package XML3_Text.Buffers with SPARK_Mode is
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Post => (if Source = System.Null_Address then not Valid_Name_Value'Result);
 
+   function Validate_Name
+     (Source : System.Address; Kind : Name_Kind; Allow_Space : Boolean;
+      Last : Byte_Count := Max_Bytes) return Integer
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Validate_Name'Result in -1 .. 1
+         and then (if Source = System.Null_Address then Validate_Name'Result = -1);
+
    function Get_Predefined_Entity (Name : System.Address) return System.Address
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 

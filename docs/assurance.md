@@ -89,7 +89,7 @@ path-only normalization is provided separately.
 ## Intended proof claims
 
 The four `valid.h` name-value predicates delegate directly from C to the
-SPARK `XML3_Text.Buffers.Valid_Name_Value` state machine, without a C-string copy.
+SPARK `XML3_Text.Buffers.Valid_Name_Value` / `Scan_Name` state machine, without a C-string copy.
 It shares strict `Get_UTF8_Char` decoding and `XML3_Text.Name_Character` with
 existing name validators. Single versus list modes and the pinned Nmtokens
 leading-XML-blank/trailing-SPACE quirk are selected in SPARK; no DTD semantics
@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,852 checks
-(1,339 flow and 11,513 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,864 checks
+(1,345 flow and 11,519 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,852-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,864-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -629,11 +629,15 @@ mutex・Runtime 呼び出し・status/exception 変換のみで、native の `ne
 残存利用者、native allocation 不要を実行テストで検査します。完全な一覧解放の意味論・
 全原子性・native pointer validity を証明したという主張ではありません。
 
-XML名の4つの公開validatorは、SPARKの `Text.Valid_Name` でXML空白・コロン・先頭文字を
-処理し、既存の `Name_Width` でUTF-8と名前文字を検査します。Globalはnullで、DOMや
-所有権を変更しません。走査の範囲・停止性は証明対象です。XML名の完全な意味論は契約に
-記述しておらず、固定版比較でUnicode境界・不正UTF-8・空白・QNameの形を検査します。
-C pointerの妥当性・変換とstatus写像は従来どおり証明外です。
+XML名の4つの公開validatorは、SPARKの `Text.Buffers.Validate_Name` / `Scan_Name` が
+入力ポインタを直接走査し、XML空白・コロン・QNameのprefix/local・先頭文字を処理します。
+`valid.h` の4つの字句検査と走査を共用し、非ASCIIの復号は `Get_UTF8_Char`、
+文字分類は `Name_Character` に委ねます。C文字列のAdaコピーは行いません。
+GlobalはForeign_MemoryのInputだけで、DOM・所有権・診断を変更しません。
+NULLと判定不能な走査上限は-1、名前の不正は1、正常は0です。範囲・停止性・契約は
+証明対象ですが、完全なXML名の意味論は記述しておらず、固定版比較・保護ページ・
+小さい上限・QNameのコピー後の文書解放と再読み込みで検査します。
+native pointer readability/extent、byte effects、C ABI、status写像は証明外です。
 
 `xmlSplitQName2` / `xmlSplitQName3` は validation や namespace 解決ではなく、SPARK
 `XML3_Text.QNames.Prefix_Length` が NUL 終端 byte 列の最初の colon と prefix byte length

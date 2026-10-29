@@ -54,6 +54,40 @@ procedure Text_Buffers_Test is
         (Tokens'Address, XML3_Text.Buffers.NMToken_List, 3));
    end Check_Name_Values;
 
+   procedure Check_Streaming_Name_Validation is
+      Input : aliased String := "ab" & Character'Val (0);
+      QName : aliased String := "a:b" & Character'Val (0);
+      UTF8 : aliased String := Character'Val (16#C3#) & Character'Val (16#A9#)
+        & Character'Val (0);
+      Truncated : aliased String := Character'Val (16#F0#) & Character'Val (0);
+      Rejected : aliased String := "!";
+   begin
+      for Kind in XML3_Text.Name_Kind loop
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (System.Null_Address, Kind, False, 0) = -1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (Input'Address, Kind, False, 1) = -1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (Input'Address, Kind, False, 2) = 0);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (UTF8'Address, Kind, False, 0) = -1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (UTF8'Address, Kind, False, 1) = -1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (UTF8'Address, Kind, False, 2) = 0);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (Truncated'Address, Kind, False, 0) = -1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (Truncated'Address, Kind, False, 1) = 1);
+         pragma Assert (XML3_Text.Buffers.Validate_Name
+           (Rejected'Address, Kind, False, 0) = 1);
+      end loop;
+      pragma Assert (XML3_Text.Buffers.Validate_Name
+        (QName'Address, XML3_Text.QName, False, 2) = -1);
+      pragma Assert (XML3_Text.Buffers.Validate_Name
+        (QName'Address, XML3_Text.QName, False, 3) = 0);
+   end Check_Streaming_Name_Validation;
+
    procedure Check_URI_Path is
       Input : aliased String := "a/.." & Character'Val (0);
       Empty : aliased String := (1 => Character'Val (0));
@@ -551,6 +585,7 @@ begin
    Check_URI_Unescape;
    Check_URI_Path;
    Check_Name_Values;
+   Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;
    Check_UTF8;

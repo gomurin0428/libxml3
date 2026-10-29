@@ -1454,8 +1454,8 @@
   },
   "function:tree.h:xmlValidateName": {
     "implementation": "partial",
-    "scope": "SPARK Text.Valid_Name/Name_Width checks XML 1.0 fifth-edition Name characters, including colon and UTF-8. Optional leading/trailing XML whitespace for any nonzero space. Returns 0 valid, 1 invalid, -1 NULL/conversion limit/internal exception. Leaves last error unchanged. C pointer/ABI and complete lexical equivalence are outside proof.",
-    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "SPARK Buffers.Validate_Name/Scan_Name streams XML 1.0 fifth-edition Name characters directly from the source pointer, without C-string copying. Shares strict UTF-8 decoding and Name_Character classification with valid.h predicates. Optional leading/trailing XML whitespace for any nonzero space. Returns 0 valid, 1 invalid, -1 NULL/unresolved scan limit/internal exception; stops at NUL/first rejected character, including a non-ASCII byte after trailing whitespace without decoding its tail. Leaves last error unchanged and allocates nothing. Native pointer readability/extents, byte effects, C ABI and complete lexical equivalence are outside proof.",
+    "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlSplitQName2": {
@@ -1478,20 +1478,20 @@
   },
   "function:tree.h:xmlValidateNCName": {
     "implementation": "partial",
-    "scope": "Shared pure SPARK name validator in NCName mode rejects colon and enforces a NameStartChar. Optional XML whitespace, status mapping and trust boundary as xmlValidateName.",
-    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Shared streaming SPARK name validator in NCName mode rejects colon and enforces a NameStartChar without a C-string copy. Optional XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlValidateQName": {
     "implementation": "partial",
-    "scope": "Shared pure SPARK validator accepts an NCName or two nonempty NCNames separated by one colon; it does not resolve bindings. XML whitespace, status mapping and trust boundary as xmlValidateName.",
-    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Shared streaming SPARK validator accepts an NCName or two nonempty NCNames separated by one colon without a C-string copy; it does not resolve bindings. XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlValidateNMToken": {
     "implementation": "partial",
-    "scope": "Shared pure SPARK validator accepts nonempty NameChar sequences including colon, digits and combining characters at the start. XML whitespace, status mapping and trust boundary as xmlValidateName.",
-    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Shared streaming SPARK validator accepts nonempty NameChar sequences including colon, digits and combining characters at the start without a C-string copy. XML whitespace, status mapping and trust boundary as xmlValidateName.",
+    "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlUnsetNsProp": {

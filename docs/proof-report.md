@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,852 checks, 1,339 by flow analysis and 11,513
+It completed successfully: **12,864 checks, 1,345 by flow analysis and 11,519
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -40,16 +40,21 @@ query and uses the analyzed `XML3_Text.Buffers.Escape_Special` and
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
 its C status/output-pointer mapping is outside the proof. The public
 `xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
-`xmlValidateNMToken` adapters call the analyzed pure `XML3_Text.Valid_Name`;
-its character traversal, bounds, and termination are proved. C pointer
-validity, string conversion, and return-code mapping remain outside the proof.
+`xmlValidateNMToken` adapters now pass pointers directly to the analyzed
+`XML3_Text.Buffers.Validate_Name` / `Scan_Name`, without a C-string copy.
+They share the bounded state machine with the four `valid.h` value predicates.
+Their bounds, termination, and written result contracts are proved, not complete
+lexical equivalence, native pointer readability/extents, byte effects, C ABI,
+or C return-code mapping.
 The four `valid.h` value validators delegate to
-`XML3_Text.Buffers.Valid_Name_Value`, which discharges 7 checks. It reuses
+`XML3_Text.Buffers.Valid_Name_Value` / `Scan_Name`. The scanner reuses
 `Name_Character` (0 checks), also used by `Name_Width` (19),
 `XML3_Text.Valid_Name` (23, via `Name_Width`), and
-`XML3_Text.Buffers.Valid_Name` (4). These checks cover the bounded
-scan's control flow, termination, and written contract, not native pointer
-readability/extents, byte effects, C ABI, or complete lexical equivalence.
+`XML3_Text.Buffers.Valid_Name` (4). `Scan_Name` proves 9 checks,
+`Validate_Name` 2, and `Valid_Name_Value` 2. These checks cover the bounded
+scan's control flow, termination, and written result contracts, not native
+pointer readability/extents, byte effects, C ABI, or complete lexical
+equivalence.
 No DTD or ID/IDREF semantics are proved or implemented by these APIs.
 `xmlSplitQName2` and `xmlSplitQName3` use the analyzed
 `XML3_Text.QNames.Prefix_Length` and `Split`: the proof covers first-colon
@@ -543,7 +548,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 489 entity
+The 491 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -577,13 +582,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 352 |
-| Initialization | 804 |
+| Data dependencies | 354 |
+| Initialization | 806 |
 | Runtime checks | 5,532 |
 | Assertions | 1,662 |
-| Functional contracts | 4,247 |
-| Termination | 255 |
-| **Total** | **12,852** |
+| Functional contracts | 4,253 |
+| Termination | 257 |
+| **Total** | **12,864** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1139,7 +1144,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-defd0f9a32a806f58a05561b833b60018289183177e42cc2f4753df54ac77d41  src/xml3_c.adb
+92ccc372bc15cb50deac126ca71a35a273fd40238de70fc7f3dc88ed733759a3  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1193,8 +1198,8 @@ eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-92783cca0936d2c702d6b4828b943e1f6baf9a0e15c2b57d70cb03c2c54c0ae4  src/xml3_text-buffers.adb
-6b865a21345a01f366409aa072edb2bb39866e8eeae65dce7dd0ef7bdc000c70  src/xml3_text-buffers.ads
+8d8e27991648cba3cee657a3e4bf04426cfb9ab14426f2c3e68e8903ffed1cb0  src/xml3_text-buffers.adb
+f382df1e41d6d3b9f8f8c9b275271434509714665ea391d29e38620e86632ea4  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr

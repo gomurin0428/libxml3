@@ -294,10 +294,15 @@ C ABI と完全な public semantics は trusted/unproved です。
 QNameは任意のprefixと必須のlocal nameをそれぞれNCNameとして検査します。
 NMTokenは非空の名前文字列で、数字・結合文字なども先頭に置けます。
 `space` が非0なら前後のXML空白（space/tab/CR/LF）だけを許可し、内部空白は禁止です。
-正常は0、不正な名前・UTF-8は1、NULL・変換上限・内部例外は-1です。
+正常は0、不正な名前・UTF-8は1、NULL・走査上限・内部例外は-1です。
 NUL終端までが対象で、名前空間の束縛は検査せず、既存のlast errorも変更しません。
-文字の走査はSPARKの `Text.Valid_Name` / `Name_Width` が担当し、C側は変換と戻り値のみです。
-native allocationは不要ですが、C文字列のAda表現への変換は証明外の境界です。
+入力ポインタをSPARKの `Text.Buffers.Validate_Name` / `Scan_Name` へ直接渡し、
+`valid.h` の字句検査と共通の有界走査・文字分類・UTF-8復号を使います。C側は mode/flag と
+戻り値の変換だけで、文字列コピー・確保はありません。NUL・最初の不正文字で停止し、
+末尾空白の後の非ASCII byteは後続byteを読まず拒否します。上限前に不正を確定すれば1、
+判定がつかず上限を越える読み取りが必要なら-1で、途中までの名前を正常扱いしません。
+上限は小さい `Last` のAda検査で確認し、巨大なC入力そのものは構築していません。
+native pointer readability/extent、byte effects、C ABI、完全な公開意味論は証明外です。
 
 `xmlSplitQName2` / `xmlSplitQName3` は QName の lexical validation や namespace 解決ではなく、
 NUL 終端 input の最初の `:` だけを探す raw-byte split です。埋め込み NUL より後は見ません。
