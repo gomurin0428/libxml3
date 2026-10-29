@@ -19,6 +19,14 @@ package XML3_Text.Buffers with SPARK_Mode is
    type Escape_Status is
      (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
 
+   procedure Escape_URI
+     (Input, Exceptions : System.Address;
+      Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes; List_Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Escaped then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    function Character_In_Range
      (Code : Interfaces.C.unsigned; Group : System.Address) return Boolean
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
@@ -175,11 +183,12 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    procedure Find_Byte
      (Item : System.Address; Value : Character;
-      Position : out Byte_Count; Status : out Search_Status)
+      Position : out Byte_Count; Status : out Search_Status;
+      Limit : Byte_Count := Max_Bytes)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Post => (if Status = Matched then
          Item /= System.Null_Address and then Value /= Character'Val (0)
-           and then Position < Max_Bytes
+           and then Position < Limit
          else Position = 0);
 
    function Compare_Bounded

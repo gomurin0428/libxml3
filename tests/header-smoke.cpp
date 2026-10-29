@@ -6,6 +6,8 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    xmlChar *(*uri_escape)(const xmlChar *, const xmlChar *) = xmlURIEscapeStr;
+    (void)uri_escape;
     int (*character_classes[])(unsigned int) = {
         xmlIsChar, xmlIsBlank, xmlIsDigit, xmlIsExtender, xmlIsIdeographic, xmlIsPubidChar,
         xmlIsBaseChar, xmlIsCombining

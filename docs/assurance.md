@@ -3,6 +3,33 @@
 This project is an experimental, independent Ada/SPARK implementation, not a
 release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
+## URI byte escaping
+
+`xmlURIEscapeStr` dispatches directly to `XML3_Text.Buffers.Escape_URI`.
+SPARK handles byte classification, lazy cached exception-list searches through
+`Find_Byte`, bounded output measurement, exact allocation, percent images,
+writing and failure cleanup. `URI_Image` contracts its width as 1 or 3;
+`Escape_URI` contracts a non-NULL result only on success. The shared byte search
+has an optional internal limit, leaving existing public searches unchanged.
+GNATprove discharges 6 checks for `URI_Image`, 18 for `Escape_URI`, and 3 for
+`Find_Byte`; these cover SPARK calculation, bounds and status/result
+contracts, not native allocation or byte contents.
+Small-limit tests exercise output expansion and incomplete exception searches;
+the C tests compare all nonzero byte values with the fixed reference, cover
+guard-page early stops, aliasing, independent ownership and XML reuse. Empty
+and nonempty allocations have injected-failure/retry tests.
+
+This is byte escaping, not URI, XML-character or UTF-8 validation. ASCII
+alphanumerics and `-._~!*'()@` pass unchanged; exceptions can preserve any
+nonzero byte. Others become uppercase `%HH`. NULL input returns NULL without
+reading exceptions or changing diagnostics; empty input allocates an empty
+string. Success does not clear existing diagnostics. Limits/OOM return NULL,
+not a partial string, and do not modify or consume the input. The result is
+freed with `xmlFree`. Callers must supply stable, readable native spans and
+choose appropriate exceptions for their URI component. Native bytes,
+allocation/free/write effects, pointer validity/extent, C ABI and full public
+semantics are trusted, not proved. Other URI APIs are unsupported.
+
 ## Intended proof claims
 
 `proof.gpr` includes complete specs/bodies of `XML3_Text`, `XML3_Text.Buffers`,
@@ -59,9 +86,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,710 checks
-(1,281 flow and 11,429 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 155 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,751 checks
+(1,296 flow and 11,455 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 157 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -226,7 +253,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,710-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,751-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

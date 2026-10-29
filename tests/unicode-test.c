@@ -8,6 +8,7 @@
 #include <libxml/entities.h>
 #include <libxml/chvalid.h>
 #include <libxml/parserInternals.h>
+#include <libxml/uri.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +20,89 @@
 #endif
 
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
+static void check_uri_escape(const xmlChar *input, const xmlChar *exceptions,
+                             const xmlChar *expected) {
+    xmlChar *escaped = xmlURIEscapeStr(input, exceptions);
+    assert(escaped && escaped != input && escaped != exceptions);
+    assert(strcmp((const char *)escaped, (const char *)expected) == 0);
+    xmlFree(escaped);
+}
+
+static void test_uri_escaping(void) {
+    assert(!xmlURIEscapeStr(NULL, BAD_CAST "/"));
+    check_uri_escape(BAD_CAST "", NULL, BAD_CAST "");
+    check_uri_escape(BAD_CAST "a b/%20?x=1&y=2", NULL,
+                     BAD_CAST "a%20b%2F%2520%3Fx%3D1%26y%3D2");
+    check_uri_escape(BAD_CAST "a b/%20?x=1&y=2", BAD_CAST "/?=&%",
+                     BAD_CAST "a%20b/%20?x=1&y=2");
+    check_uri_escape(BAD_CAST "\xe9\xa1\x94/\xf0\x9f\x99\x82", NULL,
+                     BAD_CAST "%E9%A1%94%2F%F0%9F%99%82");
+    const char *hex = "0123456789ABCDEF";
+    for (unsigned value = 1; value <= 255; ++value) {
+        xmlChar input[2] = {(xmlChar)value, 0};
+        xmlChar escaped[4] = {'%', (xmlChar)hex[value >> 4],
+                              (xmlChar)hex[value & 15], 0};
+        int safe = (value >= 'a' && value <= 'z') ||
+                   (value >= 'A' && value <= 'Z') ||
+                   (value >= '0' && value <= '9') ||
+                   strchr("-._~!*'()@", (int)value) != NULL;
+        check_uri_escape(input, NULL, safe ? input : escaped);
+        check_uri_escape(input, input, input);
+        check_uri_escape(input, BAD_CAST "", safe ? input : escaped);
+    }
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky);
+    int error_code = sticky->code;
+    check_uri_escape(BAD_CAST "a b", NULL, BAD_CAST "a%20b");
+    assert(!xmlURIEscapeStr(NULL, NULL));
+    assert(xmlGetLastError() == sticky && sticky->code == error_code);
+    xmlResetLastError();
+#if defined(__unix__)
+    long page_size = sysconf(_SC_PAGESIZE);
+    assert(page_size > 0);
+    size_t page = (size_t)page_size;
+    xmlChar *mapping = mmap(NULL, page * 2, PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    xmlChar *guard = mapping + page;
+    assert(mprotect(guard, page, PROT_NONE) == 0);
+    guard[-1] = 0;
+    check_uri_escape(guard - 1, guard, BAD_CAST "");
+    guard[-2] = 'a';
+    check_uri_escape(guard - 2, guard, BAD_CAST "a");
+    assert(!xmlURIEscapeStr(NULL, guard));
+    guard[-2] = '/';
+    check_uri_escape(guard - 2, NULL, BAD_CAST "%2F");
+    check_uri_escape(BAD_CAST "/?", guard - 2, BAD_CAST "/%3F");
+    guard[-1] = '/';
+    check_uri_escape(BAD_CAST "/", guard - 1, BAD_CAST "/");
+    assert(munmap(mapping, page * 2) == 0);
+#endif
+    xmlChar *input = xmlStrdup(BAD_CAST "dir/\xe9\xa1\x94 a?x=1&y=2");
+    xmlChar *exceptions = xmlStrdup(BAD_CAST "/?=&");
+    assert(input && exceptions);
+    xmlChar *escaped = xmlURIEscapeStr(input, exceptions);
+    assert(escaped);
+    xmlFree(input);
+    xmlFree(exceptions);
+    xmlDocPtr doc = xmlReadMemory("<r/>", 4, NULL, NULL, 0);
+    assert(doc && xmlSetProp(xmlDocGetRootElement(doc), BAD_CAST "href", escaped));
+    xmlFree(escaped);
+    xmlChar *serialized = NULL;
+    int size = 0;
+    xmlDocDumpMemory(doc, &serialized, &size);
+    assert(serialized && size > 0);
+    xmlFreeDoc(doc);
+    doc = xmlReadMemory((const char *)serialized, size, NULL, NULL, 0);
+    xmlFree(serialized);
+    assert(doc);
+    xmlChar *value = xmlGetProp(xmlDocGetRootElement(doc), BAD_CAST "href");
+    xmlFreeDoc(doc);
+    assert(value && strcmp((const char *)value, "dir/%E9%A1%94%20a?x=1&y=2") == 0);
+    xmlFree(value);
+}
+
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
 static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
@@ -2003,6 +2087,7 @@ static void test_xhtml_identifiers(void) {
 }
 
 int main(void) {
+    test_uri_escaping();
     test_utf8_writing();
     test_character_range_groups();
     test_xhtml_identifiers();

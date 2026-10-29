@@ -224,6 +224,17 @@
     ],
     "proof": "not-proved"
   },
+  "function:uri.h:xmlURIEscapeStr": {
+    "implementation": "partial",
+    "scope": "Byte-wise percent-encoding only: preserve ASCII alphanumerics, -._~!*'()@ and exception-list bytes, otherwise emit uppercase %HH. Not URI/UTF-8 validation or normalization; arbitrary nonzero bytes are accepted and exceptions may preserve them. NULL input returns NULL; empty input returns an allocated empty string. The result is independent and caller-freed with xmlFree. Bounded SPARK measurement, lazy cached exception lookup, and one exact native allocation replace upstream growth/reallocation; limit/OOM failures return NULL, never partial output. Successful/NULL calls preserve diagnostics. Native pointer validity/readability/stability, native writes/allocation/free, ABI and full public semantics remain trusted; other URI APIs are unsupported.",
+    "tests": [
+      "tests/unicode-test.c",
+      "tests/oom-test.c",
+      "tests/text_buffers_test.adb",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:parserInternals.h:xmlCopyChar": {
     "implementation": "partial",
     "scope": "Deprecated public low-level UTF-8 writer only; len is ignored and the caller must provide enough writable, stable output space. Encodes every Unicode scalar, including XML-forbidden controls and noncharacters, without an extra terminator; U+0000 writes one NUL byte. Negative/out-of-range values, surrogates, and NULL output return 0 without writes; rejecting surrogates is an intentional strict-UTF-8 safety difference. Ordinary paths allocate nothing and preserve diagnostics. Destination validity/extent, native byte contents, C ABI, and complete upstream semantics remain trusted; the rest of parserInternals.h is unsupported.",

@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,718 checks, 1,287 by flow analysis and 11,431
+It completed successfully: **12,751 checks, 1,296 by flow analysis and 11,455
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -63,6 +63,15 @@ malformed selected metadata on libxml3 only, and the no-allocation path. Native
 pointer validity/extents/layout/actual reads, C ABI, and complete semantics
 remain trusted or outside proof; this is a generic range lookup, not a
 Unicode/XML validator.
+`xmlURIEscapeStr` uses `XML3_Text.Buffers.Escape_URI` for bounded,
+byte-wise percent encoding with lazy cached exception-list searches. The
+optional `Find_Byte` limit defaults to `Max_Bytes`, preserving existing
+search behavior; `URI_Image` proves 6 checks, `Escape_URI` 18, and `Find_Byte`
+3. These checks cover the image width, bounded measurement/search and written
+status/result contracts, not native allocation, bytes, reads or writes,
+pointer validity/extent/stability, C ABI, or complete URI semantics. Tests
+compare all nonzero byte values with the fixed reference and cover arbitrary
+non-UTF-8 bytes, aliasing, guarded early stops, limits and OOM retry.
 `xmlBuildQName` uses `XML3_Text.QNames.Build`, which proves the bounded output
 size, buffer-selection branches, and result/status contract (15 checks).
 Native allocation/writes, C-string conversion and pointer/ABI behavior remain
@@ -492,9 +501,12 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 476 entity
-summaries report 0 flow errors, 155 warnings, and 0 `pragma Assume`
+The 478 entity
+summaries report 0 flow errors, 157 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
+The two `Escape_URI` warnings note that `Found`'s initialization has no
+effect and its returned search position is not used; membership is determined
+by `Find_Byte`'s status.
 
 **Analyzer caveat:** generation of representation information for the trusted
 `xml3_dom_allocation.ads` spec failed (`cannot generate code for file ...
@@ -521,13 +533,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 339 |
-| Initialization | 773 |
-| Runtime checks | 5,504 |
-| Assertions | 1,646 |
-| Functional contracts | 4,215 |
-| Termination | 241 |
-| **Total** | **12,718** |
+| Data dependencies | 341 |
+| Initialization | 779 |
+| Runtime checks | 5,516 |
+| Assertions | 1,650 |
+| Functional contracts | 4,222 |
+| Termination | 243 |
+| **Total** | **12,751** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1083,12 +1095,13 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-5af89fe2008d447e3c2a2eb1445a264ce230f23d0c2e26e3b6c4ecf61eb7b15b  src/xml3_c.adb
-bdbdd109f35132db09cabd253a642a2a023d206d73a1c92d50e5f547712c2de8  src/xml3_c.ads
-394ccdb03ac16063c5b23bad16b38a630ba65dac1eeaf2a70278c6e231fbc0b3  include/libxml3.h
+3fb687cd5fd9155dfd2b586f1bd932419f36f156d7094f5b14d0438e2f8e9fe4  src/xml3_c.adb
+3262395cfa20609c4796d881e1ad17e02fe7a119deedfbe4d658198ed67d6cb8  src/xml3_c.ads
+0b41a15610acc9c8439969f520a192d0939fadf9c7555797c6718c538a29abcd  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
 580fa6bc23823923995846df5a3ba1b4272049938e1f4e266e9e13d5353085cc  include/libxml/entities.h
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
+effa448eeb5b7a1617839f9ae6cd6edf0bdf4f9e46f534de8fde2bc8853b6d73  include/libxml/uri.h
 c627882f6a5e1fbaa14e99ac93231980994a550c2b25439581417c0c4fd40dc8  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 af96365a55310b08822701ae7765f861d6009b5369cdc9d972b4bc52654fea35  src/xml3_dom-materialize.adb
@@ -1135,13 +1148,13 @@ dc17edf9e6faf551278d08924c87a834c9f442040a84657129a0b31d877639f0  src/xml3_text.
 28da85540da6c195345ae807664041b159e8fb961b1ab8f659f2589d25dab033  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-94d3827e9c7626656fd4e83aeec556c35b0df4d39b2651716b59eb896bdddac2  src/xml3_text-buffers.adb
-c7a8898531ab4c49bacc0cadc8f719e23ce5ae11288d6c24d3d5a5e54c2aa57d  src/xml3_text-buffers.ads
+509c8b9c42356a50b22cf70255e293f5801847415dbf198bcf47cce5855d7c6d  src/xml3_text-buffers.adb
+8c9b1f42ddc65a6b478514cc36054f9374c0b4a7ba8cae136a0f40a3b58f40a7  src/xml3_text-buffers.ads
 fc4e8ef39f4a5b3d44791b620c8915bcbbdceca1b051f52e82ac80edbfd7b6f2  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-d5e932dfbb477e07459439afca10d64e2470749ad4d0fd148c508be238cd5891  Makefile
+e981774bd6aa59bb42cb5b1d0a3a766a8720815fd47ec59c11c9c08d53da3fee  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

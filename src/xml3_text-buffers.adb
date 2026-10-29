@@ -4,6 +4,92 @@ package body XML3_Text.Buffers with SPARK_Mode is
    use type Interfaces.C.int;
    use type Interfaces.C.unsigned;
 
+   function URI_Image (Value : Character; Unescaped : Boolean) return String
+     with Global => null,
+       Post => URI_Image'Result'First = 1
+         and then URI_Image'Result'Length = (if Unescaped then 1 else 3)
+   is
+      Hex : constant String := "0123456789ABCDEF";
+      Code : constant Natural := Character'Pos (Value);
+   begin
+      if Unescaped then
+         return (1 => Value);
+      else
+         return '%' & Hex (Code / 16 + 1) & Hex (Code mod 16 + 1);
+      end if;
+   end URI_Image;
+
+   procedure Escape_URI
+     (Input, Exceptions : System.Address;
+      Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes; List_Limit : Byte_Count := Max_Bytes)
+   is
+      type Byte_Set is array (Character) of Boolean;
+      Unescaped : Byte_Set :=
+        ('a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' | '.' | '_' | '~' |
+         '!' | '*' | Character'Val (39) | '(' | ')' | '@' => True,
+         others => False);
+      Checked : Byte_Set := Unescaped;
+      Length, Source_Length, Position, Found : Byte_Count := 0;
+      Width : Positive;
+      Current : Character;
+      Search : Search_Status;
+      Base : System.Address;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Text;
+      if Input = System.Null_Address then
+         return;
+      end if;
+      Status := Escape_Limit_Exceeded;
+      loop
+         pragma Loop_Invariant (Source_Length <= Length and then Length <= Limit);
+         pragma Loop_Variant (Decreases => Limit - Source_Length);
+         Current := Native.Byte_At (Input, Source_Length);
+         exit when Current = Character'Val (0);
+         if Length = Limit then
+            return;
+         end if;
+         if not Checked (Current) then
+            Find_Byte (Exceptions, Current, Found, Search, List_Limit);
+            if Search = Search_Limit_Exceeded then
+               return;
+            end if;
+            Unescaped (Current) := Search = Matched;
+            Checked (Current) := True;
+         end if;
+         Width := (if Unescaped (Current) then 1 else 3);
+         if Width > Limit - Length then
+            return;
+         end if;
+         Length := Length + Width;
+         Source_Length := Source_Length + 1;
+      end loop;
+      Status := Escape_No_Memory;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Base);
+      if Base = System.Null_Address then
+         return;
+      end if;
+      for I in 0 .. Source_Length - 1 loop
+         pragma Loop_Invariant (Position <= Length);
+         Current := Native.Byte_At (Input, I);
+         declare
+            Image : constant String := URI_Image (Current, Unescaped (Current));
+         begin
+            if Image'Length > Length - Position then
+               Native.Free (Base);
+               Status := Escape_Limit_Exceeded;
+               return;
+            end if;
+            Native.Write_String (Base, Position, Image);
+            Position := Position + Image'Length;
+         end;
+      end loop;
+      Native.Write_Byte (Base, Position, Character'Val (0));
+      Result := Base;
+      Status := Escaped;
+   end Escape_URI;
+
    procedure Write_UTF8_Char
      (Target : System.Address; Code : Integer; Written : out Natural)
    is
@@ -793,7 +879,8 @@ package body XML3_Text.Buffers with SPARK_Mode is
 
    procedure Find_Byte
      (Item : System.Address; Value : Character;
-      Position : out Byte_Count; Status : out Search_Status)
+      Position : out Byte_Count; Status : out Search_Status;
+      Limit : Byte_Count := Max_Bytes)
    is
       Current : Character;
    begin
@@ -802,7 +889,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
       if Item = System.Null_Address or else Value = Character'Val (0) then
          return;
       end if;
-      for Index in 0 .. Max_Bytes - 1 loop
+      for Index in 0 .. Limit - 1 loop
          Current := Native.Byte_At (Item, Index);
          if Current = Character'Val (0) then
             return;
@@ -812,7 +899,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
             return;
          end if;
       end loop;
-      if Native.Byte_At (Item, Max_Bytes) /= Character'Val (0) then
+      if Native.Byte_At (Item, Limit) /= Character'Val (0) then
          Status := Search_Limit_Exceeded;
       end if;
    end Find_Byte;

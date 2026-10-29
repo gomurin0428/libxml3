@@ -2588,6 +2588,28 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function URI_Escape_Str (Input, Exceptions : System.Address) return System.Address
+   is
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Escape_Status;
+   begin
+      XML3_Text.Buffers.Escape_URI (Input, Exceptions, Result, Status);
+      case Status is
+         when XML3_Text.Buffers.Escaped | XML3_Text.Buffers.Invalid_Text => null;
+         when XML3_Text.Buffers.Escape_No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Escape_Limit_Exceeded => Report_Dom_Error (115);
+      end case;
+      return Result;
+   exception
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end URI_Escape_Str;
+
    function Copy_Char_Multi_Byte
      (Output : System.Address; Code : Interfaces.C.int) return Interfaces.C.int
    is

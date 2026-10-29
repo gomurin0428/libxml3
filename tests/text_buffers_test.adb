@@ -27,6 +27,53 @@ procedure Text_Buffers_Test is
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
 
+   procedure Check_URI is
+      Empty : aliased String := (1 => Character'Val (0));
+      Escaped : aliased String := "#" & Character'Val (0);
+      Mixed : aliased String := "a/" & Character'Val (0);
+      List : aliased String := "?/" & Character'Val (0);
+      procedure Run
+        (Input, Exceptions : System.Address; Limit, List_Limit : XML3_Text.Byte_Count;
+         Expected : XML3_Text.Buffers.Escape_Status; Text : String := "")
+      is
+         Output : System.Address;
+         Status : XML3_Text.Buffers.Escape_Status;
+         Value : String (1 .. Text'Length);
+      begin
+         XML3_Text.Buffers.Escape_URI
+           (Input, Exceptions, Output, Status, Limit, List_Limit);
+         pragma Assert (Status = Expected);
+         if Status = XML3_Text.Buffers.Escaped then
+            pragma Assert (Output /= System.Null_Address);
+            XML3_Native_Memory.Read_String (Output, Value);
+            pragma Assert (Value = Text and then
+              XML3_Native_Memory.Byte_At (Output, Text'Length) = Character'Val (0));
+            XML3_Native_Memory.Free (Output);
+         else
+            pragma Assert (Output = System.Null_Address);
+         end if;
+      end Run;
+   begin
+      Run (System.Null_Address, List'Address, 0, 0, XML3_Text.Buffers.Invalid_Text);
+      Run (Empty'Address, List'Address, 0, 0, XML3_Text.Buffers.Escaped);
+      Run (Escaped'Address, System.Null_Address, 0, 0,
+           XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Escaped'Address, System.Null_Address, 2, 0,
+           XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Escaped'Address, System.Null_Address, 3, 0,
+           XML3_Text.Buffers.Escaped, "%23");
+      Run (Escaped'Address, List'Address, 3, 1,
+           XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Escaped'Address, List'Address, 3, 2, XML3_Text.Buffers.Escaped, "%23");
+      Run (Mixed'Address, System.Null_Address, 3, 0,
+           XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Mixed'Address, System.Null_Address, 4, 0,
+           XML3_Text.Buffers.Escaped, "a%2F");
+      Run (Mixed'Address, List'Address, 2, 1,
+           XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Mixed'Address, List'Address, 2, 2, XML3_Text.Buffers.Escaped, "a/");
+   end Check_URI;
+
    procedure Check_Escape is
       Output : System.Address;
       Status : XML3_Text.Buffers.Escape_Status;
@@ -396,6 +443,7 @@ begin
      (Left'Address, Left'Address, False, Result, Limit_Flag, 0);
    pragma Assert (Result = 0 and not Limit_Flag);
    Check_Escape;
+   Check_URI;
    Check_Append;
    Check_Measure;
    Check_UTF8;
