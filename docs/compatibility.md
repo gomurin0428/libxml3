@@ -657,7 +657,6 @@ lead結果にallocation・mutation・diagnosticはなく、予期しないC例�
 有効性検証やdecodeには `xmlCheckUTF8` / `xmlGetUTF8Char` を使います。全256 byte valuesをPROT_NONE直前の最後のreadable byteに
 それぞれ置くguard test、単独の非NUL終端1-byte input、OOM no-allocation testを実施します。SPARK helperはlead分類とresult contractを担いますが、native byte/readable pointer、
 pointer validity、C mapping/ABI、完全なAPI意味論はtrusted boundaryです。
-### UTF-8 文字出力
 
 `xmlCopyCharMultiByte` と `xmlCopyChar` は `parserInternals.h` で公開する deprecated writerです。Unicode scalarを1..4 byteのUTF-8として出力し、追加のNUL terminatorは付けません（scalar 0はliteral NUL 1 byte）。`xmlCopyChar` の `len` は無視され、書込みcapacityではありません。呼出側は実際の出力幅に足る、書込み可能で安定した領域を用意する必要があります。XMLで禁止されるcontrolやnoncharacterもUTF-8としてencodingし、XML character validationは行いません。負値、U+10FFFF超、surrogate、NULL outputは0を返して書込みません。surrogate拒否はstrict UTF-8を守る意図的な安全差です。通常の成功・拒否ではallocationやdiagnosticを行わず、sticky errorを保持します。output pointerの有効性・extent、native byte内容、C ABIと完全なupstream semanticsは信頼境界です。既存のXML character/parser/name validationは変更せず、parser-internals subsystemの他APIも未対応です。
 
