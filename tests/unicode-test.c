@@ -2128,7 +2128,44 @@ static void test_qname_building(void) {
         strcpy((char *)buffer, "prefix");
         assert(xmlBuildQName(buffer + 3, buffer, buffer + 1, sizeof(buffer) - 1) == buffer + 1);
         assert(strcmp((const char *)buffer + 1, "prefix:fix") == 0);
+        strcpy((char *)buffer, "prefix");
+        assert(xmlBuildQName(BAD_CAST "name", buffer, buffer + 1, sizeof(buffer) - 1) == buffer + 1);
+        assert(strcmp((const char *)buffer + 1, "prefix:name") == 0);
     }
+#endif
+#ifdef __unix__
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 6, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    for (int i = 1; i < 6; i += 2)
+        assert(mprotect(mapping + page * i, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        size_t name_size = strlen(cases[i].name) + 1;
+        size_t prefix_size = strlen(cases[i].prefix) + 1;
+        size_t needed = strlen(cases[i].expected) + 1;
+        char *name = mapping + page - name_size;
+        char *prefix = mapping + page * 3 - prefix_size;
+        char *output = mapping + page * 5 - needed;
+        memcpy(name, cases[i].name, name_size);
+        memcpy(prefix, cases[i].prefix, prefix_size);
+        output[-1] = '!';
+        assert(mprotect(mapping, (size_t)page, PROT_READ) == 0);
+        assert(mprotect(mapping + page * 2, (size_t)page, PROT_READ) == 0);
+        assert(xmlBuildQName(BAD_CAST name, BAD_CAST prefix, BAD_CAST output, (int)needed) == BAD_CAST output);
+        assert(strcmp(output, cases[i].expected) == 0 && output[-1] == '!');
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        assert(mprotect(mapping + page * 2, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+    xmlChar *unreadable = BAD_CAST (mapping + page);
+    assert(xmlBuildQName(unreadable, NULL, unreadable, 17) == unreadable);
+    assert(xmlBuildQName(NULL, unreadable, unreadable, 17) == NULL);
+    assert(xmlBuildQName(unreadable, unreadable, unreadable, -1) == NULL);
+    xmlChar *built = xmlBuildQName(BAD_CAST "n", BAD_CAST "p", unreadable, 0);
+    assert(built && xmlStrEqual(built, BAD_CAST "p:n"));
+    xmlFree(built);
+    assert(munmap(mapping, (size_t)page * 6) == 0);
 #endif
 }
 
@@ -2222,8 +2259,18 @@ static void test_qname_splitting(void) {
         xmlFree(local);
         xmlFree(prefix);
     }
-    for (int copied = 0; copied < 2; ++copied) {
-        xmlChar *input = xmlStrdup(BAD_CAST "p:root");
+    for (int copied = 0; copied < 3; ++copied) {
+        xmlChar *input;
+        if (copied == 2) {
+            xmlChar *name = xmlStrdup(BAD_CAST "root");
+            xmlChar *prefix = xmlStrdup(BAD_CAST "p");
+            assert(name && prefix);
+            input = xmlBuildQName(name, prefix, NULL, 0);
+            xmlFree(name);
+            xmlFree(prefix);
+        } else {
+            input = xmlStrdup(BAD_CAST "p:root");
+        }
         assert(input);
         int length = -1;
         const xmlChar *view = xmlSplitQName3(input, &length);

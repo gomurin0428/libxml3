@@ -165,6 +165,9 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
    function Offset (Base : System.Address; Bytes : Byte_Count) return System.Address is
      (Base + Storage_Offset (Bytes));
 
+   function Address_Value (Base : System.Address) return Integer_Address is
+     (To_Integer (Base));
+
    procedure Write_Address
      (Base : System.Address; Index : Natural; Value : System.Address)
    is

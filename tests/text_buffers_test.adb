@@ -9,6 +9,7 @@ procedure Text_Buffers_Test is
    use type System.Address;
    use type XML3_Text.QNames.Prefix_Status;
    use type XML3_Text.QNames.Split_Status;
+   use type XML3_Text.QNames.Build_Status;
    use type XML3_Text.Buffers.Append_Status;
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
@@ -30,6 +31,29 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_QName_Build is
+      Name : aliased String := "x" & Character'Val (0);
+      Prefix : aliased String := "p" & Character'Val (0);
+      Buffer : aliased String := "!!!!";
+      Built : System.Address;
+      Status : XML3_Text.QNames.Build_Status;
+   begin
+      XML3_Text.QNames.Build
+        (Name'Address, System.Null_Address, Buffer'Address, 4, Built, Status, 0);
+      pragma Assert (Status = XML3_Text.QNames.Built and then Built = Name'Address
+        and then Buffer = "!!!!");
+      for Limit in 0 .. 3 loop
+         XML3_Text.QNames.Build
+           (Name'Address, Prefix'Address, Buffer'Address, 4, Built, Status, Limit);
+         pragma Assert (Status = XML3_Text.QNames.Limit_Exceeded
+           and then Built = System.Null_Address and then Buffer = "!!!!");
+      end loop;
+      XML3_Text.QNames.Build
+        (Name'Address, Prefix'Address, Buffer'Address, 4, Built, Status, 4);
+      pragma Assert (Status = XML3_Text.QNames.Built and then Built = Buffer'Address
+        and then Buffer = "p:x" & Character'Val (0));
+   end Check_QName_Build;
 
    procedure Check_QName_Copy is
       Input : aliased String := "p:x" & Character'Val (0);
@@ -644,6 +668,7 @@ begin
    Check_Name_Values;
    Check_QName_Prefix;
    Check_QName_Copy;
+   Check_QName_Build;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;

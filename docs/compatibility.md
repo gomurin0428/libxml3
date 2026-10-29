@@ -334,10 +334,13 @@ byte 列を `prefix:name` として組み立てます。NULL `ncname` または�
 `XML3_Text.Max_Bytes` 以下でなければなりません。
 `memory` に十分な容量があれば同じ pointer を返してそこへ書き、足りない場合は caller buffer を
 変更せず新しい allocation を返します。新規 allocation だけを `xmlFree` し、caller buffer と
-borrowed name は解放しません。変換上限・組み合わせサイズ超過は既存の DOM error diagnostic、
-native/Ada allocation failure は memory diagnostic になります。入力を出力より先にコピーするため
-重複領域でも安全ですが、これは libxml3 側だけの安全性であり、overlap の固定版比較はしません。
-native allocation/write、C string/pointer/ABI は証明外です。
+borrowed name は解放しません。計測・サイズ予約・構築はSPARKが直接行い、C文字列の中間コピーは
+不要です。colonとNULの容量を先に予約し、nameを計測した残りの上限内でprefixを計測します。
+走査・合計サイズ上限は診断115、確保失敗はmemory診断です。十分なcaller bufferが入力の
+コピー対象byteと重なる場合だけ一時領域へ構築して転送・解放し、確保失敗ではbufferを保持します。
+重ならず容量が足りる場合は確保不要です。重複領域の安全性はlibxml3側だけで固定版比較はしません。
+native allocation/free/byte effects、address-to-integer conversion、pointer readability/extents、
+C ABI、完全な公開意味論は証明外です。
 `xmlStrQEqual` は prefix/name/value を raw byte として比較します。NULL prefix は
 `xmlStrEqual(name, value)` 相当で、NULL/NULL と同一 pointer は1です。非NULL prefix
 では name と value も非NULLである必要があり、prefix の literal bytes、colon、name の bytes

@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               355           355                                       .           .          .
+Data Dependencies               356           356                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  815           815                                       .           .          .
+Initialization                  820           820                                       .           .          .
 Non-Aliasing                      .             .                                       .           .          .
 Run-time Checks                5536             .      5536 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1662             .    1662 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           4259             .     4259 (CVC5 67%, Trivial 2%, Z3 30%)           .          .
+Functional Contracts           4264             .     4264 (CVC5 68%, Trivial 2%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     257           185                    72 (CVC5 96%, Z3 4%)           .          .
+Termination                     258           186                    72 (CVC5 96%, Z3 4%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         12884    1355 (11%)                             11529 (89%)           .          .
+Total                         12896    1362 (11%)                             11534 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
@@ -413,27 +413,28 @@ in unit xml3_namespaces, 8 subprograms and packages out of 8 analyzed
   XML3_Namespaces.Resolve.Names_Valid at xml3_namespaces.adb:23 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
   XML3_Namespaces.Resolve.Same_Namespace at xml3_namespaces.adb:63 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
   XML3_Namespaces.Resolve.Value_Matches at xml3_namespaces.adb:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-in unit xml3_native_memory, 1 subprograms and packages out of 20 analyzed
-  XML3_Native_Memory at xml3_native_memory.ads:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Native_Memory.Allocate at xml3_native_memory.ads:58 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Byte_At at xml3_native_memory.ads:79 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Copy_Bytes at xml3_native_memory.ads:92 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Equal_Bytes at xml3_native_memory.ads:97 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Free at xml3_native_memory.ads:60 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Initialize_Namespace at xml3_native_memory.ads:72 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Initialize_Node at xml3_native_memory.ads:70 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Namespace_Id at xml3_native_memory.ads:67 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Node_Id at xml3_native_memory.ads:65 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Offset at xml3_native_memory.ads:63 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Predefined_Entity at xml3_native_memory.ads:15 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Read_Character_Range at xml3_native_memory.ads:31 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Read_Character_Range_Group at xml3_native_memory.ads:27 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Read_String at xml3_native_memory.ads:88 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Write_Address at xml3_native_memory.ads:83 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Write_Byte at xml3_native_memory.ads:81 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Write_Namespace at xml3_native_memory.ads:76 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Write_Node at xml3_native_memory.ads:74 skipped; body is SPARK_Mode => Off
-  XML3_Native_Memory.Write_String at xml3_native_memory.ads:90 skipped; body is SPARK_Mode => Off
+in unit xml3_native_memory, 1 subprograms and packages out of 21 analyzed
+  XML3_Native_Memory at xml3_native_memory.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Native_Memory.Address_Value at xml3_native_memory.ads:66 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Allocate at xml3_native_memory.ads:59 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Byte_At at xml3_native_memory.ads:82 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Copy_Bytes at xml3_native_memory.ads:95 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Equal_Bytes at xml3_native_memory.ads:100 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Free at xml3_native_memory.ads:61 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Initialize_Namespace at xml3_native_memory.ads:75 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Initialize_Node at xml3_native_memory.ads:73 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Namespace_Id at xml3_native_memory.ads:70 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Node_Id at xml3_native_memory.ads:68 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Offset at xml3_native_memory.ads:64 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Predefined_Entity at xml3_native_memory.ads:16 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Read_Character_Range at xml3_native_memory.ads:32 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Read_Character_Range_Group at xml3_native_memory.ads:28 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Read_String at xml3_native_memory.ads:91 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Write_Address at xml3_native_memory.ads:86 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Write_Byte at xml3_native_memory.ads:84 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Write_Namespace at xml3_native_memory.ads:79 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Write_Node at xml3_native_memory.ads:77 skipped; body is SPARK_Mode => Off
+  XML3_Native_Memory.Write_String at xml3_native_memory.ads:93 skipped; body is SPARK_Mode => Off
 in unit xml3_parser, 16 subprograms and packages out of 16 analyzed
   XML3_Parser at xml3_parser.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Layout at xml3_parser.adb:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
@@ -550,10 +551,11 @@ in unit xml3_text-buffers, 46 subprograms and packages out of 46 analyzed
   XML3_Text.Buffers.Valid_Name_Value at xml3_text-buffers.ads:12 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Text.Buffers.Validate_Name at xml3_text-buffers.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Text.Buffers.Write_UTF8_Char at xml3_text-buffers.ads:68 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
-in unit xml3_text-qnames, 6 subprograms and packages out of 6 analyzed
+in unit xml3_text-qnames, 7 subprograms and packages out of 7 analyzed
   XML3_Text.QNames at xml3_text-qnames.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Text.QNames.Build at xml3_text-qnames.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  XML3_Text.QNames.Build at xml3_text-qnames.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (18 checks)
   XML3_Text.QNames.Compare at xml3_text-qnames.ads:22 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
   XML3_Text.QNames.Locate_Prefix at xml3_text-qnames.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Text.QNames.Prefix_Length at xml3_text-qnames.ads:40 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
-  XML3_Text.QNames.Split at xml3_text-qnames.ads:48 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_Text.QNames.Overlaps at xml3_text-qnames.adb:89 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Text.QNames.Prefix_Length at xml3_text-qnames.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
+  XML3_Text.QNames.Split at xml3_text-qnames.ads:46 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (6 checks)

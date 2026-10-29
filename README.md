@@ -409,6 +409,8 @@ C文字列の中間コピーは作らず、2つ目の確保に失敗すればpre
 `xmlBuildQName` も raw byte 列を扱います。NULL prefix は入力 name を借用して返しますが、
 空 prefix は省略せず `:name` を構築します。十分な出力 buffer があればそこへ書き、足りなければ
 指定した出力 buffer を変更せず `xmlFree` で解放する新規 allocation を返します。
+計測と構築はSPARKが直接行い、C文字列の中間コピーは作りません。十分なbufferでも入力byteと
+重なる場合は一時領域へ構築してから転送します。その確保に失敗すればbufferを変更しません。
 `xmlStrQEqual` は QName の prefix/name/value を raw byte として比較します。NULL prefix は
 `xmlStrEqual(name, value)` 相当で、NULL/NULL と同一 pointer は1です。非NULL prefix では
 name/value も非NULLでなければならず、prefix の literal bytes、colon、name の bytes を
