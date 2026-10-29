@@ -11,6 +11,8 @@ int xmlIsDigit(unsigned int ch);
 int xmlIsExtender(unsigned int ch);
 int xmlIsIdeographic(unsigned int ch);
 int xmlIsPubidChar(unsigned int ch);
+int xmlIsBaseChar(unsigned int ch);
+int xmlIsCombining(unsigned int ch);
 
 #ifdef __cplusplus
 }

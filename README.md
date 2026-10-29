@@ -362,11 +362,14 @@ scan cap があり、上限を越える追加読み取りが必要なら診断�
 `xmlNodeIsText` / `xmlIsBlankNode` は、SPARK 管理中の node の種別と XML 空白を
 読み取り専用で判定します。CDATA は後者の対象ですが、前者では text としません。
 `libxml/chvalid.h` は upstream で deprecated の `xmlIsChar`, `xmlIsBlank`,
-`xmlIsDigit`, `xmlIsExtender`, `xmlIsIdeographic`, `xmlIsPubidChar` の6関数を公開します。
+`xmlIsBaseChar`, `xmlIsCombining`, `xmlIsDigit`, `xmlIsExtender`,
+`xmlIsIdeographic`, `xmlIsPubidChar` の8関数を公開します。
 `xmlIsChar` は XML 1.0 Char の範囲 (TAB/LF/CR, U+0020–D7FF, E000–FFFD,
 10000–10FFFF) を 1、それ以外を 0 と判定し、許可範囲内の supplementary noncharacter を
 追加除外しません。`xmlIsBlank` は U+0009・U+000A・U+000D・U+0020 のみ 1 です。
-残る3つの名前分類関数は現代の Unicode category ではなく歴史的な固定集合です:
+`xmlIsDigit`, `xmlIsExtender`, `xmlIsIdeographic`, `xmlIsPubidChar`,
+`xmlIsBaseChar`, `xmlIsCombining` は現代の Unicode category ではなく、
+upstream の `chvalid.h` / `codegen/ranges.inc` に由来する歴史的な固定集合です:
 `xmlIsDigit` は U+0030–0039, 0660–0669, 06F0–06F9, 0966–096F, 09E6–09EF,
 0A66–0A6F, 0AE6–0AEF, 0B66–0B6F, 0BE7–0BEF, 0C66–0C6F, 0CE6–0CEF,
 0D66–0D6F, 0E50–0E59, 0ED0–0ED9, 0F20–0F29 のみを 1 とし、Tamil の U+0BE6 は含みません。
@@ -375,11 +378,16 @@ scan cap があり、上限を越える追加読み取りが必要なら診断�
 U+3007, 3021–3029, 4E00–9FA5 のみを 1 とします。`xmlIsPubidChar` は XML PubidChar
 の ASCII 集合 (SPACE/LF/CR, ASCII 英数字, `-'()+,./:=?;!*#@$_%`) のみを 1 とし、
 TAB は含みません。その他の値はすべて 0 です。
+`xmlIsBaseChar` は pinned reference の197個の16-bit範囲と sub-256 の5範囲、
+`xmlIsCombining` は同 reference の95個の16-bit範囲をそのまま判定します。
+BaseChar 集合は CJK ideograph U+4E00 を含まず、Combining 集合は U+0346 を含みません。
 引数は UTF-8 byte でなく unsigned scalar number で、高い unsigned 値も安全に 0 になります。
 これらの歴史的分類は locale/現代 Unicode category ではなく、現在の NCName 検証規則にも使われません
-(例: U+0BE6 と U+9FA6 は引き続き NCName に使えます)。関数は pure SPARK helper を使い、
+(例: U+037F, `a` に続く U+0346, U+0BE6, U+9FA6 は引き続き NCName に使えます)。
+関数は pure SPARK helper を使い、
 pointer access・allocation・diagnostic・DOM access・lock を行いません。
-header macros, range-group APIs, DTD subsystem は対象外です。C ABI と完全な upstream 意味論は未証明です。
+native range-table access もありません。header macros, range-group APIs, DTD subsystem は対象外です。
+C ABI と完全な upstream 意味論は未証明です。
 `xmlNodeGetLang` は node と ancestor の最寄りの `xml:lang` を所有権付きで返し、
 空の値も継承を止めます。`xmlNodeGetSpacePreserve` は element のみを対象にし、
 `default` / `preserve` 以外の値は ancestor まで探索します。対応する setter は

@@ -1,7 +1,19 @@
 {
+  "function:chvalid.h:xmlIsBaseChar": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical BaseChar set: 197 short ranges plus five ranges below U+0100, mechanically matching chvalid.h and codegen/ranges.inc. U+4E00 is not included. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current NCName rules (U+037F and a followed by U+0346 remain accepted). No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not. C ABI and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:chvalid.h:xmlIsBlank": {
     "implementation": "partial",
     "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for U+0009, U+000A, U+000D and U+0020, otherwise 0, including unsigned values above Natural'Last. No allocation, diagnostics, lock, or DOM access. This entry covers only function symbols, not header macros or range-group APIs; C ABI and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlIsCombining": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical Combining set of 95 short ranges, mechanically matching chvalid.h and codegen/ranges.inc. U+0346 is excluded even though current NCName validation accepts it after a base character. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current name rules. No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },

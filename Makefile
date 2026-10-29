@@ -397,7 +397,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent xmlNodeListGetRawString xmlNodeListGetString xmlGetNodePath xmlStringGetNodeList xmlStringLenGetNodeList \
 		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlAddPrevSibling xmlAddNextSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
-		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetName xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlIsChar xmlIsBlank xmlIsDigit xmlIsExtender xmlIsIdeographic xmlIsPubidChar xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
+		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetName xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlIsChar xmlIsBlank xmlIsBaseChar xmlIsCombining xmlIsDigit xmlIsExtender xmlIsIdeographic xmlIsPubidChar xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp xmlFreePropList \
 	xmlNewNs xmlSetNs xmlFreeNs xmlCopyNamespace xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
