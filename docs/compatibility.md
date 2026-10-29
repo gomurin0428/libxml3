@@ -138,7 +138,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
-* `libxml/uri.h`: `xmlURIEscapeStr` のみ。他のURI APIは未対応
+* `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString`。他のURI APIは未対応
 * `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -937,7 +937,23 @@ SPARKで出力長を計算して一度だけ正確なサイズを確保し、固
 出力長と例外検索には既存の `Max_Bytes` 上限があり、超過は診断115とNULL、確保失敗はOOM診断とNULLです。
 部分的な出力は返さず、元入力を変更・解放しません。成功とNULL入力は既存診断を保持します。
 native allocation/free/read/write、入力の有効性・extent・安定性、C ABIと完全な意味論はtrusted boundaryです。
-他の `uri.h` API、URI解析・解決・正規化は未対応です。
+URI解析・解決・正規化は未対応です。
+
+`xmlURIUnescapeString` は大文字・小文字の `%HH` をbyteへ戻し、不完全・不正な `%` と `+` は
+そのまま残します。正の `len` は埋め込みNULを含む指定byte数を処理し、0以下は最初のNULまでです。
+`%00` はNULへ戻ります。出力も埋め込みNULを含み得るため、`strlen` はbinary結果の長さにはなりません。
+URI、path、XML文字、UTF-8の妥当性検証は行わず、利用箇所に応じた検証は呼び出し側の責任です。
+NULL入力はNULLで出力先も触りません。出力先NULLなら独立した `xmlFree` 対象の領域を返し、
+指定済みなら同じポインタを返します。結果の末尾には追加のNULを1byte書き込みます。
+
+入力は実際に処理する全byteが安定してreadable、出力先は復号結果のbyte数+1がwritableである必要があります。
+入力長には `Max_Bytes` 上限があり、復号後に短くなる場合でも入力長超過は診断115とNULLです。
+固定版の `len + 1` overflowは再現しません。同一ポインタのin-place処理と指定出力先への空出力は確保不要です。
+それ以外は入力長+1の領域へ一度復号し、指定出力先があれば完成した結果だけをコピーして一時領域を解放します。
+出力先が入力の途中を指す場合も、固定版の未処理入力の破壊は再現しません。一方、この安全性のため
+非空の別出力先を渡した場合も確保が必要になります。確保失敗はOOM診断とNULLで、入出力先は変更しません。
+通常成功とNULL入力は既存診断を保持します。native bytes、copy/free/read/write、extent・安定性、ABIと
+完全な公開意味論は証明範囲外です。出力先のcapacityを受け取るAPIではないため容量自体は検査できません。
 
 ## 保証について
 

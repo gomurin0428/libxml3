@@ -4,6 +4,81 @@ package body XML3_Text.Buffers with SPARK_Mode is
    use type Interfaces.C.int;
    use type Interfaces.C.unsigned;
 
+   function URI_Hex (Value : Character) return Integer is
+     (if Value in '0' .. '9' then Character'Pos (Value) - Character'Pos ('0')
+      elsif Value in 'a' .. 'f' then Character'Pos (Value) - Character'Pos ('a') + 10
+      elsif Value in 'A' .. 'F' then Character'Pos (Value) - Character'Pos ('A') + 10
+      else -1)
+     with Global => null, Post => URI_Hex'Result in -1 .. 15;
+
+   procedure Unescape_URI
+     (Input : System.Address; Length : Integer; Target : System.Address;
+      Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Span, Index, Position : Byte_Count := 0;
+      Measured : Boolean;
+      Base : System.Address;
+      Current : Character;
+      High, Low : Integer;
+      Consumed : Positive;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Text;
+      if Input = System.Null_Address then
+         return;
+      end if;
+      Status := Escape_Limit_Exceeded;
+      if Length > 0 then
+         if Length > Limit then
+            return;
+         end if;
+         Span := Length;
+      else
+         Measure (Input, Span, Measured, Limit);
+         if not Measured then
+            return;
+         end if;
+      end if;
+      Status := Escape_No_Memory;
+      if Target /= System.Null_Address and then (Target = Input or else Span = 0) then
+         Base := Target;
+      else
+         Native.Allocate (Native.Byte_Count (Span) + 1, Base);
+         if Base = System.Null_Address then
+            return;
+         end if;
+      end if;
+      while Index < Span loop
+         pragma Loop_Invariant (Position <= Index and then Index <= Span);
+         pragma Loop_Variant (Decreases => Span - Index);
+         Current := Native.Byte_At (Input, Index);
+         Consumed := 1;
+         if Current = '%' and then Span - Index >= 3 then
+            High := URI_Hex (Native.Byte_At (Input, Index + 1));
+            if High >= 0 then
+               Low := URI_Hex (Native.Byte_At (Input, Index + 2));
+               if Low >= 0 then
+                  Current := Character'Val (High * 16 + Low);
+                  Consumed := 3;
+               end if;
+            end if;
+         end if;
+         Native.Write_Byte (Base, Position, Current);
+         Position := Position + 1;
+         Index := Index + Consumed;
+      end loop;
+      Native.Write_Byte (Base, Position, Character'Val (0));
+      if Target /= System.Null_Address and then Base /= Target then
+         Native.Copy_Bytes (Base, Target, Position + 1);
+         Native.Free (Base);
+         Result := Target;
+      else
+         Result := Base;
+      end if;
+      Status := Escaped;
+   end Unescape_URI;
+
    function URI_Image (Value : Character; Unescaped : Boolean) return String
      with Global => null,
        Post => URI_Image'Result'First = 1

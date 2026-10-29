@@ -376,6 +376,11 @@ package XML3_C is
    function URI_Escape_Str (Input, Exceptions : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlURIEscapeStr";
 
+   function URI_Unescape_String
+     (Input : System.Address; Length : Interfaces.C.int; Target : System.Address)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlURIUnescapeString";
+
    function Copy_Char_Multi_Byte
      (Output : System.Address; Code : Interfaces.C.int) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlCopyCharMultiByte";
