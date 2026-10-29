@@ -2,6 +2,45 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function Matches_Literal (Item : System.Address; Pattern : String)
+     return Boolean
+     with Global => (Input => Native.Foreign_Memory),
+       Pre => Pattern'First = 1 and then Pattern'Last in 0 .. Max_Bytes
+   is
+      Current : Character;
+   begin
+      if Item = System.Null_Address then
+         return False;
+      end if;
+      for I in Pattern'Range loop
+         Current := Native.Byte_At (Item, I - 1);
+         if Current = Character'Val (0) or else Current /= Pattern (I) then
+            return False;
+         end if;
+      end loop;
+      return Native.Byte_At (Item, Pattern'Length) = Character'Val (0);
+   end Matches_Literal;
+
+   function Is_XHTML (System_ID, Public_ID : System.Address) return Integer is
+   begin
+      if System_ID = System.Null_Address and then Public_ID = System.Null_Address then
+         return -1;
+      end if;
+      if Matches_Literal (Public_ID, "-//W3C//DTD XHTML 1.0 Strict//EN")
+        or else Matches_Literal (Public_ID, "-//W3C//DTD XHTML 1.0 Frameset//EN")
+        or else Matches_Literal (Public_ID, "-//W3C//DTD XHTML 1.0 Transitional//EN")
+        or else Matches_Literal
+          (System_ID, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")
+        or else Matches_Literal
+          (System_ID, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd")
+        or else Matches_Literal
+          (System_ID, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd")
+      then
+         return 1;
+      end if;
+      return 0;
+   end Is_XHTML;
+
    function Special_Image (Item : Character; Attribute, Quotes : Boolean)
      return String
      with Global => null,

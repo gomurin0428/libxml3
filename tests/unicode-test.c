@@ -1752,7 +1752,67 @@ static void test_ranges(void) {
     for (size_t i = 0; i < sizeof(invalid)/sizeof(*invalid); ++i) assert(!parse(invalid[i]));
 }
 
+static void test_xhtml_identifiers(void) {
+    static const char *system_ids[] = {
+        NULL,
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd",
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd",
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd",
+        "", "https://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd",
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtdx", "\xff"
+    };
+    static const char *public_ids[] = {
+        NULL, "-//W3C//DTD XHTML 1.0 Strict//EN", "-//W3C//DTD XHTML 1.0 Frameset//EN",
+        "-//W3C//DTD XHTML 1.0 Transitional//EN", "", "-//W3C//DTD XHTML 1.1//EN",
+        "-//w3c//DTD XHTML 1.0 Strict//EN", " -//W3C//DTD XHTML 1.0 Strict//EN"
+    };
+    xmlResetLastError();
+    for (size_t i = 0; i < sizeof(system_ids) / sizeof(*system_ids); ++i)
+        for (size_t j = 0; j < sizeof(public_ids) / sizeof(*public_ids); ++j) {
+            int expected = i == 0 && j == 0 ? -1 :
+                           ((i >= 1 && i <= 3) || (j >= 1 && j <= 3));
+            assert(xmlIsXHTML(BAD_CAST system_ids[i], BAD_CAST public_ids[j]) == expected);
+        }
+    assert(xmlGetLastError() == NULL);
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int is_public = 0; is_public <= 1; ++is_public)
+        for (size_t i = 1; i <= 3; ++i) {
+            const char *identifier = is_public ? public_ids[i] : system_ids[i];
+            size_t length = strlen(identifier);
+            for (size_t prefix = 0; prefix <= length; ++prefix) {
+                char *at_end = mapping + page - prefix - 1;
+                memcpy(at_end, identifier, prefix);
+                at_end[prefix] = 0;
+                int result = is_public ? xmlIsXHTML(NULL, BAD_CAST at_end) :
+                                         xmlIsXHTML(BAD_CAST at_end, NULL);
+                assert(result == (prefix == length));
+            }
+        }
+    mapping[page - 1] = '!';
+    assert(xmlIsXHTML(BAD_CAST (mapping + page - 1),
+                      BAD_CAST (mapping + page - 1)) == 0);
+    for (size_t i = 1; i <= 3; ++i)
+        assert(xmlIsXHTML(BAD_CAST (mapping + page), BAD_CAST public_ids[i]) == 1);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky);
+    assert(xmlIsXHTML(NULL, NULL) == -1);
+    assert(xmlIsXHTML(BAD_CAST "unknown", NULL) == 0);
+    assert(xmlIsXHTML(NULL, BAD_CAST public_ids[1]) == 1);
+    assert(xmlGetLastError() == sticky);
+    xmlResetLastError();
+}
+
 int main(void) {
+    test_xhtml_identifiers();
     test_character_classes();
     test_escaping(0);
     test_escaping(1);

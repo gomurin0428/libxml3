@@ -18,6 +18,8 @@ int main() {
     (void)dump_format_enc;
     void (*dump_memory)(xmlDocPtr, xmlChar **, int *) = xmlDocDumpMemory;
     (void)dump_memory;
+    int (*is_xhtml)(const xmlChar *, const xmlChar *) = xmlIsXHTML;
+    (void)is_xhtml;
     xmlChar *(*encode_special)(const xmlDoc *, const xmlChar *) = xmlEncodeSpecialChars;
     (void)encode_special;
     xmlChar *(*encode_entities)(xmlDoc *, const xmlChar *) = xmlEncodeEntitiesReentrant;

@@ -388,6 +388,18 @@ BaseChar 集合は CJK ideograph U+4E00 を含まず、Combining 集合は U+034
 pointer access・allocation・diagnostic・DOM access・lock を行いません。
 native range-table access もありません。header macros, range-group APIs, DTD subsystem は対象外です。
 C ABI と完全な upstream 意味論は未証明です。
+`libxml/tree.h` の `xmlIsXHTML` は、固定版 `tree.c:8851` に合わせて
+NUL 終端 byte 列を case-sensitive に比較します。両引数が NULL の場合のみ -1、
+それ以外は public ID `-//W3C//DTD XHTML 1.0 Strict//EN`,
+`-//W3C//DTD XHTML 1.0 Frameset//EN`, `-//W3C//DTD XHTML 1.0 Transitional//EN`
+の3種を先に照合し、次に system URI
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd` の3種を照合します。
+一致なら 1、その他は 0 です。public ID が一致すれば system ID は判定に使いません。
+未知の byte 列は UTF-8 検査せず 0 となり、URI 解決・DTD 読み込み・HTML parsing は行いません。
+allocation・diagnostic・lock・DOM access はありません。native pointer/readability、
+byte access、C ABI と完全な upstream 意味論は信頼境界です。
 `xmlNodeGetLang` は node と ancestor の最寄りの `xml:lang` を所有権付きで返し、
 空の値も継承を止めます。`xmlNodeGetSpacePreserve` は element のみを対象にし、
 `default` / `preserve` 以外の値は ancestor まで探索します。対応する setter は

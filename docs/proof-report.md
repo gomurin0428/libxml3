@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,572 checks, 1,249 by flow analysis and 11,323
+It completed successfully: **12,589 checks, 1,254 by flow analysis and 11,335
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -461,7 +461,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 464 entity
+The 466 entity
 summaries report 0 flow errors, 152 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -490,13 +490,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 328 |
-| Initialization | 752 |
-| Runtime checks | 5,459 |
+| Data dependencies | 330 |
+| Initialization | 753 |
+| Runtime checks | 5,462 |
 | Assertions | 1,644 |
-| Functional contracts | 4,159 |
-| Termination | 230 |
-| **Total** | **12,572** |
+| Functional contracts | 4,168 |
+| Termination | 232 |
+| **Total** | **12,589** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -764,6 +764,17 @@ NCName rules (U+037F and `a` followed by U+0346 remain accepted), nor a DTD
 subsystem. Only the function symbols are implemented; header macros and
 range-group APIs remain unsupported.
 
+`xmlIsXHTML` is implemented by `XML3_Text.Buffers.Is_XHTML`, using the bounded
+`Matches_Literal` helper for exact NUL-terminated byte comparisons. The proof
+summary reports 7 checks for `Is_XHTML` and 5 for `Matches_Literal`. The
+function checks both-NULL before matching the three known XHTML 1.0 public IDs
+first and the three system URIs second; a public match skips the system ID.
+The C adapter only converts the integer result. UTF-8 validation, URI
+resolution, DTD loading and HTML parsing are not performed. Runtime tests cover
+the return matrix, truncated prefixes, guard-page boundaries, and a matched
+public ID with an unreadable system pointer; these do not prove native pointer
+validity or full public C semantics.
+
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use
 `Runtime.Get_Inherited_XML_Property` / `Store.Queries.Get_Inherited_XML_Property`;
 setters reuse `Runtime.Set_XML_Property` and `Store.Properties.Set_Qualified_Property`.
@@ -1023,8 +1034,8 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-046714efb67b6a2560ee95f1ea377a59b17b980a5c547b58e828704992dc32fe  src/xml3_c.adb
-8ea093c7bcfd268c1bbcf46835a85a9a25fe0b1814a017b160599ad0e31392a5  src/xml3_c.ads
+fa08597398c5fc6f206ab59f2a010a4f4d6b67861238c0c51003f7cd280eb93e  src/xml3_c.adb
+424cb9c68197ceee843ce93ae51705bddc0bf7f14a4fc3820c9cfe9981ebea0b  src/xml3_c.ads
 1809463359f6f9d3dc21eab509585e91f10a4ddd6592f7779496e8bfe7db2d6c  include/libxml3.h
 6b733a0b5823cc878db03cb8b135b020e693b836ce3284264dbe5cb5c93d7e45  include/libxml/chvalid.h
 580fa6bc23823923995846df5a3ba1b4272049938e1f4e266e9e13d5353085cc  include/libxml/entities.h
@@ -1074,13 +1085,13 @@ aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_seria
 728f041318842407ab3f392dda6761c33da707dc9e77733fca501d4e0282eb1b  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-383f864cb9b0a82b6c274054e330b0ddf0b38c9bc96a2fff8463e9ff8d0c2c1a  src/xml3_text-buffers.adb
-5ef62de4f049443e6731d9746ccda685072dee420213c3c9b0995027788177be  src/xml3_text-buffers.ads
-9956987bf3c6ca61504bd7621b85909cfec8d42f0b8816b552bed4219ccc048c  include/libxml/tree.h
+4e2c6280fa3fbae0a1ad0b368588bb96fdb73727b13ebafa98aa63f13d780ba1  src/xml3_text-buffers.adb
+4d8f5b359a7dbdc32b503a85faf83793c337e8aaa336a1da6075240ad41f5678  src/xml3_text-buffers.ads
+5e0176fa0e5593f8f9d3b118fbd5379114f7c4d18ecb2782809c19d9061e8b7f  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-a227118f12a3be2d072d2f5a9b36eb80b25c36cecdcd41928d5cc3951ed4929b  Makefile
+1d1e80920e907a94e0608e74309fac7c9547944e4902e9fb259ce649ed6900a6  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

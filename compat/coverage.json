@@ -537,6 +537,12 @@
     "tests": ["tests/content-edit-test.c"],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlIsXHTML": {
+    "implementation": "partial",
+    "scope": "Exact case-sensitive NUL-terminated byte matching for the pinned XHTML 1.0 identifier check: -1 only when both arguments are NULL; otherwise known public IDs are checked first, then system URIs, with a public match making the system ID irrelevant. Unknown bytes return 0 without UTF-8 validation. No URI resolution, DTD loading, HTML parsing, allocation, diagnostics, lock, or DOM access. Native pointer/byte validity, C ABI, and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlNodeGetLang": {
     "implementation": "partial",
     "scope": "Read-only SPARK Store parent walk for managed nodes, matching only the XML namespace URI. Returns a caller-owned copy of the nearest xml:lang, including an empty value that stops inheritance; text, attributes, comments and PI inherit from parents. Document affiliation alone supplies no value. Unmanaged facades return NULL. Native pointers, ABI and full public semantics are not proved.",

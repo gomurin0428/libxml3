@@ -369,6 +369,9 @@ package XML3_C is
    function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsChar";
 
+   function Is_XHTML (System_ID, Public_ID : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsXHTML";
+
    function Is_XML_Blank (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsBlank";
 

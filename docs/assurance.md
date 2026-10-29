@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,572 checks
-(1,249 flow and 11,323 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,589 checks
+(1,254 flow and 11,335 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,572-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,589-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -413,6 +413,18 @@ OOM は NULL として返り、source list links は変更しません。
 とも `Input` で、Store も読み取り専用です。管理中の content 長を走査上限とし、
 失敗時は False を返す契約です。C は mutex・結果・例外の変換だけを担当します。
 ネイティブ byte 読み取りの正しさは信頼境界に残り、完全な C API 意味論の証明ではありません。
+
+`xmlIsXHTML` は `XML3_Text.Buffers.Is_XHTML` と bounded `Matches_Literal` により、
+固定版の XHTML 1.0 public ID
+`-//W3C//DTD XHTML 1.0 Strict//EN`, `-//W3C//DTD XHTML 1.0 Frameset//EN`,
+`-//W3C//DTD XHTML 1.0 Transitional//EN` を先に、system URI
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd` を次に case-sensitive な
+NUL 終端 byte 列として照合します。両引数 NULL のみ -1、その他は一致 1 / 不一致 0 です。
+public ID 一致時に system ID は読みません。URI 解決・DTD 読み込み・HTML parsing・UTF-8 検証をせず、
+allocation・diagnostic・lock・DOM access もありません。SPARK の byte-scan 契約と runtime
+tests は native pointer validity、byte readability、C ABI、完全な upstream semantics を証明しません。
 
 The eight deprecated `chvalid.h` function symbols use pure SPARK scalar
 classifiers. `xmlIsChar` and `xmlIsBlank` retain the XML 1.0 Char ranges and
