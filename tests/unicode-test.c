@@ -663,6 +663,13 @@ static void test_escaping(int entities) {
     xmlDoc unused = {0};
     xmlDocPtr context = entities ? xmlNewDoc(NULL) : &unused;
     assert(context);
+    if (!entities) {
+        const char boundaries[] = "\x7f\xc2\x80\xdf\xbf\xe0\xa0\x80\xed\x9f\xbf"
+                                  "\xee\x80\x80\xef\xbf\xbd\xf0\x90\x80\x80\xf4\x8f\xbf\xbf";
+        escaped = xmlEncodeSpecialChars(context, BAD_CAST boundaries);
+        assert(escaped && strcmp((const char *)escaped, boundaries) == 0);
+        xmlFree(escaped);
+    }
     escaped = encode_chars(context, BAD_CAST "", entities);
     assert(escaped && escaped[0] == 0);
     xmlFree(escaped);
@@ -748,6 +755,20 @@ static void test_escaping(int entities) {
                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     assert(mapping != MAP_FAILED);
     assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+#ifndef XML3_REFERENCE_VERSION
+    if (!entities) {
+        static const xmlChar bad[][4] = {{0xff}, {1}, {0xe2, 'x'}, {0xf0, 0}, {0xf0, 0x80, 0}};
+        static const size_t lengths[] = {1, 1, 2, 2, 3};
+        for (size_t i = 0; i < sizeof(lengths) / sizeof(*lengths); ++i) {
+            char *start = mapping + page - lengths[i];
+            memcpy(start, bad[i], lengths[i]);
+            xmlResetLastError();
+            assert(xmlEncodeSpecialChars(NULL, BAD_CAST start) == NULL);
+            assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        }
+        xmlResetLastError();
+    }
+#endif
     mapping[page - 2] = '&';
     mapping[page - 1] = 0;
     escaped = encode_chars(NULL, BAD_CAST (mapping + page - 2), entities);

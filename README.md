@@ -489,6 +489,8 @@ element に `xml:lang` / `xml:space` を設定し、NULL language は空値、sp
 二重引用符・CRをエスケープし、`xmlFree` で解放する独立した文字列を返します。
 NULL入力はNULL、空入力は空のコピーです。文書引数は参照しません。不正な文字を
 黙って置換・保持せず診断付きで拒否し、DTD・一般実体の処理は追加しません。
+走査・UTF-8/XML検査・出力計測・構築をSPARKで直接行い、C文字列の中間コピーはありません。
+不正な文字以降は読まず、サイズ確認後に確保し、構築失敗では部分出力を解放します。
 `xmlEncodeEntitiesReentrant` は NULL input なら文書を検証せず診断なしで NULL を返し、
 non-NULL input では `doc == NULL` または登録済み文書のみを受け付け、空 input は独立した空文字列になります。
 `<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、

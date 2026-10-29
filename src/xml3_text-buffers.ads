@@ -95,6 +95,14 @@ package XML3_Text.Buffers with SPARK_Mode is
        Post => (if Status = Escaped then Result /= System.Null_Address
                 else Result = System.Null_Address);
 
+   procedure Escape_Special_Bytes
+     (Input : System.Address; Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes;
+      Non_ASCII, Attribute : Boolean := False; Quotes : Boolean := True)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Escaped then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    function Character_Reference (Code : Natural) return String
      with Global => null, Pre => Code <= 16#10FFFF#,
        Post => Character_Reference'Result'Length in 4 .. 10;
