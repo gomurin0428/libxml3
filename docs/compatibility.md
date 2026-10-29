@@ -375,9 +375,19 @@ policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び
 encoding宣言を省き、text・属性・namespace URIの非ASCII scalarを大文字16進の文字参照にします。
 名前・comment・PI・CDATAはUTF-8のまま保持するため、出力全体がASCIIになる保証はありません。
 空のencoding名はNULLとは区別して拒否します。source encoding/standalone metadata は保持されず、
-元文書にencoding宣言があっても復元しない点は固定版と異なります。formatting、DTD、file output
+元文書にencoding宣言があっても復元しない点は固定版と異なります。DTD、file output
 は未対応です。C入口は既存の出力adapterを共用し、検査・文字参照化・二段階出力はSPARK側にあります。
 失敗では出力NULL・長さ0を返し、元DOMは変更しません。成功結果は独立したxmlFree所有です。
+`xmlDocDumpFormatMemory` / `xmlDocDumpFormatMemoryEnc` は同じ出力経路を使用します。
+format=0は整形なし、非0（負値も含む）は固定版の既定設定に合わせた2空白と改行です。
+字下げは深さ30で60空白に制限します。Text/CDATAを直接持つ要素ではsubtree全体の
+整形を抑制し、閉じた後に兄弟の整形を再開します。空白だけのTextも抑制対象です。
+元DOMの子・内容は変更せず、失敗時は未完成の出力を返しません。ただし要素のみの内容には
+出力上の空白が加わり、再読み込みではTextになります。xmlIndentTreeOutput/
+xmlTreeIndentString等のglobal設定変更は未対応です。
+読み込んだデータなしのPI（例 `<?after?>`）は、現在 `<?after ?>` と空白を伴って
+出力される既存の字句上の差異があります。今回の整形比較はデータ付きPIを対象にし、
+この差異の修正は別途扱います。
 要素のない document は宣言のみを出力する場合があります。
 `xmlNewComment` / `xmlNewPI` は既存のSPARK作成・寿命管理を使って独立nodeを作成します。
 raw文字列はコピーし、NULLと空contentを区別します。NULL PI targetは拒否しますが、

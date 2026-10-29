@@ -786,6 +786,21 @@ package body XML3_C is
    procedure Doc_Dump_Memory_Enc
      (Document, Memory, Size, Encoding : System.Address)
    is
+   begin
+      Doc_Dump_Format_Memory_Enc (Document, Memory, Size, Encoding, 0);
+   end Doc_Dump_Memory_Enc;
+
+   procedure Doc_Dump_Format_Memory
+     (Document, Memory, Size : System.Address; Format : int)
+   is
+   begin
+      Doc_Dump_Format_Memory_Enc
+        (Document, Memory, Size, System.Null_Address, Format);
+   end Doc_Dump_Format_Memory;
+
+   procedure Doc_Dump_Format_Memory_Enc
+     (Document, Memory, Size, Encoding : System.Address; Format : int)
+   is
       Result : System.Address := System.Null_Address;
       Length : Natural := 0;
       Status : XML3_DOM_Store.Operation_Status :=
@@ -806,7 +821,8 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Dump_Memory_Encoding
            (Document, Encoding_Text, Result, Length, Status,
-            Default_Encoding => Encoding = System.Null_Address);
+            Default_Encoding => Encoding = System.Null_Address,
+            Formatted => Format /= 0);
       end;
       if Status = XML3_DOM_Constructors.Created then
          Set_Address (Memory, Result);
@@ -828,7 +844,7 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return;
-   end Doc_Dump_Memory_Enc;
+   end Doc_Dump_Format_Memory_Enc;
 
    function New_Node
       (Ns, Name : System.Address) return System.Address

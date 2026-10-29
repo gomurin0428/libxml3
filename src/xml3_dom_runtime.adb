@@ -399,10 +399,11 @@ is
         (Document : System.Address; Encoding : String;
          Result : out System.Address; Length : out Natural;
          Status : out XML3_DOM_Store.Operation_Status;
-         Default_Encoding : Boolean := False)
+         Default_Encoding, Formatted : Boolean := False)
       is
       begin
          XML3_DOM_Store.Serialization.Dump
-           (Current, Document, Encoding, Result, Length, Status, Default_Encoding);
+           (Current, Document, Encoding, Result, Length, Status,
+            Default_Encoding, Formatted);
       end Dump_Memory_Encoding;
 end XML3_DOM_Runtime;

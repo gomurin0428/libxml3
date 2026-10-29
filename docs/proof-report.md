@@ -8,10 +8,10 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=30 -j4
 ```
 
-It completed successfully: **12,080 checks, 1,123 by flow analysis and 10,957
+It completed successfully: **12,085 checks, 1,124 by flow analysis and 10,961
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
-Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8 and
-default-encoding memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
+Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
+default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetContent`, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`,
 `xmlIsBlankNode`, `xmlNodeGetLang`, `xmlNodeGetSpacePreserve`,
 `xmlNodeSetLang`, `xmlNodeSetSpacePreserve`,
@@ -468,12 +468,12 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 304 |
-| Initialization | 666 |
-| Runtime checks | 5,326 |
+| Initialization | 667 |
+| Runtime checks | 5,328 |
 | Assertions | 1,623 |
-| Functional contracts | 3,950 |
+| Functional contracts | 3,952 |
 | Termination | 211 |
-| **Total** | **12,080** |
+| **Total** | **12,085** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -522,20 +522,31 @@ caller-owned until cleanup. Errors remain distinct from memory exhaustion.
 
 `xmlDocDumpMemory` delegates to `xmlDocDumpMemoryEnc` with NULL encoding, and a
 NULL encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode.
-Both paths reach `XML3_DOM_Store.Serialization.Dump` and
-`XML3_Serialization.Render`. The default mode omits the encoding declaration
-and emits non-ASCII scalar text, attribute values, and namespace URIs as
-uppercase hexadecimal character references; names, comments, processing
-instructions, and CDATA retain raw UTF-8. `Render` reads immutable Store state,
-validates and measures iteratively before allocation, then emits through the
-same traversal into an exact-size native buffer. GNATprove discharges 8 checks
-for `Put_Character_Reference`, 17 for `Emit_Text`, and 19 for `Pass`. These
-SPARK checks and written contracts do not prove complete XML conformance or
-libxml2 lexical equivalence. Native allocation, pointer validity, C-string
-conversion, and native byte reads/writes remain trusted. The C adapter
-initializes output slots, converts arguments, acquires the lock, and maps
-status/exceptions. Source encoding and standalone metadata are not retained;
-default output therefore does not restore the parsed source encoding.
+The two format variants share that adapter and pass the scalar format flag as
+a Boolean through Runtime and Store into `XML3_Serialization.Render`. All four
+APIs reach the same SPARK serializer. The unformatted APIs and `format=0`
+retain compact output. Any nonzero format value, including negative values,
+enables two-space indentation capped at 60 spaces. Before descending, the
+serializer scans an element's immediate children; a direct Text or CDATA child
+(including whitespace-only Text) suppresses indentation and inserted newlines
+throughout that element subtree, then formatting resumes for following
+siblings. The serializer does not mutate the DOM, but inserted output
+whitespace becomes Text if the result is reparsed.
+
+The default encoding mode omits the encoding declaration and emits non-ASCII
+scalar text, attribute values, and namespace URIs as uppercase hexadecimal
+character references; names, comments, processing instructions, and CDATA
+retain raw UTF-8. `Render` reads immutable Store state, validates and measures
+iteratively before allocation, then emits through the same traversal into an
+exact-size native buffer. GNATprove discharges 8 checks for
+`Put_Character_Reference`, 17 for `Emit_Text`, and 23 for `Pass`, including
+the formatting traversal. These SPARK checks and written contracts do not
+prove complete XML conformance or libxml2 lexical equivalence. Native
+allocation, pointer validity, C-string conversion, mutex behavior, and native
+byte reads/writes remain trusted. The C adapter handles scalar/string/null
+conversion, output initialization, lock acquisition, and status/exception
+mapping. Source encoding and standalone metadata are not retained; default
+output therefore does not restore the parsed source encoding.
 
 `xmlNodeAddContent` and `xmlNodeAddContentLen` use the same
 `Runtime.Add_Content` and `XML3_DOM_Store.Content.Append` path, whose Store
@@ -859,8 +870,8 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-7f3192d5c8c5cf22d6f54c6d06854fa3b45269ab9f96e50e858117187309763f  src/xml3_c.adb
-a4c2a7497e032860416b253dce2708eaad4da015ea491e926fee28c664282a50  src/xml3_c.ads
+3929573c3cf913c0b0088211788f31e90954937d7870fbd65d3bc77f8d9d59fb  src/xml3_c.adb
+5adb9d5d4845758929046ab64b0fa85fd6bc4cda78b1a81bde268d20770a402a  src/xml3_c.ads
 e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
 52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
@@ -878,8 +889,8 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-6611b249add02493774f7f28b86e093c073ad4e9a16b1b57c5c10d249642befd  src/xml3_dom_runtime.adb
-3cca3c81ad5e969cbce47340d5a91fb850955c32ccd00e6101f7a84e299955e0  src/xml3_dom_runtime.ads
+84635fdf8df3a21e7d07e1f4178b4fbc7250a8d1526392929e9a795caa80f2ae  src/xml3_dom_runtime.adb
+b55cf9a1c7c2c9a10823e2731107e3a9dad150c816f7bf5d6a21a96c53d27c50  src/xml3_dom_runtime.ads
 f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
@@ -888,8 +899,8 @@ e6d1d9948c853a8f2ca59cd176ffc609c8051f05c9fe9c910e95530c0f1d95ff  src/xml3_dom_s
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
 0f46d1fe25d0fd4d853d49cea43cc5cf0a783eb1e6244f1b057dbc6e12a98ef1  src/xml3_dom_store-queries.adb
 62a887d71e298c5597b018f85ee46ac7d359e0b4a11954667292312121d04589  src/xml3_dom_store-queries.ads
-9a867cf88bdfd1cb1931454506280d51ceda77267f839a6f8ed6e1b2188e9e4e  src/xml3_dom_store-serialization.adb
-76467e06a5afaa2dedd74e5200f8d2136eb5c657c693a4c51fb7317389a7c9e6  src/xml3_dom_store-serialization.ads
+0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
+0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 ba2df0585f1ae01ccee3440756a48122dc7681882f8719b3f8b63ccde2ac9867  src/xml3_dom_store.adb
 4010b6abbf15b2ac02763f23c95b0c47295575e79d30b6b895f3e7995597e254  src/xml3_dom_store.ads
 7a7d9e2c073d9619dfe9e2945e8454ba957e9e8fd7da915d91cf724a9d2542af  src/xml3_encoding.adb
@@ -902,8 +913,8 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 802bbc0d3a2ad887e38814c149d3e63d5f0ace9952c0a54821399164143e2fcb  src/xml3_native_memory.adb
 4aa72f5756913f1f58af134cf221972157f672054e1df4c3f64dd6e4432b3a56  src/xml3_native_memory.ads
 2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
-0b5fcd48b8d7eeac90846dd830df07db0699e4bcf8f0bb53f292a2ccdfd51f6e  src/xml3_serialization.adb
-eee92d6fd437142fa19dd84a4c4de28e77cd21b53dd4f88b8363ce9f201c7a33  src/xml3_serialization.ads
+946f53f8a7b336ae5ed38a4ae75369a70cd805e590efff784c0665ba2a603342  src/xml3_serialization.adb
+4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 1c7ab0d6e5a4588ed61292e2d89bed80fb1ead008c31cfe648b9a9d326bdc000  src/xml3_text.adb
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
@@ -911,11 +922,11 @@ eee92d6fd437142fa19dd84a4c4de28e77cd21b53dd4f88b8363ce9f201c7a33  src/xml3_seria
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
 9ed770d09a6aac8ffdb8b7d16a2cc3034515a80c5c8105f0e92880fd18e0cc8e  src/xml3_text-buffers.adb
 b195a46e8e64db9d7dde75947ef6f31ab8c0ef05a75cf823db90e266976d91b9  src/xml3_text-buffers.ads
-b0e4f823d4881ed8b3b129e8837dc9aa6623677a0895bfbd5fd07f39ae6ba200  include/libxml/tree.h
+87c48e5ac6247d213fbd47c9da4ec02e6a6357219679d85310c84e4e50e2110f  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-204880586d46e7ca384732871e16fa45c674fe5323cc0aead433c5aa8b3fd411  Makefile
+06419e61e162036242ef1990c6bba21853529bd6f6ae3ac0c322c48c16a51305  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
