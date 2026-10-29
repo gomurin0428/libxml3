@@ -2165,6 +2165,38 @@ static void test_qname_splitting(void) {
     }
     assert(!xmlSplitQName2(BAD_CAST "p:name", NULL));
     assert(!xmlSplitQName3(BAD_CAST "p:name", NULL));
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 1; i < sizeof(cases) / sizeof(*cases); ++i) {
+        size_t size = strlen(cases[i].input) + 1;
+        char *input = mapping + page - size;
+        memcpy(input, cases[i].input, size);
+        int length = -97;
+        const xmlChar *view = xmlSplitQName3(BAD_CAST input, &length);
+        if (cases[i].prefix) {
+            assert(length == (int)strlen(cases[i].prefix));
+            assert(view == BAD_CAST (input + length + 1));
+        } else {
+            assert(view == NULL && length == -97);
+        }
+    }
+    int length = -97;
+    mapping[page - 1] = ':';
+    assert(xmlSplitQName3(BAD_CAST (mapping + page - 1), &length) == NULL);
+    assert(length == -97);
+    assert(xmlSplitQName3(BAD_CAST (mapping + page), NULL) == NULL);
+    assert(xmlSplitQName3(NULL, (int *)(mapping + page)) == NULL);
+    assert(xmlSplitQName3(BAD_CAST (mapping + page - 1), (int *)(mapping + page)) == NULL);
+    memcpy(mapping + page - 3, "p:\xf0", 3);
+    assert(xmlSplitQName3(BAD_CAST (mapping + page - 3), &length) == BAD_CAST (mapping + page - 1));
+    assert(length == 1);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
     {
         xmlChar input[] = "prefix:local";
         xmlChar *prefix = NULL;
@@ -2178,6 +2210,39 @@ static void test_qname_splitting(void) {
         assert(strcmp((const char *)view, "xxxxx") == 0);
         xmlFree(local);
         xmlFree(prefix);
+    }
+    {
+        xmlChar *input = xmlStrdup(BAD_CAST "p:root");
+        assert(input);
+        int length = -1;
+        const xmlChar *view = xmlSplitQName3(input, &length);
+        assert(view && length == 1);
+        xmlChar *prefix = xmlStrndup(input, length);
+        xmlChar *local = xmlStrdup(view);
+        assert(prefix && local);
+        xmlFree(input);
+        assert(xmlValidateNCName(prefix, 0) == 0 && xmlValidateNCName(local, 0) == 0);
+        xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr root = xmlNewNode(NULL, local);
+        assert(doc && root);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        xmlNsPtr ns = xmlNewNs(root, BAD_CAST "urn:n", prefix);
+        assert(ns);
+        xmlSetNs(root, ns);
+        xmlFree(prefix);
+        xmlFree(local);
+        xmlChar *serialized = NULL;
+        int size = 0;
+        xmlDocDumpMemory(doc, &serialized, &size);
+        assert(serialized && size > 0);
+        xmlFreeDoc(doc);
+        doc = xmlReadMemory((const char *)serialized, size, NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        assert(root && root->ns && xmlStrEqual(root->name, BAD_CAST "root"));
+        assert(xmlStrEqual(root->ns->prefix, BAD_CAST "p"));
+        xmlFree(serialized);
+        xmlFreeDoc(doc);
     }
 }
 

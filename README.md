@@ -401,6 +401,9 @@ NULまたは最初の不正文字で停止し、末尾空白の後に非ASCII by
 UTF-8 はそのまま扱います。QName2 は prefix/local の独立コピーを返し `xmlFree` で解放し、
 QName3 は入力内の local suffix を借用して prefix の byte length を返します。失敗時は QName2
 の prefix 出力を NULL にし、QName3 の length 出力を変更しません。
+QName3 はSPARKでポインタを直接走査し、最初のコロンの次のbyteが非NULなら即座に返します。
+local の末尾・UTF-8は検査せず、文字列コピーも行いません。通常は確保・診断変更なし、
+走査上限で判定できなければ診断115とNULLです。借用先を残す必要があれば入力の解放前にコピーします。
 `xmlBuildQName` も raw byte 列を扱います。NULL prefix は入力 name を借用して返しますが、
 空 prefix は省略せず `:name` を構築します。十分な出力 buffer があればそこへ書き、足りなければ
 指定した出力 buffer を変更せず `xmlFree` で解放する新規 allocation を返します。

@@ -3280,16 +3280,22 @@ package body XML3_C is
 
    function Split_QName3 (Name, Length : System.Address) return System.Address is
       Count : XML3_Text.Byte_Count;
+      Local : System.Address;
+      Status : XML3_Text.QNames.Prefix_Status;
+      use type XML3_Text.QNames.Prefix_Status;
    begin
       if Name = System.Null_Address or else Length = System.Null_Address then
          return System.Null_Address;
       end if;
-      Count := XML3_Text.QNames.Prefix_Length (C_String_Value (Name));
-      if Count = 0 then
+      XML3_Text.QNames.Locate_Prefix (Name, Count, Local, Status);
+      if Status = XML3_Text.QNames.Prefix_Limit_Exceeded then
+         Report_Dom_Error (115);
+      end if;
+      if Status /= XML3_Text.QNames.Prefix_Found then
          return System.Null_Address;
       end if;
       Set_Status (Length, int (Count));
-      return Name + Storage_Offset (Count + 1);
+      return Local;
    exception
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
