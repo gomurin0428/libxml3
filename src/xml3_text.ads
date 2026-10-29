@@ -13,6 +13,14 @@ package XML3_Text with SPARK_Mode is
 
    function XML_Blank (C : Natural) return Boolean with Global => null;
 
+   function XML_Digit (C : Natural) return Boolean with Global => null;
+
+   function XML_Extender (C : Natural) return Boolean with Global => null;
+
+   function XML_Ideographic (C : Natural) return Boolean with Global => null;
+
+   function XML_Pubid_Char (C : Natural) return Boolean with Global => null;
+
    procedure Validate_UTF8
      (Input : String;
       Kind : out Text_Error_Kind;

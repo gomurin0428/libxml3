@@ -372,6 +372,18 @@ package XML3_C is
    function Is_XML_Blank (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsBlank";
 
+   function Is_XML_Digit (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsDigit";
+
+   function Is_XML_Extender (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsExtender";
+
+   function Is_XML_Ideographic (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsIdeographic";
+
+   function Is_XML_Pubid_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlIsPubidChar";
+
    function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlUTF8Strlen";
 

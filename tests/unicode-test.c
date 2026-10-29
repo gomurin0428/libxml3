@@ -27,12 +27,28 @@ typedef int (*character_class_fn)(unsigned int);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-static const character_class_fn character_classes[] = {xmlIsChar, xmlIsBlank};
+static const character_class_fn character_classes[] = {
+    xmlIsChar, xmlIsBlank, xmlIsDigit, xmlIsExtender, xmlIsIdeographic, xmlIsPubidChar
+};
 #ifdef XML3_REFERENCE_VERSION
 #pragma GCC diagnostic pop
 #endif
 
 static void test_character_classes(void) {
+    static const unsigned int digit_ranges[][2] = {
+        {0x30, 0x39}, {0x660, 0x669}, {0x6f0, 0x6f9}, {0x966, 0x96f},
+        {0x9e6, 0x9ef}, {0xa66, 0xa6f}, {0xae6, 0xaef}, {0xb66, 0xb6f},
+        {0xbe7, 0xbef}, {0xc66, 0xc6f}, {0xce6, 0xcef}, {0xd66, 0xd6f},
+        {0xe50, 0xe59}, {0xed0, 0xed9}, {0xf20, 0xf29}
+    };
+    static const unsigned int extender_ranges[][2] = {
+        {0xb7, 0xb7}, {0x2d0, 0x2d1}, {0x387, 0x387}, {0x640, 0x640},
+        {0xe46, 0xe46}, {0xec6, 0xec6}, {0x3005, 0x3005}, {0x3031, 0x3035},
+        {0x309d, 0x309e}, {0x30fc, 0x30fe}
+    };
+    static const char pubid_chars[] =
+        "\n\r abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        "-'()+,./:=?;!*#@$_%";
     xmlResetLastError();
     for (unsigned int code = 0; code <= 0x110000; ++code) {
         int blank = code == 9 || code == 10 || code == 13 || code == 32;
@@ -42,12 +58,26 @@ static void test_character_classes(void) {
             (code >= 0x10000 && code <= 0x10ffff);
         assert(character_classes[0](code) == valid);
         assert(character_classes[1](code) == blank);
+        int digit = 0, extender = 0;
+        for (size_t i = 0; i < sizeof(digit_ranges) / sizeof(*digit_ranges); ++i)
+            digit |= code >= digit_ranges[i][0] && code <= digit_ranges[i][1];
+        for (size_t i = 0; i < sizeof(extender_ranges) / sizeof(*extender_ranges); ++i)
+            extender |= code >= extender_ranges[i][0] && code <= extender_ranges[i][1];
+        int ideographic = code == 0x3007 || (code >= 0x3021 && code <= 0x3029) ||
+            (code >= 0x4e00 && code <= 0x9fa5);
+        int pubid = code != 0 && code < 128 && strchr(pubid_chars, (int)code) != NULL;
+        assert(character_classes[2](code) == digit);
+        assert(character_classes[3](code) == extender);
+        assert(character_classes[4](code) == ideographic);
+        assert(character_classes[5](code) == pubid);
     }
     const unsigned int high[] = {0x1fffffu, UINT_MAX / 2, UINT_MAX / 2 + 1u, UINT_MAX};
     for (size_t i = 0; i < sizeof(high) / sizeof(*high); ++i) {
-        assert(character_classes[0](high[i]) == 0);
-        assert(character_classes[1](high[i]) == 0);
+        for (size_t j = 0; j < sizeof(character_classes) / sizeof(*character_classes); ++j)
+            assert(character_classes[j](high[i]) == 0);
     }
+    assert(xmlValidateNCName(BAD_CAST "\xe0\xaf\xa6", 0) == 0);
+    assert(xmlValidateNCName(BAD_CAST "\xe9\xbe\xa6", 0) == 0);
     assert(xmlGetLastError() == NULL);
 }
 

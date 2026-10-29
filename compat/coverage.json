@@ -11,6 +11,30 @@
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
+  "function:chvalid.h:xmlIsDigit": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the fixed historical ranges U+0030-U+0039, U+0660-U+0669, U+06F0-U+06F9, U+0966-U+096F, U+09E6-U+09EF, U+0A66-U+0A6F, U+0AE6-U+0AEF, U+0B66-U+0B6F, U+0BE7-U+0BEF, U+0C66-U+0C6F, U+0CE6-U+0CEF, U+0D66-U+0D6F, U+0E50-U+0E59, U+0ED0-U+0ED9 and U+0F20-U+0F29; all other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not affect current NCName rules (U+0BE6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlIsExtender": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+00B7, U+02D0-U+02D1, U+0387, U+0640, U+0E46, U+0EC6, U+3005, U+3031-U+3035, U+309D-U+309E and U+30FC-U+30FE; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules. No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlIsIdeographic": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+3007, U+3021-U+3029 and U+4E00-U+9FA5; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules (U+9FA6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlIsPubidChar": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the XML PubidChar ASCII set: SPACE, LF, CR, ASCII alphanumeric and -'()+,./:=?;!*#@$_%; TAB and all other values are excluded, including high unsigned values. This is only a character predicate, not a DTD subsystem. No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros and range-group APIs are not. C ABI and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:entities.h:xmlEncodeSpecialChars": {
     "implementation": "partial",
     "scope": "SPARK-backed XML special-character escaping of valid UTF-8/XML text. Escapes less/greater-than, ampersand, double quote and CR; preserves apostrophe/LF/TAB and valid non-ASCII. NULL input returns NULL; empty input allocates an empty copy; document is unused. Rejects invalid UTF-8/XML characters instead of reference replacement/preservation, checks expansion limits, and preserves input on allocation failure. Native pointer/ABI/allocator/byte writes and complete public semantics remain unproved; no DTD/entity subsystem is provided.",
