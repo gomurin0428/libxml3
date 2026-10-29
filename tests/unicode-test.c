@@ -1757,10 +1757,21 @@ static void test_string_duplicates(void) {
         copy = xmlStrncatNew(BAD_CAST "L", source, -1);
         assert(copy && strcmp((const char *)copy, "Lab") == 0);
         xmlFree(copy);
+        copy = xmlStrncatNew(source, BAD_CAST "c", -1);
+        assert(copy && strcmp((const char *)copy, "abc") == 0);
+        xmlFree(copy);
+        copy = xmlStrncatNew(source, source, -1);
+        assert(copy && copy != source && strcmp((const char *)copy, "abab") == 0);
+        xmlFree(copy);
+        copy = xmlStrncatNew(source, unreadable, 0);
+        assert(copy && copy != source && strcmp((const char *)copy, "ab") == 0);
+        xmlFree(copy);
         copy = xmlStrdup(source);
         assert(copy && strcmp((const char *)copy, "ab") == 0);
         xmlFree(copy);
 #ifndef XML3_REFERENCE_VERSION
+        assert(!xmlStrncatNew(unreadable, unreadable, INT_MAX));
+        xmlResetLastError();
         assert(!xmlStrndup(unreadable, INT_MAX));
         xmlResetLastError();
 #endif

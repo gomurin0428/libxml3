@@ -326,7 +326,8 @@ NUL終端allocationへコピーします。負の `len` は `str2` のNUL終端�
 `str1 == NULL` なら `xmlStrndup` 相当のコピーになります。非NULLの `str1` では
 NULLの `str2` または有効長0なら `str1` の複製、それ以外は `str1` と `str2` の
 raw bytes（埋め込みNULを含む）の連結です。入力は変更されず、返却値は `xmlFree` で
-解放します。合計サイズ上限超過は拒否し、正の右側spanを読む前に上限を確認します。
+解放します。計測とコピーはSPARK側で直接行い、C文字列の中間コピーは不要です。
+合計サイズ上限超過は拒否し、正の右側spanを読む前に上限を確認します。
 UTF-8検証は行いません。native pointerの有効性、allocation、byte writes、ABIは信頼境界です。
 `xmlStrcat` と `xmlStrncat` は no-op 以外では `cur` を消費するAPIです。`cur` はNULLか、
 呼び出し側が所有する `xmlFree` 互換allocationの先頭でなければならず、literalやDOMから借りた

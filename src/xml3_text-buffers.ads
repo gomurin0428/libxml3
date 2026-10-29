@@ -246,6 +246,14 @@ package XML3_Text.Buffers with SPARK_Mode is
        Post => (if Status = Copied then Result /= System.Null_Address
                 else Result = System.Null_Address);
 
+   procedure Concatenate_Bytes
+     (Left, Right : System.Address; Length : Integer;
+      Result : out System.Address; Status : out Concatenate_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Copied then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    procedure Copy_Span
      (Item : System.Address; Start, Length : Byte_Count;
       Result : out System.Address; Status : out Slice_Status)

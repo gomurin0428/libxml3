@@ -149,7 +149,7 @@ namespace-list traversal through
 `Collect_Namespaces`, namespace copying through `Runtime.Copy_Namespace` /
 `Store.Copy_Namespace`, QName splitting through `XML3_Text.QNames.Locate_Prefix`
 and `Split`, raw-string duplication through `XML3_Text.Buffers.Duplicate`,
-bounded concatenation through `XML3_Text.Buffers.Fits` and `Concatenate`,
+bounded native concatenation through `XML3_Text.Buffers.Concatenate_Bytes`,
 fresh-allocation appending through `XML3_Text.Buffers.Append`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,895 checks
-(1,361 flow and 11,534 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,909 checks
+(1,368 flow and 11,541 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,895-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,909-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -1198,11 +1198,15 @@ native-call preconditions, not foreign bytes, pointer validity/readable
 extent/stability, C ABI/mapping, or complete UTF-8/API semantics. Tests cover
 malformed-reference differences, empty-pattern behavior, DOM lifetime,
 exact-span guard cases, and no allocation.
-`xmlStrncatNew` uses `XML3_Text.Buffers.Fits` and `Concatenate` to prove the
-bounded sum, allocation sizing, status/result contract, and native-call
-preconditions. Its adapter checks a positive right-hand span against that sum
-before conversion. C-string conversion, pointer validity, allocation, native
-byte writes, and complete public semantics remain trusted.
+`xmlStrncatNew` uses `XML3_Text.Buffers.Concatenate_Bytes` for direct bounded
+measurement and copying without C-string conversion. It obtains the right
+length first and measures the left under the remaining budget, rejecting a
+too-large positive span before any reads. `Copy_Pair` is shared with
+`Build_Append`, while input consumption remains exclusively in `Append`.
+`Concatenate`/`Fits` remain for Ada `Duplicate`. Native pointer validity/extents,
+allocation, byte effects, ABI and complete public semantics remain outside
+proof; the SPARK contracts cover scalar bounds, native-call preconditions and
+status/result relationships.
 `xmlStrcat` and `xmlStrncat` use `XML3_Text.Buffers.Append`. `Read_Length`
 checks the NUL-terminated right side; `Build_Append` applies the bounded right
 length and current-prefix length, allocates a separate result, copies raw bytes,
@@ -1222,7 +1226,8 @@ pointer that aliases it, including a raw suffix after an embedded NUL. This is
 an intentional safety difference from the reference's realloc path; always
 copying can increase peak memory and copy work. SPARK proves bounded length and
 size arithmetic, native-call preconditions, and the status/result contract
-(`Read_Length`: 4 checks, `Build_Append`: 14, `Append`: 1). Native allocation
+(`Read_Length`: 4 checks, `Build_Append`: 6, `Concatenate_Bytes`: 6,
+`Copy_Pair`: 9, `Append`: 1). Native allocation
 freshness, actual reads/writes/free, pointer validity, correct caller
 ownership, C diagnostics/mapping, and complete API semantics remain trusted.
 Shared ordinary/null/empty/raw-span/negative/parse and guard-page cases run
