@@ -176,6 +176,9 @@ package XML3_C is
      return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeAddContentLen";
 
+   procedure Node_Set_Name (Node, Name : System.Address)
+     with Export, Convention => C, External_Name => "xmlNodeSetName";
+
    function Node_Set_Content
      (Node, Content : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlNodeSetContent";

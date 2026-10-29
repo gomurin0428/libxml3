@@ -127,6 +127,7 @@ int xmlNodeAddContent(xmlNodePtr cur, const xmlChar *content);
 int xmlNodeAddContentLen(xmlNodePtr cur, const xmlChar *content, int len);
 int xmlNodeSetContent(xmlNodePtr cur, const xmlChar *content);
 int xmlNodeSetContentLen(xmlNodePtr cur, const xmlChar *content, int len);
+void xmlNodeSetName(xmlNode *cur, const xmlChar *name);
 void xmlUnlinkNode(xmlNodePtr cur);
 void xmlFreeNode(xmlNodePtr cur);
 void xmlFreeNodeList(xmlNodePtr cur);

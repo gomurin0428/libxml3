@@ -589,7 +589,8 @@ package body XML3_DOM with SPARK_Mode is
          Last_Namespace => Null_Namespace,
          Namespace => Null_Namespace, Owner => Own,
          Ns_Pin => Null_Owner, Doc_Pin => Doc_Pin,
-         Content_Pin => Null_Owner, Tree_Rank => 0);
+         Content_Pin => Null_Owner, Name_Pin => Null_Owner,
+         Tree_Rank => 0);
       S.Graph.Owners (Positive (Own)).References :=
         S.Graph.Owners (Positive (Own)).References + 1;
       if Doc_Pin /= Null_Owner and then Doc_Pin /= Own then
@@ -1396,13 +1397,14 @@ package body XML3_DOM with SPARK_Mode is
       Namespace_Pin : Owner_Ref;
       Doc_Pin : Owner_Ref;
       Content_Pin : Owner_Ref;
+      Name_Pin : Owner_Ref;
       Success : out Boolean)
    is
       Before : constant State := S with Ghost;
       Old_Item : constant Node_View := S.Graph.Nodes (Positive (N));
       New_Item : constant Node_View := Projected_View
         (Old_Item, Name, Name_Length, Content, Content_Length,
-         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin);
+         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin, Name_Pin);
    begin
       if not Projection_Pins_Allowed (S, N, New_Item) then
          Success := False;
@@ -1554,11 +1556,12 @@ package body XML3_DOM with SPARK_Mode is
       Namespace_Pin : Owner_Ref;
       Doc_Pin : Owner_Ref;
       Content_Pin : Owner_Ref;
+      Name_Pin : Owner_Ref;
       Success : out Boolean)
    is
       Proposed : constant Node_View := Projected_View
         (Node (S, N), Name, Name_Length, Content, Content_Length,
-         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin);
+         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin, Name_Pin);
    begin
       if not Projection_Allowed (S, N, Proposed) then
          Success := False;
@@ -1566,7 +1569,8 @@ package body XML3_DOM with SPARK_Mode is
       end if;
       Set_Node_Projection_Internal
         (S, N, Name, Name_Length, Content, Content_Length,
-         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin, Success);
+         Document, Namespace, Namespace_Pin, Doc_Pin, Content_Pin, Name_Pin,
+         Success);
    end Set_Node_Projection;
 
    function Unlinked_View (S : State; N, I : Node_Ref) return Node_View is
@@ -3277,7 +3281,7 @@ package body XML3_DOM with SPARK_Mode is
                Proposed : constant Node_View := Projected_View
                  (Item, Item.Name, Item.Name_Length, Item.Content,
                   Item.Content_Length, Target_Doc, Item.Namespace,
-                  Item.Ns_Pin, Target_B, Item.Content_Pin);
+                  Item.Ns_Pin, Target_B, Item.Content_Pin, Item.Name_Pin);
                Iteration_Before : constant State := S with Ghost;
                Iteration_Namespaces : constant Namespace_View_Array :=
                  Snapshot_Namespaces (S) with Ghost;
@@ -3323,7 +3327,7 @@ package body XML3_DOM with SPARK_Mode is
                  (S, Node_Ref (Index), Item.Name, Item.Name_Length,
                   Item.Content, Item.Content_Length, Target_Doc,
                   Item.Namespace, Item.Ns_Pin, Target_B, Item.Content_Pin,
-                  OK);
+                  Item.Name_Pin, OK);
                pragma Assert (OK);
                pragma Assert (Snapshot_Namespaces (S) = Iteration_Namespaces);
                pragma Assert (S.Marks = Iteration_Marks);
@@ -3586,6 +3590,13 @@ package body XML3_DOM with SPARK_Mode is
          Replace_Child_Links (S, Parent, Child, Replaced);
          pragma Assert
            (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
+         pragma Assert
+           (Node (S, Child).Previous =
+              Unlinked_View (Before, Child, Replaced).Previous
+            and then Node (S, Child).Next =
+              Unlinked_View (Before, Child, Replaced).Next
+            and then Node (S, Child).Sibling_Order =
+              Unlinked_View (Before, Child, Replaced).Sibling_Order);
          Preserve_Pin_Equation (Detached, S);
          pragma Assert
            (Snapshot_Namespaces (S) = Snapshot_Namespaces (Before));
@@ -3607,6 +3618,19 @@ package body XML3_DOM with SPARK_Mode is
                 Node (S, I).First_Child = Node (Before, I).First_Child)));
       pragma Assert (Node (S, Child).Parent = Parent);
       pragma Assert
+        (if Replaced /= Null_Node then
+           Replaced in 1 .. Node_Ref (Node_Count (S))
+             and then Node (S, Replaced).State = Live
+             and then Node (S, Replaced).Parent = Null_Node
+             and then Node (S, Replaced).Previous = Null_Node
+             and then Node (S, Replaced).Next = Null_Node
+             and then Node (S, Child).Previous =
+               Unlinked_View (Before, Child, Replaced).Previous
+             and then Node (S, Child).Next =
+               Unlinked_View (Before, Child, Replaced).Next
+             and then Node (S, Child).Sibling_Order =
+               Unlinked_View (Before, Child, Replaced).Sibling_Order);
+      pragma Assert
         (for all I in Namespace_Ref range
            1 .. Namespace_Ref (Namespace_Count (S)) =>
              Namespace (S, I) = Namespace (Before, I));
@@ -3619,6 +3643,86 @@ package body XML3_DOM with SPARK_Mode is
              and then Node (S, I).Kind = Node (Before, I).Kind
              and then Node (S, I).Facade = Node (Before, I).Facade
              and then Node (S, I).Document = Node (Before, I).Document);
+      pragma Assert (Valid (S));
+      pragma Assert (Can_Edit (S));
+      pragma Assert (S.Capacity = Before.Capacity);
+      pragma Assert (Node_Count (S) = Node_Count (Before));
+      pragma Assert (Namespace_Count (S) = Namespace_Count (Before));
+      pragma Assert (Owner_Count (S) = Owner_Count (Before));
+      pragma Assert (S.Marks = Before.Marks);
+      pragma Assert
+        (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+           Same_Pins (Node (S, I), Node (Before, I))
+             and then Node (S, I).Kind = Node (Before, I).Kind
+             and then Node (S, I).Facade = Node (Before, I).Facade
+             and then (if I /= Child and then I /= Replaced then
+               Node (S, I).Parent = Node (Before, I).Parent)
+             and then Node (S, I).Document = Node (Before, I).Document);
+      pragma Assert
+        (if Replaced = Null_Node then
+           (if Property then
+              Node (S, Parent).Last_Prop = Child
+                and then Node (S, Child).Next = Null_Node
+            else
+              Node (S, Parent).Last_Child = Child
+                and then Node (S, Child).Next = Null_Node));
+      pragma Assert
+        (Valid (Before) and then Can_Edit (Before)
+         and then Parent in 1 .. Node_Ref (Node_Count (Before))
+         and then Child in 1 .. Node_Ref (Node_Count (Before)));
+      pragma Assert_And_Cut
+        (Valid (Before) and then Can_Edit (Before)
+         and then Parent in 1 .. Node_Ref (Node_Count (Before))
+         and then Child in 1 .. Node_Ref (Node_Count (Before))
+         and then Valid (S) and then Can_Edit (S)
+         and then S.Capacity = Before.Capacity
+         and then Snapshot_Namespaces (S) = Snapshot_Namespaces (Before)
+         and then Node_Count (S) = Node_Count (Before)
+         and then Namespace_Count (S) = Namespace_Count (Before)
+         and then Owner_Count (S) = Owner_Count (Before)
+         and then S.Marks = Before.Marks
+         and then (for all I in Node_Ref range
+           1 .. Node_Ref (Node_Count (S)) =>
+             Same_Pins (Node (S, I), Node (Before, I))
+               and then Node (S, I).Kind = Node (Before, I).Kind
+               and then Node (S, I).Facade = Node (Before, I).Facade
+               and then (if I /= Child and then I /= Replaced then
+                 Node (S, I).Parent = Node (Before, I).Parent)
+               and then Node (S, I).Document = Node (Before, I).Document)
+         and then (for all I in Namespace_Ref range
+           1 .. Namespace_Ref (Namespace_Count (S)) =>
+             Namespace (S, I) = Namespace (Before, I))
+         and then (for all I in Owner_Ref range
+           1 .. Owner_Ref (Owner_Count (S)) =>
+             Owner (S, I) = Owner (Before, I))
+         and then (if not Property and then Replaced = Null_Node
+           and then Node (Before, Child).Parent = Null_Node then
+             (for all I in Node_Ref range 1 .. Node_Ref (Node_Count (S)) =>
+               Node (S, I).First_Prop = Node (Before, I).First_Prop
+               and then Node (S, I).First_Namespace =
+                 Node (Before, I).First_Namespace
+               and then (if I /= Parent then
+                 Node (S, I).First_Child = Node (Before, I).First_Child)))
+         and then Node (S, Child).Parent = Parent
+         and then (if Replaced = Null_Node then
+           (if Property then
+              Node (S, Parent).Last_Prop = Child
+                and then Node (S, Child).Next = Null_Node
+            else
+              Node (S, Parent).Last_Child = Child
+                and then Node (S, Child).Next = Null_Node))
+         and then (if Replaced /= Null_Node then
+           Replaced in 1 .. Node_Ref (Node_Count (S))
+             and then Node (S, Replaced).State = Live
+             and then Node (S, Replaced).Parent = Null_Node
+             and then Node (S, Replaced).Previous = Null_Node
+             and then Node (S, Replaced).Next = Null_Node
+             and then Node (S, Child).Previous =
+               Unlinked_View (Before, Child, Replaced).Previous
+             and then Node (S, Child).Next =
+               Unlinked_View (Before, Child, Replaced).Next
+             and then Node (S, Child).Sibling_Order =
+               Unlinked_View (Before, Child, Replaced).Sibling_Order));
    end Relink_Marked_Subtree;
 
    procedure Check_Attachment
@@ -4594,7 +4698,8 @@ package body XML3_DOM with SPARK_Mode is
        Parent => 0, First_Child => 0, Last_Child => 0,
        Previous => 0, Next => 0, First_Prop => 0, Last_Prop => 0,
        Document => 0, Namespace => 0, Ns_Pin => 0, Doc_Pin => 0,
-       Content_Pin => 0, Content => System.Null_Address, Content_Length => 0));
+       Content_Pin => 0, Name_Pin => 0,
+       Content => System.Null_Address, Content_Length => 0));
 
    procedure Retire_Node (S : in out State; N : Node_Ref)
    with Global => null,
@@ -5463,7 +5568,7 @@ package body XML3_DOM with SPARK_Mode is
       C : constant Node_View := Node (S, Source);
       Proposed : constant Node_View := Projected_View
         (T, T.Name, T.Name_Length, Content, Length, T.Document, T.Namespace,
-         T.Ns_Pin, T.Doc_Pin, Content_Owner);
+         T.Ns_Pin, T.Doc_Pin, Content_Owner, T.Name_Pin);
       Prepared : Boolean;
    begin
       Success := False;
@@ -5500,7 +5605,8 @@ package body XML3_DOM with SPARK_Mode is
       begin
          Set_Node_Projection_Internal
            (S, Target, T.Name, T.Name_Length, Content, Length,
-            T.Document, T.Namespace, T.Ns_Pin, T.Doc_Pin, Content_Owner, Success);
+            T.Document, T.Namespace, T.Ns_Pin, T.Doc_Pin, Content_Owner,
+            T.Name_Pin, Success);
          pragma Assert (Success);
          Compose_Namespace_Snapshots
            (Original_Namespaces, Projection_Namespaces,

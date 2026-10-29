@@ -16,6 +16,8 @@ int main() {
     (void)encode_special;
     xmlChar *(*get_node_path)(const xmlNode *) = xmlGetNodePath;
     (void)get_node_path;
+    void (*set_node_name)(xmlNode *, const xmlChar *) = xmlNodeSetName;
+    (void)set_node_name;
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;

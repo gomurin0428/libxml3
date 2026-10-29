@@ -192,8 +192,8 @@ begin
       Prefix'Address, Prefix'Length - 1, Doc_Owner, Ns, OK);
    pragma Assert (OK);
    Set_Node_Projection
-     (S.all, Doc, System.Null_Address, 0, Version'Address, Version'Length - 1,
-      Doc, 0, 0, 0, 0, OK);
+      (S.all, Doc, System.Null_Address, 0, Version'Address, Version'Length - 1,
+      Doc, 0, 0, 0, 0, 0, OK);
    pragma Assert (OK);
    Release_Reservation (S.all, Doc_Owner);
 
@@ -203,7 +203,7 @@ begin
    pragma Assert (OK);
    Set_Node_Projection
      (S.all, Root, Root_Name'Address, Root_Name'Length - 1,
-      System.Null_Address, 0, 0, Ns, Doc_Owner, 0, 0, OK);
+      System.Null_Address, 0, 0, Ns, Doc_Owner, 0, 0, 0, OK);
    pragma Assert (OK);
    Release_Reservation (S.all, Root_Owner);
 
@@ -213,7 +213,7 @@ begin
    pragma Assert (OK);
    Set_Node_Projection
      (S.all, Child, Text_Name'Address, Text_Name'Length - 1,
-      Content'Address, Content'Length - 1, 0, 0, 0, 0, 0, OK);
+      Content'Address, Content'Length - 1, 0, 0, 0, 0, 0, 0, OK);
    pragma Assert (OK);
    Release_Reservation (S.all, Child_Owner);
    Attach_Child (S.all, Root, Child, OK);
@@ -302,13 +302,13 @@ begin
      (S.all, Merge_Target, Merge_Target_Name'Address,
       Merge_Target_Name'Length - 1, Merge_Old_Content_Block,
       Merge_Target_Content'Length - 1, 0, 0, 0, 0,
-      Merge_Old_Content_Owner, OK);
+      Merge_Old_Content_Owner, 0, OK);
    pragma Assert (OK);
    Set_Node_Projection
      (S.all, Merge_Source, Merge_Source_Name'Address,
       Merge_Source_Name'Length - 1, Merge_Source_Content_Block,
       Merge_Source_Content'Length - 1, 0, 0, 0, 0,
-      Merge_Source_Content_Owner, OK);
+      Merge_Source_Content_Owner, 0, OK);
    pragma Assert (OK);
    Release_Reservation (S.all, Merge_Target_Owner);
    Release_Reservation (S.all, Merge_Source_Owner);
@@ -826,15 +826,15 @@ begin
       pragma Assert (OK and then Source_Ns = 1);
       Set_Node_Projection
         (Source.all, Source_Doc, System.Null_Address, 0,
-         Version_At, Version'Length - 1, Source_Doc, 0, 0, 0, 0, OK);
+         Version_At, Version'Length - 1, Source_Doc, 0, 0, 0, 0, 0, OK);
       pragma Assert (OK);
       Set_Node_Projection
         (Source.all, Source_Root, Name_At, Root_Name'Length - 1,
-         System.Null_Address, 0, 0, Source_Ns, Arena_Owner, 0, 0, OK);
+         System.Null_Address, 0, 0, Source_Ns, Arena_Owner, 0, 0, 0, OK);
       pragma Assert (OK);
       Set_Node_Projection
         (Source.all, Source_Text, Text_Name_At, Text_Name'Length - 1,
-         Content_At, Content'Length - 1, 0, 0, 0, 0, 0, OK);
+         Content_At, Content'Length - 1, 0, 0, 0, 0, 0, 0, OK);
       pragma Assert (OK);
       Attach_Child (Source.all, Source_Root, Source_Text, OK);
       pragma Assert (OK);
@@ -851,7 +851,7 @@ begin
       pragma Assert (OK and then Original = 1);
       Set_Node_Projection
         (Destination.all, Original, System.Null_Address, 0,
-         Version'Address, Version'Length - 1, Original, 0, 0, 0, 0, OK);
+         Version'Address, Version'Length - 1, Original, 0, 0, 0, 0, 0, OK);
       pragma Assert (OK);
       Release_Reservation (Destination.all, Original_Owner);
       Register_Owner (Destination.all, Spare_Block, Spare_Owner, OK);

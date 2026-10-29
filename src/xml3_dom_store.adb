@@ -8,6 +8,23 @@ package body XML3_DOM_Store with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function Find_Registered_Node
+     (S : Store; Facade : System.Address) return Node_Ref
+   is
+      Item : Node_View;
+   begin
+      if S.Current = null or else Facade = System.Null_Address then
+         return Null_Node;
+      end if;
+      for Index in 1 .. Node_Count (S.Current.all) loop
+         Item := Node (S.Current.all, Node_Ref (Index));
+         if Item.State = Live and then Item.Facade = Facade then
+            return Node_Ref (Index);
+         end if;
+      end loop;
+      return Null_Node;
+   end Find_Registered_Node;
+
    function Find_Node (S : Store; Facade : System.Address) return Node_Ref
    is
       Id : Natural;
@@ -224,7 +241,7 @@ package body XML3_DOM_Store with SPARK_Mode is
          Item.Content_Length, Item.Document, Q,
          (if Q = Null_Namespace then Null_Owner
           else Namespace (S.Current.all, Q).Owner),
-         Item.Doc_Pin, Item.Content_Pin, Changed);
+         Item.Doc_Pin, Item.Content_Pin, Item.Name_Pin, Changed);
       XML3_DOM_Bridge.Synchronize (S.Current.all);
       if Changed then
          Status := Created;

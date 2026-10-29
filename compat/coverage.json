@@ -367,6 +367,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlNodeSetName": {
+    "implementation": "partial",
+    "scope": "Managed element, attribute, and processing-instruction renaming with independent name ownership, bounded UTF-8/XML-name validation, atomic conflict rejection, and retained namespace/document lifetime. Unsupported kinds and NULL inputs are harmless no-ops; complete public C semantics and entity-reference support are outside the subset.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlHasProp": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",

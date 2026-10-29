@@ -912,7 +912,8 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
                Old_Item.Content, Old_Item.Content_Length, Old_Item.Document, Q,
                (if Q = Null_Namespace then Null_Owner
                 else Namespace (S.Current.all, Q).Owner),
-               Old_Item.Doc_Pin, Old_Item.Content_Pin, Changed);
+               Old_Item.Doc_Pin, Old_Item.Content_Pin, Old_Item.Name_Pin,
+               Changed);
             Preserve_Safe_Attachment (Checkpoint, S.Current.all, Ns);
             pragma Assert
               (Attachment_In_State (S.Current.all, Ns) = Was_Attached);
