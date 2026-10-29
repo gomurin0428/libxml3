@@ -105,6 +105,9 @@ xmlNodePtr xmlNewText(const xmlChar *content);
 xmlNodePtr xmlNewTextLen(const xmlChar *content, int len);
 xmlNodePtr xmlNewDocText(const xmlDoc *doc, const xmlChar *content);
 xmlNodePtr xmlNewDocTextLen(xmlDocPtr doc, const xmlChar *content, int len);
+xmlNodePtr xmlStringGetNodeList(const xmlDoc *doc, const xmlChar *value);
+xmlNodePtr xmlStringLenGetNodeList(const xmlDoc *doc, const xmlChar *value,
+                                 int len);
 xmlNodePtr xmlNewComment(const xmlChar *content);
 xmlNodePtr xmlNewPI(const xmlChar *name, const xmlChar *content);
 xmlNodePtr xmlNewDocComment(xmlDocPtr doc, const xmlChar *content);

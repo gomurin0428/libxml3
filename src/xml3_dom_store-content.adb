@@ -178,6 +178,43 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
    end New_Doc_Content;
 
+   procedure Parse_Content_List
+     (S : in out Store; Doc : System.Address; Content : String;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Decoded : String (1 .. Content'Length);
+      Length : XML3_Text.Byte_Count;
+      Valid : Boolean;
+      D : Node_Ref;
+   begin
+      Result := System.Null_Address;
+      Status := Created;
+      if Content'Length = 0 then
+         return;
+      end if;
+      Status := Invalid_Argument;
+      D := Find_Registered_Node (S, Doc);
+      if Doc /= System.Null_Address
+        and then (D = Null_Node
+          or else Node (S.Current.all, D).Kind /= Document_Node)
+      then
+         return;
+      end if;
+      if Content'First /= 1 or else Content'Last > XML3_Text.Max_Bytes then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      XML3_Text.Decode
+        (Content, False, True, Decoded, Length, Valid,
+         Normalize_Line_Endings => False);
+      if not Valid then
+         return;
+      end if;
+      New_Doc_Content
+        (S, Doc, Text_Node, "text", Decoded (1 .. Integer (Length)), True,
+         Result, Status);
+   end Parse_Content_List;
+
    procedure New_Doc_Node
      (S : in out Store; Doc, Ns : System.Address;
       Name, Content : String; Raw_Content, Has_Content : Boolean;

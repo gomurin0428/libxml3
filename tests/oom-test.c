@@ -771,10 +771,14 @@ int main(int argc, char **argv) {
         }
     } else if (strcmp(operation, "dom-new-doc-text") == 0 ||
                strcmp(operation, "dom-new-doc-text-len") == 0 ||
+               strcmp(operation, "string-node-list") == 0 ||
+               strcmp(operation, "string-node-list-len") == 0 ||
                strcmp(operation, "dom-new-doc-comment") == 0 ||
                strcmp(operation, "dom-new-doc-pi") == 0 ||
                strcmp(operation, "dom-new-cdata") == 0) {
         int bounded = strcmp(operation, "dom-new-doc-text-len") == 0;
+        int list = strcmp(operation, "string-node-list") == 0;
+        int list_len = strcmp(operation, "string-node-list-len") == 0;
         int comment = strcmp(operation, "dom-new-doc-comment") == 0;
         int pi = strcmp(operation, "dom-new-doc-pi") == 0;
         int cdata = strcmp(operation, "dom-new-cdata") == 0;
@@ -785,6 +789,8 @@ int main(int argc, char **argv) {
         assert(xmlDocSetRootElement(owner_doc, root) == NULL);
         xml3_oom_enable(fail_index);
         dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+            : list ? xmlStringGetNodeList(owner_doc, BAD_CAST "te&#120;t")
+            : list_len ? xmlStringLenGetNodeList(owner_doc, BAD_CAST "te&#120;tX", 9)
             : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
             : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
             : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")
@@ -798,6 +804,8 @@ int main(int argc, char **argv) {
             assert(dom_node == NULL);
             require_oom_error();
             dom_node = bounded ? xmlNewDocTextLen(owner_doc, input, 4)
+                : list ? xmlStringGetNodeList(owner_doc, BAD_CAST "te&#120;t")
+                : list_len ? xmlStringLenGetNodeList(owner_doc, BAD_CAST "te&#120;tX", 9)
                 : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
                 : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
                 : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")

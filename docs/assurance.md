@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,414 checks
-(1,194 flow and 11,220 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,438 checks
+(1,204 flow and 11,234 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -215,7 +215,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,414-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,438-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -357,6 +357,19 @@ rollback の証明ではありません。C 境界では文字列変換と Runti
 pointer scan は証明外です。document なし・NULL/長さの振る舞い、無接続 text、文書検査、
 serialization、文書先行解放後の編集・最後の text 解放、確保失敗時の既存 tree の保持は公開
 API の実行テストで検査します。
+
+`xmlStringGetNodeList` / `xmlStringLenGetNodeList` は deprecated な公開 API の限定実装です。
+C adapter は prefix conversion、lock、Runtime dispatch、status mapping のみを行い、
+`Store.Content.Parse_Content_List` が登録済み live document を native metadata 読み取り前に確認し、
+SPARK の `XML3_Text.Decode` から既存の `New_Doc_Content` へ接続します。predefined/numeric reference
+を展開し、literal CR/LF/TAB は保持します。返却 text は detached で、document がある場合は既存の
+Doc owner pin が寿命を保持します。NULL/empty は NULL、unknown/general entity reference と malformed
+reference/invalid UTF-8/XML は失敗時に tree を変更せず拒否します。長さ 0 は byte を読まず NULL を返し、
+固定版の先頭 byte read と empty-node quirk は再現しません。entity-reference node は subset 外です。
+Store/decoder の書かれた契約は proof 範囲ですが、C string conversion、native pointer/byte validity、
+allocation/copy、ABI、diagnostic delivery と完全な public semantics は信頼境界です。通常、Unicode、
+reference、bounded input、guard-page、document lifetime、rollback は
+`tests/content-edit-test.c`、OOM retry は `tests/oom-test.c`、宣言は `tests/header-smoke.cpp` で検査します。
 
 `xmlNodeIsText` / `xmlIsBlankNode` は `Runtime.Test_Node` / `Store.Queries.Test_Node`
 で kind と XML 空白を判定します。Runtime の `Global` は managed state / native memory

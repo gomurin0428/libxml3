@@ -18,6 +18,11 @@ int main() {
     (void)get_node_path;
     void (*set_node_name)(xmlNode *, const xmlChar *) = xmlNodeSetName;
     (void)set_node_name;
+    xmlNodePtr (*string_list)(const xmlDoc *, const xmlChar *) = xmlStringGetNodeList;
+    xmlNodePtr (*string_len_list)(const xmlDoc *, const xmlChar *, int) =
+        xmlStringLenGetNodeList;
+    (void)string_list;
+    (void)string_len_list;
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;

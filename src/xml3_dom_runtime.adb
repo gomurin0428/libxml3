@@ -180,6 +180,16 @@ is
            (Current, Doc, Kind, Name, Content, Has_Content, Result, Status);
       end New_Doc_Content;
 
+      procedure Parse_Content_List
+        (Doc : System.Address; Content : String;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Content.Parse_Content_List
+           (Current, Doc, Content, Result, Status);
+      end Parse_Content_List;
+
       procedure Set_Root
         (Doc, Root : System.Address; Previous : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
