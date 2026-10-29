@@ -10,6 +10,7 @@ procedure Text_Buffers_Test is
    use type XML3_Text.Buffers.UTF8_Status;
    use type XML3_Text.Buffers.Search_Status;
    use type XML3_Text.Buffers.Slice_Status;
+   use type XML3_Text.Buffers.Escape_Status;
    use type XML3_Text.Text_Error_Kind;
    Left : aliased String := "aa" & Character'Val (0);
    Right : aliased String := "aa" & Character'Val (0);
@@ -25,6 +26,35 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_Escape is
+      Output : System.Address;
+      Status : XML3_Text.Buffers.Escape_Status;
+   begin
+      XML3_Text.Buffers.Escape_Special ("", Output, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Escaped
+                     and Output /= System.Null_Address);
+      pragma Assert (XML3_Native_Memory.Byte_At (Output, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Output);
+      XML3_Text.Buffers.Escape_Special ("a", Output, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Escape_Limit_Exceeded
+                     and Output = System.Null_Address);
+      XML3_Text.Buffers.Escape_Special ("a&", Output, Status, 5);
+      pragma Assert (Status = XML3_Text.Buffers.Escape_Limit_Exceeded
+                     and Output = System.Null_Address);
+      XML3_Text.Buffers.Escape_Special ("a&", Output, Status, 6);
+      pragma Assert (Status = XML3_Text.Buffers.Escaped
+                     and Output /= System.Null_Address);
+      pragma Assert (XML3_Native_Memory.Byte_At (Output, 0) = 'a'
+                     and XML3_Native_Memory.Byte_At (Output, 1) = '&'
+                     and XML3_Native_Memory.Byte_At (Output, 5) = ';'
+                     and XML3_Native_Memory.Byte_At (Output, 6) = Character'Val (0));
+      XML3_Native_Memory.Free (Output);
+      XML3_Text.Buffers.Escape_Special
+        ((1 => Character'Val (1)), Output, Status);
+      pragma Assert (Status = XML3_Text.Buffers.Invalid_Text
+                     and Output = System.Null_Address);
+   end Check_Escape;
 
    procedure Check_Append is
       Input, Output : System.Address;
@@ -316,6 +346,7 @@ begin
    XML3_Text.Buffers.Compare_Terminated
      (Left'Address, Left'Address, False, Result, Limit_Flag, 0);
    pragma Assert (Result = 0 and not Limit_Flag);
+   Check_Escape;
    Check_Append;
    Check_Measure;
    Check_UTF8;

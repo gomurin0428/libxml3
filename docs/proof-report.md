@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=30 -j4
 ```
 
-It completed successfully: **12,043 checks, 1,114 by flow analysis and 10,929
+It completed successfully: **12,068 checks, 1,121 by flow analysis and 10,947
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8
 memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -43,6 +43,19 @@ size, buffer-selection branches, and result/status contract (15 checks).
 Native allocation/writes, C-string conversion and pointer/ABI behavior remain
 trusted; overlap safety is tested only for libxml3 and is not claimed as
 reference equivalence.
+`xmlEncodeSpecialChars` exports from `libxml/entities.h` and uses
+`XML3_Text.Buffers.Escape_Special`. Its 17 proved checks cover bounded
+expansion, loop/index/overflow safety, and native-call preconditions;
+`Special_Image` discharges one additional check. Tests cover the fixed
+replacements, NULL/empty behavior, Unicode, input immutability, ownership,
+round-trip serialization, invalid-input rejection, and OOM retry. The API is
+partial and not-proved at the public C level: C-string conversion, pointer
+validity, ABI/status mapping, native allocation/free and actual byte writes,
+and complete libxml2 semantics remain trusted. The document argument is
+unused as in pinned libxml2 2.15.4; malformed UTF-8/XML is rejected rather than
+silently repaired or preserved, and no DTD/entity expansion is provided. The
+helper emits one analyzer warning because `Validate_UTF8`'s `Error` output is
+unused; no proof check remains unproved.
 `xmlStrQEqual` uses `XML3_Text.QNames.Compare` for raw-byte prefix/name/value
 comparison. The proof covers status initialization, NULL-prefix pointer
 identity, scalar loop bounds, and the status postcondition relating equality
@@ -454,13 +467,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 302 |
-| Initialization | 660 |
-| Runtime checks | 5,311 |
-| Assertions | 1,617 |
-| Functional contracts | 3,944 |
-| Termination | 209 |
-| **Total** | **12,043** |
+| Data dependencies | 304 |
+| Initialization | 664 |
+| Runtime checks | 5,319 |
+| Assertions | 1,621 |
+| Functional contracts | 3,950 |
+| Termination | 210 |
+| **Total** | **12,068** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -838,8 +851,10 @@ The repository's unchanged 12,000-depth regression is a separate test gate.
 ## Source identity (SHA-256)
 
 ```text
-b6e98cd90f62bad2f97683f71110a2ec3fe6fbc99b8e52afcadd29dfb265775a  src/xml3_c.adb
-0daf1fa1dfc4177bc3bdd852e5ba2c38891074037f75cfdbb8f1d792fb0e4400  src/xml3_c.ads
+dacaf2a69e0071913d2db0c7b4e1537866b56e7a9931a4d077364d0645969062  src/xml3_c.adb
+077f65b3f29146e12bf3e4416c430e5f13ea2a30ab1471f6a779767bc8e14df5  src/xml3_c.ads
+e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
+52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
@@ -886,13 +901,13 @@ b9336459d96b186963ec8decf600e7d016677c777c27b610b304fa923434c649  src/xml3_seria
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-44be081902047013762e7829c965aa4f0f9fb2220c130a7aa68f9001ac94f02d  src/xml3_text-buffers.adb
-1d95450cfc92d4df20b941d008c50f55847f69f1dd0b87f7dcab65d1c12509ba  src/xml3_text-buffers.ads
+9ed770d09a6aac8ffdb8b7d16a2cc3034515a80c5c8105f0e92880fd18e0cc8e  src/xml3_text-buffers.adb
+b195a46e8e64db9d7dde75947ef6f31ab8c0ef05a75cf823db90e266976d91b9  src/xml3_text-buffers.ads
 0bdf14af67af9bb45f7a6450dddca70b45f9371d8791c7af84bc3f74eb2a0cb5  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-1077fb9ed0009cb9b3b259389b687d6fe3ccff6fe8c2d590ad6f4b706441fcaa  Makefile
+da8d7eb1ae59a3f02c02d0a253574663ab4bbaf192f0274e541fd67415c9ba15  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

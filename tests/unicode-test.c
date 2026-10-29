@@ -5,6 +5,7 @@
 #else
 #include <libxml3.h>
 #endif
+#include <libxml/entities.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +20,78 @@ typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
 static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncasecmp};
 typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
 static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
+
+static void test_special_escaping(void) {
+    static const char input[] = "<&>\"'\r\n\t名😀&amp;";
+    static const char expected[] = "&lt;&amp;&gt;&quot;'&#13;\n\t名😀&amp;amp;";
+    xmlResetLastError();
+    assert(xmlEncodeSpecialChars(NULL, NULL) == NULL);
+    assert(xmlGetLastError() == NULL);
+    xmlDoc unused = {0};
+    xmlChar *escaped = xmlEncodeSpecialChars(&unused, BAD_CAST "");
+    assert(escaped && escaped[0] == 0);
+    xmlFree(escaped);
+    for (int byte = 1; byte < 128; ++byte) {
+        if (byte < 32 && byte != '\r' && byte != '\n' && byte != '\t')
+            continue;
+        xmlChar one[] = {(xmlChar)byte, 0};
+        const char *replacement = byte == '<' ? "&lt;" : byte == '>' ? "&gt;"
+            : byte == '&' ? "&amp;" : byte == '"' ? "&quot;"
+            : byte == '\r' ? "&#13;" : (const char *)one;
+        escaped = xmlEncodeSpecialChars(NULL, one);
+        assert(escaped && strcmp((const char *)escaped, replacement) == 0);
+        xmlFree(escaped);
+    }
+    xmlChar *source = xmlStrdup(BAD_CAST input);
+    assert(source);
+    escaped = xmlEncodeSpecialChars(&unused, source);
+    assert(escaped && escaped != source);
+    assert(strcmp((const char *)escaped, expected) == 0);
+    assert(strcmp((const char *)source, input) == 0);
+    xmlFree(source);
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlNodeSetContent(root, escaped) == 0);
+    xmlFree(escaped);
+    xmlChar *output = NULL;
+    int size = 0;
+    xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+    assert(output && size > 0);
+    xmlFreeDoc(doc);
+    doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+    assert(doc);
+    xmlFree(output);
+    xmlChar *value = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(value && strcmp((const char *)value, input) == 0);
+    xmlFree(value);
+    xmlFreeDoc(doc);
+
+#ifndef XML3_REFERENCE_VERSION
+    const char *invalid[] = {"\1", "\xc3", "\xc0\xaf", "\xed\xa0\x80",
+                             "\xef\xbf\xbe", "\xf4\x90\x80\x80"};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+        xmlResetLastError();
+        assert(xmlEncodeSpecialChars(NULL, BAD_CAST invalid[i]) == NULL);
+        assert(xmlGetLastError() != NULL);
+    }
+    xmlResetLastError();
+#endif
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    mapping[page - 2] = '&';
+    mapping[page - 1] = 0;
+    escaped = xmlEncodeSpecialChars(NULL, BAD_CAST (mapping + page - 2));
+    assert(escaped && strcmp((const char *)escaped, "&amp;") == 0);
+    xmlFree(escaped);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
+}
 
 static void test_string_slice(void) {
     xmlResetLastError();
@@ -1480,6 +1553,7 @@ static void test_ranges(void) {
 }
 
 int main(void) {
+    test_special_escaping();
     test_string_duplicates();
     test_byte_search();
     test_string_slice();

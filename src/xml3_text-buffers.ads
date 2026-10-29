@@ -15,6 +15,17 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type UTF8_Status is (UTF8_Valid, UTF8_Invalid, UTF8_Limit_Exceeded);
 
+   type Escape_Status is
+     (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
+
+   procedure Escape_Special
+     (Input : String; Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Input'First = 1 and then Input'Last in 0 .. Max_Bytes,
+       Post => (if Status = Escaped then Result /= System.Null_Address
+                else Result = System.Null_Address);
+
    function UTF8_Lead_Size (Item : System.Address) return Integer
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
        Post => UTF8_Lead_Size'Result in -1 | 1 .. 4
