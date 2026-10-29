@@ -1396,7 +1396,9 @@ package body XML3_C is
          Report_Dom_Error (1);
    end Free_Doc;
 
-   function Node_Get_Content (Node : System.Address) return System.Address is
+   function Get_Node_String
+     (Node : System.Address; Path : Boolean) return System.Address
+   is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
@@ -1408,9 +1410,13 @@ package body XML3_C is
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Get_Content (Node, Result, Status);
+         if Path then
+            XML3_DOM_Runtime.Get_Path (Node, Result, Status);
+         else
+            XML3_DOM_Runtime.Get_Content (Node, Result, Status);
+         end if;
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Validation_Error => Path);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -1422,7 +1428,17 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end Get_Node_String;
+
+   function Node_Get_Content (Node : System.Address) return System.Address is
+   begin
+      return Get_Node_String (Node, False);
    end Node_Get_Content;
+
+   function Node_Get_Path (Node : System.Address) return System.Address is
+   begin
+      return Get_Node_String (Node, True);
+   end Node_Get_Path;
 
    procedure Get_Inherited_XML_Property
      (Node : System.Address;

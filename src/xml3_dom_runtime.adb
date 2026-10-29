@@ -395,6 +395,14 @@ is
          XML3_DOM_Store.Queries.Get_Content (Current, Facade, Result, Status);
       end Get_Content;
 
+      procedure Get_Path
+        (Facade : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Queries.Get_Path (Current, Facade, Result, Status);
+      end Get_Path;
+
       procedure Dump_Memory_Encoding
         (Document : System.Address; Encoding : String;
          Result : out System.Address; Length : out Natural;

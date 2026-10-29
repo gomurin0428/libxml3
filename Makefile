@@ -55,7 +55,8 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
 		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
 		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
 		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
-		src/xml3_text.ads src/xml3_text.adb src/xml3_parser.ads src/xml3_parser.adb \
+		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \
+		src/xml3_parser.ads src/xml3_parser.adb \
 		src/xml3_encoding.ads src/xml3_encoding.adb
 	$(ADA_BIN)/gprbuild -p -P tests/dom_bridge_test.gpr -o dom-bridge-test
 
@@ -312,7 +313,7 @@ test-errors: tests/error-test tests/error-test-reference tests/error-snapshot \
 	/usr/bin/python3 tests/compare-errors.py
 
 test-oom: tests/oom-test
-	@set -e; for operation in success parsed-pi malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-cdata dom-new-comment dom-new-pi dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-detached attr-set-new attr-set attr-value ns-new ns-detached ns-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup strncat-new strcat strncat escape-special escape-special-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8; do \
+	@set -e; for operation in success parsed-pi malformed utf16 warning copy replacement tls dom-new-doc dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-cdata dom-new-comment dom-new-pi dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-detached attr-set-new attr-set attr-value ns-new ns-detached ns-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup strncat-new strcat strncat escape-special escape-special-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -340,6 +341,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-check 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-charcmp-error 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test dom-adjacent-sibling 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test node-path 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test substring-search 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0
@@ -391,7 +393,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection test-text-buffers
 	@for symbol in xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
-		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent \
+		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent xmlGetNodePath \
 		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlAddPrevSibling xmlAddNextSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
 		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp xmlFreePropList \

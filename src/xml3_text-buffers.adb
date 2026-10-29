@@ -421,6 +421,44 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Width := Needed;
    end Get_UTF8_Char;
 
+   function Valid_Name
+     (Source : System.Address; Source_Length : Natural;
+      Allow_Colon : Boolean) return Boolean
+   is
+      I : Natural := 0;
+      Width : Natural;
+      Code : Integer;
+      pragma Unreferenced (Code);
+      Initial : Boolean := True;
+      Window : String (1 .. 4) := (others => Character'Val (0));
+   begin
+      if Source_Length = 0 or else Source = System.Null_Address then
+         return False;
+      end if;
+      while I < Source_Length loop
+         pragma Loop_Variant (Increases => I);
+         Get_UTF8_Char
+           (Native.Offset (Source, Native.Byte_Count (I)),
+            Natural'Min (4, Source_Length - I), Code, Width);
+         if Width = 0 then
+            return False;
+         end if;
+         for J in 0 .. Width - 1 loop
+            Window (J + 1) := Native.Byte_At (Source, I + J);
+         end loop;
+         if Window (1) = ':' then
+            if not Allow_Colon then
+               return False;
+            end if;
+         elsif XML3_Text.Name_Width (Window (1 .. Width), 1, Initial) /= Width then
+            return False;
+         end if;
+         Initial := False;
+         I := I + Width;
+      end loop;
+      return True;
+   end Valid_Name;
+
    procedure Read_Length
      (Item : System.Address; Last : Byte_Count;
       Length : out Byte_Count; Found : out Boolean)

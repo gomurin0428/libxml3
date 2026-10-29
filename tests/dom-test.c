@@ -12,6 +12,226 @@ static void assert_text(xmlNodePtr node, const char *expected) {
     xmlFree(content);
 }
 
+static void assert_path(xmlNodePtr node, const char *expected) {
+    xmlChar *path = xmlGetNodePath(node);
+    assert(path != NULL);
+    if (strcmp((const char *)path, expected) != 0)
+        fprintf(stderr, "path mismatch: got %s expected %s\n",
+                (const char *)path, expected);
+    assert(strcmp((const char *)path, expected) == 0);
+    xmlFree(path);
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void assert_invalid_path(xmlNodePtr node) {
+    xmlResetLastError();
+    assert(xmlGetNodePath(node) == NULL);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->domain == XML_FROM_TREE);
+    assert(xmlGetLastError()->code == 115);
+    xmlResetLastError();
+}
+#endif
+
+static void test_node_paths(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr first;
+    xmlNodePtr second;
+    xmlNodePtr single;
+    xmlNodePtr text;
+    xmlNodePtr cdata;
+    xmlNodePtr comment;
+    xmlNodePtr second_comment;
+    xmlNodePtr pi;
+    xmlNodePtr second_pi;
+    xmlAttrPtr attr;
+    xmlChar *owned;
+
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    assert(xmlGetNodePath(NULL) == NULL);
+    assert_path((xmlNodePtr)doc, "/");
+    assert_path(root, "/root");
+    first = xmlNewChild(root, NULL, BAD_CAST "item", NULL);
+    second = xmlNewChild(root, NULL, BAD_CAST "item", NULL);
+    single = xmlNewChild(root, NULL, BAD_CAST "single", NULL);
+    assert(first != NULL && second != NULL && single != NULL);
+    assert_path(first, "/root/item[1]");
+    assert_path(second, "/root/item[2]");
+    assert_path(single, "/root/single");
+
+    attr = xmlNewProp(root, BAD_CAST "id", BAD_CAST "value");
+    assert(attr != NULL);
+    assert_path((xmlNodePtr)attr, "/root/@id");
+    assert(attr->children != NULL);
+    assert_path(attr->children, "/root/@id/text()");
+
+    text = xmlNewText(BAD_CAST "text");
+    cdata = xmlNewCDataBlock(doc, BAD_CAST "cdata", 5);
+    comment = xmlNewComment(BAD_CAST "comment");
+    second_comment = xmlNewComment(BAD_CAST "other");
+    pi = xmlNewPI(BAD_CAST "target", BAD_CAST "data");
+    second_pi = xmlNewPI(BAD_CAST "target", BAD_CAST "more");
+    assert(text != NULL && cdata != NULL && comment != NULL
+           && second_comment != NULL && pi != NULL && second_pi != NULL);
+    assert(xmlAddChild(root, text) == text);
+    assert(xmlAddChild(root, cdata) == cdata);
+    assert(xmlAddChild(root, comment) == comment);
+    assert(xmlAddChild(root, second_comment) == second_comment);
+    assert(xmlAddChild(root, pi) == pi);
+    assert(xmlAddChild(root, second_pi) == second_pi);
+    assert_path(text, "/root/text()[1]");
+    assert_path(cdata, "/root/text()[2]");
+    assert_path(comment, "/root/comment()[1]");
+    assert_path(second_comment, "/root/comment()[2]");
+    assert_path(pi, "/root/processing-instruction('target')[1]");
+    assert_path(second_pi, "/root/processing-instruction('target')[2]");
+
+    xmlUnlinkNode(first);
+    assert_path(second, "/root/item");
+    assert(xmlAddPrevSibling(second, first) == first);
+    assert_path(second, "/root/item[2]");
+    for (int i = 0; i < 10; i++) {
+        second = xmlNewChild(root, NULL, BAD_CAST "item", NULL);
+        assert(second != NULL);
+    }
+    assert_path(second, "/root/item[12]");
+
+    {
+        xmlNsPtr prefixed = xmlNewNs(root, BAD_CAST "urn:a", BAD_CAST "p");
+        xmlNodePtr named = xmlNewNode(prefixed, BAD_CAST "named");
+        xmlAttrPtr namespaced_attr;
+        assert(prefixed != NULL && named != NULL);
+        assert(xmlGetNodePath((xmlNodePtr)prefixed) == NULL);
+        assert(xmlAddChild(root, named) == named);
+        assert_path(named, "/root/p:named");
+        namespaced_attr =
+            xmlNewNsProp(root, prefixed, BAD_CAST "id", BAD_CAST "value");
+        assert(namespaced_attr != NULL && namespaced_attr->children != NULL);
+        assert_path((xmlNodePtr)namespaced_attr, "/root/@p:id");
+        assert_path(namespaced_attr->children, "/root/@p:id/text()");
+    }
+    {
+        xmlDocPtr ns_doc = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr ns_root = xmlNewNode(NULL, BAD_CAST "r");
+        xmlNsPtr default_ns;
+        xmlNsPtr other_ns;
+        xmlNodePtr wildcard;
+        xmlNodePtr other;
+        xmlNodePtr other_namespaced;
+        assert(ns_doc != NULL && ns_root != NULL);
+        assert(xmlDocSetRootElement(ns_doc, ns_root) == NULL);
+        default_ns = xmlNewNs(ns_root, BAD_CAST "urn:one", NULL);
+        other_ns = xmlNewNs(ns_root, BAD_CAST "urn:other", BAD_CAST "x");
+        wildcard = xmlNewNode(default_ns, BAD_CAST "wanted");
+        other = xmlNewChild(ns_root, NULL, BAD_CAST "other", NULL);
+        other_namespaced = xmlNewNode(other_ns, BAD_CAST "third");
+        assert(default_ns != NULL && other_ns != NULL && wildcard != NULL
+               && other != NULL && other_namespaced != NULL);
+        assert(xmlAddPrevSibling(other, wildcard) == wildcard);
+        assert(xmlAddChild(ns_root, other_namespaced) == other_namespaced);
+        assert_path(wildcard, "/r/*[1]");
+        xmlFreeDoc(ns_doc);
+    }
+    {
+        xmlNodePtr one_node = xmlNewNode(NULL, BAD_CAST "same");
+        xmlNodePtr two_node = xmlNewNode(NULL, BAD_CAST "same");
+        xmlNsPtr one;
+        xmlNsPtr two;
+        assert(one_node != NULL && two_node != NULL);
+        assert(xmlAddChild(root, one_node) == one_node);
+        assert(xmlAddChild(root, two_node) == two_node);
+        one = xmlNewNs(one_node, BAD_CAST "urn:one", BAD_CAST "q");
+        two = xmlNewNs(two_node, BAD_CAST "urn:two", BAD_CAST "q");
+        assert(one != NULL && two != NULL);
+        xmlSetNs(one_node, one);
+        xmlSetNs(two_node, two);
+        assert_path(one_node, "/root/q:same[1]");
+        assert_path(two_node, "/root/q:same[2]");
+    }
+    {
+        xmlNodePtr deep = root;
+        xmlChar *path;
+        for (int i = 0; i < 24; i++) {
+            deep = xmlNewChild(deep, NULL, BAD_CAST "deepname", NULL);
+            assert(deep != NULL);
+        }
+        path = xmlGetNodePath(deep);
+        assert(path != NULL && strlen((const char *)path) == 221);
+        xmlFree(path);
+    }
+    {
+        xmlNodePtr unicode = xmlNewChild(root, NULL, BAD_CAST "名", NULL);
+        assert(unicode != NULL);
+        assert_path(unicode, "/root/名");
+        owned = xmlGetNodePath(unicode);
+        assert(owned != NULL);
+        xmlFreeDoc(doc);
+        assert(strcmp((const char *)owned, "/root/名") == 0);
+        xmlFree(owned);
+        return;
+    }
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void test_node_path_rejections(void) {
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+    xmlNodePtr invalid;
+    xmlNsPtr invalid_ns;
+    xmlNodePtr invalid_prefixed;
+    xmlNodePtr invalid_pi;
+    xmlNodePtr invalid_utf8;
+    xmlNode fake;
+
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    invalid = xmlNewNode(NULL, BAD_CAST "bad]");
+    assert(invalid != NULL);
+    assert_invalid_path(invalid);
+    xmlFreeNode(invalid);
+    invalid_pi = xmlNewPI(BAD_CAST "bad'", NULL);
+    assert(invalid_pi != NULL);
+    assert_invalid_path(invalid_pi);
+    xmlFreeNode(invalid_pi);
+    invalid_utf8 = xmlNewNode(NULL, BAD_CAST "\xff");
+    assert(invalid_utf8 != NULL);
+    assert_invalid_path(invalid_utf8);
+    xmlFreeNode(invalid_utf8);
+    invalid_ns = xmlNewNs(root, BAD_CAST "urn:bad", BAD_CAST "bad]");
+    assert(invalid_ns != NULL);
+    invalid_prefixed = xmlNewNode(invalid_ns, BAD_CAST "name");
+    assert(invalid_prefixed != NULL);
+    assert_invalid_path(invalid_prefixed);
+    xmlFreeNode(invalid_prefixed);
+    memset(&fake, 0, sizeof(fake));
+    assert_invalid_path(&fake);
+    assert_invalid_path((xmlNodePtr)invalid_ns);
+    xmlFreeDoc(doc);
+
+    doc = xmlNewDoc(BAD_CAST "1.0");
+    root = xmlNewNode(NULL, BAD_CAST "root");
+    assert(doc != NULL && root != NULL);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    {
+        xmlNsPtr detached_ns =
+            xmlNewNs(root, BAD_CAST "urn:detached", BAD_CAST "p");
+        assert(detached_ns != NULL);
+        invalid = xmlNewChild(root, detached_ns, BAD_CAST "detached", NULL);
+    }
+    assert(invalid != NULL);
+    xmlUnlinkNode(invalid);
+    xmlFreeDoc(doc);
+    {
+        xmlChar *path = xmlGetNodePath(invalid);
+        assert(path != NULL && strcmp((const char *)path, "/p:detached") == 0);
+        xmlFree(path);
+    }
+    xmlFreeNode(invalid);
+}
+#endif
+
 static void test_constructors_and_root_replacement(void) {
     static const char input[] =
         "<!--before--><?before x?><old/><!--after--><?after y?>";
@@ -849,7 +1069,9 @@ int main(void) {
     test_parsed_unlink_and_reinsert();
     test_add_sibling_flow();
     test_adjacent_sibling_flow();
+    test_node_paths();
 #ifndef XML3_REFERENCE_TEST
+    test_node_path_rejections();
     test_sibling_rejections_and_lifetime();
     test_release_list_lifetime_and_rejections();
     test_cross_document_detached_lifetime();

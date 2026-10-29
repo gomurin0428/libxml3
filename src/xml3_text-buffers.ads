@@ -18,6 +18,11 @@ package XML3_Text.Buffers with SPARK_Mode is
    type Escape_Status is
      (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
 
+   function Valid_Name
+     (Source : System.Address; Source_Length : Natural;
+      Allow_Colon : Boolean) return Boolean
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory);
+
    procedure Escape_Special
      (Input : String; Result : out System.Address; Status : out Escape_Status;
       Limit : Byte_Count := Max_Bytes)

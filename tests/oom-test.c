@@ -1736,6 +1736,36 @@ int main(int argc, char **argv) {
                       implicit ? "名" : "v") == 0);
         assert(strcmp((const char *)root->children->content,
                       implicit ? "é" : "text") == 0);
+    } else if (strcmp(operation, "node-path") == 0) {
+        xmlNodePtr root;
+        xmlNodePtr first;
+        xmlNodePtr second;
+        xmlNsPtr ns;
+        xmlChar *path;
+
+        doc = xmlNewDoc(BAD_CAST "1.0");
+        root = xmlNewNode(NULL, BAD_CAST "root");
+        assert(doc != NULL && root != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        ns = xmlNewNs(root, BAD_CAST "urn:test", BAD_CAST "p");
+        first = xmlNewChild(root, ns, BAD_CAST "item", NULL);
+        second = xmlNewChild(root, ns, BAD_CAST "item", NULL);
+        assert(ns != NULL && first != NULL && second != NULL);
+        xml3_oom_enable(fail_index);
+        path = xmlGetNodePath(second);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(path == NULL);
+            require_oom_error();
+            path = xmlGetNodePath(second);
+        }
+        assert(path != NULL);
+        assert(strcmp((const char *)path, "/root/p:item[2]") == 0);
+        xmlFree(path);
+        assert(root->children == first && first->next == second);
+        assert(first->ns == ns && second->ns == ns);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");
