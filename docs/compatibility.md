@@ -36,6 +36,15 @@ ABI と完全な C semantics は信頼境界に残ります。
 追記・置換・結合後や文書先行解放後も同じ管理状態を使い、DOM・所有権を変更しません。
 外部で作った構造体や C 構造体フィールドの直接書換えは対象外です。
 
+`libxml/chvalid.h` は upstream で deprecated の `xmlIsChar` と `xmlIsBlank` 関数を公開します。
+`xmlIsChar` は XML 1.0 Char production の TAB/LF/CR, U+0020–D7FF, E000–FFFD,
+10000–10FFFF を 1、それ以外を 0 と判定し、許可範囲内の supplementary noncharacter を追加除外しません。
+`xmlIsBlank` は U+0009・U+000A・U+000D・U+0020 のみ 1、それ以外を 0 とします。
+引数は UTF-8 bytes でなく scalar number で、unsigned の大きな値も変換前に安全に false になります。
+両関数は pure SPARK classifier を使い、allocation・diagnostic・DOM access・lock を行いません。
+この互換面は関数のみで、upstream header macro や range-group APIs は未実装です。
+C ABI と完全な upstream 意味論は信頼境界に残ります。
+
 `xmlNodeGetLang` は node 自身から parent をたどり、最寄りの XML namespace
 `lang` の値を独立した `xmlFree` 所有文字列として返します。空または NULL 値の属性も
 空文字列として継承を止めます。`xmlNodeGetSpacePreserve` は element のみを受け付け、

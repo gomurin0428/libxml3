@@ -1,4 +1,16 @@
 {
+  "function:chvalid.h:xmlIsBlank": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for U+0009, U+000A, U+000D and U+0020, otherwise 0, including unsigned values above Natural'Last. No allocation, diagnostics, lock, or DOM access. This entry covers only function symbols, not header macros or range-group APIs; C ABI and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlIsChar": {
+    "implementation": "partial",
+    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for XML 1.0 Char ranges U+0009/U+000A/U+000D, U+0020-U+D7FF, U+E000-U+FFFD and U+10000-U+10FFFF; otherwise 0. No extra noncharacter filtering is applied within the supplementary range; high unsigned values return false before narrowing. No allocation, diagnostics, lock, or DOM access. This entry covers only function symbols, not header macros or range-group APIs; C ABI and complete upstream semantics are not proved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:entities.h:xmlEncodeSpecialChars": {
     "implementation": "partial",
     "scope": "SPARK-backed XML special-character escaping of valid UTF-8/XML text. Escapes less/greater-than, ampersand, double quote and CR; preserves apostrophe/LF/TAB and valid non-ASCII. NULL input returns NULL; empty input allocates an empty copy; document is unused. Rejects invalid UTF-8/XML characters instead of reference replacement/preservation, checks expansion limits, and preserves input on allocation failure. Native pointer/ABI/allocator/byte writes and complete public semantics remain unproved; no DTD/entity subsystem is provided.",

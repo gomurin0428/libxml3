@@ -161,8 +161,8 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
                return;
             end if;
             for I in 0 .. V.Content_Length - 1 loop
-               if Native.Byte_At (V.Content, I) not in
-                 ' ' | Character'Val (9) | Character'Val (10) | Character'Val (13)
+               if not XML3_Text.XML_Blank
+                 (Character'Pos (Native.Byte_At (V.Content, I)))
                then
                   return;
                end if;

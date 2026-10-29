@@ -2533,6 +2533,14 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Char (Natural (Code))));
+
+   function Is_XML_Blank (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Blank (Natural (Code))));
+
    function UTF8_Char_Compare (Left, Right : System.Address) return Interfaces.C.int is
       Result : Integer;
       Invalid : Boolean;
