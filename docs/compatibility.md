@@ -611,13 +611,15 @@ no-allocation testはlibxml3のみで実行します。`xmlCharStrdup` は `char
 `xmlStrdup` と同じ内容を返します。`xmlCharStrndup` はNULL入力または負長でNULLを返し、
 非NULL・非負入力では最大 `len` bytesを読み、早いNULで止まります。これは指定長のraw spanを
 埋め込みNUL込みで複製する `xmlStrndup` とは異なります。長さ0は読み取りなしで所有権付き
-空文字列を返します。両APIは `Max_Input` 上限を適用し、`xmlCharStrndup` の `len` 超過は
-読み取り前に拒否します。高位bitを含む入力byteを変更・
+空文字列を返します。両APIは `Max_Bytes` 上限を適用し、`xmlCharStrndup` の `len` 超過は
+読み取り前に拒否します。`Copy_Byte_Prefix` が直接走査し、`Copy_Span` が独立したコピーを
+作ります。他の複製APIも `Concatenate_Bytes` 経由で直接処理し、C文字列の中間コピーは
+不要です。高位bitを含む入力byteを変更・
 transcodeせず、UTF-8検証も行いません。返却値は `xmlFree` で解放してください。
 pinned reference は早いNULの後も `len+1` bytesを確保しますが、そのtailは未規定です。
 libxml3はコピーしたprefixと末尾NULのみを確保し、余剰capacityやallocation-size equivalence
 は保証しません。テストは未規定tailを検査せず、定義済みの返却文字列だけを比較します。
-native pointerの有効性、C conversion、allocation、byte writes、ABIは信頼境界です。
+native pointerの有効性・読み取り範囲、allocation、byte reads/writes、ABI、完全な公開意味論は信頼境界です。
 `xmlCheckUTF8` は strict UTF-8 encodingを検査し、NULL・malformed・truncated入力で0、空入力で1を
 返します。最初のNULで停止し、その後は読みません。overlong encoding、surrogate、U+10FFFFを超える
 scalarは拒否しますが、ASCII controlやUnicode noncharacterはUTF-8として受け入れます。したがって

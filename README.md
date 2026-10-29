@@ -126,7 +126,8 @@ pointer、読み取り可能性、allocation、ABI は信頼境界です。
 `xmlCharStrdup` は `char *` 版の `xmlStrdup` で、`xmlCharStrndup` は `char *` 入力を
 最大 `len` bytes 読み、先にNULがあればそこで止まります。後者は `xmlStrndup` と異なり
 指定長の埋め込みNUL以降をコピーしません。0長は入力を読まず、NULLまたは負長はNULLを返し、
-両APIは `Max_Input` 上限を適用し、`xmlCharStrndup` の `len` 超過は読み取り前に拒否します。
+両APIは `Max_Bytes` 上限を適用し、`xmlCharStrndup` の `len` 超過は読み取り前に拒否します。
+複製APIの走査・コピーはSPARK側で直接行い、C文字列の中間コピーは不要です。
 入力byteは高位bitも含め変換・UTF-8検証せず保持し、
 返却値は `xmlFree` で解放します。pinned reference はNULが早期にあっても `len+1` bytesを
 allocationしますが、余剰tailは未規定です。libxml3はコピーprefix+NULだけを確保し、

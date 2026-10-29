@@ -33,6 +33,42 @@ procedure Text_Buffers_Test is
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
 
+   procedure Check_Byte_Prefix is
+      Input : aliased String := "ab";
+      Early_NUL : aliased String := "a" & Character'Val (0) & "x";
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Slice_Status;
+   begin
+      XML3_Text.Buffers.Copy_Byte_Prefix
+        (System.Null_Address, Integer'Last, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Slice
+        and then Result = System.Null_Address);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Input'Address, -1, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.No_Slice
+        and then Result = System.Null_Address);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Input'Address, 2, Result, Status, 1);
+      pragma Assert (Status = XML3_Text.Buffers.Slice_Limit_Exceeded
+        and then Result = System.Null_Address);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Early_NUL'Address, 3, Result, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.Slice_Limit_Exceeded
+        and then Result = System.Null_Address);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Input'Address, 2, Result, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.Sliced
+        and then XML3_Native_Memory.Byte_At (Result, 0) = 'a'
+        and then XML3_Native_Memory.Byte_At (Result, 1) = 'b'
+        and then XML3_Native_Memory.Byte_At (Result, 2) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Early_NUL'Address, 3, Result, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.Sliced
+        and then XML3_Native_Memory.Byte_At (Result, 0) = 'a'
+        and then XML3_Native_Memory.Byte_At (Result, 1) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+      XML3_Text.Buffers.Copy_Byte_Prefix (Input'Address, 0, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Sliced
+        and then XML3_Native_Memory.Byte_At (Result, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+   end Check_Byte_Prefix;
+
    procedure Check_Concatenate is
       Left : aliased String := "ab" & Character'Val (0);
       Right : aliased String := "c" & Character'Val (0);
@@ -708,6 +744,7 @@ begin
    Check_QName_Copy;
    Check_QName_Build;
    Check_Concatenate;
+   Check_Byte_Prefix;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;

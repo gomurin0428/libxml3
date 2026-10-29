@@ -1056,7 +1056,7 @@
   },
   "function:xmlstring.h:xmlStrdup": {
     "implementation": "partial",
-    "scope": "Copies a bounded NUL-terminated byte string into a new xmlFree-owned allocation. NULL and unrepresentable/over-limit inputs return NULL; bytes are not UTF-8 validated. C conversion, native pointer validity, allocation, writes, and full API semantics remain outside proof.",
+    "scope": "Copies a bounded NUL-terminated byte string into a new xmlFree-owned allocation through direct SPARK Concatenate_Bytes, without C-string conversion. NULL and unrepresentable/over-limit inputs return NULL; bytes are not UTF-8 validated. Native pointer validity/extents, allocation, byte effects, ABI and full API semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",
@@ -1066,7 +1066,7 @@
   },
   "function:xmlstring.h:xmlStrndup": {
     "implementation": "partial",
-    "scope": "Copies exactly the requested nonnegative bounded byte length, including embedded NUL bytes, and appends a terminator; length zero returns an owned empty string without reading input. NULL/negative/over-limit inputs return NULL. C conversion, native pointer validity, allocation, writes, and full API semantics remain outside proof.",
+    "scope": "Copies exactly the requested nonnegative bounded byte length through direct SPARK Concatenate_Bytes, including embedded NUL bytes, and appends a terminator; length zero returns an owned empty string without reading input. NULL/negative/over-limit inputs return NULL. No C-string conversion. Native pointer validity/extents, allocation, byte effects, ABI and full API semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",
@@ -1076,7 +1076,7 @@
   },
   "function:xmlstring.h:xmlCharStrdup": {
     "implementation": "partial",
-    "scope": "C char* wrapper over the bounded NUL-terminated byte duplication path. Copies high-bit bytes unchanged without transcoding or UTF-8 validation; NULL and over-Max_Input inputs return NULL. Result is xmlFree-owned. C conversion, native pointer validity, allocation/writes, ABI, and full semantics remain outside proof.",
+    "scope": "C char* wrapper over direct SPARK bounded NUL-terminated byte duplication, without C-string conversion. Copies high-bit bytes unchanged without transcoding or UTF-8 validation; NULL and over-Max_Bytes inputs return NULL. Result is xmlFree-owned. Native pointer validity/extents, allocation/byte effects, ABI and full semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
       "tests/oom-test.c",
@@ -1086,9 +1086,10 @@
   },
   "function:xmlstring.h:xmlCharStrndup": {
     "implementation": "partial",
-    "scope": "For non-NULL input and nonnegative len, copies at most len C-string bytes and stops at an earlier NUL; len zero returns an owned empty string without reading input. NULL, negative, and over-Max_Input lengths return NULL; an over-limit length is rejected before reading input. Unlike xmlStrndup it does not copy bytes after an embedded NUL. Reference may allocate len+1 with unspecified tail after early NUL; libxml3 allocates only copied-prefix+terminator, so no spare capacity or allocation-size equivalence is promised. Tests compare defined contents only. C conversion, pointer validity, allocation/writes, ABI, and full semantics remain outside proof.",
+    "scope": "Direct SPARK Copy_Byte_Prefix scans at most len bytes, stops at early NUL, and delegates to Copy_Span without C-string conversion. Non-NULL len-zero input gets an owned empty string without reads. NULL, negative and over-Max_Bytes lengths return NULL before any input reads. Unlike xmlStrndup, bytes after an embedded NUL are not copied. Results are xmlFree-owned and inputs remain unchanged on failure. Reference may allocate len+1 with unspecified tail after early NUL; libxml3 allocates only prefix+terminator, so no spare capacity or allocation-size equivalence is promised. Native pointer validity/extents, allocation/byte effects, ABI and complete semantics remain outside proof.",
     "tests": [
       "tests/unicode-test.c",
+      "tests/text_buffers_test.adb",
       "tests/oom-test.c",
       "tests/header-smoke.cpp"
     ],
