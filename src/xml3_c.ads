@@ -400,6 +400,9 @@ package XML3_C is
    function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsChar";
 
+   function Get_Predefined_Entity (Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetPredefinedEntity";
+
    function Is_XHTML (System_ID, Public_ID : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsXHTML";
 

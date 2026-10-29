@@ -4,6 +4,28 @@ package XML3_Text with SPARK_Mode is
    type Text_Error_Kind is (No_Text_Error, Invalid_UTF8, Invalid_XML_Character);
    type Name_Kind is (XML_Name, NCName, QName, NMToken);
 
+   type Entity_Kind is
+     (No_Entity, Entity_Lt, Entity_Gt, Entity_Amp, Entity_Apos, Entity_Quot);
+   subtype Predefined_Entity_Kind is Entity_Kind range Entity_Lt .. Entity_Quot;
+
+   function Entity_Name (Kind : Predefined_Entity_Kind) return String is
+     (case Kind is
+         when Entity_Lt => "lt", when Entity_Gt => "gt", when Entity_Amp => "amp",
+         when Entity_Apos => "apos", when Entity_Quot => "quot")
+     with Global => null,
+       Post => Entity_Name'Result'First = 1 and Entity_Name'Result'Length in 2 .. 4;
+
+   function Entity_Value (Kind : Predefined_Entity_Kind) return Character is
+     (case Kind is
+         when Entity_Lt => '<', when Entity_Gt => '>', when Entity_Amp => '&',
+         when Entity_Apos => Character'Val (39), when Entity_Quot => '"')
+     with Global => null;
+
+   function Find_Entity (Name : String) return Entity_Kind
+     with Global => null,
+       Post => (if Find_Entity'Result /= No_Entity then
+                  Name = Entity_Name (Find_Entity'Result));
+
    function UTF8_Width (Code : Natural) return Positive is
      (if Code < 16#80# then 1 elsif Code < 16#800# then 2
       elsif Code < 16#10000# then 3 else 4)

@@ -492,6 +492,21 @@ procedure Text_Buffers_Test is
         (not XML3_Text.Buffers.Valid_Name
            (QName'Address, 0, False));
    end Check_Name_Validation;
+
+   procedure Check_Predefined_Entity is
+      Amp : aliased String := "amp" & Character'Val (0);
+      Missing : aliased String := "missing" & Character'Val (0);
+   begin
+      pragma Assert
+        (XML3_Text.Buffers.Get_Predefined_Entity
+           (Amp'Address) /= System.Null_Address);
+      pragma Assert
+        (XML3_Text.Buffers.Get_Predefined_Entity
+           (Missing'Address) = System.Null_Address);
+      pragma Assert
+        (XML3_Text.Buffers.Get_Predefined_Entity
+           (System.Null_Address) = System.Null_Address);
+   end Check_Predefined_Entity;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -521,5 +536,6 @@ begin
    Check_UTF8_Character;
    Check_UTF8_Comparison;
    Check_Name_Validation;
+   Check_Predefined_Entity;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

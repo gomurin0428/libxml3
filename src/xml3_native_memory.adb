@@ -14,6 +14,103 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
    function To_Namespace is new Ada.Unchecked_Conversion (System.Address, Namespace_Access);
    function To_Metadata is new Ada.Unchecked_Conversion (System.Address, Metadata_Access);
 
+   type C_Entity is record
+      Private_Data : System.Address := System.Null_Address;
+      Node_Type : int := 17;
+      Name : System.Address := System.Null_Address;
+      Children, Last, Parent, Next, Previous, Document : System.Address :=
+        System.Null_Address;
+      Original, Content : System.Address := System.Null_Address;
+      Length : int := 1;
+      Entity_Type : int := 6;
+      External_ID, System_ID, Next_Entity, URI : System.Address :=
+        System.Null_Address;
+      Owner, Flags : int := 0;
+      Expanded_Size : unsigned_long := 0;
+   end record with Convention => C;
+
+   Entity_Lt_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C (XML3_Text.Entity_Name (XML3_Text.Entity_Lt));
+   Entity_Gt_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C (XML3_Text.Entity_Name (XML3_Text.Entity_Gt));
+   Entity_Amp_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C (XML3_Text.Entity_Name (XML3_Text.Entity_Amp));
+   Entity_Apos_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C (XML3_Text.Entity_Name (XML3_Text.Entity_Apos));
+   Entity_Quot_Name : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C (XML3_Text.Entity_Name (XML3_Text.Entity_Quot));
+
+   Entity_Lt_Value : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C
+       (String'(1 => XML3_Text.Entity_Value (XML3_Text.Entity_Lt)));
+   Entity_Gt_Value : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C
+       (String'(1 => XML3_Text.Entity_Value (XML3_Text.Entity_Gt)));
+   Entity_Amp_Value : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C
+       (String'(1 => XML3_Text.Entity_Value (XML3_Text.Entity_Amp)));
+   Entity_Apos_Value : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C
+       (String'(1 => XML3_Text.Entity_Value (XML3_Text.Entity_Apos)));
+   Entity_Quot_Value : aliased constant Interfaces.C.char_array :=
+     Interfaces.C.To_C
+       (String'(1 => XML3_Text.Entity_Value (XML3_Text.Entity_Quot)));
+
+   function Name_Address
+     (Kind : XML3_Text.Predefined_Entity_Kind) return System.Address is
+     (case Kind is
+         when XML3_Text.Entity_Lt => Entity_Lt_Name'Address,
+         when XML3_Text.Entity_Gt => Entity_Gt_Name'Address,
+         when XML3_Text.Entity_Amp => Entity_Amp_Name'Address,
+         when XML3_Text.Entity_Apos => Entity_Apos_Name'Address,
+         when XML3_Text.Entity_Quot => Entity_Quot_Name'Address);
+
+   function Value_Address
+     (Kind : XML3_Text.Predefined_Entity_Kind) return System.Address is
+     (case Kind is
+         when XML3_Text.Entity_Lt => Entity_Lt_Value'Address,
+         when XML3_Text.Entity_Gt => Entity_Gt_Value'Address,
+         when XML3_Text.Entity_Amp => Entity_Amp_Value'Address,
+         when XML3_Text.Entity_Apos => Entity_Apos_Value'Address,
+         when XML3_Text.Entity_Quot => Entity_Quot_Value'Address);
+
+   function Make_Entity
+     (Kind : XML3_Text.Predefined_Entity_Kind) return C_Entity is
+     (Private_Data => System.Null_Address,
+      Node_Type => 17,
+      Name => Name_Address (Kind),
+      Children => System.Null_Address,
+      Last => System.Null_Address,
+      Parent => System.Null_Address,
+      Next => System.Null_Address,
+      Previous => System.Null_Address,
+      Document => System.Null_Address,
+      Original => Value_Address (Kind),
+      Content => Value_Address (Kind),
+      Length => 1,
+      Entity_Type => 6,
+      External_ID => System.Null_Address,
+      System_ID => System.Null_Address,
+      Next_Entity => System.Null_Address,
+      URI => System.Null_Address,
+      Owner => 0,
+      Flags => 0,
+      Expanded_Size => 0);
+
+   type Entity_Array is
+     array (XML3_Text.Predefined_Entity_Kind) of aliased C_Entity;
+
+   Predefined_Entities : constant Entity_Array :=
+     (XML3_Text.Entity_Lt => Make_Entity (XML3_Text.Entity_Lt),
+      XML3_Text.Entity_Gt => Make_Entity (XML3_Text.Entity_Gt),
+      XML3_Text.Entity_Amp => Make_Entity (XML3_Text.Entity_Amp),
+      XML3_Text.Entity_Apos => Make_Entity (XML3_Text.Entity_Apos),
+      XML3_Text.Entity_Quot => Make_Entity (XML3_Text.Entity_Quot));
+
+   function Predefined_Entity
+     (Kind : XML3_Text.Predefined_Entity_Kind) return System.Address is
+     (Predefined_Entities (Kind)'Address);
+
    function C_Malloc (Bytes : size_t) return System.Address
      with Import, Convention => C, External_Name => "malloc";
    procedure C_Free (Base : System.Address)

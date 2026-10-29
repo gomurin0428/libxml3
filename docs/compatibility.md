@@ -9,7 +9,8 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
-`libxml/entities.h` は `xmlEncodeSpecialChars` と `xmlEncodeEntitiesReentrant` を公開します。文書引数は
+`libxml/entities.h` は `xmlEncodeSpecialChars`、`xmlEncodeEntitiesReentrant`、
+`xmlGetPredefinedEntity` を公開します。`xmlEncodeSpecialChars` の文書引数は
 固定版と同じく未使用です。NULL入力は診断なしでNULL、空入力は独立した空文字列を
 返します。`<`・`>`・`&`・二重引用符を定義済み実体参照、CRを `&#13;` に置換し、
 apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参照も通常の文字列として
@@ -841,6 +842,13 @@ DTD、未知の entity、複雑な libxml2 parser options、ファイル入力�
 SAX、XInclude、検証、上記に列挙していない変更 API、XPath、スキーマ、
 UTF-8/UTF-16 以外の encoding は未対応です。XML 読み込み時の属性値と通常テキストでは predefined/numeric reference を処理し、
 CDATA・コメント・PI は reference 展開しません。
+`xmlGetPredefinedEntity` の対応範囲は exact-name の `lt`、`gt`、`amp`、`apos`、`quot`
+だけです。返却される entity record と name/content は共有 read-only の library-lifetime
+borrowed data で、呼び出し側は free、mutation、link、managed-DOM editing API への入力を
+してはいけません。lookup は allocation しません。DTD/general entity subsystem、external
+entity loading、editable entity node はありません。public enum と record layout の宣言は
+これら未実装の entity kind を有効にしません。native pointer readability、byte effects、
+layout、lifetime、C ABI、完全な public C semantics は trusted または未証明です。
 名前空間の対応は読み取りと参照 API に限ります。QName は XML 1.0 Fifth Edition の Unicode NCName の
 単一 prefix/local-name 組だけを受理し、prefix は宣言済みでなければなりません。
 無効な QName、予約 namespace binding、未束縛 prefix、または同じ expanded

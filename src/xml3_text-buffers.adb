@@ -338,6 +338,16 @@ package body XML3_Text.Buffers with SPARK_Mode is
       return Native.Byte_At (Item, Pattern'Length) = Character'Val (0);
    end Matches_Literal;
 
+   function Get_Predefined_Entity (Name : System.Address) return System.Address is
+   begin
+      for Kind in Predefined_Entity_Kind loop
+         if Matches_Literal (Name, Entity_Name (Kind)) then
+            return Native.Predefined_Entity (Kind);
+         end if;
+      end loop;
+      return System.Null_Address;
+   end Get_Predefined_Entity;
+
    function Is_XHTML (System_ID, Public_ID : System.Address) return Integer is
    begin
       if System_ID = System.Null_Address and then Public_ID = System.Null_Address then

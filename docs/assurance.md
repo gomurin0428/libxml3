@@ -142,12 +142,20 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,822 checks
-(1,317 flow and 11,505 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,833 checks
+(1,326 flow and 11,507 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
+`xmlGetPredefinedEntity` is limited to exact names `lt`, `gt`, `amp`, `apos`, and `quot`.
+It returns shared, read-only, borrowed entity records and name/content strings that remain
+library-lifetime data; callers must not free, mutate, link, or pass them to managed-DOM editing
+APIs. The lookup performs no allocation and does not implement DTD/general entities, external
+entity loading, or editable entity nodes. The public enum and record declarations do not claim
+support for those other entity kinds. The SPARK name/value mapping and bounded lookup logic are
+covered separately, while native pointer readability, byte effects, layout, lifetime, C ABI, and
+complete public C semantics remain trusted or unproved.
 `xmlEncodeSpecialChars` routes through `Escape_Special`, which validates
 strict UTF-8/XML text, measures bounded expansion before allocation, and
 emits the five supported replacements (<, >, &, double quote, and CR). It
@@ -309,7 +317,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,822-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,833-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
