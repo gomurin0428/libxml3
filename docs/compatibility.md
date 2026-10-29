@@ -240,6 +240,18 @@ attribute sibling・parentless list・cross-document insertion・namespace recon
 contract の検証を native pointer/ABI、facade projection、C status mapping、完全な API 意味論の
 証明と同一視しません。
 
+`xmlReplaceNode` は old の parent/prev/next の位置へ、同じ文書に所属する cur を挿入し、
+old を parent/prev/next のない detached node として返します。通常の child の first/middle/last
+置換、別 parent に接続中または detached の同一文書内 node の移動、document root の置換と
+old の子孫の root 昇格、`cur == NULL`
+の unlink をサポートし、adjacent text は結合しません。attribute/non-attribute mismatch は
+変更せず old を返す upstream quirk を保持します。両方が attribute の場合は duplicate-name
+や ownership bypass を避けるため安全に拒否し、cross-document move、cycle、extra document root
+も既存の Store graph 検査により拒否します。old == cur、NULL/unmanaged/parentless old、
+unmanaged cur は拒否します。C adapter は null/lock/status/exception の変換だけを担当し、
+pointer validity、facade synchronization、ABI、native allocation/free と full public semantics は
+trusted boundary / public implementation partial として残ります。
+
 `xmlGetLastChild` は管理中の node の末尾 child を kind で絞らず返します。要素以外にも
 text/comment/CDATA/PI、document の末尾 child、属性値の text を取得できます。
 NULL・child のない node・namespace・未登録 facade は NULL です。読み取りでは内容や

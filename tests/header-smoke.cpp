@@ -64,8 +64,10 @@ int main() {
     (void)str_n_append;
     xmlNodePtr (*add_prev_sibling)(xmlNodePtr, xmlNodePtr) = xmlAddPrevSibling;
     xmlNodePtr (*add_next_sibling)(xmlNodePtr, xmlNodePtr) = xmlAddNextSibling;
+    xmlNodePtr (*replace_node)(xmlNodePtr, xmlNodePtr) = xmlReplaceNode;
     (void)add_prev_sibling;
     (void)add_next_sibling;
+    (void)replace_node;
     int (*str_case_compare)(const xmlChar *, const xmlChar *) = xmlStrcasecmp;
     (void)str_case_compare;
     xmlChar *(*str_sub_copy)(const xmlChar *, int, int) = xmlStrsub;

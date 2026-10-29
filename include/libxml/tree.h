@@ -119,6 +119,7 @@ xmlNodePtr xmlAddChild(xmlNodePtr parent, xmlNodePtr cur);
 xmlNodePtr xmlAddSibling(xmlNodePtr node, xmlNodePtr cur);
 xmlNodePtr xmlAddPrevSibling(xmlNodePtr node, xmlNodePtr cur);
 xmlNodePtr xmlAddNextSibling(xmlNodePtr node, xmlNodePtr cur);
+xmlNodePtr xmlReplaceNode(xmlNodePtr old, xmlNodePtr cur);
 xmlNodePtr xmlTextMerge(xmlNodePtr first, xmlNodePtr second);
 int xmlTextConcat(xmlNodePtr node, const xmlChar *content, int len);
 int xmlNodeIsText(const xmlNode *node);

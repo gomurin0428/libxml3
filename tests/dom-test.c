@@ -950,7 +950,290 @@ static void test_adjacent_sibling_flow(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_replace_node_flow(void) {
+    xmlDocPtr doc;
+    xmlNodePtr root;
+    xmlNodePtr first;
+    xmlNodePtr middle;
+    xmlNodePtr last;
+    xmlNodePtr replacement;
+    xmlNodePtr old;
+    xmlNodePtr source;
+    xmlNodePtr target;
+    xmlNodePtr before;
+    xmlNodePtr after;
+    xmlNodePtr text;
+    xmlNodePtr comment;
+    xmlNodePtr right;
+    xmlChar *bytes;
+    int size;
+
+    doc = xmlReadMemory("<r><a/><b/><c/></r>",
+                        (int)strlen("<r><a/><b/><c/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    first = root->children;
+    middle = first->next;
+    last = root->last;
+    replacement = xmlNewNode(NULL, BAD_CAST "middle");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(middle, replacement) == middle);
+    assert(root->children == first && root->last == last);
+    assert(first->next == replacement && replacement->prev == first);
+    assert(replacement->next == last && last->prev == replacement);
+    assert(replacement->parent == root);
+    assert(middle->parent == NULL && middle->prev == NULL && middle->next == NULL);
+    xmlFreeNode(middle);
+    assert(xmlNodeSetContent(replacement, BAD_CAST "edited") == 0);
+    bytes = NULL;
+    size = 0;
+    xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+    assert(bytes != NULL && size > 0);
+    assert(strstr((const char *)bytes, "<middle>edited</middle>") != NULL);
+    xmlFree(bytes);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><a/><b/><c/></r>",
+                        (int)strlen("<r><a/><b/><c/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    old = root->children;
+    replacement = xmlNewNode(NULL, BAD_CAST "first");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(old, replacement) == old);
+    assert(root->children == replacement && replacement->prev == NULL);
+    assert(replacement->next != NULL && replacement->next->prev == replacement);
+    assert(root->last->next == NULL);
+    xmlFreeNode(old);
+    old = root->last;
+    replacement = xmlNewNode(NULL, BAD_CAST "last");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(old, replacement) == old);
+    assert(root->last == replacement && replacement->next == NULL);
+    assert(replacement->prev != NULL && replacement->prev->next == replacement);
+    xmlFreeNode(old);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><before/><source><inside/></source><target/><after/></r>",
+                        (int)strlen("<r><before/><source><inside/></source><target/><after/></r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    before = root->children;
+    source = before->next;
+    target = source->next;
+    after = root->last;
+    xmlUnlinkNode(source);
+    assert(before->next == target && target->prev == before);
+    assert(source->parent == NULL && source->prev == NULL && source->next == NULL);
+    assert(xmlReplaceNode(target, source) == target);
+    assert(root->children == before && before->next == source);
+    assert(source->parent == root && source->prev == before);
+    assert(source->next == after && after->prev == source);
+    assert(target->parent == NULL && target->prev == NULL && target->next == NULL);
+    xmlFreeNode(target);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><source><move/></source><old/><after/></r>",
+                        (int)strlen("<r><source><move/></source><old/><after/></r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    source = root->children;
+    replacement = source->children;
+    old = source->next;
+    after = root->last;
+    assert(source->last == replacement && replacement->parent == source);
+    assert(xmlReplaceNode(old, replacement) == old);
+    assert(source->children == NULL && source->last == NULL);
+    assert(root->children == source && source->parent == root);
+    assert(source->prev == NULL && source->next == replacement);
+    assert(replacement->parent == root && replacement->prev == source);
+    assert(replacement->next == after && after->prev == replacement);
+    assert(root->last == after && after->next == NULL);
+    assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+    xmlFreeNode(old);
+    assert(xmlNodeSetContent(replacement, BAD_CAST "moved") == 0);
+    bytes = NULL;
+    size = 0;
+    xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+    assert(bytes != NULL && strstr((const char *)bytes, "<move>moved</move>") != NULL);
+    assert(strstr((const char *)bytes, "<source/>") != NULL);
+    xmlFree(bytes);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><before/><old/><after/></r>",
+                        (int)strlen("<r><before/><old/><after/></r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    old = root->children->next;
+    before = root->children;
+    after = root->last;
+    assert(xmlReplaceNode(old, NULL) == old);
+    assert(root->children == before && before->next == after);
+    assert(root->last == after && after->prev == before);
+    assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+    xmlFreeNode(old);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><a/><b/></r>",
+                        (int)strlen("<r><a/><b/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    old = root->children;
+    assert(xmlReplaceNode(old, old) == NULL);
+    assert(root->children == old && old->parent == root);
+    replacement = xmlNewNode(NULL, BAD_CAST "detached");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(NULL, replacement) == NULL);
+    assert(replacement->parent == NULL);
+    xmlFreeNode(replacement);
+    replacement = xmlNewNode(NULL, BAD_CAST "other");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(replacement, old) == NULL);
+    assert(replacement->parent == NULL);
+    xmlFreeNode(replacement);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r a='value'><child/></r>",
+                        (int)strlen("<r a='value'><child/></r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    assert(root->properties != NULL && root->children != NULL);
+    old = root->children;
+    assert(xmlReplaceNode(old, (xmlNodePtr)root->properties) == old);
+    assert(old->parent == root && root->children == old);
+    assert(root->properties->parent == root);
+    assert(xmlReplaceNode((xmlNodePtr)root->properties, old) ==
+           (xmlNodePtr)root->properties);
+    assert(root->properties->parent == root && root->children == old);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r>left<!--old-->right</r>",
+                        (int)strlen("<r>left<!--old-->right</r>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    root = xmlDocGetRootElement(doc);
+    text = root->children;
+    comment = text->next;
+    right = root->last;
+    assert(text->type == XML_TEXT_NODE && comment->type == XML_COMMENT_NODE);
+    replacement = xmlNewText(BAD_CAST "middle");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(comment, replacement) == comment);
+    assert(root->children == text && root->last == right);
+    assert(text->next == replacement && replacement->prev == text);
+    assert(replacement->next == right && right->prev == replacement);
+    assert(text != replacement && replacement != right);
+    assert(comment->parent == NULL && comment->prev == NULL && comment->next == NULL);
+    xmlFreeNode(comment);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<old><child/></old>",
+                        (int)strlen("<old><child/></old>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    old = xmlDocGetRootElement(doc);
+    replacement = xmlNewNode(NULL, BAD_CAST "new");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(old, replacement) == old);
+    assert(xmlDocGetRootElement(doc) == replacement);
+    assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+    xmlFreeNode(old);
+    assert(xmlNodeSetContent(replacement, BAD_CAST "updated") == 0);
+    bytes = NULL;
+    size = 0;
+    xmlDocDumpMemoryEnc(doc, &bytes, &size, "UTF-8");
+    assert(bytes != NULL && strstr((const char *)bytes, "<new>updated</new>") != NULL);
+    xmlFree(bytes);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<old><desc><leaf/></desc></old>",
+                        (int)strlen("<old><desc><leaf/></desc></old>"),
+                        NULL, NULL, 0);
+    assert(doc != NULL);
+    old = xmlDocGetRootElement(doc);
+    replacement = old->children;
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(old, replacement) == old);
+    assert(xmlDocGetRootElement(doc) == replacement);
+    assert(replacement->parent == (xmlNodePtr)doc);
+    assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+    xmlFreeNode(old);
+    xmlFreeDoc(doc);
+
+    doc = xmlReadMemory("<r><old/></r>",
+                        (int)strlen("<r><old/></r>"), NULL, NULL, 0);
+    assert(doc != NULL);
+    old = xmlDocGetRootElement(doc)->children;
+    replacement = xmlNewNode(NULL, BAD_CAST "new");
+    assert(replacement != NULL);
+    assert(xmlReplaceNode(old, replacement) == old);
 #ifndef XML3_REFERENCE_TEST
+    xmlFreeDoc(doc);
+    assert(old->parent == NULL && old->prev == NULL && old->next == NULL);
+    assert(xmlNodeSetContent(old, BAD_CAST "after-doc") == 0);
+    assert_text(old, "after-doc");
+    xmlFreeNode(old);
+#else
+    xmlFreeNode(old);
+    xmlFreeDoc(doc);
+#endif
+}
+
+#ifndef XML3_REFERENCE_TEST
+static void test_replace_node_rejections(void) {
+    xmlDocPtr doc = xmlReadMemory("<r a='one' b='two'><inside/><after/></r>",
+                                  (int)strlen("<r a='one' b='two'><inside/><after/></r>"),
+                                  NULL, NULL, 0);
+    xmlDocPtr other = xmlReadMemory("<other><foreign/></other>", 25, NULL, NULL, 0);
+    xmlNodePtr root;
+    xmlNodePtr inside;
+    xmlNodePtr after;
+    xmlNodePtr foreign;
+    xmlNodePtr comment;
+    xmlNodePtr extra;
+    xmlAttrPtr first;
+    xmlAttrPtr second;
+    assert(doc != NULL && other != NULL);
+    root = xmlDocGetRootElement(doc);
+    first = root->properties;
+    second = first->next;
+    inside = root->children;
+    after = inside->next;
+    foreign = xmlDocGetRootElement(other)->children;
+
+    xmlResetLastError();
+    assert(xmlReplaceNode((xmlNodePtr)first, (xmlNodePtr)second) == NULL);
+    assert(xmlGetLastError() != NULL && xmlGetLastError()->code == 115);
+    assert(root->properties == first && first->next == second &&
+           second->prev == first);
+    xmlResetLastError();
+    assert(xmlReplaceNode(inside, foreign) == NULL);
+    assert(xmlGetLastError() != NULL && xmlGetLastError()->code == 115);
+    assert(root->children == inside && inside->next == after &&
+           foreign->parent == xmlDocGetRootElement(other));
+    xmlResetLastError();
+    assert(xmlReplaceNode(inside, root) == NULL);
+    assert(xmlGetLastError() != NULL && xmlGetLastError()->code == 115);
+    assert(root->children == inside && inside->next == after);
+
+    comment = xmlNewComment(BAD_CAST "before");
+    extra = xmlNewNode(NULL, BAD_CAST "extra");
+    assert(comment != NULL && extra != NULL);
+    assert(xmlAddPrevSibling(root, comment) == comment);
+    xmlResetLastError();
+    assert(xmlReplaceNode(comment, extra) == NULL);
+    assert(xmlGetLastError() != NULL && xmlGetLastError()->code == 115);
+    assert(comment->parent == (xmlNodePtr)doc && comment->next == root);
+    assert(xmlDocGetRootElement(doc) == root && extra->parent == NULL);
+    xmlFreeNode(extra);
+    xmlFreeDoc(other);
+    xmlFreeDoc(doc);
+    xmlResetLastError();
+}
+
 static void test_sibling_rejections_and_lifetime(void) {
     static const char input[] = "<r><a/><b/></r>";
     xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
@@ -1426,9 +1709,11 @@ int main(void) {
     test_parsed_unlink_and_reinsert();
     test_add_sibling_flow();
     test_adjacent_sibling_flow();
+    test_replace_node_flow();
     test_node_paths();
     test_node_set_name();
 #ifndef XML3_REFERENCE_TEST
+    test_replace_node_rejections();
     test_node_set_name_rejections();
     test_raw_node_list_rejections();
     test_node_path_rejections();

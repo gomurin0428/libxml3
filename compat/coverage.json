@@ -373,6 +373,16 @@
     ],
     "proof": "not-proved"
   },
+  "function:tree.h:xmlReplaceNode": {
+    "implementation": "partial",
+    "scope": "Managed replacement through the SPARK Store/Runtime graph primitives. Same-document child replacement preserves old's exact sibling position and repairs the source list when cur is still attached elsewhere in the same document, detaches and returns old, supports document-root replacement including descendant-root promotion, supports cur == NULL unlink, and does not merge adjacent text. Attribute/non-attribute mismatch preserves old unchanged; both-attribute replacement, cross-document moves, cycles, extra document roots, NULL/unmanaged/parentless old, and unmanaged cur are rejected for graph safety. Native pointers, facade synchronization, ABI/status mapping, allocator/free behavior, and complete public semantics remain trusted/unproved.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
   "function:tree.h:xmlUnlinkNode": {
     "implementation": "partial",
     "scope": "管理中の通常 child と attribute を切り離す。parent/prev/next をクリアし、文書所属・値・namespace・owner pin を保持する。NULL/既に未接続なら no-op。document/namespace/未登録 facade は拒否。SPARK Store/Runtime 経由、native pointer・ABI は信頼境界。",

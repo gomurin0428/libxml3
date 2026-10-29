@@ -109,6 +109,14 @@ is
            (Current, Sibling, Child, Before, Result, Status);
       end Insert_Sibling;
 
+      procedure Replace_Node
+        (Old, Cur : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Replace_Node (Current, Old, Cur, Result, Status);
+      end Replace_Node;
+
       procedure Merge_Text
         (First, Second : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)

@@ -536,6 +536,84 @@ package body XML3_DOM_Store with SPARK_Mode is
       end if;
    end Insert_Sibling;
 
+   procedure Replace_Node
+     (S : in out Store; Old, Cur : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      O : constant Node_Ref := Find_Node (S, Old);
+      C : Node_Ref;
+      Parent : Node_Ref;
+      Changed : Boolean;
+      Previous : Node_Ref;
+      Replaced : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Old = Cur or else O = Null_Node
+        or else O > Node_Ref (Node_Count (S.Current.all))
+      then
+         return;
+      end if;
+      Parent := Node (S.Current.all, O).Parent;
+      if Parent = Null_Node
+        or else Parent > Node_Ref (Node_Count (S.Current.all))
+      then
+         return;
+      end if;
+      if Node (S.Current.all, Parent).State /= Live then
+         return;
+      end if;
+      if Cur = System.Null_Address then
+         XML3_DOM.Unlink (S.Current.all, O);
+         XML3_DOM_Bridge.Synchronize (S.Current.all);
+         Result := Old;
+         Status := Created;
+         return;
+      end if;
+      C := Find_Node (S, Cur);
+      if C = Null_Node then
+         return;
+      end if;
+      if (Node (S.Current.all, O).Kind = Attribute_Node) /=
+        (Node (S.Current.all, C).Kind = Attribute_Node)
+      then
+         Result := Old;
+         Status := Created;
+         return;
+      end if;
+      if Node (S.Current.all, O).Kind = Attribute_Node then
+         return;
+      end if;
+      if Node (S.Current.all, Parent).Kind = Document_Node
+        and then Node (S.Current.all, O).Kind = Element_Node
+        and then Node (S.Current.all, C).Kind = Element_Node
+      then
+         XML3_DOM.Replace_Root
+           (S.Current.all, Parent, C, Previous, Replaced);
+         XML3_DOM_Bridge.Synchronize (S.Current.all);
+         if Replaced and then Previous = O then
+            Result := Old;
+            Status := Created;
+         end if;
+         return;
+      end if;
+      XML3_DOM.Insert_Sibling
+        (S.Current.all, O, C, True, Changed);
+      if Changed then
+         if O /= Null_Node
+           and then O <= Node_Ref (Node_Count (S.Current.all))
+           and then Node (S.Current.all, O).State = Live
+         then
+            XML3_DOM.Unlink (S.Current.all, O);
+            Result := Old;
+            Status := Created;
+         else
+            Status := Internal_Error;
+         end if;
+      end if;
+      XML3_DOM_Bridge.Synchronize (S.Current.all);
+   end Replace_Node;
+
    procedure Set_Root
      (S : in out Store; Doc, Root : System.Address;
       Previous : out System.Address; Status : out Operation_Status)
