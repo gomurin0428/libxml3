@@ -400,6 +400,18 @@ package XML3_C is
    function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsChar";
 
+   function Validate_Name_Value (Value : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNameValue";
+
+   function Validate_Names_Value (Value : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNamesValue";
+
+   function Validate_NMToken_Value (Value : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNmtokenValue";
+
+   function Validate_NMTokens_Value (Value : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlValidateNmtokensValue";
+
    function Get_Predefined_Entity (Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlGetPredefinedEntity";
 

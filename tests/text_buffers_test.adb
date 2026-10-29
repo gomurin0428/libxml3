@@ -28,6 +28,32 @@ procedure Text_Buffers_Test is
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
 
+   procedure Check_Name_Values is
+      Input : aliased String := "ab" & Character'Val (0);
+      UTF8 : aliased String := Character'Val (16#C3#) & Character'Val (16#A9#)
+        & Character'Val (0);
+      Names : aliased String := "a b" & Character'Val (0);
+      Tokens : aliased String := " a " & Character'Val (0);
+   begin
+      for Kind in XML3_Text.Buffers.Name_Value_Kind loop
+         pragma Assert (not XML3_Text.Buffers.Valid_Name_Value
+           (System.Null_Address, Kind, 0));
+         pragma Assert (not XML3_Text.Buffers.Valid_Name_Value (Input'Address, Kind, 1));
+         pragma Assert (XML3_Text.Buffers.Valid_Name_Value (Input'Address, Kind, 2));
+         pragma Assert (not XML3_Text.Buffers.Valid_Name_Value (UTF8'Address, Kind, 0));
+         pragma Assert (not XML3_Text.Buffers.Valid_Name_Value (UTF8'Address, Kind, 1));
+         pragma Assert (XML3_Text.Buffers.Valid_Name_Value (UTF8'Address, Kind, 2));
+      end loop;
+      pragma Assert (not XML3_Text.Buffers.Valid_Name_Value
+        (Names'Address, XML3_Text.Buffers.Name_List, 2));
+      pragma Assert (XML3_Text.Buffers.Valid_Name_Value
+        (Names'Address, XML3_Text.Buffers.Name_List, 3));
+      pragma Assert (not XML3_Text.Buffers.Valid_Name_Value
+        (Tokens'Address, XML3_Text.Buffers.Name_List, 3));
+      pragma Assert (XML3_Text.Buffers.Valid_Name_Value
+        (Tokens'Address, XML3_Text.Buffers.NMToken_List, 3));
+   end Check_Name_Values;
+
    procedure Check_URI_Path is
       Input : aliased String := "a/.." & Character'Val (0);
       Empty : aliased String := (1 => Character'Val (0));
@@ -524,6 +550,7 @@ begin
    Check_URI;
    Check_URI_Unescape;
    Check_URI_Path;
+   Check_Name_Values;
    Check_Append;
    Check_Measure;
    Check_UTF8;

@@ -382,6 +382,15 @@ document を先に解放した後も detached ownership の範囲で使用でき
 残る親・直前の兄弟のリンクを安全に更新します。名前空間の参照保持もSPARK側で扱います。
 `xmlNodeGetAttrValue` は名前空間付き属性の取得を、成功・属性なし・確保/上限/変換/内部エラーの戻り値で区別します。
 名前空間検索は文書のない要素の `xml` 宣言も必要時にSPARK側で作成し、再利用します。
+`libxml/valid.h` の `xmlValidateNameValue` / `xmlValidateNamesValue` /
+`xmlValidateNmtokenValue` / `xmlValidateNmtokensValue` は、名前または名前列の
+字句検査だけを行い、有効なら 1、それ以外は 0 を返します。DTD・ID の登録や参照解決は
+行いません。NULL・空・不正 UTF-8・走査上限超過も 0 で、確保と診断変更はしません。
+列の区切りは一つ以上の SPACE だけです。固定版の安全な癖として Nmtokens だけは
+先頭の XML 空白と末尾の SPACE も許しますが、途中や末尾の TAB/LF/CR は許しません。
+名前規則と UTF-8 復号は既存の SPARK 検査と共通化し、NUL または最初の不正文字で
+読み取りを止めます。native pointer の読み取り可能性と C ABI は信頼境界です。
+
 `xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
 はUnicodeを含むXML名を、コロン・先頭文字・前後のXML空白の規則に従って検査します。
 `xmlSplitQName2` / `xmlSplitQName3` は名前検証を行わず、NUL終端の raw byte 列を最初の

@@ -2680,6 +2680,22 @@ package body XML3_C is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Char (Natural (Code))));
 
+   function Validate_Name_Value (Value : System.Address) return Interfaces.C.int is
+     (int (Boolean'Pos (XML3_Text.Buffers.Valid_Name_Value
+        (Value, XML3_Text.Buffers.Single_Name))));
+
+   function Validate_Names_Value (Value : System.Address) return Interfaces.C.int is
+     (int (Boolean'Pos (XML3_Text.Buffers.Valid_Name_Value
+        (Value, XML3_Text.Buffers.Name_List))));
+
+   function Validate_NMToken_Value (Value : System.Address) return Interfaces.C.int is
+     (int (Boolean'Pos (XML3_Text.Buffers.Valid_Name_Value
+        (Value, XML3_Text.Buffers.Single_NMToken))));
+
+   function Validate_NMTokens_Value (Value : System.Address) return Interfaces.C.int is
+     (int (Boolean'Pos (XML3_Text.Buffers.Valid_Name_Value
+        (Value, XML3_Text.Buffers.NMToken_List))));
+
    function Get_Predefined_Entity (Name : System.Address) return System.Address is
      (XML3_Text.Buffers.Get_Predefined_Entity (Name));
 

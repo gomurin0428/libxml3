@@ -43,6 +43,11 @@ package XML3_Text with SPARK_Mode is
      with Global => null,
        Pre => Input'First = 1 and then Input'Last in 0 .. Max_Bytes;
 
+   function Name_Character
+     (Code : Natural; Initial : Boolean; Allow_Colon : Boolean := True)
+      return Boolean
+     with Global => null;
+
    function XML_Char (C : Natural) return Boolean with Global => null;
 
    function XML_Blank (C : Natural) return Boolean with Global => null;

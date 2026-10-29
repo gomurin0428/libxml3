@@ -12,6 +12,7 @@
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
 #include <libxml/uri.h>
+#include <libxml/valid.h>
 #include <libxml/xmlerror.h>
 
 #ifdef __cplusplus

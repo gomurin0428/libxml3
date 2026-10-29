@@ -8,6 +8,11 @@ static_assert(XML_ENTITY_DECL == 17);
 static_assert(XML_INTERNAL_PREDEFINED_ENTITY == 6);
 
 int main() {
+    int (*name_values[])(const xmlChar *) = {
+        xmlValidateNameValue, xmlValidateNamesValue,
+        xmlValidateNmtokenValue, xmlValidateNmtokensValue
+    };
+    (void)name_values;
     xmlEntityPtr (*get_predefined_entity)(const xmlChar *) =
         xmlGetPredefinedEntity;
     (void)get_predefined_entity;

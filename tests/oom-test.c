@@ -2053,6 +2053,23 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "name-values") == 0) {
+        int (*validators[])(const xmlChar *) = {
+            xmlValidateNameValue, xmlValidateNamesValue,
+            xmlValidateNmtokenValue, xmlValidateNmtokensValue
+        };
+        xml3_oom_enable(fail_index);
+        for (size_t i = 0; i < sizeof(validators) / sizeof(*validators); ++i) {
+            assert(validators[i](BAD_CAST "name") == 1);
+            assert(validators[i](BAD_CAST "!") == 0);
+            assert(validators[i](NULL) == 0);
+        }
+        assert(xmlValidateNamesValue(BAD_CAST "name other") == 1);
+        assert(xmlValidateNmtokensValue(BAD_CAST "\t9 -tag ") == 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "document-entity") == 0) {
         xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
         assert(doc != NULL);
@@ -2358,6 +2375,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "document-entity") == 0) {
         puts("valid document entity queries used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "name-values") == 0) {
+        puts("name value validators used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

@@ -88,6 +88,16 @@ path-only normalization is provided separately.
 
 ## Intended proof claims
 
+The four `valid.h` name-value predicates delegate directly from C to the
+SPARK `XML3_Text.Buffers.Valid_Name_Value` state machine, without a C-string copy.
+It shares strict `Get_UTF8_Char` decoding and `XML3_Text.Name_Character` with
+existing name validators. Single versus list modes and the pinned Nmtokens
+leading-XML-blank/trailing-SPACE quirk are selected in SPARK; no DTD semantics
+are claimed. NULL, empty, malformed input and scan-limit exhaustion return false
+without allocation or diagnostics. The native source must remain readable through
+the first rejected character or terminating NUL. Native byte effects and pointer
+extents, C ABI, and complete lexical equivalence are not formally proved.
+
 `xmlGetDocEntity` is a predefined-only query over the supported DTD-free document
 subset. The C adapter supplies locking and diagnostics; SPARK
 `XML3_DOM_Store.Queries.Get_Document_Entity` bypasses document lookup for NULL names,
@@ -152,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,843 checks
-(1,332 flow and 11,511 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,852 checks
+(1,339 flow and 11,513 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -327,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,843-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,852-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
