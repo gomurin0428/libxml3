@@ -1,5 +1,6 @@
 with Interfaces.C;
 with System;
+with XML3_Text;
 
 package XML3_Native_Memory
   with SPARK_Mode,
@@ -10,6 +11,10 @@ is
    subtype Byte_Count is Interfaces.C.ptrdiff_t range 0 .. Interfaces.C.ptrdiff_t'Last;
    subtype Positive_Byte_Count is Byte_Count range 1 .. Byte_Count'Last;
    Address_Bytes : constant Positive_Byte_Count;
+
+   function Predefined_Entity (Kind : XML3_Text.Predefined_Entity_Kind)
+      return System.Address
+     with Global => null, Post => Predefined_Entity'Result /= System.Null_Address;
 
    type Character_Range_Group is record
       Short_Count, Long_Count : Interfaces.C.int;

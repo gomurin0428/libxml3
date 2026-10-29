@@ -4,8 +4,13 @@
 static_assert(XML_PARSE_HUGE == (1 << 19));
 static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
+static_assert(XML_ENTITY_DECL == 17);
+static_assert(XML_INTERNAL_PREDEFINED_ENTITY == 6);
 
 int main() {
+    xmlEntityPtr (*get_predefined_entity)(const xmlChar *) =
+        xmlGetPredefinedEntity;
+    (void)get_predefined_entity;
     xmlChar *(*uri_escape)(const xmlChar *, const xmlChar *) = xmlURIEscapeStr;
     (void)uri_escape;
     char *(*uri_unescape)(const char *, int, char *) = xmlURIUnescapeString;

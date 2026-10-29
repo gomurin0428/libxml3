@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,822 checks, 1,317 by flow analysis and 11,505
+It completed successfully: **12,833 checks, 1,326 by flow analysis and 11,507
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -88,6 +88,15 @@ native reads/writes, scratch allocation/copy/free, pointer validity or full
 public semantics. Tests cover positive and terminator-based lengths, embedded
 NULs, malformed escapes, exact in-place and overlapping buffers, limits and
 allocation-failure preservation.
+`xmlGetPredefinedEntity` reuses the pure `Entity_Name` mapping (1 check),
+`Entity_Value` (0 checks), and exact `Find_Entity` matching (2 checks) in the
+shared decoder. Its bounded native-name lookup proves 1 check for
+`Get_Predefined_Entity` and reuses `Matches_Literal` (5 checks). The static
+`XML3_Native_Memory.Predefined_Entity` record/string table is in
+`SPARK_Mode => Off`; its native layout, pointers, lifetimes, byte contents and
+address effects are not formally proved. The public API remains partial and
+not-proved: C-string conversion, native pointer readability, C ABI, and
+complete entity semantics remain trusted boundaries.
 `xmlBuildQName` uses `XML3_Text.QNames.Build`, which proves the bounded output
 size, buffer-selection branches, and result/status contract (15 checks).
 Native allocation/writes, C-string conversion and pointer/ABI behavior remain
@@ -551,13 +560,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 344 |
-| Initialization | 796 |
-| Runtime checks | 5,532 |
+| Data dependencies | 348 |
+| Initialization | 797 |
+| Runtime checks | 5,531 |
 | Assertions | 1,660 |
-| Functional contracts | 4,242 |
-| Termination | 248 |
-| **Total** | **12,822** |
+| Functional contracts | 4,245 |
+| Termination | 252 |
+| **Total** | **12,833** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1113,11 +1122,11 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-356383b28ccbae21b04d78140882d648d8ed317c636877747e757e5f1836c920  src/xml3_c.adb
-be2947e2996691e5f606a59dc580e1230a8199eda2df5c58aff985bba07d2fbe  src/xml3_c.ads
+bd36285316f142c5df9e5481dbf632a586ea49945ba55189bae3c2caf74d8bb5  src/xml3_c.adb
+45c0d7e0d6ed6d9ece148aa339d69a1fb13360857859aae5deb0916078285063  src/xml3_c.ads
 0b41a15610acc9c8439969f520a192d0939fadf9c7555797c6718c538a29abcd  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
-580fa6bc23823923995846df5a3ba1b4272049938e1f4e266e9e13d5353085cc  include/libxml/entities.h
+b420271837eaa9e280e3b5bec7e989614148a307dc900d0c6089356883e4e7f0  include/libxml/entities.h
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
 e8286ea54caf89b1bf0d7501530fb072eebfde5d16e24107096b0935748fbc6c  include/libxml/uri.h
 c627882f6a5e1fbaa14e99ac93231980994a550c2b25439581417c0c4fd40dc8  src/xml3_dom-import.adb
@@ -1156,23 +1165,23 @@ ea5fb0d9851f8262d8ced6e2b2d4319125ed28dbc93c1deedf308823214b6d01  src/xml3_error
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
-ad141e4c5673f5c09199bf3f41cb242b31928d982329c57c7b5c6b9451819d0f  src/xml3_native_memory.adb
-eb2cbae3db051eb0f2cb7c5b8237628e235e8030049892379a4e462dfbd5b91f  src/xml3_native_memory.ads
+cf2668c9e6e0b9a734d03a26d4b6a36a1a8cfa0a8f41eeca356d2818bf6f820a  src/xml3_native_memory.adb
+4ff3900819a96e73d66e14bde479bf5e950b4779ee4e4f9aac87a29c7edab905  src/xml3_native_memory.ads
 a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parser.adb
 aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_serialization.adb
 4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
-dc17edf9e6faf551278d08924c87a834c9f442040a84657129a0b31d877639f0  src/xml3_text.adb
-28da85540da6c195345ae807664041b159e8fb961b1ab8f659f2589d25dab033  src/xml3_text.ads
+a5107991ef2878b186653ab0a0ce616c2902e084a71fa58c7b514f6733bc2e96  src/xml3_text.adb
+79ada47366676c52ad3648b92082c3211e552cba280ad1f5b585616f99758b07  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-a6a279dbf6d097d76ca9030b2fad6dd83ed952595f0645e02588f7947a638d95  src/xml3_text-buffers.adb
-1ca64c65e8126e3a8fb78f84e31582c835404ca28ad667806edb44ce3e26bfc7  src/xml3_text-buffers.ads
-fc4e8ef39f4a5b3d44791b620c8915bcbbdceca1b051f52e82ac80edbfd7b6f2  include/libxml/tree.h
+f926fe9eb41c64f75af97d6cd173121478a7840ae0723c89c5c490f30f9f83e3  src/xml3_text-buffers.adb
+396bd3c544f8ed6748221570aac0b0ef0493458a8266edb6f1c4f95542c1bf9e  src/xml3_text-buffers.ads
+4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-300fbb0067ace2eeee68974bbc7ec388eb44c4b96b6cdf5b9e684948a8e7f7c5  Makefile
+afa013f97863557b729ce5d04ebda9fbec3bcd002c0f70c3efe08eece51d9869  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

@@ -2053,6 +2053,17 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "predefined-entity") == 0) {
+        static const char *names[] = {"lt", "gt", "amp", "apos", "quot"};
+        xml3_oom_enable(fail_index);
+        for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i)
+            assert(xmlGetPredefinedEntity(BAD_CAST names[i]) != NULL);
+        assert(xmlGetPredefinedEntity(BAD_CAST "missing") == NULL);
+        assert(xmlGetPredefinedEntity(NULL) == NULL);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "uri-unescape-inplace") == 0) {
         char buffer[] = "a%20%00x+";
         const char expected[] = {'a', ' ', 0, 'x', '+', 0};
@@ -2325,6 +2336,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "uri-normalize") == 0) {
         puts("URI path normalization used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "predefined-entity") == 0) {
+        puts("predefined entity lookup used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

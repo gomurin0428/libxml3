@@ -16,6 +16,8 @@ typedef struct _xmlDoc xmlDoc;
 typedef struct _xmlDoc *xmlDocPtr;
 typedef struct _xmlNs xmlNs;
 typedef struct _xmlNs *xmlNsPtr;
+typedef struct _xmlEntity xmlEntity;
+typedef struct _xmlEntity *xmlEntityPtr;
 
 typedef enum {
     XML_ELEMENT_NODE = 1,
@@ -25,6 +27,7 @@ typedef enum {
     XML_PI_NODE = 7,
     XML_COMMENT_NODE = 8,
     XML_DOCUMENT_NODE = 9,
+    XML_ENTITY_DECL = 17,
     XML_NAMESPACE_DECL = 18
 } xmlElementType;
 

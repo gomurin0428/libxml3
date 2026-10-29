@@ -2680,6 +2680,9 @@ package body XML3_C is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Char (Natural (Code))));
 
+   function Get_Predefined_Entity (Name : System.Address) return System.Address is
+     (XML3_Text.Buffers.Get_Predefined_Entity (Name));
+
    function Is_XHTML (System_ID, Public_ID : System.Address) return Interfaces.C.int is
      (int (XML3_Text.Buffers.Is_XHTML (System_ID, Public_ID)));
 

@@ -1,4 +1,14 @@
 package body XML3_Text with SPARK_Mode is
+   function Find_Entity (Name : String) return Entity_Kind is
+   begin
+      for Kind in Predefined_Entity_Kind loop
+         if Name = Entity_Name (Kind) then
+            return Kind;
+         end if;
+      end loop;
+      return No_Entity;
+   end Find_Entity;
+
    function UTF8_Image (Code : Natural) return String is
    begin
       if Code < 16#80# then
@@ -416,6 +426,7 @@ package body XML3_Text with SPARK_Mode is
       Start : Positive;
       Bytes : Natural;
       C : Character;
+      Entity : Entity_Kind;
    begin
       Output := (others => Character'Val (0));
       Length := 0;
@@ -439,16 +450,9 @@ package body XML3_Text with SPARK_Mode is
             if J > Input'Last then
                return;
             end if;
-            if Input (I .. J) = "&lt;" then
-               Code := 60;
-            elsif Input (I .. J) = "&gt;" then
-               Code := 62;
-            elsif Input (I .. J) = "&amp;" then
-               Code := 38;
-            elsif Input (I .. J) = "&apos;" then
-               Code := 39;
-            elsif Input (I .. J) = "&quot;" then
-               Code := 34;
+            Entity := Find_Entity (Input (I + 1 .. J - 1));
+            if Entity /= No_Entity then
+               Code := Character'Pos (Entity_Value (Entity));
             elsif I + 2 < J and then Input (I + 1) = '#' then
                Start := I + 2;
                Base := 10;

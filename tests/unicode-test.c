@@ -2274,6 +2274,137 @@ static void test_xhtml_identifiers(void) {
     xmlResetLastError();
 }
 
+static void test_predefined_entities(void) {
+    static const struct {
+        const char *name;
+        char value;
+    } cases[] = {
+        {"lt", '<'}, {"gt", '>'}, {"amp", '&'}, {"apos", '\''}, {"quot", '"'}
+    };
+    xmlEntityPtr entities[sizeof(cases) / sizeof(*cases)];
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        const char *name = cases[i].name;
+        char value = cases[i].value;
+        xmlEntityPtr entity = xmlGetPredefinedEntity(BAD_CAST name);
+        assert(entity != NULL);
+        entities[i] = entity;
+        assert(entity->_private == NULL);
+        assert(entity->type == XML_ENTITY_DECL);
+        assert(entity->name != NULL);
+        assert(strcmp((const char *)entity->name, name) == 0);
+        assert(entity->children == NULL && entity->last == NULL);
+        assert(entity->parent == NULL && entity->next == NULL);
+        assert(entity->prev == NULL && entity->doc == NULL);
+        assert(entity->orig != NULL && entity->content == entity->orig);
+        assert(entity->content[0] == (xmlChar)value);
+        assert(entity->content[1] == 0);
+        assert(entity->length == 1);
+        assert(entity->etype == XML_INTERNAL_PREDEFINED_ENTITY);
+        assert(entity->ExternalID == NULL && entity->SystemID == NULL);
+        assert(entity->nexte == NULL && entity->URI == NULL);
+        assert(entity->owner == 0 && entity->flags == 0);
+        assert(entity->expandedSize == 0);
+        assert(xmlGetPredefinedEntity(BAD_CAST name) == entity);
+
+        char *owned_name = malloc(strlen(name) + 1);
+        assert(owned_name != NULL);
+        strcpy(owned_name, name);
+        assert(xmlGetPredefinedEntity((const xmlChar *)owned_name) == entity);
+        free(owned_name);
+
+        xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
+        xmlNodePtr text = xmlNewText(entity->content);
+        assert(doc != NULL && root != NULL && text != NULL);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        assert(xmlAddChild(root, text) == text);
+
+        xmlChar *serialized = NULL;
+        int serialized_size = 0;
+        xmlDocDumpMemory(doc, &serialized, &serialized_size);
+        assert(serialized != NULL && serialized_size > 0);
+        xmlFreeDoc(doc);
+
+        xmlDocPtr reparsed = xmlReadMemory((const char *)serialized,
+                                           serialized_size, NULL, NULL, 0);
+        assert(reparsed != NULL);
+        xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(reparsed));
+        assert(content != NULL);
+        assert(content[0] == (xmlChar)value && content[1] == 0);
+        xmlFree(content);
+        xmlFreeDoc(reparsed);
+        xmlFree(serialized);
+    }
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i)
+        for (size_t j = i + 1; j < sizeof(cases) / sizeof(*cases); ++j)
+            assert(entities[i] != entities[j]);
+
+    static const char *invalid[] = {
+        "", "l", "ltx", "LT", "lt;", "&amp;", "#38", "\xc3\xa9"
+    };
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
+        assert(xmlGetPredefinedEntity(BAD_CAST invalid[i]) == NULL);
+    const xmlChar embedded[] = {'a', 'm', 'p', 0, 'x', 0};
+    assert(xmlGetPredefinedEntity(embedded) == entities[2]);
+    assert(xmlGetPredefinedEntity(NULL) == NULL);
+
+    xmlDocPtr numeric = xmlReadMemory("<r>&#38;</r>", 12, NULL, NULL, 0);
+    assert(numeric != NULL);
+    xmlChar *numeric_content =
+        xmlNodeGetContent(xmlDocGetRootElement(numeric));
+    assert(numeric_content != NULL &&
+           numeric_content[0] == '&' && numeric_content[1] == 0);
+    xmlFree(numeric_content);
+    xmlFreeDoc(numeric);
+    xmlDocPtr unknown = xmlReadMemory("<r>&unknown;</r>", 16, NULL, NULL, 0);
+    assert(unknown == NULL);
+    xmlResetLastError();
+
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        size_t length = strlen(cases[i].name);
+        char *at_end = mapping + page - length - 1;
+        memcpy(at_end, cases[i].name, length + 1);
+        assert(xmlGetPredefinedEntity((const xmlChar *)at_end) == entities[i]);
+    }
+    char *prefix = mapping + page - 2;
+    prefix[0] = 'l';
+    prefix[1] = 0;
+    assert(xmlGetPredefinedEntity((const xmlChar *)prefix) == NULL);
+    mapping[page - 1] = 'x';
+    assert(xmlGetPredefinedEntity((const xmlChar *)(mapping + page - 1)) == NULL);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
+
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky != NULL);
+    assert(xmlGetPredefinedEntity(BAD_CAST "amp") == entities[2]);
+    assert(xmlGetPredefinedEntity(BAD_CAST "missing") == NULL);
+    assert(xmlGetPredefinedEntity(NULL) == NULL);
+    assert(xmlGetLastError() == sticky);
+    xmlResetLastError();
+
+    xmlCleanupParser();
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        xmlEntityPtr entity =
+            xmlGetPredefinedEntity(BAD_CAST cases[i].name);
+        assert(entity == entities[i]);
+        assert(strcmp((const char *)entity->name, cases[i].name) == 0);
+        assert(entity->content[0] == (xmlChar)cases[i].value);
+        assert(entity->content[1] == 0);
+    }
+    xmlInitParser();
+}
+
 int main(void) {
     test_uri_paths();
     test_uri_unescaping();
@@ -2316,5 +2447,6 @@ int main(void) {
     test_validation();
     test_qname_splitting();
     test_qname_building();
+    test_predefined_entities();
     puts("Unicode name tests passed");
 }

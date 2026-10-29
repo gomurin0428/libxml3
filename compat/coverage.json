@@ -1,4 +1,190 @@
 {
+  "constant:entities.h:XML_EXTERNAL_GENERAL_PARSED_ENTITY": {
+    "implementation": "partial",
+    "scope": "Public enum value only; external general entity loading and resolution are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:entities.h:XML_EXTERNAL_GENERAL_UNPARSED_ENTITY": {
+    "implementation": "partial",
+    "scope": "Public enum value only; external unparsed entity loading and resolution are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:entities.h:XML_EXTERNAL_PARAMETER_ENTITY": {
+    "implementation": "partial",
+    "scope": "Public enum value only; external parameter entity loading and resolution are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:entities.h:XML_INTERNAL_GENERAL_ENTITY": {
+    "implementation": "partial",
+    "scope": "Public enum value only; general entity registration and expansion are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:entities.h:XML_INTERNAL_PARAMETER_ENTITY": {
+    "implementation": "partial",
+    "scope": "Public enum value only; parameter entity registration and expansion are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:entities.h:XML_INTERNAL_PREDEFINED_ENTITY": {
+    "implementation": "partial",
+    "scope": "Supported only as the type tag on the five static predefined records returned by xmlGetPredefinedEntity; no general entity subsystem is implemented. Enum value, layout, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "constant:tree.h:XML_ENTITY_DECL": {
+    "implementation": "partial",
+    "scope": "Public node-type value used by the five borrowed predefined declaration records; entity-node editing and ownership are unsupported. Enum value and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "function:entities.h:xmlGetPredefinedEntity": {
+    "implementation": "partial",
+    "scope": "Exact, case-sensitive lookup of the five static predefined records lt, gt, amp, apos, and quot. NULL, empty, mismatched, and unsupported names return NULL without allocation or diagnostics. Returned record and strings are shared read-only library-lifetime borrowed data; callers must not free, mutate, link, or pass them to managed-DOM editing APIs. No DTD/general/external entity subsystem or editable entity nodes. Native pointer readability, byte effects, layout, lifetime, C ABI, and complete public semantics remain trusted or unproved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "struct:entities.h:_xmlEntity": {
+    "implementation": "partial",
+    "scope": "Public ABI record used only for the five static borrowed predefined declarations. Layout, alignment, native pointers, lifetimes, byte effects, C ABI, and all other entity semantics remain trusted or unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlEntity": {
+    "implementation": "partial",
+    "scope": "Public forward typedef for the borrowed predefined entity declaration record; no editable entity-node ownership is implemented. C ABI remains trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlEntityPtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for the borrowed predefined entity declaration record; callers must not free or mutate the result. C ABI remains trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity._private": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record field, always NULL in the supported five records. Native layout, pointer validity, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.type": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record field, XML_ENTITY_DECL in the supported five records. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.name": {
+    "implementation": "partial",
+    "scope": "Borrowed NUL-terminated name pointer for one of the five predefined records. Pointer readability, byte effects, layout, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.children": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record link field, always NULL; entity-node linking is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.last": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record link field, always NULL; entity-node linking is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.parent": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record DTD-parent field, always NULL; DTD ownership is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.next": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record link field, always NULL; entity-node linking is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.prev": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record link field, always NULL; entity-node linking is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.doc": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record document field, always NULL; records are not registered DOM nodes. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.orig": {
+    "implementation": "partial",
+    "scope": "Borrowed NUL-terminated replacement-value pointer, shared with content in the five static records. Pointer readability, byte effects, layout, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.content": {
+    "implementation": "partial",
+    "scope": "Borrowed NUL-terminated replacement-value pointer, shared with orig in the five static records. Pointer readability, byte effects, layout, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.length": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record field, always one replacement byte. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.etype": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record field, XML_INTERNAL_PREDEFINED_ENTITY in the supported five records. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.ExternalID": {
+    "implementation": "partial",
+    "scope": "Borrowed external identifier field, always NULL because external entities are unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.SystemID": {
+    "implementation": "partial",
+    "scope": "Borrowed external system identifier field, always NULL because external entities are unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.nexte": {
+    "implementation": "partial",
+    "scope": "Borrowed entity-chain field, always NULL because entity registration is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.URI": {
+    "implementation": "partial",
+    "scope": "Borrowed entity URI field, always NULL because external entity loading is unsupported. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.owner": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record ownership field, always zero; callers do not own or free the records. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.flags": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record flags field, always zero. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:entities.h:_xmlEntity.expandedSize": {
+    "implementation": "partial",
+    "scope": "Borrowed predefined record expanded-size field, always zero; no expansion subsystem is implemented. Native layout and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
   "field:chvalid.h:_xmlChLRange.high": {
     "implementation": "partial",
     "scope": "Public inclusive upper-end field of xmlChLRange, read by xmlCharInRange only in the selected long table. Native field layout, alignment, pointer validity, and readable extent remain trusted and unproved.",

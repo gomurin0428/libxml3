@@ -7,6 +7,9 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Concatenate_Status is (Copied, No_Input, No_Memory, Limit_Exceeded);
 
+   function Get_Predefined_Entity (Name : System.Address) return System.Address
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory);
+
    type Search_Status is (No_Match, Matched, Search_Limit_Exceeded);
 
    type Slice_Status is (Sliced, No_Slice, No_Memory, Slice_Limit_Exceeded);
