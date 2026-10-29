@@ -138,7 +138,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
-* `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString`。他のURI APIは未対応
+* `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString` / `xmlNormalizeURIPath`。他のURI APIは未対応
 * `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -937,7 +937,22 @@ SPARKで出力長を計算して一度だけ正確なサイズを確保し、固
 出力長と例外検索には既存の `Max_Bytes` 上限があり、超過は診断115とNULL、確保失敗はOOM診断とNULLです。
 部分的な出力は返さず、元入力を変更・解放しません。成功とNULL入力は既存診断を保持します。
 native allocation/free/read/write、入力の有効性・extent・安定性、C ABIと完全な意味論はtrusted boundaryです。
-URI解析・解決・正規化は未対応です。
+URI全体の解析・解決は未対応です。pathだけの正規化は後述の `xmlNormalizeURIPath` で行います。
+
+`xmlNormalizeURIPath` はNUL終端されたpathをin-place・allocation-freeで正規化し、0を返します。
+連続 `/` は単一separatorにし、`.` を除き、`..` で直前の通常segmentを除きます。
+`a/.` と `a/b/..` は `a/`、`a/..` は空文字列です。相対pathの先頭 `..` は保持します。
+絶対pathはrootで止め、`/../a` と `/a/../../a` は `/a` です。
+固定版 `uri.c` の `xmlNormalizePath` は余分な `..` の判断に元の出力先byteを参照し、
+`..//..` を `../` にして親階層を落とす一方、`/../a` の `..` は残します。
+このpathの意味を誤る挙動は再現せず、入力先頭の `/` の有無を一度だけ判定して保持します。
+テストには固定版の期待値とこの意図的な差異を分けて記録しています。
+NULLは-1で診断を変えず、空入力は書き込みも行いません。成功も既存診断を保持します。
+`Max_Bytes` 超過は変更前に-1と診断115で失敗します。巨大なC入力ではなく小さいAda上限で検査します。
+backslashはseparatorではなく、percent sequence・UTF-8・XML文字・query/fragmentは解釈しません。
+URI全体やfilesystem/symlinkのcanonicalization、アクセス制御やtraversal防止には使えません。
+非空入力は元の終端までwritable、走査中は安定している必要があります。
+native pointer・extent・byte内容と読み書き・C ABI・完全な意味論はtrusted boundaryです。
 
 `xmlURIUnescapeString` は大文字・小文字の `%HH` をbyteへ戻し、不完全・不正な `%` と `+` は
 そのまま残します。正の `len` は埋め込みNULを含む指定byte数を処理し、0以下は最初のNULまでです。

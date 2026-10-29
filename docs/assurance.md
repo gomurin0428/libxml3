@@ -3,6 +3,32 @@
 This project is an experimental, independent Ada/SPARK implementation, not a
 release of GNOME libxml2. It is not yet a complete libxml2 replacement.
 
+## URI path normalization
+
+`xmlNormalizeURIPath` delegates to `XML3_Text.Buffers.Normalize_URI_Path`.
+A bounded scan precedes any mutation; empty input is not written. SPARK tracks
+input/output offsets and the number of removable ordinary segments, collapses
+slashes, skips single-dot segments and rewinds output for parent segments.
+It retains leading relative parents and anchors absolute paths at the root.
+Unlike the reference, root detection is saved from the input's first byte,
+not inferred from stale bytes at the current output position: `..//..` must
+remain `../..`, not `../`, and `/../a` becomes `/a`.
+
+The algorithm needs no heap allocation and only rewrites the existing span.
+Success and NULL retain diagnostics; a scan-limit failure leaves the input
+unchanged and reports diagnostic 115 through the adapter. This processes a
+path, not a full URI or filesystem path: no percent/UTF-8 decoding, query or
+fragment parsing, backslash conversion, symlink handling or sandbox guarantee.
+Native readable/writable extents, stable input, byte values/effects, C ABI and
+complete normalization semantics remain trusted, not formally proved.
+GNATprove discharges 31 checks for `Normalize_URI_Path`, covering bounded
+measurement, segment/output arithmetic, in-place copy preconditions, loop
+termination and the status contract—not normalized byte equivalence or native
+memory effects.
+Tests cover reference behavior and explicit differences, idempotence, byte
+values, guarded terminators, read-only empty input, URI decode/normalize/encode
+reuse, no allocations and small scan limits before mutation.
+
 ## URI byte unescaping
 
 `xmlURIUnescapeString` delegates to `XML3_Text.Buffers.Unescape_URI`.
@@ -57,7 +83,8 @@ not a partial string, and do not modify or consume the input. The result is
 freed with `xmlFree`. Callers must supply stable, readable native spans and
 choose appropriate exceptions for their URI component. Native bytes,
 allocation/free/write effects, pointer validity/extent, C ABI and full public
-semantics are trusted, not proved. URI parsing/resolution/normalization are unsupported.
+semantics are trusted, not proved. Full URI parsing/resolution are unsupported;
+path-only normalization is provided separately.
 
 ## Intended proof claims
 
@@ -115,8 +142,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,781 checks
-(1,307 flow and 11,474 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,822 checks
+(1,317 flow and 11,505 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -282,7 +309,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,781-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,822-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

@@ -2039,6 +2039,20 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "uri-normalize") == 0) {
+        char relative[] = "..//../a/./b/..";
+        char absolute[] = "/a/../../b";
+        char empty[] = "";
+        xml3_oom_enable(fail_index);
+        assert(xmlNormalizeURIPath(relative) == 0);
+        assert(strcmp(relative, "../../a/") == 0);
+        assert(xmlNormalizeURIPath(absolute) == 0 && strcmp(absolute, "/b") == 0);
+        assert(xmlNormalizeURIPath(empty) == 0);
+        assert(xmlNormalizeURIPath(NULL) == -1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "uri-unescape-inplace") == 0) {
         char buffer[] = "a%20%00x+";
         const char expected[] = {'a', ' ', 0, 'x', '+', 0};
@@ -2307,6 +2321,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "uri-unescape-inplace") == 0) {
         puts("in-place URI unescaping used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "uri-normalize") == 0) {
+        puts("URI path normalization used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

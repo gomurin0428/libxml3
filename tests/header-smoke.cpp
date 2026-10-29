@@ -10,6 +10,8 @@ int main() {
     (void)uri_escape;
     char *(*uri_unescape)(const char *, int, char *) = xmlURIUnescapeString;
     (void)uri_unescape;
+    int (*uri_path)(char *) = xmlNormalizeURIPath;
+    (void)uri_path;
     int (*character_classes[])(unsigned int) = {
         xmlIsChar, xmlIsBlank, xmlIsDigit, xmlIsExtender, xmlIsIdeographic, xmlIsPubidChar,
         xmlIsBaseChar, xmlIsCombining
