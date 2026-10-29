@@ -8,6 +8,28 @@ package body XML3_Text with SPARK_Mode is
    function XML_Blank (C : Natural) return Boolean is
      (C in 9 | 10 | 13 | 32);
 
+   function XML_Digit (C : Natural) return Boolean is
+     (C in 16#30# .. 16#39# | 16#660# .. 16#669# | 16#6F0# .. 16#6F9#
+        | 16#966# .. 16#96F# | 16#9E6# .. 16#9EF# | 16#A66# .. 16#A6F#
+        | 16#AE6# .. 16#AEF# | 16#B66# .. 16#B6F# | 16#BE7# .. 16#BEF#
+        | 16#C66# .. 16#C6F# | 16#CE6# .. 16#CEF# | 16#D66# .. 16#D6F#
+        | 16#E50# .. 16#E59# | 16#ED0# .. 16#ED9# | 16#F20# .. 16#F29#);
+
+   function XML_Extender (C : Natural) return Boolean is
+     (C in 16#B7# | 16#2D0# .. 16#2D1# | 16#387# | 16#640# | 16#E46#
+        | 16#EC6# | 16#3005# | 16#3031# .. 16#3035#
+        | 16#309D# .. 16#309E# | 16#30FC# .. 16#30FE#);
+
+   function XML_Ideographic (C : Natural) return Boolean is
+     (C in 16#3007# | 16#3021# .. 16#3029# | 16#4E00# .. 16#9FA5#);
+
+   function XML_Pubid_Char (C : Natural) return Boolean is
+     (C <= 127 and then Character'Val (C) in
+        ' ' | Character'Val (10) | Character'Val (13)
+        | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9'
+        | '-' | Character'Val (39) | '(' | ')' | '+' | ',' | '.' | '/'
+        | ':' | '=' | '?' | ';' | '!' | '*' | '#' | '@' | '$' | '_' | '%');
+
    function NCName_Start (C : Natural) return Boolean is
      (C in 16#41# .. 16#5A# or C = 16#5F# or C in 16#61# .. 16#7A#
       or C in 16#C0# .. 16#D6# or C in 16#D8# .. 16#F6#

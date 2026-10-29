@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,559 checks, 1,237 by flow analysis and 11,322
+It completed successfully: **12,568 checks, 1,245 by flow analysis and 11,323
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -461,7 +461,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 458 entity
+The 462 entity
 summaries report 0 flow errors, 152 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -490,13 +490,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 322 |
+| Data dependencies | 326 |
 | Initialization | 752 |
-| Runtime checks | 5,458 |
+| Runtime checks | 5,459 |
 | Assertions | 1,644 |
 | Functional contracts | 4,159 |
-| Termination | 224 |
-| **Total** | **12,559** |
+| Termination | 228 |
+| **Total** | **12,568** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -746,13 +746,20 @@ semantic checks, not a claim of complete C API proof. Common cases also run agai
 the pinned reference; document-first release and unmanaged facades are
 library-specific checks.
 
-`xmlIsChar` and `xmlIsBlank` use the pure `XML3_Text.XML_Char` and
-`XML3_Text.XML_Blank` classifiers. Their public adapters are outside the SPARK
-proof; the classifier bodies are analyzed, with no run-time checks generated
-for their range expressions. Runtime tests exhaust the XML code-point range
-and exercise high unsigned values; the no-allocation OOM operation checks the
-native allocation counter. This does not prove the C ABI or complete upstream
-semantics. Only the functions are implemented, not header macros or range-group APIs.
+`xmlIsChar`, `xmlIsBlank`, `xmlIsDigit`, `xmlIsExtender`,
+`xmlIsIdeographic`, and `xmlIsPubidChar` use the pure
+`XML3_Text.XML_Char`, `XML3_Text.XML_Blank`, `XML3_Text.XML_Digit`,
+`XML3_Text.XML_Extender`, `XML3_Text.XML_Ideographic`, and
+`XML3_Text.XML_Pubid_Char` classifiers. The helpers are analyzed in SPARK;
+proof output has no checks for the first five and one proved check for
+`XML_Pubid_Char`. The exported C adapters, narrowing boundary, ABI, and complete
+upstream semantics remain outside the proof. Runtime tests sweep code points
+through U+110000, check unsigned high values and ensure current NCName behavior
+is unchanged; the no-allocation OOM operation checks the native allocation
+counter. The digit, extender, ideographic and PubidChar sets are the fixed
+historical classes documented in the compatibility notes, not current Unicode
+categories or a DTD subsystem. Only the function symbols are implemented;
+header macros and range-group APIs remain unsupported.
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use
 `Runtime.Get_Inherited_XML_Property` / `Store.Queries.Get_Inherited_XML_Property`;
@@ -1013,10 +1020,10 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-feb7e19c7937c429f30f38f9f7939e93b97c7f63a39162ee3cf7af24c8325cce  src/xml3_c.adb
-cb272bbe99a7c959020290f1853057780eb4243387f25cf76bd70d06a72e8b01  src/xml3_c.ads
+fc10df5a0fe52b9df05c3de5f12b9b5580bfda741b592911b61b0fed8f2dd52b  src/xml3_c.adb
+a006e19d471e42b7243c13fcf0f7e4e2b3c02aa77ef327dae51b3ae2f107b67e  src/xml3_c.ads
 1809463359f6f9d3dc21eab509585e91f10a4ddd6592f7779496e8bfe7db2d6c  include/libxml3.h
-00b8d99dfe0a96b2d04b0ddb412f0b8f5d5f61000c5795dbedfe3d8ae3858c5d  include/libxml/chvalid.h
+f61faca4a56c3d0a448c71475358ef3e2600bac4d9253bb2923eb0f9d70f53f5  include/libxml/chvalid.h
 580fa6bc23823923995846df5a3ba1b4272049938e1f4e266e9e13d5353085cc  include/libxml/entities.h
 386ab8e57be684a44d9cb5b31c45317bda8e887196525db4fb3bcfaf01b2af51  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
@@ -1060,8 +1067,8 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_serialization.adb
 4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
-743a28541599de0193d50c52f3415dfa24f5b8b336c777f9df24fd4077a4a68f  src/xml3_text.adb
-500f5014280c3515bb0cceb7d928c8fa39da9d5ce5bedb9ed80f403e775275a2  src/xml3_text.ads
+5810dc2279eac8340743920a6ac4c9d4e77cf09213e4bdf33cb7352370c8292a  src/xml3_text.adb
+b832e271c3dafdabd64102cf9a32ff1a761c6ba4a3eb184f980e436a6f2c5eda  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
 383f864cb9b0a82b6c274054e330b0ddf0b38c9bc96a2fff8463e9ff8d0c2c1a  src/xml3_text-buffers.adb
@@ -1070,7 +1077,7 @@ aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_seria
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-ad5a44e23b72ddcff10710b2c678be324fe031b8803925ba287abf527263fc4d  Makefile
+71b66e687742685de8d50419ebb4894f59aef7407f52eabaa2e4f066a8718047  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

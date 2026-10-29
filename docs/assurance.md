@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,559 checks
-(1,237 flow and 11,322 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,568 checks
+(1,245 flow and 11,323 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -226,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,559-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,568-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -414,16 +414,25 @@ OOM は NULL として返り、source list links は変更しません。
 失敗時は False を返す契約です。C は mutex・結果・例外の変換だけを担当します。
 ネイティブ byte 読み取りの正しさは信頼境界に残り、完全な C API 意味論の証明ではありません。
 
-`xmlIsChar` and `xmlIsBlank` are scalar classifiers backed by the pure
-`XML3_Text.XML_Char` and `XML3_Text.XML_Blank` functions. They return exactly
-1 or 0 for the XML 1.0 character ranges and the four XML blank characters,
-respectively; values above `Natural'Last` return false before narrowing, and
-the allowed supplementary range receives no extra noncharacter filtering.
-These deprecated upstream function symbols perform no allocation, locking,
-DOM access, or diagnostics. Only the functions are included; header macros
-and range-group APIs remain unsupported. Tests exhaust the XML code-point
-range and unsigned boundary cases. C ABI and complete upstream semantics are
-not proved.
+The six deprecated `chvalid.h` function symbols use pure SPARK scalar
+classifiers. `xmlIsChar` and `xmlIsBlank` retain the XML 1.0 Char ranges and
+the exact XML blank set documented above. The historical `xmlIsDigit` set is
+U+0030–0039, 0660–0669, 06F0–06F9, 0966–096F, 09E6–09EF, 0A66–0A6F,
+0AE6–0AEF, 0B66–0B6F, 0BE7–0BEF, 0C66–0C6F, 0CE6–0CEF, 0D66–0D6F,
+0E50–0E59, 0ED0–0ED9, 0F20–0F29; in particular U+0BE6 is excluded.
+`xmlIsExtender` accepts only U+00B7, 02D0–02D1, 0387, 0640, 0E46, 0EC6,
+3005, 3031–3035, 309D–309E, and 30FC–30FE.
+`xmlIsIdeographic` accepts U+3007, 3021–3029, and 4E00–9FA5.
+`xmlIsPubidChar` accepts SPACE, LF, CR, ASCII alphanumeric, and
+`-'()+,./:=?;!*#@$_%`, but not TAB. These are fixed historical sets, not
+locale or modern Unicode categories; all other values return 0, including
+high unsigned values before narrowing when they exceed `Natural'Last`.
+The legacy name classes do not affect current NCName validation (which
+continues to accept U+0BE6 and U+9FA6). The scalar APIs perform no pointer
+access, allocation, locking, DOM access, or diagnostics. Header macros,
+range-group APIs, and a DTD subsystem are unsupported. Tests exhaust the
+XML-range and unsigned-boundary cases. The C ABI and complete upstream
+semantics are outside the proof.
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use the read-only
 `Store.Queries.Get_Inherited_XML_Property` parent walk. Language returns a

@@ -2541,6 +2541,22 @@ package body XML3_C is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Blank (Natural (Code))));
 
+   function Is_XML_Digit (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Digit (Natural (Code))));
+
+   function Is_XML_Extender (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Extender (Natural (Code))));
+
+   function Is_XML_Ideographic (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Ideographic (Natural (Code))));
+
+   function Is_XML_Pubid_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int is
+     (if Code > Interfaces.C.unsigned (Natural'Last) then 0
+      else Boolean'Pos (XML3_Text.XML_Pubid_Char (Natural (Code))));
+
    function UTF8_Char_Compare (Left, Right : System.Address) return Interfaces.C.int is
       Result : Integer;
       Invalid : Boolean;

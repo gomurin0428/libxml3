@@ -1998,6 +1998,14 @@ int main(int argc, char **argv) {
         assert(xmlIsChar(0xd800) == 0 && xmlIsChar(~0u) == 0);
         assert(xmlIsBlank('\t') == 1 && xmlIsBlank(' ') == 1);
         assert(xmlIsBlank(0xa0) == 0 && xmlIsBlank(~0u) == 0);
+        assert(xmlIsDigit(0x660) == 1 && xmlIsDigit(0xbe6) == 0);
+        assert(xmlIsDigit(~0u) == 0);
+        assert(xmlIsExtender(0x30fc) == 1 && xmlIsExtender(0x30ff) == 0);
+        assert(xmlIsExtender(~0u) == 0);
+        assert(xmlIsIdeographic(0x9fa5) == 1 && xmlIsIdeographic(0x9fa6) == 0);
+        assert(xmlIsIdeographic(~0u) == 0);
+        assert(xmlIsPubidChar('%') == 1 && xmlIsPubidChar('\t') == 0);
+        assert(xmlIsPubidChar(~0u) == 0);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();

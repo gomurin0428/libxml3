@@ -7,6 +7,10 @@ extern "C" {
 
 int xmlIsChar(unsigned int ch);
 int xmlIsBlank(unsigned int ch);
+int xmlIsDigit(unsigned int ch);
+int xmlIsExtender(unsigned int ch);
+int xmlIsIdeographic(unsigned int ch);
+int xmlIsPubidChar(unsigned int ch);
 
 #ifdef __cplusplus
 }
