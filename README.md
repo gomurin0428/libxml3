@@ -351,6 +351,9 @@ reads/writes、allocation/free、pointerの有効性と所有権は信頼境界�
 vectorsはpinned referenceとlibxml3の両方で実行し、alias/cap/OOM/free-count checksはlibxml3-onlyです。
 `xmlNewDocNode` / `xmlNewDocRawNode` は文書に所属する未接続の要素を作成します。
 前者は文字参照を展開し、後者は入力をそのままテキスト子に保持します。
+`xmlNewNode`・子要素・文書付き属性も共通のSPARK入力経路を使います。名前と本文を読む前に
+文書・親・namespaceを登録表で照合し、C側では中間Stringを作りません。名前とraw本文は
+既存の所有領域へ直接コピーし、参照展開する本文だけはSPARK内の入力・復号バッファを使います。
 `xmlNewDocProp` は任意の管理中文書に所属する未接続・無namespaceの属性を作成します。
 値の文字参照は展開し、NULL/空文字列はいずれも text child を作りません。
 属性は `xmlFreeProp` で解放でき、文書先行解放後も保持されます。`xmlAddChild` で
