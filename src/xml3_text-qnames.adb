@@ -1,4 +1,5 @@
 with XML3_Text.Buffers;
+with System.Storage_Elements;
 
 package body XML3_Text.QNames with SPARK_Mode is
    package Native renames XML3_Native_Memory;
@@ -85,41 +86,81 @@ package body XML3_Text.QNames with SPARK_Mode is
       Status := Comparison_Limit_Exceeded;
    end Compare;
 
-   procedure Build
-     (Name, Prefix : String; Original, Buffer : System.Address;
-      Has_Prefix : Boolean; Capacity : Integer;
-      Result : out System.Address; Status : out Build_Status)
+   function Overlaps
+     (Left, Right : System.Address; Left_Length, Right_Length : Byte_Count)
+      return Boolean
+     with Global => null
    is
-      Needed : Byte_Count;
+      use type System.Storage_Elements.Integer_Address;
+      subtype Address_Number is System.Storage_Elements.Integer_Address;
+      A : constant Address_Number := Native.Address_Value (Left);
+      B : constant Address_Number := Native.Address_Value (Right);
+   begin
+      return Left_Length > 0 and then Right_Length > 0
+        and then (if A <= B then B - A < Address_Number (Left_Length)
+                  else A - B < Address_Number (Right_Length));
+   end Overlaps;
+
+   procedure Build
+     (Name, Prefix, Buffer : System.Address; Capacity : Integer;
+      Result : out System.Address; Status : out Build_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Needed, Name_Length, Prefix_Length : Byte_Count;
+      Measured, Use_Buffer, Temporary : Boolean;
       Target : System.Address := Buffer;
    begin
       Result := System.Null_Address;
       Status := Invalid_Argument;
-      if Original = System.Null_Address or else Capacity < 0 then
+      if Name = System.Null_Address or else Capacity < 0 then
          return;
       end if;
-      if not Has_Prefix then
-         Result := Original;
+      if Prefix = System.Null_Address then
+         Result := Name;
          Status := Built;
          return;
       end if;
-      if Name'Length > Max_Bytes - Prefix'Length - 2 then
-         Status := Limit_Exceeded;
+      Status := Limit_Exceeded;
+      if Limit < 2 then
          return;
       end if;
-      Needed := Name'Length + Prefix'Length + 2;
-      if Target = System.Null_Address or else Capacity < Needed then
+      XML3_Text.Buffers.Measure (Name, Name_Length, Measured, Last => Limit - 2);
+      if not Measured then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure
+        (Prefix, Prefix_Length, Measured, Last => Limit - Name_Length - 2);
+      if not Measured then
+         return;
+      end if;
+      Needed := Name_Length + Prefix_Length + 2;
+      Use_Buffer := Buffer /= System.Null_Address and then Capacity >= Needed;
+      Temporary := Use_Buffer and then
+        (Overlaps (Buffer, Name, Needed, Name_Length)
+         or else Overlaps (Buffer, Prefix, Needed, Prefix_Length));
+      if not Use_Buffer or else Temporary then
          Native.Allocate (Native.Byte_Count (Needed), Target);
          if Target = System.Null_Address then
             Status := No_Memory;
             return;
          end if;
       end if;
-      Native.Write_String (Target, 0, Prefix);
-      Native.Write_Byte (Target, Prefix'Length, ':');
-      Native.Write_String (Target, Prefix'Length + 1, Name);
+      for Index in 0 .. Prefix_Length - 1 loop
+         Native.Write_Byte (Target, Index, Native.Byte_At (Prefix, Index));
+      end loop;
+      Native.Write_Byte (Target, Prefix_Length, ':');
+      for Index in 0 .. Name_Length - 1 loop
+         Native.Write_Byte
+           (Target, Prefix_Length + 1 + Index, Native.Byte_At (Name, Index));
+      end loop;
       Native.Write_Byte (Target, Needed - 1, Character'Val (0));
-      Result := Target;
+      if Temporary then
+         Native.Copy_Bytes (Target, Buffer, Needed);
+         Native.Free (Target);
+         Result := Buffer;
+      else
+         Result := Target;
+      end if;
       Status := Built;
    end Build;
 

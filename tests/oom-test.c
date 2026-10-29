@@ -479,32 +479,44 @@ int main(int argc, char **argv) {
         dom_node = NULL;
         assert(xmlStrEqual(copy->href, BAD_CAST "urn:p") && xmlStrEqual(copy->prefix, BAD_CAST "p"));
         xmlFreeNs(copy);
-    } else if (strcmp(operation, "qname-build") == 0) {
+    } else if (strcmp(operation, "qname-build") == 0 ||
+               strcmp(operation, "qname-build-alias") == 0) {
+        int alias = strcmp(operation, "qname-build-alias") == 0;
         const xmlChar name[] = "name";
         xmlChar buffer[32], before[32];
+        xmlChar empty[2] = {0, '!'};
         xml3_oom_enable(fail_index);
         assert(xmlBuildQName(name, NULL, buffer, sizeof(buffer)) == name);
         assert(xmlBuildQName(name, BAD_CAST "p", buffer, 7) == buffer);
+        assert(xmlBuildQName(empty, empty, empty, 2) == empty && xmlStrEqual(empty, BAD_CAST ":"));
         assert(xml3_oom_count() == 0);
         assert(xmlStrEqual(buffer, BAD_CAST "p:name"));
         memset(buffer, '!', sizeof(buffer));
+        if (alias) strcpy((char *)buffer, "name");
         memcpy(before, buffer, sizeof(buffer));
-        xmlChar *built = xmlBuildQName(name, BAD_CAST "p", buffer, 6);
+        xmlChar *built = xmlBuildQName(alias ? buffer : name, BAD_CAST "p", buffer,
+                                      alias ? (int)sizeof(buffer) : 6);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
-        assert(memcmp(buffer, before, sizeof(buffer)) == 0);
+        if (injected || !alias) assert(memcmp(buffer, before, sizeof(buffer)) == 0);
         if (injected) {
             assert(!built);
             require_oom_error();
         } else {
-            assert(built && built != buffer && xmlStrEqual(built, BAD_CAST "p:name"));
+            assert(built && (alias ? built == buffer : built != buffer));
+            assert(xmlStrEqual(built, BAD_CAST "p:name"));
         }
-        xmlFree(built);
-        built = xmlBuildQName(name, BAD_CAST "p", buffer, 6);
-        assert(built && built != buffer && xmlStrEqual(built, BAD_CAST "p:name"));
-        assert(memcmp(buffer, before, sizeof(buffer)) == 0);
-        xmlFree(built);
+        if (!alias) xmlFree(built);
+        memcpy(buffer, before, sizeof(buffer));
+        built = xmlBuildQName(alias ? buffer : name, BAD_CAST "p", buffer,
+                              alias ? (int)sizeof(buffer) : 6);
+        assert(built && (alias ? built == buffer : built != buffer));
+        assert(xmlStrEqual(built, BAD_CAST "p:name"));
+        if (!alias) {
+            assert(memcmp(buffer, before, sizeof(buffer)) == 0);
+            xmlFree(built);
+        }
     } else if (strcmp(operation, "qname-split") == 0) {
         const xmlChar input[] = "p:name";
         xmlChar *prefix = (xmlChar *)1;

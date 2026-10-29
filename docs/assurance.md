@@ -49,7 +49,7 @@ Native bytes and effects, stable readable input extents, writable output extent
 (decoded size plus one), copy/allocation/free and ABI are trusted. The public
 interface has no target capacity parameter and cannot validate it. Contracts
 cover status/result/target relationships, not full functional semantics.
-GNATprove discharges 1 check for `URI_Hex` and 18 for `Unescape_URI`, covering
+GNATprove discharges 1 check for `URI_Hex` and 19 for `Unescape_URI`, covering
 the helper's hex result range, bounded traversal, native-call preconditions
 and status/result/target contracts—not decoded byte equivalence or native
 memory effects.
@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,884 checks
-(1,355 flow and 11,529 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,895 checks
+(1,361 flow and 11,534 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -337,7 +337,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,884-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,895-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -653,10 +653,12 @@ allocator/copy、pointer arithmetic、C ABI、完全な分割意味論はtrusted
 元入力を解放しDOMへ再利用する流れを固定版と比較します。OOM検査はlibxml3のみです。
 
 `xmlBuildQName` は SPARK `XML3_Text.QNames.Build` で size bound、buffer selection、
-result/status 契約を扱います。NULL prefix は borrowed original pointer、empty prefix は colon
-を含む新しい値です。C string conversion と pointer/ABI、native allocation/write は trusted
-boundary です。overlapping input/output は libxml3 で入力を先にコピーして安全に扱いますが、
-固定版との overlap equivalence は主張しません。
+result/status 契約を扱います（`Build` 18 checks、`Overlaps` 2 checks）。NULL prefix は borrowed original pointer、empty prefix は colon
+を含む新しい値です。計測と構築は直接SPARKで行い、C文字列の中間コピーは不要です。
+十分なcaller bufferが入力byteと重なる場合だけ一時領域へ構築して転送し、失敗ではbufferを
+保持します。重ならなければ確保不要です。重複判定の差分演算もSPARK側に置き、nativeな
+address-to-integer conversion、pointer validity/extents、allocation/free/byte effects、C ABI、
+完全な公開意味論はtrusted/unprovedです。固定版とのoverlap equivalenceは主張しません。
 `xmlStrQEqual` は SPARK `XML3_Text.QNames.Compare` で prefix/name/value の raw-byte
 比較を行います。NULL prefix は `xmlStrEqual` 相当の NULL/NULL・同一 pointer equality を
 保ち、非NULL prefix は prefix、colon、name を NUL まで比較します。空 prefix は name/value

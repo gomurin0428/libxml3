@@ -1472,8 +1472,8 @@
   },
   "function:tree.h:xmlBuildQName": {
     "implementation": "partial",
-    "scope": "Raw-byte builder, not lexical validation. NULL prefix returns the borrowed original name; non-NULL empty prefix builds ':name'. Uses a caller buffer only when capacity is sufficient; otherwise leaves it untouched and returns an xmlFree-owned allocation. NULL name and negative capacity return NULL. Combined size is bounded; C conversion, native allocation/write, pointer ABI, and complete semantics remain outside proof. Overlap safety is libxml3-only and excluded from reference comparison.",
-    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Raw-byte builder, not lexical validation. Direct SPARK measurement and construction without C-string copies. NULL prefix borrows the name; empty prefix builds ':name'. Sufficient non-overlapping caller buffers need no allocation; overlapping output uses a temporary and preserves the buffer on allocation failure. Insufficient buffers stay untouched while a new xmlFree-owned allocation is returned. NULL name/negative capacity return NULL. The total budget reserves colon/NUL and shares the rest across both inputs; unresolved limits report diagnostic 115. Native address conversion, allocation/free/byte effects, pointer validity/extents, ABI and complete semantics remain outside proof. Overlap safety is libxml3-only.",
+    "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlValidateNCName": {

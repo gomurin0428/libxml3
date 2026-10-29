@@ -3222,29 +3222,19 @@ package body XML3_C is
      (Name, Prefix, Memory : System.Address; Length : Interfaces.C.int)
       return System.Address
    is
-      Read_Inputs : constant Boolean := Name /= System.Null_Address
-        and then Prefix /= System.Null_Address and then Length >= 0;
       Result : System.Address;
       Status : XML3_Text.QNames.Build_Status;
    begin
-      declare
-         Name_Text : constant String :=
-           (if Read_Inputs then C_String_Value (Name) else "");
-         Prefix_Text : constant String :=
-           (if Read_Inputs then C_String_Value (Prefix) else "");
-      begin
-         XML3_Text.QNames.Build
-           (Name_Text, Prefix_Text, Name, Memory, Prefix /= System.Null_Address,
-            Integer (Length), Result, Status);
-         case Status is
-            when XML3_Text.QNames.No_Memory =>
-               XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-            when XML3_Text.QNames.Limit_Exceeded =>
-               Report_Dom_Error (115);
-            when others => null;
-         end case;
-         return Result;
-      end;
+      XML3_Text.QNames.Build
+        (Name, Prefix, Memory, Integer (Length), Result, Status);
+      case Status is
+         when XML3_Text.QNames.No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.QNames.Limit_Exceeded =>
+            Report_Dom_Error (115);
+         when others => null;
+      end case;
+      return Result;
    exception
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);

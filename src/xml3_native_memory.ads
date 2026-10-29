@@ -1,5 +1,6 @@
 with Interfaces.C;
 with System;
+with System.Storage_Elements;
 with XML3_Text;
 
 package XML3_Native_Memory
@@ -62,6 +63,8 @@ is
 
    function Offset (Base : System.Address; Bytes : Byte_Count) return System.Address
      with Global => null;
+   function Address_Value (Base : System.Address)
+     return System.Storage_Elements.Integer_Address with Global => null;
    function Node_Id (Facade : System.Address) return Natural
      with Global => (Input => Foreign_Memory), Pre => Facade /= System.Null_Address;
    function Namespace_Id (Facade : System.Address) return Natural
