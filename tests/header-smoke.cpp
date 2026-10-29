@@ -5,6 +5,11 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    void (*dump_format)(xmlDocPtr, xmlChar **, int *, int) = xmlDocDumpFormatMemory;
+    void (*dump_format_enc)(xmlDocPtr, xmlChar **, int *, const char *, int) =
+        xmlDocDumpFormatMemoryEnc;
+    (void)dump_format;
+    (void)dump_format_enc;
     void (*dump_memory)(xmlDocPtr, xmlChar **, int *) = xmlDocDumpMemory;
     (void)dump_memory;
     xmlChar *(*encode_special)(const xmlDoc *, const xmlChar *) = xmlEncodeSpecialChars;

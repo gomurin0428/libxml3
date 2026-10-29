@@ -81,7 +81,7 @@
   },
   "function:tree.h:xmlDocDumpMemoryEnc": {
     "implementation": "partial",
-    "scope": "明示UTF-8（ASCII case-insensitive、宣言では入力表記を保持）とNULL encoding、XML 1.0のみ。NULLはencoding宣言を省きtext/属性/namespace URIの非ASCIIを大文字16進文字参照へ変換し、名前/comment/PI/CDATAはUTF-8保持。空encoding名は拒否。source encoding/standalone metadataは保持せず元encodingへ復帰しない。全DOMを不変状態からSPARKで検査・二段階出力し、成功バッファはxmlFree所有。invalid XML/name/namespaceはfail-closed。formatting/DTD/I/O未対応、native pointer/ABI/allocatorは信頼境界。",
+    "scope": "明示UTF-8（ASCII case-insensitive、宣言では入力表記を保持）とNULL encoding、XML 1.0のみ。NULLはencoding宣言を省きtext/属性/namespace URIの非ASCIIを大文字16進文字参照へ変換し、名前/comment/PI/CDATAはUTF-8保持。空encoding名は拒否。source encoding/standalone metadataは保持せず元encodingへ復帰しない。全DOMを不変状態からSPARKで検査・二段階出力し、成功バッファはxmlFree所有。invalid XML/name/namespaceはfail-closed。このAPIは整形なし。DTD/I/O未対応、native pointer/ABI/allocatorは信頼境界。",
     "tests": [
       "tests/serialization-test.c",
       "tests/oom-test.c"
@@ -90,7 +90,25 @@
   },
   "function:tree.h:xmlDocDumpMemory": {
     "implementation": "partial",
-    "scope": "xmlDocDumpMemoryEncのNULL encoding経路を共有するXML 1.0メモリ出力。encoding宣言なし、text/属性/namespace URIの非ASCIIを文字参照にし、名前/comment/PI/CDATAはUTF-8保持。source encoding/standalone metadataは保持せず元encodingを復元しない。成功バッファは独立したxmlFree所有、失敗はNULL/長さ0でDOM不変。検査と出力はSPARK、C境界は変換とdispatchのみ。formatting/DTD/I/O未対応、native pointer/ABI/allocatorは信頼境界。",
+    "scope": "xmlDocDumpMemoryEncのNULL encoding経路を共有するXML 1.0メモリ出力。encoding宣言なし、text/属性/namespace URIの非ASCIIを文字参照にし、名前/comment/PI/CDATAはUTF-8保持。source encoding/standalone metadataは保持せず元encodingを復元しない。成功バッファは独立したxmlFree所有、失敗はNULL/長さ0でDOM不変。検査と出力はSPARK、C境界は変換とdispatchのみ。このAPIは整形なし。DTD/I/O未対応、native pointer/ABI/allocatorは信頼境界。",
+    "tests": [
+      "tests/serialization-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocDumpFormatMemory": {
+    "implementation": "partial",
+    "scope": "既定encodingのXML 1.0メモリ出力。format=0は通常出力、非0は固定版の既定2空白・最大60空白の字下げ。Text/CDATAを直接持つ要素subtreeは整形せず兄弟で再開。DOMは不変、成功結果はxmlFree所有、失敗NULL/長さ0。encoding/standalone metadata復元・global字下げ設定・DTD/I/O未対応。走査/整形/確保はSPARK、native pointer/ABI/allocatorは信頼境界。",
+    "tests": [
+      "tests/serialization-test.c",
+      "tests/oom-test.c"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocDumpFormatMemoryEnc": {
+    "implementation": "partial",
+    "scope": "明示UTF-8またはNULL/既定encodingのXML 1.0整形メモリ出力。format=0は通常出力、非0は既定2空白・最大60空白。Text/CDATAを直接持つ要素subtreeの整形を抑制し兄弟で再開。元DOM不変、失敗NULL/長さ0、成功結果xmlFree所有。encoding/standalone metadata復元・global字下げ設定・DTD/I/O未対応。走査/整形/確保はSPARK、native pointer/ABI/allocatorは信頼境界。",
     "tests": [
       "tests/serialization-test.c",
       "tests/oom-test.c"

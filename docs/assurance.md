@@ -52,13 +52,13 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
 `XML3_Text.Buffers.Slice`, terminated byte comparisons through
 `XML3_Text.Buffers.Compare_Terminated`, bounded special-character escaping
-through `XML3_Text.Buffers.Escape_Special`, and explicit UTF-8 memory
-serialization.
+through `XML3_Text.Buffers.Escape_Special`, and explicit UTF-8, default-
+encoding, and formatted memory serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,080 checks
-(1,123 flow and 10,957 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,085 checks
+(1,124 flow and 10,961 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 138 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -187,8 +187,17 @@ The CDATA bounded scan is in the trusted C boundary; guard-page tests are
 runtime evidence for pointer handling, not a pointer-safety proof.
 
 `xmlDocDumpMemory` delegates to `xmlDocDumpMemoryEnc` with NULL encoding; a NULL
-encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode. Both
-reach `XML3_DOM_Store.Serialization.Dump` and `XML3_Serialization.Render`.
+encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode. The two
+format variants share the adapter and pass their scalar flag through Runtime
+and Store into `XML3_Serialization.Render`. All four APIs reach the same
+serializer. The unformatted APIs and `format=0` retain compact output; any
+nonzero value, including a negative value, enables two-space indentation
+capped at 60 spaces. Before descending, the SPARK traversal scans direct
+children: Text or CDATA (including whitespace-only Text) suppresses inserted
+whitespace for that entire element subtree, then formatting resumes for
+following siblings. The DOM remains unchanged, although inserted output
+whitespace reparses as Text.
+
 Default mode omits the encoding declaration and emits non-ASCII scalar text,
 attribute values, and namespace URIs as uppercase hexadecimal character
 references. Names, comments, processing instructions, and CDATA retain raw
@@ -196,16 +205,16 @@ UTF-8. Explicit UTF-8 output remains supported, while an empty encoding name
 is rejected. `Render` validates and measures immutable Store state before
 allocation, then repeats the iterative traversal into an exact-size result.
 GNATprove discharges 8 checks for `Put_Character_Reference`, 17 for
-`Emit_Text`, and 19 for `Pass`; this does not prove complete C semantics or
-libxml2 lexical equivalence. The C adapter converts arguments, initializes
-output slots, acquires the existing lock, maps status/exceptions, and publishes
-the result. Native pointer validity, C-string conversion, allocation, byte
-reads/writes, and mutex behavior remain trusted. Source encoding and standalone
-metadata are not retained, so default output does not restore the parsed
-source encoding. An empty document may produce only the XML declaration.
-These units are included in the current successful 12,080-check aggregate
-proof; see [proof-report.md](proof-report.md) for the command, result, and
-source hashes.
+`Emit_Text`, and 23 for `Pass`; this does not prove complete C semantics or
+libxml2 lexical equivalence. The C adapter converts scalar/string/null
+arguments, initializes output slots, acquires the existing lock, maps
+status/exceptions, and publishes the result. Native pointer validity,
+C-string conversion, allocation, byte reads/writes, and mutex behavior remain
+trusted. Source encoding and standalone metadata are not retained, so default
+output does not restore the parsed source encoding. An empty document may
+produce only the XML declaration. These units are included in the current
+successful 12,085-check aggregate proof; see [proof-report.md](proof-report.md)
+for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
 nodes, namespaces and one owner before calling `Import.Adopt` exactly once.
@@ -973,7 +982,10 @@ fields, and omits source `next`, `context`, and `_private` links. Reservation
 release and node pins are handled by the Store; foreign/stale pointers and
 native representation/ABI remain trusted boundaries. `xmlDocDumpMemoryEnc`
 supports explicit UTF-8 or NULL/default encoding, and `xmlDocDumpMemory`
-selects the same default path. Formatting, DTD and file APIs are unsupported. Unsupported
+selects the same default path; those two entrypoints use compact, unformatted
+output. `xmlDocDumpFormatMemory` and `xmlDocDumpFormatMemoryEnc` provide the
+bounded formatting behavior described above. DTD and file APIs are
+unsupported. Unsupported
 operations fail without silently creating invalid links. Unsupported parser
 options fail, not silently degrade.
 

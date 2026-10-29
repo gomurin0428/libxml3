@@ -358,7 +358,12 @@ encoding宣言を省き、text・属性・namespace URIの非ASCII文字を大�
 名前・comment・PI・CDATAのUTF-8は保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
 namespaceは拒否します。source encoding/standalone metadata は保持されず宣言には
 出力しません。このため元文書のencodingへの暗黙復帰はせず、NULLは常に上記の既定出力です。
-空のencoding名は拒否します。formatting、ファイル出力、DTD等は未対応です。
+空のencoding名は拒否します。`xmlDocDumpFormatMemory` / `xmlDocDumpFormatMemoryEnc`
+はformat=0で通常出力、非0で2空白の字下げ・改行を追加します。固定版の既定設定に合わせ、
+字下げは60空白で頭打ちです。Text/CDATA（空白だけのTextも含む）を直接持つ要素の
+subtree全体では整形を抑制し、後続の兄弟では再開します。DOM自体には空白を追加しませんが、
+整形結果を再読み込みすると追加した字下げはTextになります。字下げ用global設定の変更、
+ファイル出力、DTD等は未対応です。
 `xmlNewComment` / `xmlNewPI` と文書付きの `xmlNewDocComment` / `xmlNewDocPI` で
 コメント・処理命令も作成できます。
 `xmlNewCDataBlock` は長さ指定でCDATAを作り、文書を指定してもまだ親へ接続しません。

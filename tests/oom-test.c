@@ -1642,6 +1642,41 @@ int main(int argc, char **argv) {
         }
         assert(escaped && strcmp((const char *)escaped, expected) == 0);
         xmlFree(escaped);
+    } else if (strcmp(operation, "serialization-formatted") == 0 ||
+               strcmp(operation, "serialization-formatted-utf8") == 0) {
+        int explicit_encoding = strcmp(operation, "serialization-formatted-utf8") == 0;
+        const char *input = "<r a='名'><child>é</child><empty/></r>";
+        const char *expected = explicit_encoding
+            ? "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+              "<r a=\"名\">\n  <child>é</child>\n  <empty/>\n</r>\n"
+            : "<?xml version=\"1.0\"?>\n"
+              "<r a=\"&#x540D;\">\n  <child>&#xE9;</child>\n  <empty/>\n</r>\n";
+        xmlChar *memory = (xmlChar *)1;
+        int size = 99;
+        doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+        assert(doc);
+        xmlNodePtr root = xmlDocGetRootElement(doc);
+        xmlNodePtr child = root->children;
+        xml3_oom_enable(fail_index);
+        if (explicit_encoding)
+            xmlDocDumpFormatMemoryEnc(doc, &memory, &size, "UTF-8", 1);
+        else xmlDocDumpFormatMemory(doc, &memory, &size, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(memory == NULL && size == 0);
+            require_oom_error();
+            if (explicit_encoding)
+                xmlDocDumpFormatMemoryEnc(doc, &memory, &size, "UTF-8", 1);
+            else xmlDocDumpFormatMemory(doc, &memory, &size, 1);
+        }
+        assert(memory && size == (int)strlen(expected));
+        assert(strcmp((const char *)memory, expected) == 0);
+        xmlFree(memory);
+        assert(root->children == child && child->next == root->last);
+        assert(strcmp((const char *)root->properties->children->content, "名") == 0);
+        assert(strcmp((const char *)child->children->content, "é") == 0);
     } else if (strcmp(operation, "serialization") == 0 ||
                strcmp(operation, "serialization-default") == 0 ||
                strcmp(operation, "serialization-null-encoding") == 0) {

@@ -15,7 +15,7 @@ package XML3_Serialization with SPARK_Mode is
       Encoding : String; Result : out System.Address;
       Length : out Natural;
       Status : out XML3_DOM_Constructors.Construction_Status;
-      Default_Encoding : Boolean := False)
+      Default_Encoding, Formatted : Boolean := False)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => XML3_DOM.Valid (Tree)
          and then Document in

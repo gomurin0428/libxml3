@@ -63,6 +63,15 @@ package XML3_C is
      (Document, Memory, Size, Encoding : System.Address)
      with Export, Convention => C, External_Name => "xmlDocDumpMemoryEnc";
 
+   procedure Doc_Dump_Format_Memory
+     (Document, Memory, Size : System.Address; Format : Interfaces.C.int)
+     with Export, Convention => C, External_Name => "xmlDocDumpFormatMemory";
+
+   procedure Doc_Dump_Format_Memory_Enc
+     (Document, Memory, Size, Encoding : System.Address;
+      Format : Interfaces.C.int)
+     with Export, Convention => C, External_Name => "xmlDocDumpFormatMemoryEnc";
+
    function New_Node
      (Ns, Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewNode";
