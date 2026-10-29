@@ -13,25 +13,25 @@
   },
   "field:chvalid.h:_xmlChRangeGroup.longRange": {
     "implementation": "partial",
-    "scope": "Public borrowed pointer to the long-range array. xmlCharInRange reads it only when val is at least 65536; pointer validity and readable extent remain trusted and unproved.",
+    "scope": "Public borrowed pointer to the long-range array. xmlCharInRange uses this field only when val is at least 65536; pointer validity and readable extent remain trusted and unproved.",
     "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
     "proof": "not-proved"
   },
   "field:chvalid.h:_xmlChRangeGroup.nbLongRange": {
     "implementation": "partial",
-    "scope": "Public long-range count. xmlCharInRange reads it only when val is at least 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
+    "scope": "Public long-range count. xmlCharInRange uses this field only when val is at least 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
     "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
     "proof": "not-proved"
   },
   "field:chvalid.h:_xmlChRangeGroup.nbShortRange": {
     "implementation": "partial",
-    "scope": "Public short-range count. xmlCharInRange reads it only when val is below 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
+    "scope": "Public short-range count. xmlCharInRange uses this field only when val is below 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
     "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
     "proof": "not-proved"
   },
   "field:chvalid.h:_xmlChRangeGroup.shortRange": {
     "implementation": "partial",
-    "scope": "Public borrowed pointer to the short-range array. xmlCharInRange reads it only when val is below 65536; pointer validity and readable extent remain trusted and unproved.",
+    "scope": "Public borrowed pointer to the short-range array. xmlCharInRange uses this field only when val is below 65536; pointer validity and readable extent remain trusted and unproved.",
     "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
     "proof": "not-proved"
   },
