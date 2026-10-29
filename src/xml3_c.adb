@@ -621,19 +621,18 @@ package body XML3_C is
       Options : Interfaces.C.int) return System.Address
    is
       Code : int := Status_Internal_Error;
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
    begin
       if Cur = System.Null_Address then
          return System.Null_Address;
       end if;
-      declare
-         Length : constant Integer := Scan_Length (Cur, Max_Input + 1);
-      begin
-         if Length < 0 then
-            return System.Null_Address;
-         end if;
-         return Parse_Buffer
-           (Cur, int (Length), URL, Encoding, Options, Code);
-      end;
+      XML3_Text.Buffers.Measure (Cur, Length, Found);
+      if not Found then
+         return System.Null_Address;
+      end if;
+      return Parse_Buffer
+        (Cur, int (Length), URL, Encoding, Options, Code);
    exception
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, URL);

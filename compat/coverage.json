@@ -424,19 +424,23 @@
   },
   "function:parser.h:xmlReadDoc": {
     "implementation": "partial",
-    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。 明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。",
+    "scope": "NUL終端UTF-8入力のDOMサブセット内。SPARK Measureで最初のNULまで計測し、Max_Bytes位置の終端まで許す。範囲内に終端がなければNULLを返して解析しない。計測は確保・コピーなし。NULL入力は診断保持、空文字列は空文書エラー。binary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。",
     "tests": [
       "tests/api-test.c",
-      "tests/error-test.c"
+      "tests/error-test.c",
+      "tests/encoding-test.c",
+      "tests/text_buffers_test.adb"
     ],
     "proof": "not-proved"
   },
   "function:parser.h:xmlParseDoc": {
     "implementation": "partial",
-    "scope": "NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。",
+    "scope": "NUL終端UTF-8入力のDOMサブセット内。xmlReadDocと共通のSPARK Measureで最初のNULまで計測し、Max_Bytes位置の終端まで許す。範囲内に終端がなければNULLを返して解析しない。計測は確保・コピーなし。NULL入力は診断保持、空文字列は空文書エラー。binary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。native extent/stability/ABIは信頼境界。",
     "tests": [
       "tests/api-test.c",
-      "tests/error-test.c"
+      "tests/error-test.c",
+      "tests/encoding-test.c",
+      "tests/text_buffers_test.adb"
     ],
     "proof": "not-proved"
   },

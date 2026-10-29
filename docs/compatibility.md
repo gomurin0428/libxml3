@@ -822,7 +822,10 @@ NULL 入力、サイズ不正、非対応オプション、
 エンコーディング、構文エラーは通常 API では NULL を返します。
 `xml3ReadMemory` は `XML3_STATUS_*` を通じて理由を返します。
 NUL 終端の `xmlReadDoc`/`xmlParseDoc` は呼び出し側が提供する有効な C 文字列を
-必要とし、表現可能な入力サイズを超える文字列は拒否します。`xmlReadMemory` の
+必要とし、SPARKの`Measure`で最初のNULまでを計測します。`Max_Bytes`位置の
+終端までを許し、終端が範囲内になければNULLを返して解析しません。
+NULL入力は診断を保持し、空文字列は空文書エラーになります。計測自体は
+確保・コピーをせず、終端後のbyteを読みません。`xmlReadMemory` の
 長さは C `int` で表現可能で、コアの表現境界内でなければなりません。
 
 ## 対応範囲と資源プロファイル
@@ -843,7 +846,7 @@ little-endian として扱います。明示 encoding は XML 宣言より優先
 `UTF-16` を宣言していても decoder を途中切替せず code 81 で拒否します。
 
 UTF-16 の binary input には長さを受け取る `xmlReadMemory` を使用してください。
-NUL 終端文字列を `strlen` で測る `xmlReadDoc`/`xmlParseDoc` は binary UTF-16
+NUL 終端文字列を測る `xmlReadDoc`/`xmlParseDoc` は binary UTF-16
 entrypoint ではありません。UTF-16 prevalidation の malformed input は parse 前に
 IO/code 81、line 1 column 1 として報告します。XML parser の位置は変換後 UTF-8
 入力の decoded character column です。1 GB value profile は実際の大規模 allocation
@@ -972,7 +975,7 @@ not bypass declaration grammar. Unknown explicit encodings fail with code 32;
 there is no silent fallback. An auto-detected/declaration mismatch is retained
 as warning 113 on successful parse. UTF-8 without a BOM that claims UTF-16 is
 not switched mid-document and fails with code 81. `xmlReadDoc`/`xmlParseDoc`
-use `strlen` and are not binary UTF-16 entry points. UTF-16 prevalidation errors
+stop at the first NUL and are not binary UTF-16 entry points. UTF-16 prevalidation errors
 report IO/code 81 at 1:1 before parsing; parser positions refer to decoded
 UTF-8 character columns. The frozen observations in `tests/encoding-oracle.json`
 are compared without normalizing snapshot fields, with explicit per-case reasons

@@ -1211,10 +1211,23 @@ the shared `Classify`, `Equal_Name`, and `Upper` contribute 1, 5, and 1 checks.
 These contracts do not prove native pointer extents/stability or byte effects;
 ABI, diagnostic mapping and full public semantics remain trusted.
 
+## NUL-terminated document input
+
+`xmlReadDoc` and `xmlParseDoc` now use the existing SPARK `Measure`/`Read_Length`
+instead of the C scan. The inclusive `Max_Bytes` bound and failure/zero-length
+contract are unchanged; the adapter calls the parser only when a NUL was found.
+NULL input retains diagnostics while an empty string reaches the parser.
+Measurement adds no allocation or copy and does not inspect bytes after NUL.
+Pinned-reference tests cover guard-page terminators, embedded NUL, empty input,
+and protected original input followed by DOM use, output, document free and
+reparsing. Existing small-bound tests exercise the helper's scan limit; they
+do not allocate a maximum-sized C input. Pointer readability/extents/stability,
+actual byte reads, C ABI and full public parser semantics remain trusted.
+
 ## Source identity (SHA-256)
 
 ```text
-41ac6456ca879b6dca962172a1cdd0ef4dd03aa57798852b6c6647e0eb2eedd1  src/xml3_c.adb
+bcbb596778a6494ca5e9e3ab2191bcb364f4c9f7f11a514c6bff91b7a33c3949  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
