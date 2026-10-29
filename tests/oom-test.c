@@ -816,12 +816,15 @@ int main(int argc, char **argv) {
                strcmp(operation, "string-node-list-len") == 0 ||
                strcmp(operation, "dom-new-doc-comment") == 0 ||
                strcmp(operation, "dom-new-doc-pi") == 0 ||
+               strcmp(operation, "dom-new-doc-pi-empty") == 0 ||
                strcmp(operation, "dom-new-cdata") == 0) {
         int bounded = strcmp(operation, "dom-new-doc-text-len") == 0;
         int list = strcmp(operation, "string-node-list") == 0;
         int list_len = strcmp(operation, "string-node-list-len") == 0;
         int comment = strcmp(operation, "dom-new-doc-comment") == 0;
-        int pi = strcmp(operation, "dom-new-doc-pi") == 0;
+        int empty_pi = strcmp(operation, "dom-new-doc-pi-empty") == 0;
+        int pi = strcmp(operation, "dom-new-doc-pi") == 0 || empty_pi;
+        const xmlChar *pi_name = empty_pi ? BAD_CAST "" : BAD_CAST "target";
         int cdata = strcmp(operation, "dom-new-cdata") == 0;
         static const xmlChar input[] = {'t', 'e', 'x', 't'};
         xmlDocPtr owner_doc = xmlNewDoc(NULL);
@@ -834,7 +837,7 @@ int main(int argc, char **argv) {
             : list_len ? xmlStringLenGetNodeList(owner_doc, BAD_CAST "te&#120;tX", 9)
             : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
             : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
-            : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")
+            : pi ? xmlNewDocPI(owner_doc, pi_name, BAD_CAST "text")
             : xmlNewDocText(owner_doc, BAD_CAST "text");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
@@ -849,13 +852,13 @@ int main(int argc, char **argv) {
                 : list_len ? xmlStringLenGetNodeList(owner_doc, BAD_CAST "te&#120;tX", 9)
                 : cdata ? xmlNewCDataBlock(owner_doc, input, 4)
                 : comment ? xmlNewDocComment(owner_doc, BAD_CAST "text")
-                : pi ? xmlNewDocPI(owner_doc, BAD_CAST "target", BAD_CAST "text")
+                : pi ? xmlNewDocPI(owner_doc, pi_name, BAD_CAST "text")
                 : xmlNewDocText(owner_doc, BAD_CAST "text");
         }
         assert(dom_node != NULL && dom_node->doc == owner_doc);
         assert(dom_node->parent == NULL);
         xmlFreeDoc(owner_doc);
-        if (pi) assert(strcmp((const char *)dom_node->name, "target") == 0);
+        if (pi) assert(strcmp((const char *)dom_node->name, (const char *)pi_name) == 0);
         if (cdata) assert(dom_node->name == NULL);
         assert(strcmp((const char *)dom_node->content, "text") == 0);
         assert(xmlNodeAddContent(dom_node, BAD_CAST "!") == 0);
@@ -880,12 +883,15 @@ int main(int argc, char **argv) {
         dom_node = NULL;
     } else if (strcmp(operation, "dom-new-text") == 0 ||
                strcmp(operation, "dom-new-comment") == 0 ||
-               strcmp(operation, "dom-new-pi") == 0) {
+               strcmp(operation, "dom-new-pi") == 0 ||
+               strcmp(operation, "dom-new-pi-empty") == 0) {
+        int empty_pi = strcmp(operation, "dom-new-pi-empty") == 0;
+        int pi = strcmp(operation, "dom-new-pi") == 0 || empty_pi;
+        const xmlChar *pi_name = empty_pi ? BAD_CAST "" : BAD_CAST "target";
         xml3_oom_enable(fail_index);
         dom_node = strcmp(operation, "dom-new-comment") == 0
             ? xmlNewComment(BAD_CAST "text")
-            : strcmp(operation, "dom-new-pi") == 0
-                ? xmlNewPI(BAD_CAST "target", BAD_CAST "text")
+            : pi ? xmlNewPI(pi_name, BAD_CAST "text")
                 : xmlNewText(BAD_CAST "text");
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
@@ -895,18 +901,16 @@ int main(int argc, char **argv) {
             require_oom_error();
             dom_node = strcmp(operation, "dom-new-comment") == 0
                 ? xmlNewComment(BAD_CAST "text")
-                : strcmp(operation, "dom-new-pi") == 0
-                    ? xmlNewPI(BAD_CAST "target", BAD_CAST "text")
+                : pi ? xmlNewPI(pi_name, BAD_CAST "text")
                     : xmlNewText(BAD_CAST "text");
-            assert(dom_node != NULL);
-            xmlFreeNode(dom_node);
-            dom_node = NULL;
         } else {
-            assert(dom_node != NULL);
-            xmlFreeNode(dom_node);
-            dom_node = NULL;
             assert(xmlGetLastError() == NULL);
         }
+        assert(dom_node != NULL);
+        if (pi) assert(strcmp((const char *)dom_node->name, (const char *)pi_name) == 0);
+        assert(strcmp((const char *)dom_node->content, "text") == 0);
+        xmlFreeNode(dom_node);
+        dom_node = NULL;
     } else if (strcmp(operation, "dom-text-merge") == 0) {
         static const char input[] = "<r>left<!--gap-->right<x/></r>";
         xmlNodePtr root, first, second, gap, last, merged;

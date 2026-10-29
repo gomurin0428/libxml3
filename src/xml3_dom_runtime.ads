@@ -111,7 +111,8 @@ is
          Name : String; Content : System.Address; Length : Integer;
          Terminated : Boolean;
          Result : out System.Address;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Name_Source : System.Address := System.Null_Address)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure New_Doc_Node

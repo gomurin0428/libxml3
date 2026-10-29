@@ -21,14 +21,18 @@ package XML3_DOM_Constructors with SPARK_Mode is
       Implicit_Ns : out Namespace_Ref;
       Status : out Construction_Status;
       Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+      Source_Length : Natural := 0;
+      Name_Source : System.Address := System.Null_Address;
+      Source_Name_Length : Natural := 0)
    with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
      Pre => Current /= null
        and then Valid (Current.all) and then Can_Edit (Current.all)
        and then not Projection_Required (Current.all)
        and then XML3_DOM.Facades_Present (Current.all)
        and then (if Content_Source = System.Null_Address then Source_Length = 0
-         else Has_Content and then Content'Length = 0);
+         else Has_Content and then Content'Length = 0)
+       and then (if Name_Source = System.Null_Address then Source_Name_Length = 0
+         else Name'Length = 0);
    pragma Postcondition (Current /= null);
    pragma Postcondition (Valid (Current.all));
    pragma Postcondition (Can_Edit (Current.all));
@@ -121,7 +125,9 @@ package XML3_DOM_Constructors with SPARK_Mode is
                 Text_Attribute_Content (Current.all, N))
               and then Node (Current.all, N).Namespace = Ns
               and then Node (Current.all, N).Name_Length =
-                (if Kind in Document_Node | CData_Node then 0 else Name'Length)
+                (if Kind in Document_Node | CData_Node then 0
+                 elsif Name_Source = System.Null_Address then Name'Length
+                 else Source_Name_Length)
               and then (if Kind = CData_Node then
                 Node (Current.all, N).Name = System.Null_Address)
               and then Node (Current.all, N).Content_Length =

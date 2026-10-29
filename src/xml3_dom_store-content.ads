@@ -2,16 +2,23 @@ with System;
 with XML3_Native_Memory;
 
 package XML3_DOM_Store.Content with SPARK_Mode is
+   use type XML3_DOM.Node_Kind;
+
    procedure New_Doc_Content
      (S : in out Store; Doc : System.Address; Kind : XML3_DOM.Node_Kind;
       Name, Content : String; Has_Content : Boolean; Result : out System.Address;
       Status : out Operation_Status; Ns : System.Address := System.Null_Address;
       Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+      Source_Length : Natural := 0;
+      Name_Source : System.Address := System.Null_Address;
+      Source_Name_Length : Natural := 0)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S)
          and then (if Content_Source = System.Null_Address then Source_Length = 0
-           else Has_Content and then Content'Length = 0),
+           else Has_Content and then Content'Length = 0)
+         and then (if Name_Source = System.Null_Address then Source_Name_Length = 0
+           else Name'Length = 0
+             and then Kind = XML3_DOM.Processing_Instruction_Node),
        Post => Ready (S)
          and then (if Status = XML3_DOM_Constructors.Created then
            Result /= System.Null_Address else Result = System.Null_Address);
@@ -20,7 +27,8 @@ package XML3_DOM_Store.Content with SPARK_Mode is
      (S : in out Store; Doc : System.Address; Kind : XML3_DOM.Node_Kind;
       Name : String; Content : System.Address; Length : Integer;
       Terminated : Boolean; Result : out System.Address;
-      Status : out Operation_Status)
+      Status : out Operation_Status;
+      Name_Source : System.Address := System.Null_Address)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => Ready (S)

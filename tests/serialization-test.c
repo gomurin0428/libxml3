@@ -120,6 +120,69 @@ static void test_content_input(void) {
     assert(munmap(mapping, (size_t)page * 2) == 0);
 }
 
+static void test_pi_target_input(void) {
+    static const char *names[] = {"p", "処理", "", "bad name", "xml", "\xff"};
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int affiliated = 0; affiliated <= 1; ++affiliated) {
+        for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+            size_t size = strlen(names[i]) + 1;
+            char *input = mapping + page - size;
+            memcpy(input, names[i], size);
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            assert(doc != NULL);
+            xmlNodePtr pi = affiliated
+                ? xmlNewDocPI(doc, (const xmlChar *)input, (const xmlChar *)input)
+                : xmlNewPI((const xmlChar *)input, (const xmlChar *)input);
+            assert(pi && pi->name != (const xmlChar *)input);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            assert(pi->name && pi->content);
+            assert(memcmp(pi->name, names[i], size) == 0);
+            assert(memcmp(pi->content, names[i], size) == 0);
+            xmlNodeSetContent(pi, BAD_CAST "edited");
+            assert(strcmp((const char *)pi->name, names[i]) == 0);
+            assert(strcmp((const char *)pi->content, "edited") == 0);
+            if (i < 2) {
+                xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+                assert(root && xmlDocSetRootElement(doc, root) == NULL);
+                assert(xmlAddChild(root, pi) == pi);
+                xmlChar *output = NULL;
+                int length = 0;
+                xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+                assert(output && length > 0);
+                xmlFreeDoc(doc);
+                doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+                assert(doc != NULL);
+                pi = xmlDocGetRootElement(doc)->children;
+                assert(pi && pi->type == XML_PI_NODE);
+                assert(strcmp((const char *)pi->name, names[i]) == 0);
+                assert(strcmp((const char *)pi->content, "edited") == 0);
+                xmlFree(output);
+            } else {
+                xmlFreeNode(pi);
+            }
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlResetLastError();
+    assert(xmlNewDocPI((xmlDocPtr)protected, protected, protected) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlNewDocPI((xmlDocPtr)protected, NULL, protected) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlNewPI(NULL, protected) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void test_document_version_input(void) {
     static const char *versions[] = {NULL, "", "1.0", "1.1", "odd version", "\xff"};
     long page = sysconf(_SC_PAGESIZE);
@@ -1168,6 +1231,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_pi_target_input();
     test_content_input();
     test_document_version_input();
     if (argc == 2 && strcmp(argv[1], "--misc") == 0) {
@@ -1210,6 +1274,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_pi_target_input();
     test_content_input();
     test_document_version_input();
     test_default_serialization();

@@ -922,7 +922,8 @@ package body XML3_C is
    function New_Content_Node
      (Kind : XML3_DOM.Node_Kind; Name : String; Content : System.Address;
       Length : Interfaces.C.int := -1; Doc : System.Address := System.Null_Address;
-      Terminated : Boolean := True)
+      Terminated : Boolean := True;
+      Name_Source : System.Address := System.Null_Address)
      return System.Address
    is
       Result : System.Address := System.Null_Address;
@@ -934,7 +935,8 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.New_Doc_Content
-           (Doc, Kind, Name, Content, Integer (Length), Terminated, Result, Status);
+           (Doc, Kind, Name, Content, Integer (Length), Terminated, Result, Status,
+            Name_Source);
       end;
       Report_Operation_Status (Status);
       return Result;
@@ -1059,18 +1061,8 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       return New_Content_Node
-        (XML3_DOM.Processing_Instruction_Node, C_String_Value (Name), Content,
-         Doc => Doc);
-   exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
-      when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         return System.Null_Address;
-      when others =>
-         Report_Dom_Error (1);
-         return System.Null_Address;
+        (XML3_DOM.Processing_Instruction_Node, "", Content,
+         Doc => Doc, Name_Source => Name);
    end New_Doc_PI;
 
    function Doc_Set_Root_Element

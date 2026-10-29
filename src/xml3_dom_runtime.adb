@@ -190,11 +190,13 @@ is
          Name : String; Content : System.Address; Length : Integer;
          Terminated : Boolean;
          Result : out System.Address;
-         Status : out XML3_DOM_Store.Operation_Status)
+         Status : out XML3_DOM_Store.Operation_Status;
+         Name_Source : System.Address := System.Null_Address)
       is
       begin
          XML3_DOM_Store.Content.New_Doc_Content_Bytes
-           (Current, Doc, Kind, Name, Content, Length, Terminated, Result, Status);
+           (Current, Doc, Kind, Name, Content, Length, Terminated, Result, Status,
+            Name_Source);
       end New_Doc_Content;
 
       procedure Parse_Content_List

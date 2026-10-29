@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,006 checks
-(1,405 flow and 11,601 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,008 checks
+(1,405 flow and 11,603 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 161 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -286,10 +286,23 @@ storage and subsequent DOM/output/reparse use; OOM walks cover NULL, explicit
 and empty versions plus retry. Native extents/stability, byte effects,
 allocation/free, ABI and complete public semantics remain trusted.
 GNATprove discharges 7 checks for `Store.New_Document`, 0 for the Runtime
-wrapper, 9 for `Store.Construct`, 461 for `Create_Node`, and 22 for
+wrapper, 9 for `Store.Construct`, 462 for `Create_Node`, and 22 for
 `Allocate_Node_Buffer`; shared `Measure` proves 2 checks.
 
 `XML3_DOM_Constructors.Create_Node` performs checked sizing, allocation,
+including optional native-name spans for PI targets as well as native content.
+The native-name case requires an empty String argument and records the measured
+length in the existing projection contract. Buffer sizing and termination use
+that effective length; existing String callers keep their previous path. The
+PI entry point validates the document before measuring either target or content.
+It does not add XML-name validation during creation. Guard-page/reference tests
+protect shared target/content input, edit content without changing the target,
+then serialize/free/reparse; empty-target OOM walks exercise retry and lifetime.
+Native extents, source stability and byte-copy effects remain trusted. The
+shared native-name path is covered by 12 checks for `New_Doc_Content_Bytes`,
+462 for `Create_Node`, 22 for `Allocate_Node_Buffer`, and 2 for `Measure`.
+
+`XML3_DOM_Constructors.Create_Node` shares
 registration, implicit XML namespace setup, and synchronization. Before
 registration, a failed native block may be freed directly; after registration,
 rollback uses subtree retirement, reservation release, and the effect protocol.
@@ -318,8 +331,8 @@ share `Runtime.New_Doc_Content`, `Store.Content.New_Doc_Content_Bytes`, and the
 existing `Store.Content.New_Doc_Content` ownership path, as do `xmlNewText` and
 `xmlNewTextLen`. The C helper forwards the content address and bounded/terminated
 mode, handles locking, status reporting and exceptions, and does not copy the
-content. PI targets still use the existing C String conversion. The SPARK byte
-entry point checks document registration before reading content, uses `Measure`
+content. PI targets also use direct SPARK measurement/copy. The SPARK byte
+entry point checks document registration before reading target/content, uses `Measure`
 or `Measure_Byte_Prefix`, and passes the span into shared constructor storage.
 NULL content skips all length checks/reads and retains a NULL content field;
 non-NULL empty input gets independent NUL storage. Bounded negative/oversized
@@ -330,10 +343,10 @@ exercise all nine constructors, source protection before DOM/output/reparse,
 and invalid document/content combinations; existing OOM walks retain retry and
 document-first-release coverage. Foreign extents/stability, actual byte effects,
 allocation/free, ABI and full API semantics remain trusted.
-GNATprove discharges 11 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
+GNATprove discharges 12 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
 wrapper, 22 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
 `Measure_Byte_Prefix`, and 3 for `Copy_Byte_Prefix`; `Create_Node` and
-`Allocate_Node_Buffer` prove 461 and 22 checks, respectively.
+`Allocate_Node_Buffer` prove 462 and 22 checks, respectively.
 
 `xmlNewDocProp` adapter uses `Runtime.New_Doc_Node` and
 `Store.Content.New_Doc_Node` with `Attribute_Mode`; it supports only detached,
