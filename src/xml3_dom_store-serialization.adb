@@ -9,7 +9,7 @@ package body XML3_DOM_Store.Serialization with SPARK_Mode is
    procedure Dump
      (S : Store; Document : System.Address; Encoding : String;
       Result : out System.Address; Length : out Natural;
-      Status : out Operation_Status)
+      Status : out Operation_Status; Default_Encoding : Boolean := False)
    is
       N : XML3_DOM.Node_Ref;
    begin
@@ -27,6 +27,6 @@ package body XML3_DOM_Store.Serialization with SPARK_Mode is
          return;
       end if;
       XML3_Serialization.Render
-        (S.Current.all, N, Encoding, Result, Length, Status);
+        (S.Current.all, N, Encoding, Result, Length, Status, Default_Encoding);
    end Dump;
 end XML3_DOM_Store.Serialization;

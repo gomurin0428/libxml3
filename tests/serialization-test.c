@@ -25,6 +25,56 @@ static void expect_exact_output(const char *input, const char *expected) {
     xmlFreeDoc(doc);
 }
 
+static void expect_default_output(const char *input, const char *expected) {
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlChar *memory = NULL, *encoded = NULL;
+    int size = 0, encoded_size = 0;
+    assert(doc);
+    xmlChar *original_content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(original_content);
+    xmlDocDumpMemory(doc, &memory, &size);
+    xmlDocDumpMemoryEnc(doc, &encoded, &encoded_size, NULL);
+    assert(memory && encoded && size == (int)strlen(expected));
+    assert(encoded_size == size && memory[size] == 0 && encoded[size] == 0);
+    assert(memcmp(memory, expected, (size_t)size) == 0);
+    assert(memcmp(memory, encoded, (size_t)size) == 0);
+    xmlFree(encoded);
+    xmlFreeDoc(doc);
+    doc = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    assert(doc && xmlDocGetRootElement(doc));
+    xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+    assert(content && strcmp((const char *)content,
+                             (const char *)original_content) == 0);
+    xmlFree(content);
+    xmlFree(original_content);
+    xmlFree(memory);
+    xmlFreeDoc(doc);
+}
+
+static void test_default_serialization(void) {
+    expect_default_output("<r a='&amp;'>x</r>",
+        "<?xml version=\"1.0\"?>\n<r a=\"&amp;\">x</r>\n");
+    expect_default_output(
+        "<名 xmlns:p='urn:é' p:a='é'>&amp;é😀<![CDATA[名]]><!--名--><?work 名?></名>",
+        "<?xml version=\"1.0\"?>\n"
+        "<名 xmlns:p=\"urn:&#xE9;\" p:a=\"&#xE9;\">"
+        "&amp;&#xE9;&#x1F600;<![CDATA[名]]><!--名--><?work 名?></名>\n");
+    expect_default_output("<r>\xc2\x80\xdf\xbf\xe0\xa0\x80\xef\xbf\xbd"
+                          "\xf0\x90\x80\x80\xf4\x8f\xbf\xbf</r>",
+        "<?xml version=\"1.0\"?>\n<r>"
+        "&#x80;&#x7FF;&#x800;&#xFFFD;&#x10000;&#x10FFFF;</r>\n");
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlChar *memory = NULL;
+    int size = 0;
+    const char *empty = "<?xml version=\"1.0\"?>\n";
+    assert(doc);
+    xmlDocDumpMemory(doc, &memory, &size);
+    assert(memory && size == (int)strlen(empty));
+    assert(strcmp((const char *)memory, empty) == 0);
+    xmlFree(memory);
+    xmlFreeDoc(doc);
+}
+
 static void test_shared_lexical_cases(void) {
     static const char simple_input[] = "<r a='&amp;'>x</r>";
     static const char simple_expected[] =
@@ -377,10 +427,46 @@ static void test_pointer_contracts(void) {
     size = 99;
     xmlDocDumpMemoryEnc(NULL, &memory, &size, "UTF-8");
     assert(memory == NULL && size == 0);
-    expect_rejected(doc, NULL);
+    xmlDocDumpMemory(doc, &memory, NULL);
+    assert(memory && strcmp((const char *)memory,
+                            "<?xml version=\"1.0\"?>\n<r/>\n") == 0);
+    xmlFree(memory);
+    xmlDocDumpMemory(doc, NULL, &size);
+    assert(size == 0);
+    memory = (xmlChar *)1;
+    size = 99;
+    xmlDocDumpMemory(NULL, &memory, &size);
+    assert(memory == NULL && size == 0);
+    expect_rejected((xmlDocPtr)xmlDocGetRootElement(doc), NULL);
+    xmlDoc unmanaged = {0};
+    expect_rejected(&unmanaged, NULL);
     expect_rejected(doc, "");
     expect_rejected(doc, "UTF-16");
     xmlFreeDoc(doc);
+}
+
+static void test_default_rejections_and_metadata(void) {
+    const char *invalid[] = {"\1", "\xc3", "\xc0\xaf", "\xef\xbf\xbe"};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+        xmlDocPtr doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+        assert(xmlAddChild(root, xmlNewText(BAD_CAST invalid[i])));
+        expect_rejected(doc, NULL);
+        xmlChar *memory = (xmlChar *)1;
+        int size = 99;
+        xmlResetLastError();
+        xmlDocDumpMemory(doc, &memory, &size);
+        assert(memory == NULL && size == 0 && xmlGetLastError());
+        assert(xmlNodeSetContent(root, BAD_CAST "fixed") == 0);
+        xmlDocDumpMemory(doc, &memory, &size);
+        assert(memory && strstr((const char *)memory, "<r>fixed</r>"));
+        xmlFree(memory);
+        xmlFreeDoc(doc);
+    }
+    expect_default_output("<?xml version='1.0' encoding='UTF-8'?><r>é</r>",
+        "<?xml version=\"1.0\"?>\n<r>&#xE9;</r>\n");
+    xmlResetLastError();
 }
 
 static void test_namespace_shadowing(void) {
@@ -730,6 +816,8 @@ int main(int argc, char **argv) {
     test_misc_rejections_and_lifetime(0);
     test_misc_rejections_and_lifetime(1);
     test_pointer_contracts();
+    test_default_serialization();
+    test_default_rejections_and_metadata();
     test_namespace_shadowing();
     test_namespace_escaping();
     test_empty_document();
@@ -746,6 +834,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_default_serialization();
     test_shared_lexical_cases();
     test_cdata_construction();
     test_constructed_comments_and_pi(0);

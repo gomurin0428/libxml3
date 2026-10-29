@@ -352,10 +352,13 @@ NULL入力はNULL、空入力は空のコピーです。文書引数は参照し
 黙って置換・保持せず診断付きで拒否し、DTD・一般実体の処理は追加しません。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
-は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、
-宣言には指定表記を保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
+は明示的なUTF-8出力とNULL encodingをサポートし、encoding名のASCII大小文字を区別せず、
+明示指定では宣言に指定表記を保持します。`xmlDocDumpMemory` とNULL encodingでは
+encoding宣言を省き、text・属性・namespace URIの非ASCII文字を大文字16進の文字参照にします。
+名前・comment・PI・CDATAのUTF-8は保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
 namespaceは拒否します。source encoding/standalone metadata は保持されず宣言には
-出力しません。暗黙encoding、formatting、ファイル出力、DTD等は未対応です。
+出力しません。このため元文書のencodingへの暗黙復帰はせず、NULLは常に上記の既定出力です。
+空のencoding名は拒否します。formatting、ファイル出力、DTD等は未対応です。
 `xmlNewComment` / `xmlNewPI` と文書付きの `xmlNewDocComment` / `xmlNewDocPI` で
 コメント・処理命令も作成できます。
 `xmlNewCDataBlock` は長さ指定でCDATAを作り、文書を指定してもまだ親へ接続しません。

@@ -370,9 +370,14 @@ caller は有効な library pointer lifetime、直接の tree field 書き換え
 logical topology、owner/reservation accounting、namespace retention と mutation/release
 policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び出し、ABI/string
 変換、status 変換に限定されます。attribute/namespace copy と cross-document move は
-未対応です。`xmlDocDumpMemoryEnc` は明示 UTF-8 の XML 1.0 メモリ出力だけをサポートし、
-宣言には指定 encoding 表記を保持します。default encoding、formatting、DTD、file output
-は未対応です。source encoding/standalone metadata は保持されず、宣言に出力しません。
+未対応です。`xmlDocDumpMemoryEnc` は明示 UTF-8 とNULL encodingで XML 1.0 をメモリ出力し、
+明示指定では宣言に指定 encoding 表記を保持します。`xmlDocDumpMemory` とNULL encodingは
+encoding宣言を省き、text・属性・namespace URIの非ASCII scalarを大文字16進の文字参照にします。
+名前・comment・PI・CDATAはUTF-8のまま保持するため、出力全体がASCIIになる保証はありません。
+空のencoding名はNULLとは区別して拒否します。source encoding/standalone metadata は保持されず、
+元文書にencoding宣言があっても復元しない点は固定版と異なります。formatting、DTD、file output
+は未対応です。C入口は既存の出力adapterを共用し、検査・文字参照化・二段階出力はSPARK側にあります。
+失敗では出力NULL・長さ0を返し、元DOMは変更しません。成功結果は独立したxmlFree所有です。
 要素のない document は宣言のみを出力する場合があります。
 `xmlNewComment` / `xmlNewPI` は既存のSPARK作成・寿命管理を使って独立nodeを作成します。
 raw文字列はコピーし、NULLと空contentを区別します。NULL PI targetは拒否しますが、

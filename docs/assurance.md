@@ -57,8 +57,8 @@ serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,068 checks
-(1,121 flow and 10,947 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,080 checks
+(1,123 flow and 10,957 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 138 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -186,19 +186,26 @@ checked by serialization rather than claimed by the constructor contract.
 The CDATA bounded scan is in the trusted C boundary; guard-page tests are
 runtime evidence for pointer handling, not a pointer-safety proof.
 
-`XML3_Serialization.Render` reads an immutable Store state, validates and
-measures the supported XML 1.0 UTF-8 subset, then repeats the same iterative
-traversal into an exact-size caller-owned buffer. Store and Runtime only route
-the document facade and encoding; the C adapter initializes output slots,
-converts the C string, holds the existing lock, and publishes the result.
-Unsupported encodings, XML versions, malformed text, names, and namespace
-states are rejected rather than repaired. Native allocation and byte access
-remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 12,068-check aggregate proof; see
-[proof-report.md](proof-report.md) for the exact result and source hashes.
-Source encoding and standalone metadata are not retained by the DOM and are
-omitted from the declaration; an empty document may produce only the
-declaration.
+`xmlDocDumpMemory` delegates to `xmlDocDumpMemoryEnc` with NULL encoding; a NULL
+encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode. Both
+reach `XML3_DOM_Store.Serialization.Dump` and `XML3_Serialization.Render`.
+Default mode omits the encoding declaration and emits non-ASCII scalar text,
+attribute values, and namespace URIs as uppercase hexadecimal character
+references. Names, comments, processing instructions, and CDATA retain raw
+UTF-8. Explicit UTF-8 output remains supported, while an empty encoding name
+is rejected. `Render` validates and measures immutable Store state before
+allocation, then repeats the iterative traversal into an exact-size result.
+GNATprove discharges 8 checks for `Put_Character_Reference`, 17 for
+`Emit_Text`, and 19 for `Pass`; this does not prove complete C semantics or
+libxml2 lexical equivalence. The C adapter converts arguments, initializes
+output slots, acquires the existing lock, maps status/exceptions, and publishes
+the result. Native pointer validity, C-string conversion, allocation, byte
+reads/writes, and mutex behavior remain trusted. Source encoding and standalone
+metadata are not retained, so default output does not restore the parsed
+source encoding. An empty document may produce only the XML declaration.
+These units are included in the current successful 12,080-check aggregate
+proof; see [proof-report.md](proof-report.md) for the command, result, and
+source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
 nodes, namespaces and one owner before calling `Import.Adopt` exactly once.
@@ -964,10 +971,9 @@ conversion remain trusted boundaries.
 stored href/prefix spans independently while preserving NULL versus empty
 fields, and omits source `next`, `context`, and `_private` links. Reservation
 release and node pins are handled by the Store; foreign/stale pointers and
-native representation/ABI remain trusted boundaries. The only supported
-serialization entry point is
-`xmlDocDumpMemoryEnc` with an explicit UTF-8 encoding; default encoding,
-formatting, DTD and file APIs are unsupported. Unsupported
+native representation/ABI remain trusted boundaries. `xmlDocDumpMemoryEnc`
+supports explicit UTF-8 or NULL/default encoding, and `xmlDocDumpMemory`
+selects the same default path. Formatting, DTD and file APIs are unsupported. Unsupported
 operations fail without silently creating invalid links. Unsupported parser
 options fail, not silently degrade.
 
