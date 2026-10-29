@@ -1992,6 +1992,17 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
         assert(root->properties == NULL && root->children == NULL && root->last == NULL);
+    } else if (strcmp(operation, "xhtml-identifiers") == 0) {
+        xml3_oom_enable(0);
+        assert(xmlIsXHTML(NULL, NULL) == -1);
+        assert(xmlIsXHTML(BAD_CAST "unknown", BAD_CAST "") == 0);
+        assert(xmlIsXHTML(NULL, BAD_CAST "-//W3C//DTD XHTML 1.0 Strict//EN") == 1);
+        assert(xmlIsXHTML(BAD_CAST "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd",
+                          NULL) == 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "character-classes") == 0) {
         xml3_oom_enable(0);
         assert(xmlIsChar('x') == 1 && xmlIsChar(0x10ffff) == 1);
@@ -2165,6 +2176,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "character-classes") == 0) {
         puts("character classification used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "xhtml-identifiers") == 0) {
+        puts("XHTML identification used no native allocations");
         return 0;
     }
     if (strcmp(operation, "attr-unlink") == 0) {

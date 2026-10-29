@@ -23,6 +23,13 @@ package XML3_Text.Buffers with SPARK_Mode is
       Allow_Colon : Boolean) return Boolean
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 
+   function Is_XHTML (System_ID, Public_ID : System.Address) return Integer
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Post => Is_XHTML'Result in -1 .. 1
+         and then (if System_ID = System.Null_Address
+                     and then Public_ID = System.Null_Address
+                   then Is_XHTML'Result = -1 else Is_XHTML'Result in 0 .. 1);
+
    procedure Escape_Special
      (Input : String; Result : out System.Address; Status : out Escape_Status;
       Limit : Byte_Count := Max_Bytes;

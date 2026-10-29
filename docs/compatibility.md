@@ -73,6 +73,19 @@ ancestor を検索し、見つからなければ -1 です。`xml:lang` は text
 space の 0 は `default`、その他の値は `preserve` です。QName の namespace 解決、
 親走査、値判定、所有権は SPARK Store/Runtime にあり、native pointer/ABI は信頼境界です。
 
+`libxml/tree.h` の `xmlIsXHTML` は固定版 `tree.c:8851` の identifier 判定を実装します。
+両方 NULL の場合のみ -1、それ以外は public ID
+`-//W3C//DTD XHTML 1.0 Strict//EN`, `-//W3C//DTD XHTML 1.0 Frameset//EN`,
+`-//W3C//DTD XHTML 1.0 Transitional//EN` の3種を先に照合し、続いて system URI
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd`,
+`http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd` の3種を照合します。
+一致は 1、その他は 0 で、public ID が一致した場合 system ID は無視します。
+照合は NUL 終端 byte 列の case-sensitive な完全一致です。
+UTF-8 検証、URI 解決、DTD 読み込み、HTML parsing、allocation、diagnostic、lock、
+DOM access はありません。native pointer/readability、byte access、ABI と完全な
+upstream 意味論は信頼境界です。
+
 `xmlTextConcat` は text・CDATA・comment・PI のみに追記し、成功で 0、失敗で -1 を返します。
 要素・属性・document・未登録 node は内容を変えず拒否し、NULL content でも kind を検査します。
 非負の長さは読み取り上限、0 では入力を読みません。負の長さ（-1 以外も固定版と同様）は
