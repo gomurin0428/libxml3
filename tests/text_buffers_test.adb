@@ -333,6 +333,38 @@ procedure Text_Buffers_Test is
         (Text'Address, A'Address, Result, Invalid);
       pragma Assert (Result = -1 and Invalid);
    end Check_UTF8_Comparison;
+
+   procedure Check_Name_Validation is
+      QName : aliased String := "a:b";
+      Unicode_Name : aliased String :=
+        Character'Val (16#E5#) & Character'Val (16#90#)
+          & Character'Val (16#8D#);
+      Truncated : aliased String :=
+        String'(1 => Character'Val (16#E2#));
+      Injection : aliased String := "a'b]";
+   begin
+      pragma Assert
+        (not XML3_Text.Buffers.Valid_Name
+           (QName'Address, QName'Length, False));
+      pragma Assert
+        (XML3_Text.Buffers.Valid_Name
+           (QName'Address, QName'Length, True));
+      pragma Assert
+        (XML3_Text.Buffers.Valid_Name
+           (Unicode_Name'Address, Unicode_Name'Length, False));
+      pragma Assert
+        (not XML3_Text.Buffers.Valid_Name
+           (Truncated'Address, Truncated'Length, False));
+      pragma Assert
+        (not XML3_Text.Buffers.Valid_Name
+           (Injection'Address, Injection'Length, True));
+      pragma Assert
+        (not XML3_Text.Buffers.Valid_Name
+           (System.Null_Address, 0, False));
+      pragma Assert
+        (not XML3_Text.Buffers.Valid_Name
+           (QName'Address, 0, False));
+   end Check_Name_Validation;
 begin
    Check (0, False, -1, True);
    Check (1, False, -1, True);
@@ -358,5 +390,6 @@ begin
    Check_UTF8_Lead_Size;
    Check_UTF8_Character;
    Check_UTF8_Comparison;
+   Check_Name_Validation;
    Ada.Text_IO.Put_Line ("text buffer boundary checks passed");
 end Text_Buffers_Test;

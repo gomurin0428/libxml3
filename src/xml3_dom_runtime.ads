@@ -235,6 +235,11 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Get_Path
+        (Facade : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Dump_Memory_Encoding
         (Document : System.Address; Encoding : String;
          Result : out System.Address; Length : out Natural;

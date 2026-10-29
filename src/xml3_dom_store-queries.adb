@@ -1,5 +1,6 @@
 with XML3_DOM_Constructors;
 with XML3_Namespaces;
+with XML3_Text.Buffers;
 
 package body XML3_DOM_Store.Queries with SPARK_Mode is
    use XML3_DOM;
@@ -1027,6 +1028,781 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       end loop;
       Status := (if Current = Null_Node then Created else Internal_Error);
    end Get_Inherited_XML_Property;
+
+   procedure Get_Path
+     (S : Store; Facade : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Start : Node_Ref;
+      Base : System.Address := System.Null_Address;
+      Terminator : System.Address;
+      Total : Natural := 0;
+
+      function Valid_Name (Item : Node_View; Allow_Colon : Boolean)
+        return Boolean
+      is
+      begin
+         return Item.Name /= System.Null_Address
+           and then Item.Name_Length > 0
+           and then Item.Name_Length <= XML3_Text.Max_Bytes
+           and then XML3_Text.Buffers.Valid_Name
+             (Item.Name, Item.Name_Length, Allow_Colon);
+      end Valid_Name;
+
+      function Find_Registered_Node return Node_Ref
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+      is
+         Item : Node_View;
+      begin
+         for Index in 1 .. Node_Count (S.Current.all) loop
+            Item := Node (S.Current.all, Node_Ref (Index));
+            if Item.State = Live and then Item.Facade = Facade then
+               return Node_Ref (Index);
+            end if;
+         end loop;
+         return Null_Node;
+      end Find_Registered_Node;
+
+      procedure Namespace_Item
+        (N : Namespace_Ref; Item : out Namespace_View;
+         Good : out Boolean)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all),
+          Post => (if Good then
+            (Item.Prefix = System.Null_Address
+             and then Item.Prefix_Length = 0)
+            or else
+              (Item.Prefix /= System.Null_Address
+               and then Item.Prefix_Length in 1 .. XML3_Text.Max_Bytes))
+      is
+      begin
+         Item := (others => <>);
+         Good := False;
+         if not Live_Namespace (S, N) then
+            return;
+         end if;
+         Item := Namespace (S.Current.all, N);
+         if (Item.Prefix = System.Null_Address
+             and then Item.Prefix_Length /= 0)
+           or else
+             (Item.Prefix /= System.Null_Address
+              and then
+                (Item.Prefix_Length = 0
+                 or else Item.Prefix_Length > XML3_Text.Max_Bytes
+                 or else not XML3_Text.Buffers.Valid_Name
+                   (Item.Prefix, Item.Prefix_Length, False)))
+         then
+            return;
+         end if;
+         Good := True;
+      end Namespace_Item;
+
+      procedure Matches
+        (Current, Candidate : Node_View;
+         Match : out Boolean; Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+      is
+         Left_Ns, Right_Ns : Namespace_View;
+         Left_Good, Right_Good : Boolean;
+      begin
+         Match := False;
+         Local_Status := Created;
+         if Current.Kind /= Candidate.Kind
+           and then not
+             (Is_Text_Content (Current.Kind)
+              and then Is_Text_Content (Candidate.Kind))
+         then
+            return;
+         end if;
+         if Current.Kind = Element_Node then
+            if not Valid_Name (Current, False)
+              or else not Valid_Name (Candidate, False)
+            then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            if Current.Namespace = Null_Namespace then
+               Match := Candidate.Namespace = Null_Namespace
+                 and then Equal_Address_Bytes
+                   (Current.Name, Current.Name_Length,
+                    Candidate.Name, Candidate.Name_Length);
+               return;
+            end if;
+            Namespace_Item (Current.Namespace, Left_Ns, Left_Good);
+            if not Left_Good then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            if Left_Ns.Prefix = System.Null_Address then
+               Match := Candidate.Kind = Element_Node;
+               if Candidate.Namespace /= Null_Namespace then
+                  Namespace_Item (Candidate.Namespace, Right_Ns, Right_Good);
+                  if not Right_Good then
+                     Local_Status := Invalid_Argument;
+                  end if;
+               end if;
+               return;
+            end if;
+            if Candidate.Namespace = Null_Namespace then
+               return;
+            end if;
+            Namespace_Item (Candidate.Namespace, Right_Ns, Right_Good);
+            if not Right_Good then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            Match := Equal_Address_Bytes
+              (Current.Name, Current.Name_Length,
+               Candidate.Name, Candidate.Name_Length)
+              and then
+                (Current.Namespace = Candidate.Namespace
+                 or else
+                   (Left_Ns.Prefix /= System.Null_Address
+                    and then Right_Ns.Prefix /= System.Null_Address
+                    and then Equal_Address_Bytes
+                      (Left_Ns.Prefix, Left_Ns.Prefix_Length,
+                       Right_Ns.Prefix, Right_Ns.Prefix_Length)));
+         elsif Current.Kind = Attribute_Node then
+            if not Valid_Name (Current, False)
+              or else not Valid_Name (Candidate, False)
+            then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            if Current.Namespace /= Null_Namespace then
+               Namespace_Item (Current.Namespace, Left_Ns, Left_Good);
+               if not Left_Good then
+                  Local_Status := Invalid_Argument;
+                  return;
+               end if;
+            end if;
+            if Candidate.Namespace /= Null_Namespace then
+               Namespace_Item (Candidate.Namespace, Right_Ns, Right_Good);
+               if not Right_Good then
+                  Local_Status := Invalid_Argument;
+                  return;
+               end if;
+            end if;
+            Match := Equal_Address_Bytes
+              (Current.Name, Current.Name_Length,
+               Candidate.Name, Candidate.Name_Length)
+              and then Current.Namespace = Candidate.Namespace;
+         elsif Current.Kind = Processing_Instruction_Node then
+            if not Valid_Name (Current, True)
+              or else not Valid_Name (Candidate, True)
+            then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            Match := Equal_Address_Bytes
+              (Current.Name, Current.Name_Length,
+               Candidate.Name, Candidate.Name_Length);
+         elsif Current.Kind = Comment_Node then
+            Match := Candidate.Kind = Comment_Node;
+         elsif Is_Text_Content (Current.Kind) then
+            Match := Is_Text_Content (Candidate.Kind);
+         end if;
+      end Matches;
+
+      procedure Occurrence
+        (N : Node_Ref; Item : Node_View;
+         Number : out Natural; Multiple : out Boolean;
+         Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+      is
+         Parent_Item, Candidate : Node_View;
+         Cursor, First, Last, Leftmost, Rightmost : Node_Ref;
+         Expected_Next : Node_Ref := N;
+         Expected_Previous : Node_Ref := N;
+         Previous_Count, Following_Count : Natural := 0;
+         Match : Boolean;
+         Match_Status : Operation_Status;
+      begin
+         Number := 1;
+         Multiple := False;
+         Local_Status := Created;
+         if Item.Parent = Null_Node then
+            if Item.Previous /= Null_Node or else Item.Next /= Null_Node then
+               Local_Status := Internal_Error;
+            end if;
+            return;
+         end if;
+         if not Live_Node (S, Item.Parent) then
+            Local_Status := Internal_Error;
+            return;
+         end if;
+         Parent_Item := Node (S.Current.all, Item.Parent);
+         if Item.Kind = Attribute_Node then
+            First := Parent_Item.First_Prop;
+            Last := Parent_Item.Last_Prop;
+         else
+            First := Parent_Item.First_Child;
+            Last := Parent_Item.Last_Child;
+         end if;
+         if First = Null_Node or else Last = Null_Node then
+            Local_Status := Internal_Error;
+            return;
+         end if;
+         Leftmost := N;
+         Rightmost := N;
+         Cursor := Item.Previous;
+         for Step in 1 .. Node_Count (S.Current.all) loop
+            exit when Cursor = Null_Node;
+            if not Live_Node (S, Cursor) then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Candidate := Node (S.Current.all, Cursor);
+            if Candidate.Parent /= Item.Parent
+              or else Candidate.Next /= Expected_Next
+            then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Matches (Item, Candidate, Match, Match_Status);
+            if Match_Status /= Created then
+               Local_Status := Match_Status;
+               return;
+            end if;
+            if Match then
+               if Previous_Count = Natural'Last then
+                  Local_Status := Limit_Exceeded;
+                  return;
+               end if;
+               Previous_Count := Previous_Count + 1;
+            end if;
+            Expected_Next := Cursor;
+            Leftmost := Cursor;
+            Cursor := Candidate.Previous;
+         end loop;
+         if Cursor /= Null_Node then
+            Local_Status := Internal_Error;
+            return;
+         end if;
+         if Leftmost /= First then
+            Local_Status := Internal_Error;
+            return;
+         end if;
+         Cursor := Item.Next;
+         for Step in 1 .. Node_Count (S.Current.all) loop
+            exit when Cursor = Null_Node;
+            if not Live_Node (S, Cursor) then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Candidate := Node (S.Current.all, Cursor);
+            if Candidate.Parent /= Item.Parent
+              or else Candidate.Previous /= Expected_Previous
+            then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Matches (Item, Candidate, Match, Match_Status);
+            if Match_Status /= Created then
+               Local_Status := Match_Status;
+               return;
+            end if;
+            if Match then
+               if Following_Count = Natural'Last then
+                  Local_Status := Limit_Exceeded;
+                  return;
+               end if;
+               Following_Count := Following_Count + 1;
+            end if;
+            Expected_Previous := Cursor;
+            Rightmost := Cursor;
+            Cursor := Candidate.Next;
+         end loop;
+         if Cursor /= Null_Node or else Rightmost /= Last then
+            Local_Status := Internal_Error;
+            return;
+         end if;
+         if Previous_Count = Natural'Last then
+            Local_Status := Limit_Exceeded;
+            return;
+         end if;
+         Number := Previous_Count + 1;
+         Multiple := Previous_Count /= 0 or else Following_Count /= 0;
+      end Occurrence;
+
+      function Decimal_Digits (Value : Natural) return Natural is
+         N : Natural := Value;
+         Count : Natural := 1;
+      begin
+         while N >= 10 loop
+            pragma Loop_Invariant (Count <= Natural'Width);
+            pragma Loop_Variant (Decreases => N);
+            N := N / 10;
+            if Count = Natural'Width then
+               return Count;
+            end if;
+            Count := Count + 1;
+         end loop;
+         return Count;
+      end Decimal_Digits;
+
+      procedure Component_Length
+        (N : Node_Ref; Item : Node_View; Length : out Natural;
+         Number : out Natural; Multiple : out Boolean;
+         Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+      is
+         Prefix_Length : Natural := 0;
+         Default_Namespace : Boolean := False;
+
+         procedure Add_Length (Amount : Natural) is
+         begin
+            if Local_Status /= Created then
+               return;
+            end if;
+            if Amount > XML3_Text.Max_Bytes - Length then
+               Local_Status := Limit_Exceeded;
+            else
+               Length := Length + Amount;
+            end if;
+         end Add_Length;
+      begin
+         Length := 0;
+         Number := 1;
+         Multiple := False;
+         Local_Status := Created;
+         if Item.Kind = Document_Node then
+            Length := 1;
+            return;
+         elsif Item.Kind = Element_Node then
+            if not Valid_Name (Item, False) then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            if Item.Namespace /= Null_Namespace then
+               declare
+                  Ns : Namespace_View;
+                  Good : Boolean;
+               begin
+                  Namespace_Item (Item.Namespace, Ns, Good);
+                  if not Good then
+                     Local_Status := Invalid_Argument;
+                     return;
+                  end if;
+                  Prefix_Length := Ns.Prefix_Length;
+                  Default_Namespace := Ns.Prefix = System.Null_Address;
+               end;
+            end if;
+            Occurrence (N, Item, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            if Default_Namespace then
+               Length := 2;
+            else
+               Add_Length (1);
+               if Local_Status = Created then
+                  Add_Length (Prefix_Length);
+               end if;
+               if Local_Status = Created
+                 and then Prefix_Length > 0
+               then
+                  Add_Length (1);
+               end if;
+               if Local_Status = Created then
+                  Add_Length (Item.Name_Length);
+               end if;
+            end if;
+            if Local_Status = Created and then Multiple then
+               Add_Length (Decimal_Digits (Number));
+               Add_Length (2);
+            end if;
+         elsif Item.Kind = Attribute_Node then
+            if not Valid_Name (Item, False) then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            if Item.Namespace /= Null_Namespace then
+               declare
+                  Ns : Namespace_View;
+                  Good : Boolean;
+               begin
+                  Namespace_Item (Item.Namespace, Ns, Good);
+                  if not Good then
+                     Local_Status := Invalid_Argument;
+                     return;
+                  end if;
+                  Prefix_Length := Ns.Prefix_Length;
+               end;
+            end if;
+            Occurrence (N, Item, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            Length := 2;
+            Add_Length (Prefix_Length);
+            if Local_Status = Created and then Prefix_Length > 0 then
+               Add_Length (1);
+            end if;
+            if Local_Status = Created then
+               Add_Length (Item.Name_Length);
+            end if;
+         elsif Is_Text_Content (Item.Kind) then
+            Occurrence (N, Item, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            Length := 7;
+            if Multiple then
+               Add_Length (Decimal_Digits (Number));
+               Add_Length (2);
+            end if;
+         elsif Item.Kind = Comment_Node then
+            Occurrence (N, Item, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            Length := 10;
+            if Multiple then
+               Add_Length (Decimal_Digits (Number));
+               Add_Length (2);
+            end if;
+         elsif Item.Kind = Processing_Instruction_Node then
+            if not Valid_Name (Item, True) then
+               Local_Status := Invalid_Argument;
+               return;
+            end if;
+            Occurrence (N, Item, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            Length := 27;
+            Add_Length (Item.Name_Length);
+            if Local_Status = Created and then Multiple then
+               Add_Length (Decimal_Digits (Number));
+               Add_Length (2);
+            end if;
+         else
+            Local_Status := Invalid_Argument;
+         end if;
+      end Component_Length;
+
+      procedure Write_Component
+        (Item : Node_View; Base : System.Address; Start, Limit : Natural;
+         Number : Natural; Multiple : Boolean;
+         Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+          and then Base /= System.Null_Address
+          and then Start <= Limit
+      is
+         Cursor : Natural := Start;
+         Target : System.Address := System.Null_Address;
+         Digit_Count : Natural := 0;
+         Expected_Digit_Count : constant Natural :=
+           (if Multiple then Decimal_Digits (Number) else 0);
+         Decimal_Chars : String (1 .. Natural'Width) := (others => '0');
+
+         procedure Check_Span
+           (Count : Natural; Target : out System.Address; Good : out Boolean)
+           with Pre => Base /= System.Null_Address and then Cursor <= Limit,
+             Post => (if Good then
+               Count <= Limit - Cursor
+                 and then Target /= System.Null_Address)
+         is
+         begin
+            Target := System.Null_Address;
+            Good := False;
+            if Count > Limit - Cursor then
+               return;
+            end if;
+            Target := Native.Offset (Base, Native.Byte_Count (Cursor));
+            Good := Target /= System.Null_Address;
+         end Check_Span;
+
+         procedure Put_Literal (Value : String)
+           with Pre => Base /= System.Null_Address and then Cursor <= Limit,
+             Post => Cursor <= Limit
+         is
+            Can_Write : Boolean;
+         begin
+            if Local_Status /= Created then
+               return;
+            end if;
+            Check_Span (Value'Length, Target, Can_Write);
+            if not Can_Write then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Native.Write_String (Base, Cursor, Value);
+            Cursor := Cursor + Value'Length;
+         end Put_Literal;
+
+         procedure Put_Bytes (Source : System.Address; Count : Natural)
+           with Pre => Base /= System.Null_Address and then Cursor <= Limit,
+             Post => Cursor <= Limit
+         is
+            Can_Write : Boolean;
+         begin
+            if Local_Status /= Created then
+               return;
+            end if;
+            if Count = 0 then
+               return;
+            end if;
+            Check_Span (Count, Target, Can_Write);
+            if not Can_Write then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            if Source = System.Null_Address then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Native.Copy_Bytes (Source, Target, Count);
+            Cursor := Cursor + Count;
+         end Put_Bytes;
+
+         procedure Put_Byte (Value : Character)
+           with Pre => Base /= System.Null_Address and then Cursor <= Limit,
+             Post => Cursor <= Limit
+         is
+            Can_Write : Boolean;
+         begin
+            if Local_Status /= Created then
+               return;
+            end if;
+            Check_Span (1, Target, Can_Write);
+            if not Can_Write then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Native.Write_Byte (Base, Cursor, Value);
+            Cursor := Cursor + 1;
+         end Put_Byte;
+      begin
+         Local_Status := Created;
+         if Multiple then
+            if Number = 0 then
+               Digit_Count := 1;
+               Decimal_Chars (1) := '0';
+            else
+               declare
+                  N : Natural := Number;
+               begin
+                  for I in Decimal_Chars'Range loop
+                     exit when N = 0;
+                     Decimal_Chars (I) := Character'Val
+                       (Character'Pos ('0') + N mod 10);
+                     N := N / 10;
+                     Digit_Count := I;
+                  end loop;
+                  if N /= 0
+                    or else Digit_Count /= Expected_Digit_Count
+                  then
+                     Local_Status := Internal_Error;
+                     return;
+                  end if;
+               end;
+            end if;
+         end if;
+         if Item.Kind = Document_Node then
+            Put_Literal ("/");
+         elsif Item.Kind = Element_Node then
+            Put_Literal ("/");
+            if Item.Namespace /= Null_Namespace then
+               declare
+                  Ns : Namespace_View;
+                  Good : Boolean;
+               begin
+                  Namespace_Item (Item.Namespace, Ns, Good);
+                  if not Good then
+                     Local_Status := Invalid_Argument;
+                     return;
+                  end if;
+                  if Ns.Prefix = System.Null_Address then
+                     Put_Literal ("*");
+                  else
+                     Put_Bytes (Ns.Prefix, Ns.Prefix_Length);
+                     Put_Literal (":");
+                     Put_Bytes (Item.Name, Item.Name_Length);
+                  end if;
+               end;
+            else
+               Put_Bytes (Item.Name, Item.Name_Length);
+            end if;
+         elsif Item.Kind = Attribute_Node then
+            Put_Literal ("/@");
+            if Item.Namespace /= Null_Namespace then
+               declare
+                  Ns : Namespace_View;
+                  Good : Boolean;
+               begin
+                  Namespace_Item (Item.Namespace, Ns, Good);
+                  if not Good then
+                     Local_Status := Invalid_Argument;
+                     return;
+                  end if;
+                  if Ns.Prefix /= System.Null_Address then
+                     Put_Bytes (Ns.Prefix, Ns.Prefix_Length);
+                     Put_Literal (":");
+                  end if;
+               end;
+            end if;
+            Put_Bytes (Item.Name, Item.Name_Length);
+         elsif Is_Text_Content (Item.Kind) then
+            Put_Literal ("/text()");
+         elsif Item.Kind = Comment_Node then
+            Put_Literal ("/comment()");
+         else
+            Put_Literal ("/processing-instruction('");
+            Put_Bytes (Item.Name, Item.Name_Length);
+            Put_Literal ("')");
+         end if;
+         if Local_Status /= Created then
+            return;
+         end if;
+         if (Item.Kind = Element_Node or else Is_Text_Content (Item.Kind)
+             or else Item.Kind = Comment_Node
+             or else Item.Kind = Processing_Instruction_Node)
+           and then Multiple
+         then
+            Put_Byte ('[');
+            for I in reverse 1 .. Digit_Count loop
+               pragma Loop_Invariant (Cursor <= Limit);
+               exit when Local_Status /= Created;
+               Put_Byte (Decimal_Chars (I));
+            end loop;
+            Put_Byte (']');
+         end if;
+         if Local_Status = Created and then Cursor /= Limit then
+            Local_Status := Internal_Error;
+         end if;
+      end Write_Component;
+
+      procedure Measure (N : Node_Ref; Count : out Natural;
+                         Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+      is
+         Current : Node_Ref := N;
+         Item : Node_View;
+         Length, Number : Natural;
+         Multiple : Boolean;
+      begin
+         Count := 0;
+         Local_Status := Created;
+         for Step in 1 .. Node_Count (S.Current.all) loop
+            exit when Current = Null_Node;
+            if not Live_Node (S, Current) then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Item := Node (S.Current.all, Current);
+            if Current /= N and then Item.Kind = Document_Node then
+               Current := Null_Node;
+               exit;
+            end if;
+            Component_Length
+              (Current, Item, Length, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            if Length > XML3_Text.Max_Bytes - Count then
+               Local_Status := Limit_Exceeded;
+               return;
+            end if;
+            Count := Count + Length;
+            Current := Item.Parent;
+         end loop;
+         if Current /= Null_Node then
+            Local_Status := Internal_Error;
+         end if;
+      end Measure;
+
+      procedure Emit (N : Node_Ref; Base : System.Address; Expected : Natural;
+                      Local_Status : out Operation_Status)
+        with Pre => S.Current /= null
+          and then XML3_DOM.Valid (S.Current.all)
+          and then Base /= System.Null_Address
+      is
+         Current : Node_Ref := N;
+         Item : Node_View;
+         Length, Number, Used : Natural := 0;
+         Multiple : Boolean;
+      begin
+         Local_Status := Created;
+         for Step in 1 .. Node_Count (S.Current.all) loop
+            exit when Current = Null_Node;
+            if not Live_Node (S, Current) then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Item := Node (S.Current.all, Current);
+            if Current /= N and then Item.Kind = Document_Node then
+               Current := Null_Node;
+               exit;
+            end if;
+            Component_Length
+              (Current, Item, Length, Number, Multiple, Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            if Used > Expected or else Length > Expected - Used then
+               Local_Status := Internal_Error;
+               return;
+            end if;
+            Write_Component
+              (Item, Base, Expected - Used - Length, Expected - Used,
+               Number, Multiple,
+               Local_Status);
+            if Local_Status /= Created then
+               return;
+            end if;
+            Used := Used + Length;
+            Current := Item.Parent;
+         end loop;
+         if Current /= Null_Node or else Used /= Expected then
+            Local_Status := Internal_Error;
+         end if;
+      end Emit;
+
+      Local_Status : Operation_Status;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if S.Current = null or else Facade = System.Null_Address then
+         return;
+      end if;
+      Start := Find_Registered_Node;
+      if Start = Null_Node or else not Live_Node (S, Start) then
+         return;
+      end if;
+      Measure (Start, Total, Local_Status);
+      if Local_Status /= Created then
+         Status := Local_Status;
+         return;
+      end if;
+      Native.Allocate (Native.Byte_Count (Total) + 1, Base);
+      if Base = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Emit (Start, Base, Total, Local_Status);
+      if Local_Status /= Created then
+         Native.Free (Base);
+         Status := Local_Status;
+         return;
+      end if;
+      Terminator := Native.Offset (Base, Native.Byte_Count (Total));
+      if Terminator = System.Null_Address then
+         Native.Free (Base);
+         Status := Internal_Error;
+         return;
+      end if;
+      Native.Write_Byte (Base, Total, Character'Val (0));
+      Result := Base;
+      Status := Created;
+   end Get_Path;
 
    procedure Get_Content
      (S : Store; Facade : System.Address;

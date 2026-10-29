@@ -76,7 +76,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、
   `xmlUnsetNsProp`、
-  `xmlNodeGetContent`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
+  `xmlNodeGetContent`、`xmlGetNodePath`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
@@ -429,6 +429,23 @@ colon を含む name、無効または未対応の参照は拒否し、失敗時
 `xmlFreeDoc` 後の document handle は使用できません。`xmlNodeGetContent` と
 `xmlGetProp` の返却値は `xmlFree` で解放してください。`xmlStrlen` は最初のNULまでの
 raw byte数を返し、NULLなら0です。不正UTF-8 byteもdecodeせずbyteとして数えます。
+`xmlGetNodePath` は管理中のnodeの構造をたどり、独立した `xmlFree` 所有文字列を返します。
+document自身は `/`、elementは `/name`、prefix付きelementは `/prefix:name`、
+default-namespace elementは `/*`、attributeは `/@name` または `/@prefix:name` です。
+attribute occurrence indexは出しません。text/CDATAは同じ `/text()` category、commentは
+`/comment()`、PIは `/processing-instruction('target')` です。同じcategoryの兄弟が複数なら
+`[1]` 等を付け、singletonはindexなしです。default-namespace wildcardは他の名前やnamespaceの
+兄弟を含む全elementと一致します。それ以外は同じlocal-name bytesと同じnamespace参照、
+または双方の等しいprefix bytesで比較し、URIは比較しません。等しいprefixでURIだけ異なる場合も
+一致するため、これはURI解決済みの一意なXPathではなく構造診断用です。documentは要求node自身
+の場合だけ出力し、detached nodeは自身から始めます。名前はescapeせずUTF-8 bytesで出力します。
+不正UTF-8/XML名・prefix・PI targetは診断付きNULLで拒否し、malformed raw nameをコピーする
+固定版の挙動は再現しません。NULL、namespace pointer、未登録facadeも拒否します。DOMを変更せず、
+document解放後に残るmanaged detached nodeからも取得できます。SPARK Storeがregistry解決、
+live/range検査、親・兄弟・property chainのbounded traversal、照合、正確な二段階の計測・出力を
+行います。C adapterはNULL/lock/Runtime/status/exceptionだけを扱います。proofは内部計算・契約に
+限られ、native pointer readable extent、allocation、byte copy/write、ABI/status mapping、完全な
+public C semanticsはtrusted / not-provedです。
 SPARK `Read_Length` は `0..Max_Bytes` を走査し、境界位置のNULを受け入れます。
 その範囲にNULがなければDOM error 115を記録して-1を返します。これはempty stringを
 意味しないerror sentinelなので、呼び出し側はdiagnosticを確認してください。

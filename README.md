@@ -350,6 +350,18 @@ element に `xml:lang` / `xml:space` を設定し、NULL language は空値、sp
 二重引用符・CRをエスケープし、`xmlFree` で解放する独立した文字列を返します。
 NULL入力はNULL、空入力は空のコピーです。文書引数は参照しません。不正な文字を
 黙って置換・保持せず診断付きで拒否し、DTD・一般実体の処理は追加しません。
+`xmlGetNodePath` は管理中の node の構造的な経路を独立した `xmlFree` 所有文字列で返します。
+文書は `/`、要素は `/name`、属性は `/@name`、値の text は `/@name/text()`、
+text/CDATA は `/text()`、comment は `/comment()`、PI は
+`/processing-instruction('target')` です。兄弟中の同種要素・text/CDATA・comment・
+同一targetのPIは複数時に `[1]` などの位置を付けます。default-namespace要素は `*` と表示し、
+この場合は他の要素名・namespaceの兄弟も同じwildcard occurrenceとして数えます。
+それ以外のnamespace要素はlocal nameと同じprefix（または同じnamespace参照）で比較し、
+URIは比較しません。従ってこれはURI解決済みの一意なXPathではありません。document自身を
+除き、ancestor documentは経路に含めず、detached nodeは自身を起点とします。
+不正なUTF-8/XML名・prefix・PI targetは不正な経路文字列を生成せず診断付きで拒否します
+（固定版のraw malformed name挙動との差）。完全な公開C意味論は未証明で、native pointer/readability、
+allocation/byte write、ABI/status mappingはtrusted boundaryです。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力とNULL encodingをサポートし、encoding名のASCII大小文字を区別せず、

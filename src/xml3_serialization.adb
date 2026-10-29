@@ -272,43 +272,7 @@ package body XML3_Serialization with SPARK_Mode is
       function Valid_Name
         (Source : System.Address; Source_Length : Natural;
          Allow_Colon : Boolean) return Boolean
-      is
-         I : Natural := 0;
-         W : Natural;
-         Initial : Boolean := True;
-         Window : String (1 .. 4) := (others => Character'Val (0));
-      begin
-         if Source_Length = 0 or else Source = System.Null_Address then
-            return False;
-         end if;
-         while I < Source_Length loop
-            pragma Loop_Variant (Increases => I);
-            if Native.Byte_At (Source, I) = ':' then
-               if not Allow_Colon then
-                  return False;
-               end if;
-               Initial := False;
-               I := I + 1;
-            else
-               W := Scalar_Width (Source, Source_Length, I);
-               if W = 0 or else W > 4 or else W > Source_Length - I then
-                  return False;
-               end if;
-               for J in 0 .. W - 1 loop
-                  pragma Loop_Invariant (J < W);
-                  Window (J + 1) := Native.Byte_At (Source, I + J);
-               end loop;
-               if XML3_Text.Name_Width
-                    (Window (1 .. W), 1, Initial) /= W
-               then
-                  return False;
-               end if;
-               Initial := False;
-               I := I + W;
-            end if;
-         end loop;
-         return not Initial;
-      end Valid_Name;
+        renames XML3_Text.Buffers.Valid_Name;
 
       procedure Put_Character_Reference (Code : Natural) is
          Hex : constant String := "0123456789ABCDEF";

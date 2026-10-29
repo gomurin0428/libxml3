@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=30 -j4
 ```
 
-It completed successfully: **12,087 checks, 1,126 by flow analysis and 10,961
+It completed successfully: **12,262 checks, 1,185 by flow analysis and 11,077
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -22,7 +22,8 @@ attribute unlink through `xmlUnlinkNode`, managed sibling insertion through
 `xmlAddSibling`, previous/next sibling insertion through
 `xmlAddPrevSibling` / `xmlAddNextSibling`, managed node/attribute list release through
 `xmlFreeNodeList` / `xmlFreePropList` and `Runtime.Release_List` /
-`Store.Release_List`, `xmlNewCDataBlock`, `xmlLastElementChild`,
+`Store.Release_List`, `xmlNewCDataBlock`, `xmlGetNodePath` through
+`Runtime.Get_Path` / `Store.Queries.Get_Path`, `xmlLastElementChild`,
 `xmlPreviousElementSibling`, and `xmlGetLastChild` through the SPARK
 Store/Runtime. The new `xmlNodeGetAttrValue` getter reuses the already-analyzed
 `Runtime.Get_Property` / `Store.Queries.Find_Property` / `Get_Content` path;
@@ -442,7 +443,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
 The entity
-summaries report 0 flow errors, 138 warnings, and 0 `pragma Assume`
+summaries report 0 flow errors, 149 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
 **Analyzer caveat:** generation of representation information for the trusted
@@ -458,6 +459,9 @@ include trusted termination
 diagnostics for native reads, allocation, writes and frees; an unreachable/no-effect
 diagnostic also remains for the portable pointer-array size guard on this 64-bit
 host.
+The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
+Runtime wrapper, unused helper outputs, and trusted native-call termination
+warnings. They do not represent unproved checks.
 
 The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a proof of the selected SPARK units and their written contracts, not
@@ -467,13 +471,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 305 |
-| Initialization | 667 |
-| Runtime checks | 5,328 |
-| Assertions | 1,623 |
-| Functional contracts | 3,952 |
-| Termination | 212 |
-| **Total** | **12,087** |
+| Data dependencies | 308 |
+| Initialization | 720 |
+| Runtime checks | 5,372 |
+| Assertions | 1,625 |
+| Functional contracts | 4,021 |
+| Termination | 216 |
+| **Total** | **12,262** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -875,11 +879,40 @@ observation is not a benchmark guarantee or a general scalability claim;
 whole-Store scans remain, and non-leaf operations may be much more expensive.
 The repository's unchanged 12,000-depth regression is a separate test gate.
 
+## `xmlGetNodePath`
+
+`xmlGetNodePath` routes through `Runtime.Get_Path` to
+`Store.Queries.Get_Path`. The Store resolves only registered facades before
+metadata reads, checks live/ranged nodes and namespaces, and validates
+path-relevant parent, property, child, and sibling chains with bounded walks.
+The shared `XML3_Text.Buffers.Valid_Name` helper rejects invalid UTF-8/XML
+names, prefixes, and PI targets rather than copying malformed path syntax.
+Output length is measured before a single exact-size allocation; a second
+bounded traversal reverse-prepends path components without recursion or an
+ancestor array, frees the result on failure, and writes the terminator only
+after emitted length matches the measured length. The reference's harmless
+default-namespace wildcard and equal-prefix/different-URI matching quirks are
+preserved; full XPath namespace resolution is not claimed.
+
+GNATprove discharges 8 checks for `Get_Path`, 17 for `Occurrence`, 7 for
+`Measure`, 14 for `Emit`, and 27 for `Write_Component`. These cover internal
+control flow, bounds, arithmetic, and written contracts, not complete public
+C semantics. Native pointer readability, allocation/free, byte copying and
+writes, pointer arithmetic, ABI/status/diagnostic mapping, and full libxml2
+semantics remain trusted or unproved.
+
+`make test-text-buffers test-dom test-serialization tests/header-smoke.o
+tests/oom-test` passed. The `node-path` OOM walk injected failure at index 0
+and reached the expected no-site exit status 2 at index 1; the DOM
+ASan/UBSan run with leak detection passed. Shared reference cases cover path
+categories and namespace quirks; malformed constructed names, unregistered
+facades, detached lifetime, and OOM cleanup are library-only checks.
+
 ## Source identity (SHA-256)
 
 ```text
-3929573c3cf913c0b0088211788f31e90954937d7870fbd65d3bc77f8d9d59fb  src/xml3_c.adb
-5adb9d5d4845758929046ab64b0fa85fd6bc4cda78b1a81bde268d20770a402a  src/xml3_c.ads
+09f4104ea1ab63c74aba9369fbb484f6f054b31a6c4ec6d2c8742ac21be729fe  src/xml3_c.adb
+18c67cebfd2715b6d3c63361b6d1bb541a0eb9b20cc3e19d0c10f4d499377a7b  src/xml3_c.ads
 e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
 52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
@@ -897,16 +930,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-84635fdf8df3a21e7d07e1f4178b4fbc7250a8d1526392929e9a795caa80f2ae  src/xml3_dom_runtime.adb
-b55cf9a1c7c2c9a10823e2731107e3a9dad150c816f7bf5d6a21a96c53d27c50  src/xml3_dom_runtime.ads
+4088aeb5f0ae465d560166193ba926e03bd11e8a44a80c052af67fcaa53ead1b  src/xml3_dom_runtime.adb
+5d71ef627dea4af542b296c67c1115eb2f7c5e037c9ecfd2c5a3eb678103e344  src/xml3_dom_runtime.ads
 f9c7438289d0717f90f1d6071f749634fce8e044f8459acf7ddf4bcce6cb8877  src/xml3_dom_store-content.adb
 a16b8f43764756e90a3574516189f58b863538d01519931cdc016a7387447fd6  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 e6d1d9948c853a8f2ca59cd176ffc609c8051f05c9fe9c910e95530c0f1d95ff  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-0f46d1fe25d0fd4d853d49cea43cc5cf0a783eb1e6244f1b057dbc6e12a98ef1  src/xml3_dom_store-queries.adb
-62a887d71e298c5597b018f85ee46ac7d359e0b4a11954667292312121d04589  src/xml3_dom_store-queries.ads
+67eaf0f27c7ffacd4139fd736c53244ab77be95b10743b4cb4168f6a49552ced  src/xml3_dom_store-queries.adb
+eefff959105bb80586ccc9c2adb916e37fabe44379724b3e51f6045ff3d751cb  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 ba2df0585f1ae01ccee3440756a48122dc7681882f8719b3f8b63ccde2ac9867  src/xml3_dom_store.adb
@@ -921,20 +954,20 @@ bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_error
 802bbc0d3a2ad887e38814c149d3e63d5f0ace9952c0a54821399164143e2fcb  src/xml3_native_memory.adb
 4aa72f5756913f1f58af134cf221972157f672054e1df4c3f64dd6e4432b3a56  src/xml3_native_memory.ads
 2e31dde2f0ae750a8af15781b4d22bac59e14b388344c49a9a087021d7883f92  src/xml3_parser.adb
-946f53f8a7b336ae5ed38a4ae75369a70cd805e590efff784c0665ba2a603342  src/xml3_serialization.adb
+9985d817ee3fb57517e770c87a644edcd8d710bdeb23373e6339d88d1c106e58  src/xml3_serialization.adb
 4db52f75041d22363794acf78de7250b5ebb478180afa3ea70b00aa6dc2527be  src/xml3_serialization.ads
 07138e9a9c47e6ae18255e627b814b29f688e4e89b954913cdabf264d75b53c1  src/xml3_parser.ads
 1c7ab0d6e5a4588ed61292e2d89bed80fb1ead008c31cfe648b9a9d326bdc000  src/xml3_text.adb
 5c6114045fa5ebc74c4dc4c91a95f86644d3ea62be797796ea2cd7622bcc1c70  src/xml3_text.ads
 7756e485ddf343fbbd35cf3e86534fde46a9c839b45eed87c950bc2d2c2c73be  src/xml3_text-qnames.adb
 191a4e7c82a2a0f9afc1ace1ec07d6b0061ce89deabbf665e5f2284e9623a66e  src/xml3_text-qnames.ads
-9ed770d09a6aac8ffdb8b7d16a2cc3034515a80c5c8105f0e92880fd18e0cc8e  src/xml3_text-buffers.adb
-b195a46e8e64db9d7dde75947ef6f31ab8c0ef05a75cf823db90e266976d91b9  src/xml3_text-buffers.ads
-87c48e5ac6247d213fbd47c9da4ec02e6a6357219679d85310c84e4e50e2110f  include/libxml/tree.h
+da00cfa85abfbc26c7fd8231ed11bc0e6f015f45b4c816903b2454ab0ee61fac  src/xml3_text-buffers.adb
+92fe9f1c1bb8236dee2b667f7799c5eb287998e0d9ed1bd82621072236545a8d  src/xml3_text-buffers.ads
+960a44189177591879c97296c5370f41ea9b8ee8b925c827f7b0f50eccd45c00  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-0b2c28182a4577439e69be87b693164dc049227f139b46bddd2790494d30c4af  Makefile
+bedddf7c36b164b8fddb93e8e5a24ed336027b7d503db51ef5d265bebbf63c06  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

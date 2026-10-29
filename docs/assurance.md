@@ -53,13 +53,15 @@ QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Slice`, terminated byte comparisons through
 `XML3_Text.Buffers.Compare_Terminated`, bounded special-character escaping
 through `XML3_Text.Buffers.Escape_Special`, and explicit UTF-8, default-
-encoding, and formatted memory serialization.
+encoding, and formatted memory serialization. Bounded `xmlGetNodePath`
+traversal is analyzed through `Runtime.Get_Path` / `Store.Queries.Get_Path`;
+it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,087 checks
-(1,126 flow and 10,961 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 138 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,262 checks
+(1,185 flow and 11,077 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 149 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -213,7 +215,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,087-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,262-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -994,6 +996,30 @@ bounded formatting behavior described above. DTD and file APIs are
 unsupported. Unsupported
 operations fail without silently creating invalid links. Unsupported parser
 options fail, not silently degrade.
+
+`xmlGetNodePath` resolves the incoming facade by scanning registered live Store
+facades before reading its metadata; foreign, namespace, and unregistered
+pointers are rejected without dereferencing them. Bounded Store traversal
+validates node/namespace liveness and path-relevant parent, sibling, child, and
+property links, validates local names/prefixes/PI targets with the shared
+strict UTF-8 XML-name helper, and counts sibling occurrences by the selected
+structural categories. It deliberately preserves the pinned reference's
+default-namespace `*` wildcard and its equal-prefix/different-URI matching
+quirk. Invalid names fail closed rather than copying malformed bytes.
+
+Output is measured first, allocated as exactly the measured length plus NUL,
+and emitted in a second bounded pass without an ancestor array or recursion.
+An unsuccessful emission frees its partial buffer; the terminator is written
+only after the emitted length equals the measured length. The returned path is
+an independent native allocation suitable for `xmlFree`, and the DOM is not
+mutated. SPARK can establish traversal bounds, checked size arithmetic,
+occurrence/output control flow, and status/result contracts. GNATprove
+discharges 8 checks for `Get_Path`, 17 for `Occurrence`, 7 for `Measure`,
+14 for `Emit`, and 27 for `Write_Component`. It does not prove
+native facade validity/readable extents, native allocation, byte copy/write or
+free behavior, pointer arithmetic, C ABI/status/diagnostic mapping, or full
+public libxml2 semantics. Consequently the API remains partial/not-proved at
+the public C level.
 
 The current profile supports XML 1.0 UTF-8 and UTF-16LE/BE input, Unicode NCNames and qualified
 element/attribute names, namespace declarations and read-only namespace lookup,

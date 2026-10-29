@@ -213,6 +213,9 @@ package XML3_C is
    function Node_Get_Content (Node : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNodeGetContent";
 
+   function Node_Get_Path (Node : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetNodePath";
+
    function Node_Get_Lang (Node : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNodeGetLang";
 
