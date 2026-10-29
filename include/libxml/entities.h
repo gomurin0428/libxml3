@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 xmlChar *xmlEncodeSpecialChars(const xmlDoc *doc, const xmlChar *input);
+xmlChar *xmlEncodeEntitiesReentrant(xmlDoc *doc, const xmlChar *input);
 
 #ifdef __cplusplus
 }

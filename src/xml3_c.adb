@@ -2853,6 +2853,37 @@ package body XML3_C is
          return System.Null_Address;
    end Encode_Special_Chars;
 
+   function Encode_Entities_Reentrant
+     (Document, Input : System.Address) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      if Input = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Encode_Entities
+           (Document, C_String_Value (Input), Result, Status);
+      end;
+      Report_Operation_Status (Status, Validation_Error => True);
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Encode_Entities_Reentrant;
+
    function Str_Duplicate (Item : System.Address) return System.Address is
    begin
       return Str_N_Concat_New (System.Null_Address, Item, -1);

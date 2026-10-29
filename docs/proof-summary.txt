@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               318           318                                       .           .          .
+Data Dependencies               321           321                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  748           748                                       .           .          .
+Initialization                  752           752                                       .           .          .
 Non-Aliasing                      .             .                                       .           .          .
-Run-time Checks                5453             .      5453 (CVC5 93%, Trivial 0%, Z3 7%)           .          .
+Run-time Checks                5458             .      5458 (CVC5 94%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1644             .    1644 (CVC5 65%, Trivial 11%, Z3 25%)           .          .
-Functional Contracts           4153             .     4153 (CVC5 66%, Trivial 2%, Z3 32%)           .          .
+Functional Contracts           4159             .     4159 (CVC5 66%, Trivial 2%, Z3 31%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     221           160                               61 (CVC5)           .          .
+Termination                     223           162                               61 (CVC5)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         12537    1226 (10%)                             11311 (90%)           .          .
+Total                         12557    1235 (10%)                             11322 (90%)           .          .
 
 
 max steps used for successful proof: 592493
@@ -232,7 +232,7 @@ in unit xml3_dom_constructors, 8 subprograms and packages out of 8 analyzed
   XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (463 checks)
   XML3_DOM_Constructors.Prepare_Node_Capacity at xml3_dom_constructors.adb:299 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (81 checks)
   XML3_DOM_Constructors.Retire_Registered at xml3_dom_constructors.adb:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (121 checks)
-in unit xml3_dom_runtime, 42 subprograms and packages out of 42 analyzed
+in unit xml3_dom_runtime, 43 subprograms and packages out of 43 analyzed
   XML3_DOM_Runtime at xml3_dom_runtime.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Child at xml3_dom_runtime.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Content at xml3_dom_runtime.ads:93 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
@@ -242,7 +242,8 @@ in unit xml3_dom_runtime, 42 subprograms and packages out of 42 analyzed
   XML3_DOM_Runtime.Create_Namespace at xml3_dom_runtime.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Create_Namespace_Property at xml3_dom_runtime.ads:163 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Create_Property at xml3_dom_runtime.ads:151 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:262 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Dump_Memory_Encoding at xml3_dom_runtime.ads:269 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Runtime.Encode_Entities at xml3_dom_runtime.ads:262 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Find_Property at xml3_dom_runtime.ads:192 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_DOM_Runtime.Free_Namespace at xml3_dom_runtime.ads:60 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Get_Content at xml3_dom_runtime.ads:244 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
@@ -335,51 +336,54 @@ in unit xml3_dom_store-properties, 19 subprograms and packages out of 19 analyze
   XML3_DOM_Store.Properties.Set_Qualified_Property at xml3_dom_store-properties.ads:74 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (38 checks)
   XML3_DOM_Store.Properties.Unset_Namespace_Property at xml3_dom_store-properties.ads:69 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (17 checks)
   XML3_DOM_Store.Properties.Valid_NCName at xml3_dom_store-properties.adb:285 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
-in unit xml3_dom_store-queries, 44 subprograms and packages out of 44 analyzed
-  XML3_DOM_Store.Queries at xml3_dom_store-queries.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Candidate_Allowed at xml3_dom_store-queries.adb:495 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Collect_Namespaces at xml3_dom_store-queries.adb:374 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
-  XML3_DOM_Store.Queries.Copy_Content at xml3_dom_store-queries.adb:907 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_DOM_Store.Queries.Equal_Address_Bytes at xml3_dom_store-queries.adb:191 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_DOM_Store.Queries.Equal_Bytes at xml3_dom_store-queries.adb:171 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Find_Implicit at xml3_dom_store-queries.adb:258 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (19 checks)
-  XML3_DOM_Store.Queries.Find_Matching_Property at xml3_dom_store-queries.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (30 checks)
-  XML3_DOM_Store.Queries.Find_Property at xml3_dom_store-queries.ads:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
-  XML3_DOM_Store.Queries.Get_Content at xml3_dom_store-queries.ads:86 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (10 checks)
-  XML3_DOM_Store.Queries.Get_Inherited_XML_Property at xml3_dom_store-queries.ads:23 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
-  XML3_DOM_Store.Queries.Get_List_Content at xml3_dom_store-queries.ads:102 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (36 checks)
-  XML3_DOM_Store.Queries.Get_Namespace_List at xml3_dom_store-queries.ads:59 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_DOM_Store.Queries.Get_Path at xml3_dom_store-queries.ads:94 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (8 checks)
-  XML3_DOM_Store.Queries.Get_Path.Component_Length at xml3_dom_store-queries.adb:1338 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
-  XML3_DOM_Store.Queries.Get_Path.Component_Length.Add_Length at xml3_dom_store-queries.adb:1348 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Store.Queries.Get_Path.Decimal_Digits at xml3_dom_store-queries.adb:1322 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_DOM_Store.Queries.Get_Path.Emit at xml3_dom_store-queries.adb:1713 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (14 checks)
-  XML3_DOM_Store.Queries.Get_Path.Matches at xml3_dom_store-queries.adb:1092 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (6 checks)
-  XML3_DOM_Store.Queries.Get_Path.Measure at xml3_dom_store-queries.adb:1673 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_DOM_Store.Queries.Get_Path.Namespace_Item at xml3_dom_store-queries.adb:1058 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_DOM_Store.Queries.Get_Path.Occurrence at xml3_dom_store-queries.adb:1200 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
-  XML3_DOM_Store.Queries.Get_Path.Valid_Name at xml3_dom_store-queries.adb:1047 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Get_Path.Write_Component at xml3_dom_store-queries.adb:1480 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (27 checks)
-  XML3_DOM_Store.Queries.Get_Path.Write_Component.Check_Span at xml3_dom_store-queries.adb:1496 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Byte at xml3_dom_store-queries.adb:1556 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Bytes at xml3_dom_store-queries.adb:1531 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Literal at xml3_dom_store-queries.adb:1513 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
-  XML3_DOM_Store.Queries.Implicit_Query at xml3_dom_store-queries.adb:247 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Is_In_Scope at xml3_dom_store-queries.adb:477 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Is_Text_Content at xml3_dom_store-queries.adb:853 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Live_Namespace at xml3_dom_store-queries.adb:163 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
-  XML3_DOM_Store.Queries.Live_Node at xml3_dom_store-queries.adb:155 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
-  XML3_DOM_Store.Queries.Lookup_Namespace at xml3_dom_store-queries.ads:67 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
-  XML3_DOM_Store.Queries.Measure_Content at xml3_dom_store-queries.adb:856 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_DOM_Store.Queries.Namespace_In_Range at xml3_dom_store-queries.adb:144 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Namespace_Matches at xml3_dom_store-queries.adb:224 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Next_Depth_First at xml3_dom_store-queries.adb:804 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
-  XML3_DOM_Store.Queries.Node_In_Range at xml3_dom_store-queries.adb:134 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_DOM_Store.Queries.Prefix_Resolved at xml3_dom_store-queries.adb:307 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (23 checks)
-  XML3_DOM_Store.Queries.Same_Prefix at xml3_dom_store-queries.adb:214 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Store.Queries.Search_Namespace at xml3_dom_store-queries.ads:76 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (27 checks)
-  XML3_DOM_Store.Queries.Select_Element at xml3_dom_store-queries.ads:41 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
-  XML3_DOM_Store.Queries.Test_Node at xml3_dom_store-queries.ads:34 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+in unit xml3_dom_store-queries, 47 subprograms and packages out of 47 analyzed
+  XML3_DOM_Store.Queries at xml3_dom_store-queries.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Candidate_Allowed at xml3_dom_store-queries.adb:536 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Collect_Namespaces at xml3_dom_store-queries.adb:415 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (22 checks)
+  XML3_DOM_Store.Queries.Copy_Content at xml3_dom_store-queries.adb:948 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_DOM_Store.Queries.Encode_Entities at xml3_dom_store-queries.ads:113 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Encoding_Status at xml3_dom_store-queries.adb:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Equal_Address_Bytes at xml3_dom_store-queries.adb:232 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_DOM_Store.Queries.Equal_Bytes at xml3_dom_store-queries.adb:212 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Find_Implicit at xml3_dom_store-queries.adb:299 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (19 checks)
+  XML3_DOM_Store.Queries.Find_Matching_Property at xml3_dom_store-queries.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (30 checks)
+  XML3_DOM_Store.Queries.Find_Property at xml3_dom_store-queries.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
+  XML3_DOM_Store.Queries.Get_Content at xml3_dom_store-queries.ads:87 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (10 checks)
+  XML3_DOM_Store.Queries.Get_Inherited_XML_Property at xml3_dom_store-queries.ads:24 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (19 checks)
+  XML3_DOM_Store.Queries.Get_List_Content at xml3_dom_store-queries.ads:103 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
+  XML3_DOM_Store.Queries.Get_Namespace_List at xml3_dom_store-queries.ads:60 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (7 checks)
+  XML3_DOM_Store.Queries.Get_Path at xml3_dom_store-queries.ads:95 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_DOM_Store.Queries.Get_Path.Component_Length at xml3_dom_store-queries.adb:1379 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_DOM_Store.Queries.Get_Path.Component_Length.Add_Length at xml3_dom_store-queries.adb:1389 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Store.Queries.Get_Path.Decimal_Digits at xml3_dom_store-queries.adb:1363 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_DOM_Store.Queries.Get_Path.Emit at xml3_dom_store-queries.adb:1754 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (14 checks)
+  XML3_DOM_Store.Queries.Get_Path.Matches at xml3_dom_store-queries.adb:1133 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_DOM_Store.Queries.Get_Path.Measure at xml3_dom_store-queries.adb:1714 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (7 checks)
+  XML3_DOM_Store.Queries.Get_Path.Namespace_Item at xml3_dom_store-queries.adb:1099 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_DOM_Store.Queries.Get_Path.Occurrence at xml3_dom_store-queries.adb:1241 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_DOM_Store.Queries.Get_Path.Valid_Name at xml3_dom_store-queries.adb:1088 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Get_Path.Write_Component at xml3_dom_store-queries.adb:1521 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (27 checks)
+  XML3_DOM_Store.Queries.Get_Path.Write_Component.Check_Span at xml3_dom_store-queries.adb:1537 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Byte at xml3_dom_store-queries.adb:1597 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Bytes at xml3_dom_store-queries.adb:1572 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Get_Path.Write_Component.Put_Literal at xml3_dom_store-queries.adb:1554 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_DOM_Store.Queries.Implicit_Query at xml3_dom_store-queries.adb:288 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Is_In_Scope at xml3_dom_store-queries.adb:518 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Is_Text_Content at xml3_dom_store-queries.adb:894 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Live_Namespace at xml3_dom_store-queries.adb:204 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_DOM_Store.Queries.Live_Node at xml3_dom_store-queries.adb:196 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_DOM_Store.Queries.Lookup_Namespace at xml3_dom_store-queries.ads:68 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  XML3_DOM_Store.Queries.Measure_Content at xml3_dom_store-queries.adb:897 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_DOM_Store.Queries.Namespace_In_Range at xml3_dom_store-queries.adb:185 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Namespace_Matches at xml3_dom_store-queries.adb:265 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Next_Depth_First at xml3_dom_store-queries.adb:845 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  XML3_DOM_Store.Queries.Node_In_Range at xml3_dom_store-queries.adb:175 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_DOM_Store.Queries.Prefix_Resolved at xml3_dom_store-queries.adb:348 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (23 checks)
+  XML3_DOM_Store.Queries.Registered_Document at xml3_dom_store-queries.adb:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (8 checks)
+  XML3_DOM_Store.Queries.Same_Prefix at xml3_dom_store-queries.adb:255 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Store.Queries.Search_Namespace at xml3_dom_store-queries.ads:77 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (27 checks)
+  XML3_DOM_Store.Queries.Select_Element at xml3_dom_store-queries.ads:42 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
+  XML3_DOM_Store.Queries.Test_Node at xml3_dom_store-queries.ads:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
 in unit xml3_dom_store-serialization, 2 subprograms and packages out of 2 analyzed
   XML3_DOM_Store.Serialization at xml3_dom_store-serialization.ads:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Store.Serialization.Dump at xml3_dom_store-serialization.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)

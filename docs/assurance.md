@@ -59,8 +59,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,537 checks
-(1,226 flow and 11,311 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,557 checks
+(1,235 flow and 11,322 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 152 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -77,6 +77,17 @@ and native-call preconditions, not full C output semantics. C-string
 conversion, native pointers and byte writes, allocation/free, ABI/status
 mapping, and complete libxml2 behavior remain trusted; the API is partial and
 not-proved at the public C level, and does not implement DTD/entity expansion.
+`xmlEncodeEntitiesReentrant` routes through the same registered-document
+validation and `Escape_Special` implementation. Less-than, greater-than and
+ampersand use named references, CR becomes `&#13;`, and valid non-ASCII uses
+uppercase hexadecimal references; quotes, TAB and LF remain literal. NULL
+input bypasses document validation; otherwise only NULL or a registered
+document is accepted. The shared helper provides strict UTF-8/XML validation
+and bounded sizing. Output is independent, OOM returns NULL without DOM
+mutation, and the source document encoding is not retained, so explicit UTF-8
+documents can differ from reference output. The public C conversions,
+pointer/byte access, allocation/free, ABI, and complete libxml2 semantics
+remain trusted; DTD/general-entity expansion and HTML behavior are unsupported.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -215,7 +226,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,537-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,557-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

@@ -9,7 +9,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
-`libxml/entities.h` は `xmlEncodeSpecialChars` のみを公開します。文書引数は
+`libxml/entities.h` は `xmlEncodeSpecialChars` と `xmlEncodeEntitiesReentrant` を公開します。文書引数は
 固定版と同じく未使用です。NULL入力は診断なしでNULL、空入力は独立した空文字列を
 返します。`<`・`>`・`&`・二重引用符を定義済み実体参照、CRを `&#13;` に置換し、
 apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参照も通常の文字列として
@@ -19,6 +19,15 @@ apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参
 `Max_Bytes` までで、確保失敗でも入力は保持します。これはDTD・一般実体対応ではなく、
 XML文字列のエスケープのみです。C文字列の読み取り可能性・ABI・native書き込みと
 allocatorは信頼境界に残ります。
+
+`xmlEncodeEntitiesReentrant` は NULL input なら `doc` を検証せず、診断なしで NULL を返します。
+non-NULL input では `doc == NULL` または登録済み Document_Node を受け付け、空 input も独立した空文字列にします。
+`<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、quote・TAB・LF は保持します。
+document encoding はモデルに保持しないため、明示 UTF-8 文書でも非ASCIIを文字参照にします。
+不正UTF-8/XMLは診断と NULL で拒否し、不正文字置換・保持の reference 動作は再現しません。
+既存参照の展開、一般実体・HTML処理は対象外です。結果は独立した `xmlFree` 所有で DOM を変更せず、
+allocation failure は NULL を返します。native pointer/readability, byte access, allocation/copy/free,
+ABI と完全な C semantics は信頼境界に残ります。
 
 `xmlNodeIsText` は text のみで 1、CDATA を含む他の kind・NULL・未登録 node で 0 です。
 `xmlIsBlankNode` は text/CDATA の content が NULL・空・XML 空白のみなら 1、他は 0 です。

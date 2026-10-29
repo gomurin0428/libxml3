@@ -8,6 +8,47 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function Registered_Document (S : Store; Document : System.Address)
+     return Boolean
+     with Global => null,
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all))
+   is
+      N : constant Node_Ref := Find_Registered_Node (S, Document);
+   begin
+      return Document = System.Null_Address
+        or else (N /= Null_Node
+          and then Node (S.Current.all, N).Kind = Document_Node);
+   end Registered_Document;
+
+   function Encoding_Status (Status : XML3_Text.Buffers.Escape_Status)
+     return Operation_Status
+   is (case Status is
+          when XML3_Text.Buffers.Escaped => Created,
+          when XML3_Text.Buffers.Invalid_Text => Invalid_Argument,
+          when XML3_Text.Buffers.Escape_No_Memory => No_Memory,
+          when XML3_Text.Buffers.Escape_Limit_Exceeded => Limit_Exceeded);
+
+   procedure Encode_Entities
+     (S : Store; Document : System.Address; Input : String;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      Escaping : XML3_Text.Buffers.Escape_Status;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if not Registered_Document (S, Document) then
+         return;
+      end if;
+      XML3_Text.Buffers.Escape_Special
+        (Input, Result, Escaping, Non_ASCII => True, Quotes => False);
+      Status := Encoding_Status (Escaping);
+   end Encode_Entities;
+
    procedure Find_Matching_Property
      (S : Store; Element, Attribute : System.Address;
       Result : out System.Address; Status : out Operation_Status;
@@ -1801,7 +1842,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Doc : System.Address := System.Null_Address;
       Default_Entities : Boolean := False)
    is
-      First, Current, Document, Parent : Node_Ref;
+      First, Current, Parent : Node_Ref;
       Item : Node_View;
       Total : XML3_Text.Byte_Count := 0;
       Attribute : Boolean := False;
@@ -1816,11 +1857,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
          return;
       end if;
       if Escape and then Default_Entities then
-         Document := Find_Registered_Node (S, Doc);
-         if Doc /= System.Null_Address
-           and then (Document = Null_Node
-             or else Node (S.Current.all, Document).Kind /= Document_Node)
-         then
+         if not Registered_Document (S, Doc) then
             return;
          end if;
          Parent := Node (S.Current.all, First).Parent;
@@ -1895,13 +1932,7 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
             XML3_Text.Buffers.Escape_Special
               (Content, Result, Escaping, Non_ASCII => Default_Entities,
                Attribute => Attribute, Quotes => not Default_Entities);
-            case Escaping is
-               when XML3_Text.Buffers.Escaped => Status := Created;
-               when XML3_Text.Buffers.Invalid_Text => Status := Invalid_Argument;
-               when XML3_Text.Buffers.Escape_No_Memory => Status := No_Memory;
-               when XML3_Text.Buffers.Escape_Limit_Exceeded =>
-                  Status := Limit_Exceeded;
-            end case;
+            Status := Encoding_Status (Escaping);
          else
             XML3_Text.Buffers.Duplicate (Content, Result);
             Status := (if Result = System.Null_Address then No_Memory else Created);
