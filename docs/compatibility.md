@@ -10,7 +10,7 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 ## ヘッダーと API
 
 `libxml/entities.h` は `xmlEncodeSpecialChars`、`xmlEncodeEntitiesReentrant`、
-`xmlGetPredefinedEntity` を公開します。前二者の文書引数は
+`xmlGetPredefinedEntity` を公開します。`xmlEncodeSpecialChars` の文書引数は
 固定版と同じく未使用です。NULL入力は診断なしでNULL、空入力は独立した空文字列を
 返します。`<`・`>`・`&`・二重引用符を定義済み実体参照、CRを `&#13;` に置換し、
 apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参照も通常の文字列として
