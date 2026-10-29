@@ -906,46 +906,101 @@ package body XML3_Text.Buffers with SPARK_Mode is
       return True;
    end Valid_Name;
 
-   function Valid_Name_Value
-     (Source : System.Address; Kind : Name_Value_Kind;
-      Last : Byte_Count := Max_Bytes) return Boolean
+   function Scan_Name
+     (Source : System.Address; Kind : Name_Kind;
+      List_Syntax, Allow_Space : Boolean; Last : Byte_Count) return Integer
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => not List_Syntax or else Kind in XML_Name | NMToken,
+       Post => Scan_Name'Result in -1 .. 1
+         and then (if Source = System.Null_Address then Scan_Name'Result = -1)
    is
       Position : Natural := 0;
       Width : Natural;
-      Code : Integer;
+      Code, Needed : Integer;
+      Current : System.Address;
       In_Token, Seen_Token : Boolean := False;
-      Token_Syntax : constant Boolean := Kind in Single_NMToken | NMToken_List;
-      List_Syntax : constant Boolean := Kind in Name_List | NMToken_List;
+      Colon_Seen, Trailing : Boolean := False;
    begin
       if Source = System.Null_Address then
-         return False;
+         return -1;
       end if;
       while Position <= Last loop
          pragma Loop_Invariant (Position <= Last + 4);
          pragma Loop_Variant (Increases => Position);
-         Get_UTF8_Char
-           (Native.Offset (Source, Native.Byte_Count (Position)),
-            Natural'Min (4, Last - Position + 1), Code, Width);
+         Code := Character'Pos (Native.Byte_At (Source, Position));
+         if Code < 128 then
+            Width := 1;
+         elsif Trailing then
+            return 1;
+         else
+            Current := Native.Offset (Source, Native.Byte_Count (Position));
+            Needed := UTF8_Lead_Size (Current);
+            if Needed < 0 then
+               return 1;
+            elsif Needed > Last - Position + 1 then
+               for J in 1 .. Last - Position loop
+                  if Character'Pos (Native.Byte_At (Current, J)) not in 16#80# .. 16#BF# then
+                     return 1;
+                  end if;
+               end loop;
+               return -1;
+            end if;
+            Get_UTF8_Char (Current, Needed, Code, Width);
+         end if;
          if Width = 0 then
-            return False;
+            return 1;
          elsif Code = 0 then
-            return In_Token or else (Kind = NMToken_List and then Seen_Token);
-         elsif Kind = NMToken_List and then not Seen_Token
-           and then XML_Blank (Code)
+            return (if In_Token or else
+              (List_Syntax and then Kind = NMToken and then Seen_Token) then 0 else 1);
+         elsif XML_Blank (Code) and then
+           (Allow_Space or else (List_Syntax and then Kind = NMToken and then not Seen_Token))
          then
-            null;
+            if Allow_Space and then Seen_Token then
+               if not In_Token then
+                  return 1;
+               end if;
+               Trailing := True;
+            end if;
          elsif List_Syntax and then Code = Character'Pos (' ') and then Seen_Token then
             In_Token := False;
+         elsif Trailing then
+            return 1;
+         elsif Code = Character'Pos (':') then
+            if Kind = NCName or else
+              (Kind = QName and then (not In_Token or else Colon_Seen))
+            then
+               return 1;
+            end if;
+            Seen_Token := True;
+            Colon_Seen := True;
+            In_Token := Kind /= QName;
          else
-            if not Name_Character (Code, not In_Token and then not Token_Syntax) then
-               return False;
+            if not Name_Character
+              (Code, not In_Token and then Kind /= NMToken, Allow_Colon => False)
+            then
+               return 1;
             end if;
             In_Token := True;
             Seen_Token := True;
          end if;
          Position := Position + Width;
       end loop;
-      return False;
+      return -1;
+   end Scan_Name;
+
+   function Validate_Name
+     (Source : System.Address; Kind : Name_Kind; Allow_Space : Boolean;
+      Last : Byte_Count := Max_Bytes) return Integer is
+     (Scan_Name (Source, Kind, List_Syntax => False, Allow_Space => Allow_Space, Last => Last));
+
+   function Valid_Name_Value
+     (Source : System.Address; Kind : Name_Value_Kind;
+      Last : Byte_Count := Max_Bytes) return Boolean is
+   begin
+      return Scan_Name
+        (Source, (if Kind in Single_Name | Name_List then XML_Name else NMToken),
+         List_Syntax => Kind in Name_List | NMToken_List, Allow_Space => False,
+         Last => Last) = 0;
    end Valid_Name_Value;
 
    procedure Read_Length

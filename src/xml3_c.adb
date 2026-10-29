@@ -3304,11 +3304,7 @@ package body XML3_C is
       return int
    is
    begin
-      if Value = System.Null_Address then
-         return -1;
-      end if;
-      return (if XML3_Text.Valid_Name
-        (C_String_Value (Value), Kind, Space /= 0) then 0 else 1);
+      return int (XML3_Text.Buffers.Validate_Name (Value, Kind, Space /= 0));
    exception
       when others =>
          return -1;

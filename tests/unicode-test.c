@@ -2012,6 +2012,36 @@ static void test_validation(void) {
         assert(validators[f](BAD_CAST "a\0:ignored", 0) == 0);
         assert(validators[f](BAD_CAST " \t\r\n", 1) == 1);
     }
+#if defined(__unix__)
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        snprintf(padded, sizeof(padded), " \t\r\n%s\n\r\t ", cases[i].value);
+        size_t size = strlen(padded) + 1;
+        char *value = mapping + page - size;
+        memcpy(value, padded, size);
+        for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f)
+            for (size_t s = 0; s < sizeof(space_flags) / sizeof(*space_flags); ++s) {
+                int expected = space_flags[s] && (cases[i].valid & (1u << f)) ? 0 : 1;
+                assert(validators[f](BAD_CAST value, space_flags[s]) == expected);
+            }
+    }
+    mapping[page - 1] = '!';
+    for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f)
+        for (size_t s = 0; s < sizeof(space_flags) / sizeof(*space_flags); ++s)
+            assert(validators[f](BAD_CAST (mapping + page - 1), space_flags[s]) == 1);
+    memcpy(mapping + page - 3, "a \xf0", 3);
+    for (size_t f = 0; f < sizeof(validators) / sizeof(*validators); ++f)
+        assert(validators[f](BAD_CAST (mapping + page - 3), 1) == 1);
+    mapping[page - 1] = ':';
+    assert(xmlValidateNCName(BAD_CAST (mapping + page - 1), 0) == 1);
+    assert(xmlValidateQName(BAD_CAST (mapping + page - 1), 0) == 1);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+#endif
     {
         size_t length = 262168;
         char *name = malloc(length + 1);
@@ -2025,6 +2055,25 @@ static void test_validation(void) {
             assert(validators[f](BAD_CAST name, 0) == 1);
         free(name);
     }
+    static const char document[] = "<p:root xmlns:p='urn:n'><child/></p:root>";
+    xmlDocPtr doc = xmlReadMemory(document, (int)(sizeof(document) - 1), NULL, NULL, 0);
+    assert(doc != NULL);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root && root->ns && root->ns->prefix);
+    assert(xmlValidateNCName(root->name, 0) == 0);
+    xmlChar *qualified = xmlBuildQName(root->name, root->ns->prefix, NULL, 0);
+    assert(qualified && xmlValidateQName(qualified, 0) == 0);
+    xmlChar *serialized = NULL;
+    int size = 0;
+    xmlDocDumpMemory(doc, &serialized, &size);
+    assert(serialized != NULL && size > 0);
+    xmlFreeDoc(doc);
+    assert(xmlValidateQName(qualified, 0) == 0);
+    doc = xmlReadMemory((const char *)serialized, size, NULL, NULL, 0);
+    assert(doc && xmlValidateNCName(xmlDocGetRootElement(doc)->name, 0) == 0);
+    xmlFree(qualified);
+    xmlFree(serialized);
+    xmlFreeDoc(doc);
 }
 
 static void test_qname_building(void) {

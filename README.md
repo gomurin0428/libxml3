@@ -393,6 +393,9 @@ document を先に解放した後も detached ownership の範囲で使用でき
 
 `xmlValidateName` / `xmlValidateNCName` / `xmlValidateQName` / `xmlValidateNMToken`
 はUnicodeを含むXML名を、コロン・先頭文字・前後のXML空白の規則に従って検査します。
+`space` が非0なら前後のXML空白だけを許し、正常は0、不正は1、NULL・走査上限・内部例外は-1です。
+SPARKの共通走査へ入力ポインタを直接渡し、C文字列のコピー・確保・診断変更は行いません。
+NULまたは最初の不正文字で停止し、末尾空白の後に非ASCII byteがあれば後続UTF-8を読まず拒否します。
 `xmlSplitQName2` / `xmlSplitQName3` は名前検証を行わず、NUL終端の raw byte 列を最初の
 コロンだけで分割します。最初のコロンが先頭・末尾にある場合や、コロンなしでは NULL、後続のコロン・空白・不正な
 UTF-8 はそのまま扱います。QName2 は prefix/local の独立コピーを返し `xmlFree` で解放し、
