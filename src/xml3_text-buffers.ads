@@ -25,11 +25,16 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    procedure Escape_Special
      (Input : String; Result : out System.Address; Status : out Escape_Status;
-      Limit : Byte_Count := Max_Bytes)
+      Limit : Byte_Count := Max_Bytes;
+      Non_ASCII, Attribute : Boolean := False; Quotes : Boolean := True)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Input'First = 1 and then Input'Last in 0 .. Max_Bytes,
        Post => (if Status = Escaped then Result /= System.Null_Address
                 else Result = System.Null_Address);
+
+   function Character_Reference (Code : Natural) return String
+     with Global => null, Pre => Code <= 16#10FFFF#,
+       Post => Character_Reference'Result'Length in 4 .. 10;
 
    function UTF8_Lead_Size (Item : System.Address) return Integer
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),

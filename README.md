@@ -92,7 +92,15 @@ NULL list は NULL を返します。`inLine != 0` は UTF-8 検査なしで raw
 `inLine == 0` は各 node の bytes を個別に UTF-8 検証し、連結後に XML 文字を検証して
 特殊文字を escape します。
 選択可能な text がない non-NULL list は独立した空文字列を返し、返却値は `xmlFree` で解放します。
-entity-reference node は未対応で、`xmlNodeListGetString` は未実装です。
+`xmlNodeListGetString` も同じ bounded direct-sibling query を使います。`inLine != 0` は raw bytes を複製し、
+`doc` を無視します。`inLine == 0` は NULL または登録済み Document_Node の `doc` を受け入れ、
+この mode だけ各 node の UTF-8 を個別に検証し、連結後に XML 文字を検証します。
+開始 node の親が attribute なら tab/LF を数値参照へ、quote を `&quot;` へ変換します。
+text では tab/LF/quote を raw のまま残し、CR は `&#13;`、非 ASCII は大文字 hex の文字参照にします。
+この subset は document encoding を保持しないため、UTF-8 document でも既定 encoding 用の文字参照を返します。
+NULL list は NULL、選択 text のない non-NULL list は独立した空文字列です。
+返却値は source DOM と独立し `xmlFree` で解放できます。OOM は NULL として返り、source DOM は変更しません。
+HTML/entity expansion は未対応です。
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
 source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が

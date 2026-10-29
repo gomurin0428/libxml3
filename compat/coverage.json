@@ -362,10 +362,21 @@
   },
   "function:tree.h:xmlNodeListGetRawString": {
     "implementation": "partial",
-    "scope": "Public API in pinned libxml2 2.15.4. The doc argument is ignored. NULL list returns NULL; a non-NULL managed starting facade walks only its next-sibling chain, concatenating direct text/CDATA content without descent and skipping other kinds. Nonzero inLine copies raw bytes without UTF-8/XML validation; zero validates each selected node's UTF-8 independently, then validates XML characters and escapes special characters after concatenation, rejecting invalid sequences split across node boundaries. A non-NULL list with no selected text returns an independently xmlFree-owned empty string. Entity-reference nodes and xmlNodeListGetString are unsupported. Foreign facades are rejected before native dereference. Native pointer/readability, allocation/copy/free, ABI, and complete C semantics remain trusted.",
+    "scope": "Public API in pinned libxml2 2.15.4. The doc argument is ignored. NULL list returns NULL; a non-NULL managed starting facade walks only its next-sibling chain, concatenating direct text/CDATA content without descent and skipping other kinds. Nonzero inLine copies raw bytes without UTF-8/XML validation; zero validates each selected node's UTF-8 independently, then validates XML characters and escapes special characters after concatenation, rejecting invalid sequences split across node boundaries. A non-NULL list with no selected text returns an independently xmlFree-owned empty string. Entity-reference nodes are unsupported. Foreign facades are rejected before native dereference. Native pointer/readability, allocation/copy/free, ABI, and complete C semantics remain trusted.",
     "tests": [
       "tests/dom-test.c",
       "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeListGetString": {
+    "implementation": "partial",
+    "scope": "Public API in pinned libxml2 2.15.4. Shares the bounded direct text/CDATA next-sibling query; no descent. Nonzero inLine copies raw bytes and ignores doc. Escaped mode accepts NULL or a registered Document_Node and rejects foreign/wrong-kind documents; strict per-node UTF-8 validation and XML character validation after concatenation apply only in this mode. Attribute context comes from the starting node's parent; attribute tabs/LFs are numeric references and quotes use &quot;, text tabs/LFs/quotes remain literal, and non-ASCII is emitted as uppercase hexadecimal character references. Document encoding is not retained, so explicit UTF-8 documents can differ from reference output. Output is an independent xmlFree-owned allocation; NULL list returns NULL while a non-NULL list with no selected text returns an allocated empty string. Allocation failure returns NULL without modifying source topology. HTML-specific behavior/entity expansion is unsupported. Native pointer/readability, byte access, allocation/copy/free, ABI, and complete C semantics remain trusted.",
+    "tests": [
+      "tests/dom-test.c",
+      "tests/oom-test.c",
+      "tests/text_buffers_test.adb",
       "tests/header-smoke.cpp"
     ],
     "proof": "not-proved"

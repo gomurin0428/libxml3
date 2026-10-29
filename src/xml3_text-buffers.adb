@@ -2,7 +2,8 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
-   function Special_Image (Item : Character) return String
+   function Special_Image (Item : Character; Attribute, Quotes : Boolean)
+     return String
      with Global => null,
        Post => Special_Image'Result'Length in 1 .. 6
    is
@@ -11,20 +12,84 @@ package body XML3_Text.Buffers with SPARK_Mode is
          when '<' => return "&lt;";
          when '>' => return "&gt;";
          when '&' => return "&amp;";
-         when '"' => return "&quot;";
+         when '"' =>
+            return (if Attribute or else Quotes then "&quot;" else """");
+         when Character'Val (9) =>
+            return (if Attribute then "&#9;" else (1 => Item));
+         when Character'Val (10) =>
+            return (if Attribute then "&#10;" else (1 => Item));
          when Character'Val (13) => return "&#13;";
          when others => return (1 => Item);
       end case;
    end Special_Image;
 
+   function Character_Reference (Code : Natural) return String is
+      Hex : constant String := "0123456789ABCDEF";
+      Buffer : String (1 .. 6) := (others => '0');
+      First : Positive := Buffer'Last;
+      Value : Natural := Code;
+   begin
+      loop
+         pragma Loop_Invariant (First in Buffer'Range);
+         pragma Loop_Variant (Decreases => Value);
+         Buffer (First) := Hex ((Value mod 16) + 1);
+         Value := Value / 16;
+         exit when Value = 0 or else First = Buffer'First;
+         First := First - 1;
+      end loop;
+      return "&#x" & Buffer (First .. Buffer'Last) & ";";
+   end Character_Reference;
+
+   function Image_Width (Item : Character; Non_ASCII : Boolean) return Positive
+     with Global => null, Post => Image_Width'Result in 1 .. 4
+   is
+   begin
+      if not Non_ASCII then
+         return 1;
+      end if;
+      case Character'Pos (Item) is
+         when 16#C2# .. 16#DF# => return 2;
+         when 16#E0# .. 16#EF# => return 3;
+         when 16#F0# .. 16#F4# => return 4;
+         when others => return 1;
+      end case;
+   end Image_Width;
+
+   function Escaped_Image (Input : String; Attribute, Quotes : Boolean)
+     return String
+     with Global => null, Pre => Input'Length in 1 .. 4
+       and then Input'First >= 1 and then Input'Last <= Max_Bytes,
+       Post => Escaped_Image'Result'Length <= 10
+   is
+      Code, Byte : Natural;
+   begin
+      if Input'Length = 1 then
+         return Special_Image (Input (Input'First), Attribute, Quotes);
+      end if;
+      Code := Character'Pos (Input (Input'First)) mod 2 ** (7 - Input'Length);
+      for I in Input'First + 1 .. Input'Last loop
+         Byte := Character'Pos (Input (I)) mod 64;
+         if Code > (16#10FFFF# - Byte) / 64 then
+            return "";
+         end if;
+         Code := Code * 64 + Byte;
+      end loop;
+      if Code > 16#10FFFF# then
+         return "";
+      end if;
+      return Character_Reference (Code);
+   end Escaped_Image;
+
    procedure Escape_Special
      (Input : String; Result : out System.Address; Status : out Escape_Status;
-      Limit : Byte_Count := Max_Bytes)
+      Limit : Byte_Count := Max_Bytes;
+      Non_ASCII, Attribute : Boolean := False; Quotes : Boolean := True)
    is
       Length, Position : Byte_Count := 0;
       Kind : Text_Error_Kind;
       Error : Natural;
       Base : System.Address;
+      I, Width : Natural;
    begin
       Result := System.Null_Address;
       Status := Invalid_Text;
@@ -33,28 +98,55 @@ package body XML3_Text.Buffers with SPARK_Mode is
          return;
       end if;
       Status := Escape_Limit_Exceeded;
-      for Item of Input loop
+      I := 1;
+      while I <= Input'Last loop
          pragma Loop_Invariant (Length <= Limit);
+         pragma Loop_Invariant (I in 1 .. Input'Last + 1);
+         pragma Loop_Variant (Increases => I);
+         Width := Image_Width (Input (I), Non_ASCII);
+         if Width > Input'Last - I + 1 then
+            Status := Invalid_Text;
+            return;
+         end if;
          declare
-            Image : constant String := Special_Image (Item);
+            Image : constant String := Escaped_Image
+              (Input (I .. I + Width - 1), Attribute, Quotes);
          begin
-            if Image'Length > Limit - Length then
+            if Image'Length = 0 then
+               Status := Invalid_Text;
+               return;
+            elsif Image'Length > Limit - Length then
                return;
             end if;
             Length := Length + Image'Length;
          end;
+         I := I + Width;
       end loop;
       Status := Escape_No_Memory;
       Native.Allocate (Native.Byte_Count (Length) + 1, Base);
       if Base = System.Null_Address then
          return;
       end if;
-      for Item of Input loop
+      I := 1;
+      while I <= Input'Last loop
          pragma Loop_Invariant (Position <= Length);
+         pragma Loop_Invariant (I in 1 .. Input'Last + 1);
+         pragma Loop_Variant (Increases => I);
+         Width := Image_Width (Input (I), Non_ASCII);
+         if Width > Input'Last - I + 1 then
+            Native.Free (Base);
+            Status := Invalid_Text;
+            return;
+         end if;
          declare
-            Image : constant String := Special_Image (Item);
+            Image : constant String := Escaped_Image
+              (Input (I .. I + Width - 1), Attribute, Quotes);
          begin
-            if Image'Length > Length - Position then
+            if Image'Length = 0 then
+               Native.Free (Base);
+               Status := Invalid_Text;
+               return;
+            elsif Image'Length > Length - Position then
                Native.Free (Base);
                Status := Escape_Limit_Exceeded;
                return;
@@ -62,6 +154,7 @@ package body XML3_Text.Buffers with SPARK_Mode is
             Native.Write_String (Base, Position, Image);
             Position := Position + Image'Length;
          end;
+         I := I + Width;
       end loop;
       Native.Write_Byte (Base, Position, Character'Val (0));
       Result := Base;

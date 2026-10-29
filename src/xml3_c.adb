@@ -1500,11 +1500,10 @@ package body XML3_C is
       return Get_Node_String (Node, False);
    end Node_Get_Content;
 
-   function Node_List_Get_Raw_String
-     (Doc, List : System.Address; Inline_Value : Interfaces.C.int)
+   function Get_List_String
+     (Doc, List : System.Address; Inline_Value : Interfaces.C.int; Raw : Boolean)
      return System.Address
    is
-      pragma Unreferenced (Doc);
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
@@ -1517,7 +1516,8 @@ package body XML3_C is
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Get_List_Content
-           (List, Inline_Value = 0, Result, Status);
+           (List, Inline_Value = 0, Result, Status,
+            Doc => Doc, Default_Entities => not Raw);
       end;
       Report_Operation_Status (Status, Validation_Error => True);
       return Result;
@@ -1531,7 +1531,23 @@ package body XML3_C is
       when others =>
          Report_Dom_Error (1);
          return System.Null_Address;
+   end Get_List_String;
+
+   function Node_List_Get_Raw_String
+     (Doc, List : System.Address; Inline_Value : Interfaces.C.int)
+     return System.Address
+   is
+   begin
+      return Get_List_String (Doc, List, Inline_Value, True);
    end Node_List_Get_Raw_String;
+
+   function Node_List_Get_String
+     (Doc, List : System.Address; Inline_Value : Interfaces.C.int)
+     return System.Address
+   is
+   begin
+      return Get_List_String (Doc, List, Inline_Value, False);
+   end Node_List_Get_String;
 
    function Node_Get_Path (Node : System.Address) return System.Address is
    begin

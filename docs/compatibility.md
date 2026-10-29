@@ -327,7 +327,15 @@ UTF-8/XML 検査はしません。`inLine == 0` は各 content node を結合前
 連結後に XML 文字を検証して特殊文字を escape するため、node 境界で分割された不正 UTF-8 も拒否します。
 non-NULL list に選択対象の
 text/CDATA がなければ、独立した `xmlFree` 所有の空文字列を返します。entity-reference node は未対応で、
-`xmlNodeListGetString` は未実装です。
+`xmlNodeListGetString` は同じ bounded direct-sibling query を共有します。`inLine != 0` は raw bytes を
+複製して `doc` を無視します。`inLine == 0` は `doc == NULL` または登録済み Document_Node だけを受け入れ、
+各選択 node の UTF-8 を個別に検証した後、XML 文字を検証して escaping します。attribute mode は開始 node の
+親から決まり、attribute の tab/LF は数値参照、quote は `&quot;`、text の tab/LF/quote は raw のままです。
+CR は `&#13;`、非 ASCII は大文字 hex 数値参照にします。document encoding は保持しないため、明示 UTF-8 document に対しても
+reference の UTF-8 出力とは異なり得ます。出力は独立所有で `xmlFree` 解放です。HTML 固有の escaping と
+entity expansion は未対応です。DOM は読み取り専用で、失敗時に変更しません。
+NULL list は NULL、選択 text のない non-NULL list は独立した空文字列を返します。
+OOM は NULL として返り、source list の links は変更しません。OOM failure/retry は `tests/oom-test.c` で検査します。
 `xmlDocSetRootElement` は既存 root 内の descendant を新 root に昇格させられ、
 旧 root subtree は detached のまま維持します。`xmlFreeNode` は element、text、
 comment、CDATA、PI の subtree を先に安全に unlink してから反復解放します。
