@@ -116,6 +116,17 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
        Post => (if Status = XML3_DOM_Constructors.Created then
          Result /= System.Null_Address else Result = System.Null_Address);
 
+   procedure Get_Document_Entity
+     (S : Store; Document, Name : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => (if Status /= XML3_DOM_Constructors.Created then
+                  Result = System.Null_Address)
+         and then (if Name = System.Null_Address then
+                     Status = XML3_DOM_Constructors.Created
+                     and Result = System.Null_Address);
+
    procedure Encode_Entities
      (S : Store; Document : System.Address; Input : String;
       Result : out System.Address; Status : out Operation_Status)

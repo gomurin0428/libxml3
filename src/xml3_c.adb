@@ -2683,6 +2683,24 @@ package body XML3_C is
    function Get_Predefined_Entity (Name : System.Address) return System.Address is
      (XML3_Text.Buffers.Get_Predefined_Entity (Name));
 
+   function Get_Document_Entity (Document, Name : System.Address) return System.Address is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status := XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Get_Document_Entity (Document, Name, Result, Status);
+      end;
+      Report_Operation_Status (Status);
+      return Result;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Get_Document_Entity;
+
    function Is_XHTML (System_ID, Public_ID : System.Address) return Interfaces.C.int is
      (int (XML3_Text.Buffers.Is_XHTML (System_ID, Public_ID)));
 

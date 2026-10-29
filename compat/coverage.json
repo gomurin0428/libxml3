@@ -1,4 +1,10 @@
 {
+  "function:entities.h:xmlGetDocEntity": {
+    "implementation": "partial",
+    "scope": "Predefined-only lookup for NULL or registered document nodes in the supported DTD-free subset. NULL name returns NULL without inspecting document; otherwise SPARK registration/kind checks precede name reads. Invalid document returns NULL with diagnostic 115 without dereferencing it or reading name. Valid/missing queries preserve diagnostics and allocate nothing. Result is the same shared read-only library-lifetime borrowed record as xmlGetPredefinedEntity, independent of document ownership. DTD/general/external entities remain unsupported. Native name readability, static record layout/lifetime, C ABI and complete public semantics remain trusted or unproved.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "constant:entities.h:XML_EXTERNAL_GENERAL_PARSED_ENTITY": {
     "implementation": "partial",
     "scope": "Public enum value only; external general entity loading and resolution are unsupported. Enum value and C ABI remain trusted and unproved.",

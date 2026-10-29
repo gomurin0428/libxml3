@@ -91,6 +91,23 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
           when XML3_Text.Buffers.Escape_No_Memory => No_Memory,
           when XML3_Text.Buffers.Escape_Limit_Exceeded => Limit_Exceeded);
 
+   procedure Get_Document_Entity
+     (S : Store; Document, Name : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+   begin
+      Result := System.Null_Address;
+      Status := Created;
+      if Name = System.Null_Address then
+         return;
+      end if;
+      if not Registered_Document (S, Document) then
+         Status := Invalid_Argument;
+         return;
+      end if;
+      Result := XML3_Text.Buffers.Get_Predefined_Entity (Name);
+   end Get_Document_Entity;
+
    procedure Encode_Entities
      (S : Store; Document : System.Address; Input : String;
       Result : out System.Address; Status : out Operation_Status)

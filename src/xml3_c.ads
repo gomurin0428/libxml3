@@ -403,6 +403,9 @@ package XML3_C is
    function Get_Predefined_Entity (Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlGetPredefinedEntity";
 
+   function Get_Document_Entity (Document, Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlGetDocEntity";
+
    function Is_XHTML (System_ID, Public_ID : System.Address) return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlIsXHTML";
 

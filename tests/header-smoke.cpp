@@ -11,6 +11,8 @@ int main() {
     xmlEntityPtr (*get_predefined_entity)(const xmlChar *) =
         xmlGetPredefinedEntity;
     (void)get_predefined_entity;
+    xmlEntityPtr (*get_doc_entity)(const xmlDoc *, const xmlChar *) = xmlGetDocEntity;
+    (void)get_doc_entity;
     xmlChar *(*uri_escape)(const xmlChar *, const xmlChar *) = xmlURIEscapeStr;
     (void)uri_escape;
     char *(*uri_unescape)(const char *, int, char *) = xmlURIUnescapeString;

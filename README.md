@@ -93,6 +93,10 @@ library-lifetime 借用データであり、解放・変更・link・managed DOM
 してはいけません。lookup は allocation せず、DTD/general entity、external entity loading、
 editable entity node は実装しません。native pointer の readability、byte effects、layout、
 lifetime、C ABI と完全な public semantics は trusted/unproved boundary です。
+`xmlGetDocEntity` は NULL または登録済み document を受け付け、同じ定義済み実体だけを
+検索します。DTD は未対応です。NULL name なら document を検査せず NULL、その他では
+document を確認してから name を読みます。不正な document は診断 115 と NULL で拒否し、
+成功・不一致では診断を保持して allocation しません。結果は document の寿命と独立です。
 
 `xmlNodeListGetRawString` は managed な開始 node と next-sibling chain の直下だけを走査し、
 text/CDATA のみを連結します。descendant には降りず、他の node kind は飛ばします。`doc` は無視され、
