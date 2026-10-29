@@ -2588,6 +2588,28 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function Copy_Char_Multi_Byte
+     (Output : System.Address; Code : Interfaces.C.int) return Interfaces.C.int
+   is
+      Written : Natural;
+   begin
+      XML3_Text.Buffers.Write_UTF8_Char (Output, Integer (Code), Written);
+      return int (Written);
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return 0;
+   end Copy_Char_Multi_Byte;
+
+   function Copy_Char
+     (Length : Interfaces.C.int; Output : System.Address; Code : Interfaces.C.int)
+      return Interfaces.C.int
+   is
+      pragma Unreferenced (Length);
+   begin
+      return Copy_Char_Multi_Byte (Output, Code);
+   end Copy_Char;
+
    function Char_In_Range
      (Code : Interfaces.C.unsigned; Group : System.Address) return Interfaces.C.int is
      (Boolean'Pos (XML3_Text.Buffers.Character_In_Range (Code, Group)));

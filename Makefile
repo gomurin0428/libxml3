@@ -348,6 +348,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test qname-equal 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test character-classes 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test character-range 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test utf8-write 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test xhtml-identifiers 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test replace-node 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test node-line-number 0
@@ -398,7 +399,7 @@ compare-system: build tests/differential-libxml3 tests/differential-system
 	diff -u tests/differential-system.out tests/differential-libxml3.out
 
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection test-text-buffers
-	@for symbol in xmlCharInRange xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
+	@for symbol in xmlCopyChar xmlCopyCharMultiByte xmlCharInRange xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \
 		xmlReadDoc xmlParseDoc xmlDocGetRootElement xmlFreeDoc xmlNodeGetContent xmlNodeListGetRawString xmlNodeListGetString xmlGetNodePath xmlGetLineNo xmlStringGetNodeList xmlStringLenGetNodeList \
 		xmlNewDoc xmlDocDumpMemoryEnc xmlNewNode xmlNewText xmlNewTextLen xmlNewDocText xmlNewDocTextLen xmlNewComment xmlNewPI xmlNewDocComment xmlNewDocPI xmlNewCDataBlock xmlNewDocProp xmlDocSetRootElement xmlAddChild xmlAddSibling xmlAddPrevSibling xmlAddNextSibling xmlUnlinkNode xmlFreeNode xmlFreeNodeList \
 		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetName xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlIsXHTML xmlIsChar xmlIsBlank xmlIsBaseChar xmlIsCombining xmlIsDigit xmlIsExtender xmlIsIdeographic xmlIsPubidChar xmlReplaceNode xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \

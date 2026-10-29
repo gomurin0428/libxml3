@@ -10,6 +10,7 @@
 #include <libxml/tree.h>
 #include <libxml/entities.h>
 #include <libxml/parser.h>
+#include <libxml/parserInternals.h>
 #include <libxml/xmlerror.h>
 
 #ifdef __cplusplus

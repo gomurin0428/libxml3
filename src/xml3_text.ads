@@ -4,6 +4,18 @@ package XML3_Text with SPARK_Mode is
    type Text_Error_Kind is (No_Text_Error, Invalid_UTF8, Invalid_XML_Character);
    type Name_Kind is (XML_Name, NCName, QName, NMToken);
 
+   function UTF8_Width (Code : Natural) return Positive is
+     (if Code < 16#80# then 1 elsif Code < 16#800# then 2
+      elsif Code < 16#10000# then 3 else 4)
+     with Global => null, Pre => Code <= 16#10FFFF#,
+       Post => UTF8_Width'Result in 1 .. 4;
+
+   function UTF8_Image (Code : Natural) return String
+     with Global => null,
+       Pre => Code <= 16#10FFFF# and then Code not in 16#D800# .. 16#DFFF#,
+       Post => UTF8_Image'Result'First = 1
+         and then UTF8_Image'Result'Length = UTF8_Width (Code);
+
    function Valid_Name
      (Input : String; Kind : Name_Kind; Allow_Space : Boolean) return Boolean
      with Global => null,

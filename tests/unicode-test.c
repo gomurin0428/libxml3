@@ -7,6 +7,7 @@
 #endif
 #include <libxml/entities.h>
 #include <libxml/chvalid.h>
+#include <libxml/parserInternals.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,6 +48,116 @@ static int expected_in_character_ranges(unsigned int code,
     }
     return 0;
 }
+
+#ifdef XML3_REFERENCE_VERSION
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+static int copy_char_compat(xmlChar *out, int code) {
+    return xmlCopyChar(-1, out, code);
+}
+
+typedef int (*utf8_writer_fn)(xmlChar *, int);
+static const utf8_writer_fn utf8_writers[] = {xmlCopyCharMultiByte, copy_char_compat};
+
+static void test_utf8_writing(void) {
+    for (size_t writer = 0; writer < 2; ++writer) {
+        for (int code = 0; code <= 0x10ffff; ++code) {
+            xmlChar bytes[6];
+            memset(bytes, 0xa5, sizeof(bytes));
+            if (code >= 0xd800 && code <= 0xdfff) {
+#ifndef XML3_REFERENCE_VERSION
+                assert(utf8_writers[writer](bytes + 1, code) == 0);
+                for (size_t i = 0; i < sizeof(bytes); ++i)
+                    assert(bytes[i] == 0xa5);
+#endif
+                continue;
+            }
+            int expected = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+            int count = utf8_writers[writer](bytes + 1, code);
+            assert(count == expected);
+            assert(bytes[0] == 0xa5);
+            for (size_t i = (size_t)count + 1; i < sizeof(bytes); ++i)
+                assert(bytes[i] == 0xa5);
+            int available = count;
+            assert(xmlGetUTF8Char(bytes + 1, &available) == code);
+            assert(available == count);
+        }
+        const int invalid[] = {INT_MIN, -1, 0x110000, INT_MAX};
+        for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+            xmlChar bytes[4] = {0xa5, 0xa5, 0xa5, 0xa5};
+            assert(utf8_writers[writer](bytes, invalid[i]) == 0);
+            for (size_t j = 0; j < sizeof(bytes); ++j)
+                assert(bytes[j] == 0xa5);
+        }
+        assert(utf8_writers[writer](NULL, 0x1f642) == 0);
+#if defined(__unix__)
+        long page_size = sysconf(_SC_PAGESIZE);
+        assert(page_size > 0);
+        size_t page = (size_t)page_size;
+        xmlChar *mapping = mmap(NULL, page * 2, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        assert(mapping != MAP_FAILED);
+        xmlChar *guard = mapping + page;
+        assert(mprotect(guard, page, PROT_NONE) == 0);
+        const int edges[] = {0, 0x7f, 0x80, 0x7ff, 0x800, 0xd7ff,
+                             0xe000, 0xffff, 0x10000, 0x10ffff};
+        for (size_t i = 0; i < sizeof(edges) / sizeof(edges[0]); ++i) {
+            int code = edges[i];
+            int width = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+            guard[-width - 1] = 0xa5;
+            assert(utf8_writers[writer](guard - width, code) == width);
+            assert(guard[-width - 1] == 0xa5);
+        }
+        for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
+            assert(utf8_writers[writer](guard, invalid[i]) == 0);
+#ifndef XML3_REFERENCE_VERSION
+        assert(utf8_writers[writer](guard, 0xd800) == 0);
+        assert(utf8_writers[writer](guard, 0xdfff) == 0);
+#endif
+        assert(munmap(mapping, page * 2) == 0);
+#endif
+        xmlChar source[64] = "<r>";
+        int length = 3;
+        const int content[] = {0x03a9, 0x9854, 0x1f642};
+        for (size_t i = 0; i < sizeof(content) / sizeof(content[0]); ++i) {
+            int written = utf8_writers[writer](source + length, content[i]);
+            assert(written > 0);
+            length += written;
+        }
+        memcpy(source + length, "</r>", 5);
+        xmlDocPtr doc = xmlReadMemory((const char *)source, length + 4, NULL, NULL, 0);
+        assert(doc);
+        xmlChar *value = xmlNodeGetContent(xmlDocGetRootElement(doc));
+        assert(value);
+        xmlFreeDoc(doc);
+        memset(source, 0, sizeof(source));
+        assert(strcmp((const char *)value, "\xce\xa9\xe9\xa1\x94\xf0\x9f\x99\x82") == 0);
+        assert(xmlUTF8Strlen(value) == 3);
+        xmlFree(value);
+    }
+    const int ignored_lengths[] = {INT_MIN, -1, 0, 1, 4, INT_MAX};
+    for (size_t i = 0; i < sizeof(ignored_lengths) / sizeof(ignored_lengths[0]); ++i) {
+        xmlChar bytes[5] = {0xa5, 0xa5, 0xa5, 0xa5, 0xa5};
+        assert(xmlCopyChar(ignored_lengths[i], bytes, 0x1f642) == 4);
+        assert(memcmp(bytes, "\xf0\x9f\x99\x82", 4) == 0);
+        assert(bytes[4] == 0xa5);
+    }
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky);
+    for (size_t writer = 0; writer < 2; ++writer) {
+        xmlChar bytes[4];
+        assert(utf8_writers[writer](bytes, 'x') == 1);
+        assert(utf8_writers[writer](bytes, -1) == 0);
+        assert(utf8_writers[writer](NULL, 'x') == 0);
+        assert(xmlGetLastError() == sticky);
+    }
+    xmlResetLastError();
+}
+#ifdef XML3_REFERENCE_VERSION
+#pragma GCC diagnostic pop
+#endif
 
 static void test_character_range_groups(void) {
     static const xmlChSRange short_ranges[] = {
@@ -1892,6 +2003,7 @@ static void test_xhtml_identifiers(void) {
 }
 
 int main(void) {
+    test_utf8_writing();
     test_character_range_groups();
     test_xhtml_identifiers();
     test_character_classes();

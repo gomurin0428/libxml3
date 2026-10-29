@@ -2039,6 +2039,21 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "utf8-write") == 0) {
+        xmlChar output[5] = {0xa5, 0xa5, 0xa5, 0xa5, 0xa5};
+        xml3_oom_enable(0);
+        assert(xmlCopyCharMultiByte(output, 0x1f642) == 4);
+        assert(memcmp(output, "\xf0\x9f\x99\x82", 4) == 0 && output[4] == 0xa5);
+        assert(xmlCopyChar(0, output, 0x3a9) == 2);
+        assert(output[0] == 0xce && output[1] == 0xa9 && output[2] == 0x99);
+        assert(xmlCopyCharMultiByte(output, 0xd800) == 0);
+        assert(xmlCopyChar(4, output, -1) == 0);
+        assert(xmlCopyCharMultiByte(NULL, 'x') == 0);
+        assert(output[0] == 0xce && output[1] == 0xa9 && output[2] == 0x99);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "character-range") == 0) {
         const xmlChSRange short_ranges[] = {{65, 90}};
         const xmlChLRange long_ranges[] = {{0x10000, 0x10ffff}};
@@ -2230,6 +2245,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "character-range") == 0) {
         puts("character range lookup used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "utf8-write") == 0) {
+        puts("UTF-8 character writing used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {
