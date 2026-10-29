@@ -10,6 +10,12 @@ package XML3_Serialization with SPARK_Mode is
 
    Max_Output_Bytes : constant := Integer'Last - 1;
 
+   subtype UTF8_Name is String (1 .. 5);
+
+   procedure Read_UTF8_Name
+     (Input : System.Address; Name : out UTF8_Name; Valid : out Boolean)
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory);
+
    procedure Render
      (Tree : XML3_DOM.State; Document : XML3_DOM.Node_Ref;
       Encoding : String; Result : out System.Address;

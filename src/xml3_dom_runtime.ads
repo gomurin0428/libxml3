@@ -280,10 +280,10 @@ is
                         In_Out => XML3_Native_Memory.Foreign_Memory);
 
       procedure Dump_Memory_Encoding
-        (Document : System.Address; Encoding : String;
+        (Document, Encoding : System.Address;
          Result : out System.Address; Length : out Natural;
          Status : out XML3_DOM_Store.Operation_Status;
-         Default_Encoding, Formatted : Boolean := False)
+         Formatted : Boolean := False)
         with Global =>
           (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
 

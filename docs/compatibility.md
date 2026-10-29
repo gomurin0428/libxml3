@@ -503,7 +503,11 @@ logical topology、owner/reservation accounting、namespace retention と mutati
 policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び出し、ABI/string
 変換、status 変換に限定されます。attribute/namespace copy と cross-document move は
 未対応です。`xmlDocDumpMemoryEnc` は明示 UTF-8 とNULL encodingで XML 1.0 をメモリ出力し、
-明示指定では宣言に指定 encoding 表記を保持します。`xmlDocDumpMemory` とNULL encodingは
+明示指定では宣言に指定 encoding 表記を保持します。文書は登録済みのlive facadeと照合してから
+encodingを読み、不正文書・kind違いではencodingに触れません。SPARKの `Read_UTF8_Name` が
+最大6byte（終端を含む）でUTF-8名を確認し、最初の不一致で停止します。C文字列の中間コピーはなく、
+5文字の表記だけを固定長フィールドへ保持します。空文字列と余分なsuffixは拒否し、NULLだけが既定指定です。
+この経路は整形出力を含む4つのメモリ出力APIで共用します。`xmlDocDumpMemory` とNULL encodingは
 encoding宣言を省き、text・属性・namespace URIの非ASCII scalarを大文字16進の文字参照にします。
 名前・comment・PI・CDATAはUTF-8のまま保持するため、出力全体がASCIIになる保証はありません。
 空のencoding名はNULLとは区別して拒否します。source encoding/standalone metadata は保持されず、

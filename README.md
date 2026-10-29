@@ -536,6 +536,8 @@ native pointer/readability、allocation/byte write、ABI/status mappingはtruste
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力とNULL encodingをサポートし、encoding名のASCII大小文字を区別せず、
+文書の登録確認後にSPARKで最大6byte（終端を含む）だけを読みます。
+不正文書ではencodingを読まず、不正な名前は最初の不一致で拒否し、中間C文字列コピーは作りません。
 明示指定では宣言に指定表記を保持します。`xmlDocDumpMemory` とNULL encodingでは
 encoding宣言を省き、text・属性・namespace URIの非ASCII文字を大文字16進の文字参照にします。
 名前・comment・PI・CDATAのUTF-8は保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・

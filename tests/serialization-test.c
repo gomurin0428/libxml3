@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
@@ -5,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #if !defined(XML3_DEVELOPMENT_TEST) && !defined(XML3_NO_OOM_TEST)
 extern void xml3_oom_enable(long index);
@@ -401,6 +404,72 @@ static void test_document_misc_lifetime(void) {
 #ifndef XML3_REFERENCE_TEST
 static unsigned int rejected_case;
 
+static void test_encoding_boundaries(void) {
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 16);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    xmlDocPtr doc = xmlReadMemory("<r/>", 4, NULL, NULL, 0);
+    assert(doc);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root);
+    const xmlDocPtr invalid_docs[] = {NULL, (xmlDocPtr)1,
+        (xmlDocPtr)(mapping + page), (xmlDocPtr)root};
+    static const char bad[][7] = {"X", "", "U", "UT", "UTF", "UTF-", "UTF-8X", "\xff"};
+    static const size_t lengths[] = {1, 1, 2, 3, 4, 5, 6, 1};
+    for (int format = 0; format <= 1; ++format) {
+        xmlChar *memory;
+        int size;
+        for (size_t i = 0; i < sizeof(lengths) / sizeof(*lengths); ++i) {
+            char *encoding = mapping + page - lengths[i];
+            memcpy(encoding, bad[i], lengths[i]);
+            memory = (xmlChar *)1;
+            size = 77;
+            xmlResetLastError();
+            if (format)
+                xmlDocDumpFormatMemoryEnc(doc, &memory, &size, encoding, format);
+            else
+                xmlDocDumpMemoryEnc(doc, &memory, &size, encoding);
+            assert(memory == NULL && size == 0);
+            assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        }
+        for (size_t i = 0; i < sizeof(invalid_docs) / sizeof(*invalid_docs); ++i) {
+            memory = (xmlChar *)1;
+            size = 77;
+            xmlResetLastError();
+            xmlDocDumpFormatMemoryEnc(invalid_docs[i], &memory, &size,
+                                      mapping + page, format);
+            assert(memory == NULL && size == 0);
+            assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        }
+        size = 77;
+        xmlResetLastError();
+        xmlDocDumpFormatMemoryEnc(doc, NULL, &size, mapping + page, format);
+        assert(size == 0);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        for (unsigned int mask = 0; mask < 8; ++mask) {
+            char name[] = "UTF-8", declaration[32];
+            for (unsigned int i = 0; i < 3; ++i)
+                if (mask & (1u << i)) name[i] += 'a' - 'A';
+            char *encoding = mapping + page - sizeof(name);
+            memcpy(encoding, name, sizeof(name));
+            snprintf(declaration, sizeof(declaration), "encoding=\"%s\"", name);
+            xmlResetLastError();
+            xmlDocDumpFormatMemoryEnc(doc, &memory, &size, encoding, format);
+            assert(memory && size > 0 && memory[size] == 0);
+            assert(strstr((const char *)memory, declaration));
+            assert(memcmp(encoding, name, sizeof(name)) == 0);
+            assert(xmlGetLastError() == NULL);
+            xmlFree(memory);
+        }
+        assert(xmlDocGetRootElement(doc) == root);
+    }
+    xmlFreeDoc(doc);
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void expect_rejected(xmlDocPtr doc, const char *encoding) {
     xmlChar *memory = (xmlChar *)1;
     int size = 77;
@@ -457,7 +526,10 @@ static void test_round_trip(void) {
                         BAD_CAST "x&\"y\t\n") != NULL);
     assert(xmlAddChild(root, xmlNewText(BAD_CAST "追加&<>\r")) != NULL);
 
-    xmlDocDumpMemoryEnc(doc, &memory, &size, "uTf-8");
+    xmlChar *encoding = xmlStrdup(BAD_CAST "uTf-8");
+    assert(encoding);
+    xmlDocDumpMemoryEnc(doc, &memory, &size, (const char *)encoding);
+    xmlFree(encoding);
     assert(memory != NULL && size > 0 && memory[size] == 0);
     assert(strstr((const char *)memory, "encoding=\"uTf-8\"") != NULL);
     assert(strstr((const char *)memory, "<名") != NULL);
@@ -961,6 +1033,7 @@ int main(int argc, char **argv) {
     }
     test_shared_lexical_cases();
     test_round_trip();
+    test_encoding_boundaries();
     test_cdata_construction();
     test_constructed_comments_and_pi(0);
     test_constructed_comments_and_pi(1);

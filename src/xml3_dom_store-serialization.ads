@@ -4,10 +4,10 @@ with XML3_Native_Memory;
 
 package XML3_DOM_Store.Serialization with SPARK_Mode is
    procedure Dump
-     (S : Store; Document : System.Address; Encoding : String;
+     (S : Store; Document, Encoding : System.Address;
       Result : out System.Address; Length : out Natural;
       Status : out Operation_Status;
-      Default_Encoding, Formatted : Boolean := False)
+      Formatted : Boolean := False)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => Length <= Integer'Last - 1
