@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,537 checks, 1,226 by flow analysis and 11,311
+It completed successfully: **12,557 checks, 1,235 by flow analysis and 11,322
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -63,6 +63,19 @@ unused as in pinned libxml2 2.15.4; malformed UTF-8/XML is rejected rather than
 silently repaired or preserved, and no DTD/entity expansion is provided. The
 helper emits one analyzer warning because `Validate_UTF8`'s `Error` output is
 unused; no proof check remains unproved.
+`xmlEncodeEntitiesReentrant` shares `Registered_Document`, `Encoding_Status`,
+and `Escape_Special` with the entity-list query. It escapes `<`, `>`, and `&`
+with named references, CR as `&#13;`, and valid non-ASCII as uppercase
+hexadecimal references; quotes, TAB, and LF remain literal. NULL input is
+returned before document validation, while non-NULL input permits only NULL
+or a registered document. The proof covers the shared bounded validation,
+escaping, and status/result contracts, not C-string conversion, native
+pointer/byte access, allocation/copy/free, ABI, or complete C semantics. Its
+behavior intentionally rejects invalid UTF-8/XML rather than repairing or
+preserving it; document encoding is not retained, so explicit UTF-8 documents
+can differ from reference output. General-entity expansion and HTML behavior
+are unsupported. Public C integration and OOM retry are exercised by
+`tests/unicode-test.c` and `tests/oom-test.c`.
 `xmlStrQEqual` uses `XML3_Text.QNames.Compare` for raw-byte prefix/name/value
 comparison. The proof covers status initialization, NULL-prefix pointer
 identity, scalar loop bounds, and the status postcondition relating equality
@@ -448,7 +461,7 @@ contract, not full byte-order or Unicode equivalence. The QName proof includes
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 453 entity
+The 457 entity
 summaries report 0 flow errors, 152 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 
@@ -477,13 +490,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 318 |
-| Initialization | 748 |
-| Runtime checks | 5,453 |
+| Data dependencies | 321 |
+| Initialization | 752 |
+| Runtime checks | 5,458 |
 | Assertions | 1,644 |
-| Functional contracts | 4,153 |
-| Termination | 221 |
-| **Total** | **12,537** |
+| Functional contracts | 4,159 |
+| Termination | 223 |
+| **Total** | **12,557** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -992,10 +1005,10 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-699cde20cff7995d6de5c6d978c3905f6a87ad48b1772d6adb9f3426cb98f6aa  src/xml3_c.adb
-85383caa7bd1cf17f249a13b61dd3c75189524f628be2a9e6cdb372314bab1a5  src/xml3_c.ads
+21167bba5d8f5f2ce5f11e28d6392fc2f4277e927c698ee0720f067b7f854b7d  src/xml3_c.adb
+a833cdc819f891f9912e7e8e928bd162af754d32764b5357a4e6b344f799aa66  src/xml3_c.ads
 e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml3.h
-52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
+580fa6bc23823923995846df5a3ba1b4272049938e1f4e266e9e13d5353085cc  include/libxml/entities.h
 386ab8e57be684a44d9cb5b31c45317bda8e887196525db4fb3bcfaf01b2af51  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 2dbffb91c95220f1dc7d7aa6e158888bc6e65c8fd7bc165e7bf154375a1b84f5  src/xml3_dom-materialize.adb
@@ -1011,16 +1024,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-63773ed9f5d139f4a223bfb2768e57bfa9718c5dadad2b8004c657d7fd5e1973  src/xml3_dom_runtime.adb
-4feb6b794582887eba91d2f3e965ccc898d3ef079caecb070b2d9013ccdd5b77  src/xml3_dom_runtime.ads
+f8e950d7e681d27c5d4928c572f17250cc5eeafeb4f5635772c040a973607911  src/xml3_dom_runtime.adb
+4d65b515bb2941bdacff159ffefe40fdbe6cf08d3d2f7ad0277cda71e64b4eee  src/xml3_dom_runtime.ads
 8f0ec7c10b1a7e8cc713cce07d2a679bb8435b8762409a65ae762cd33abb1da2  src/xml3_dom_store-content.adb
 d435b0b71a5c32c26e14e816fd0e1286a52c190dcbdcdabac9106edc352723fe  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 6e08b02a697ce359a874fd8af497e7f6b644ece1e4ab418e5c5acc433d01e017  src/xml3_dom_store-properties.adb
 75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
-cf647372b45255c8d30bd3d9b7d845b124acf8f2086afb8e66a9972a2e3bbca1  src/xml3_dom_store-queries.adb
-d4f29bd5372b8583046d130db89a64ccd86b1451eab99fb2a5219ab77c45c731  src/xml3_dom_store-queries.ads
+6b11dd3279e1e14183800e99484a910aae073ddf83be77d8a49bf4b3ccdd7b46  src/xml3_dom_store-queries.adb
+dabb7ba106b5cb0c78e5aef2733d554ca9a1ce475de29d46e18723a3902c1e9f  src/xml3_dom_store-queries.ads
 0194f28295ef180319be47e41543e9c3681f08b07c3ac8fd1c170e48dcac5b44  src/xml3_dom_store-serialization.adb
 0c8176598e481db72ee97ad0a2b073221186559c9e9634d631ff9f3fa46890d2  src/xml3_dom_store-serialization.ads
 5a3c45a728e39776affbdacfd6ce7832626641eb85546b2d3d79387459d683b7  src/xml3_dom_store.adb
@@ -1048,7 +1061,7 @@ aa7f81fbd63fba270c786449a0cc8bf5c6f8f18c4f975f7dff06131ace554b88  src/xml3_seria
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-cf8c869b560a5dc5b333f387a0526a19af224d8b6753eb7f2e1b016a8ceb8402  Makefile
+b2d5a8e12d76be032607698dc861770a6b841bc3ad65d5ad031bef2b7ed48866  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

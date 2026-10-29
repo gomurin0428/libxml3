@@ -1656,13 +1656,24 @@ int main(int argc, char **argv) {
         assert(strcmp((const char *)ns->href, "urn:retired") == 0);
         xmlFreeNode(borrower);
     } else if (strcmp(operation, "escape-special") == 0 ||
-               strcmp(operation, "escape-special-empty") == 0) {
-        int empty = strcmp(operation, "escape-special-empty") == 0;
+               strcmp(operation, "escape-special-empty") == 0 ||
+               strcmp(operation, "escape-entities") == 0 ||
+               strcmp(operation, "escape-entities-empty") == 0) {
+        int entities = strcmp(operation, "escape-entities") == 0 ||
+            strcmp(operation, "escape-entities-empty") == 0;
+        int empty = strcmp(operation, "escape-special-empty") == 0 ||
+            strcmp(operation, "escape-entities-empty") == 0;
         xmlChar input[] = "<&>\"\r名";
         const xmlChar *source = empty ? BAD_CAST "" : input;
-        const char *expected = empty ? "" : "&lt;&amp;&gt;&quot;&#13;名";
+        const char *expected = empty ? "" : entities
+            ? "&lt;&amp;&gt;\"&#13;&#x540D;" : "&lt;&amp;&gt;&quot;&#13;名";
+        if (entities) {
+            doc = xmlNewDoc(NULL);
+            assert(doc && xmlDocGetRootElement(doc) == NULL);
+        }
         xml3_oom_enable(fail_index);
-        xmlChar *escaped = xmlEncodeSpecialChars(NULL, source);
+        xmlChar *escaped = entities ? xmlEncodeEntitiesReentrant(doc, source)
+            : xmlEncodeSpecialChars(NULL, source);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -1670,9 +1681,11 @@ int main(int argc, char **argv) {
         if (injected) {
             assert(escaped == NULL);
             require_oom_error();
-            escaped = xmlEncodeSpecialChars(NULL, source);
+            escaped = entities ? xmlEncodeEntitiesReentrant(doc, source)
+                : xmlEncodeSpecialChars(NULL, source);
         }
         assert(escaped && strcmp((const char *)escaped, expected) == 0);
+        if (entities) assert(xmlDocGetRootElement(doc) == NULL);
         xmlFree(escaped);
     } else if (strcmp(operation, "serialization-formatted") == 0 ||
                strcmp(operation, "serialization-formatted-utf8") == 0) {

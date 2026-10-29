@@ -21,14 +21,26 @@ static const bounded_compare_fn bounded_comparisons[] = {xmlStrncmp, xmlStrncase
 typedef const xmlChar *(*substring_fn)(const xmlChar *, const xmlChar *);
 static const substring_fn substring_searches[] = {xmlStrstr, xmlStrcasestr};
 
-static void test_special_escaping(void) {
+static xmlChar *encode_chars(xmlDocPtr doc, const xmlChar *input, int entities) {
+    return entities ? xmlEncodeEntitiesReentrant(doc, input)
+                    : xmlEncodeSpecialChars(doc, input);
+}
+
+static void test_escaping(int entities) {
     static const char input[] = "<&>\"'\r\n\t名😀&amp;";
-    static const char expected[] = "&lt;&amp;&gt;&quot;'&#13;\n\t名😀&amp;amp;";
+    const char *expected = entities
+        ? "&lt;&amp;&gt;\"'&#13;\n\t&#x540D;&#x1F600;&amp;amp;"
+        : "&lt;&amp;&gt;&quot;'&#13;\n\t名😀&amp;amp;";
     xmlResetLastError();
-    assert(xmlEncodeSpecialChars(NULL, NULL) == NULL);
+    assert(encode_chars(NULL, NULL, entities) == NULL);
     assert(xmlGetLastError() == NULL);
+    xmlChar *escaped = encode_chars(NULL, BAD_CAST "", entities);
+    assert(escaped && escaped[0] == 0);
+    xmlFree(escaped);
     xmlDoc unused = {0};
-    xmlChar *escaped = xmlEncodeSpecialChars(&unused, BAD_CAST "");
+    xmlDocPtr context = entities ? xmlNewDoc(NULL) : &unused;
+    assert(context);
+    escaped = encode_chars(context, BAD_CAST "", entities);
     assert(escaped && escaped[0] == 0);
     xmlFree(escaped);
     for (int byte = 1; byte < 128; ++byte) {
@@ -36,18 +48,19 @@ static void test_special_escaping(void) {
             continue;
         xmlChar one[] = {(xmlChar)byte, 0};
         const char *replacement = byte == '<' ? "&lt;" : byte == '>' ? "&gt;"
-            : byte == '&' ? "&amp;" : byte == '"' ? "&quot;"
+            : byte == '&' ? "&amp;" : byte == '"' && !entities ? "&quot;"
             : byte == '\r' ? "&#13;" : (const char *)one;
-        escaped = xmlEncodeSpecialChars(NULL, one);
+        escaped = encode_chars(NULL, one, entities);
         assert(escaped && strcmp((const char *)escaped, replacement) == 0);
         xmlFree(escaped);
     }
     xmlChar *source = xmlStrdup(BAD_CAST input);
     assert(source);
-    escaped = xmlEncodeSpecialChars(&unused, source);
+    escaped = encode_chars(context, source, entities);
     assert(escaped && escaped != source);
     assert(strcmp((const char *)escaped, expected) == 0);
     assert(strcmp((const char *)source, input) == 0);
+    if (entities) xmlFreeDoc(context);
     xmlFree(source);
     xmlDocPtr doc = xmlNewDoc(NULL);
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
@@ -72,11 +85,39 @@ static void test_special_escaping(void) {
                              "\xef\xbf\xbe", "\xf4\x90\x80\x80"};
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
         xmlResetLastError();
-        assert(xmlEncodeSpecialChars(NULL, BAD_CAST invalid[i]) == NULL);
+        assert(encode_chars(NULL, BAD_CAST invalid[i], entities) == NULL);
         assert(xmlGetLastError() != NULL);
     }
     xmlResetLastError();
+    if (entities) {
+        assert(xmlEncodeEntitiesReentrant((xmlDocPtr)1, NULL) == NULL);
+        assert(xmlGetLastError() == NULL);
+        assert(xmlEncodeEntitiesReentrant((xmlDocPtr)1, BAD_CAST "") == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(root);
+        assert(xmlEncodeEntitiesReentrant((xmlDocPtr)root, BAD_CAST "x") == NULL);
+        xmlFreeNode(root);
+        escaped = xmlEncodeEntitiesReentrant(NULL, BAD_CAST "ok");
+        assert(escaped && strcmp((const char *)escaped, "ok") == 0);
+        xmlFree(escaped);
+        xmlResetLastError();
+    }
 #endif
+    if (entities) {
+        const char *encoded = "<?xml version='1.0' encoding='UTF-8'?><r/>";
+        doc = xmlReadMemory(encoded, (int)strlen(encoded), NULL, NULL, 0);
+        assert(doc);
+        escaped = xmlEncodeEntitiesReentrant(doc, BAD_CAST "名");
+        assert(escaped);
+#ifdef XML3_REFERENCE_VERSION
+        assert(strcmp((const char *)escaped, "名") == 0);
+#else
+        assert(strcmp((const char *)escaped, "&#x540D;") == 0);
+#endif
+        xmlFreeDoc(doc);
+        xmlFree(escaped);
+    }
 #if defined(__unix__)
     long page = sysconf(_SC_PAGESIZE);
     assert(page > 0);
@@ -86,7 +127,7 @@ static void test_special_escaping(void) {
     assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
     mapping[page - 2] = '&';
     mapping[page - 1] = 0;
-    escaped = xmlEncodeSpecialChars(NULL, BAD_CAST (mapping + page - 2));
+    escaped = encode_chars(NULL, BAD_CAST (mapping + page - 2), entities);
     assert(escaped && strcmp((const char *)escaped, "&amp;") == 0);
     xmlFree(escaped);
     assert(munmap(mapping, (size_t)page * 2) == 0);
@@ -1553,7 +1594,8 @@ static void test_ranges(void) {
 }
 
 int main(void) {
-    test_special_escaping();
+    test_escaping(0);
+    test_escaping(1);
     test_string_duplicates();
     test_byte_search();
     test_string_slice();

@@ -409,6 +409,11 @@ package XML3_C is
      (Document, Input : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlEncodeSpecialChars";
 
+   function Encode_Entities_Reentrant
+     (Document, Input : System.Address) return System.Address
+     with Export, Convention => C,
+          External_Name => "xmlEncodeEntitiesReentrant";
+
    function Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrdup";
 

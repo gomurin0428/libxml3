@@ -14,6 +14,8 @@ int main() {
     (void)dump_memory;
     xmlChar *(*encode_special)(const xmlDoc *, const xmlChar *) = xmlEncodeSpecialChars;
     (void)encode_special;
+    xmlChar *(*encode_entities)(xmlDoc *, const xmlChar *) = xmlEncodeEntitiesReentrant;
+    (void)encode_entities;
     xmlChar *(*get_node_path)(const xmlNode *) = xmlGetNodePath;
     (void)get_node_path;
     void (*set_node_name)(xmlNode *, const xmlChar *) = xmlNodeSetName;

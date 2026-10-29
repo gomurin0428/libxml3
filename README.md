@@ -370,6 +370,13 @@ element に `xml:lang` / `xml:space` を設定し、NULL language は空値、sp
 二重引用符・CRをエスケープし、`xmlFree` で解放する独立した文字列を返します。
 NULL入力はNULL、空入力は空のコピーです。文書引数は参照しません。不正な文字を
 黙って置換・保持せず診断付きで拒否し、DTD・一般実体の処理は追加しません。
+`xmlEncodeEntitiesReentrant` は NULL input なら文書を検証せず診断なしで NULL を返し、
+non-NULL input では `doc == NULL` または登録済み文書のみを受け付け、空 input は独立した空文字列になります。
+`<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、
+quote・TAB・LF は保持します。document encoding は保持しないため、明示 UTF-8 文書でも非ASCIIを参照化します。
+不正UTF-8/XMLは診断付きで拒否し、既存参照や一般実体の展開・HTML処理はしません。
+出力は独立した `xmlFree` 所有で DOM は変更せず、allocation failure は NULL を返します。
+native pointer/byte reads, allocation/copy/free, ABI と完全な C semantics は信頼境界に残ります。
 `xmlGetNodePath` は管理中の node の構造的な経路を独立した `xmlFree` 所有文字列で返します。
 文書は `/`、要素は `/name`、属性は `/@name`、値の text は `/@name/text()`、
 text/CDATA は `/text()`、comment は `/comment()`、PI は

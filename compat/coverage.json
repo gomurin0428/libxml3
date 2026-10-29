@@ -5,6 +5,12 @@
     "tests": ["tests/unicode-test.c", "tests/text_buffers_test.adb", "tests/oom-test.c"],
     "proof": "not-proved"
   },
+  "function:entities.h:xmlEncodeEntitiesReentrant": {
+    "implementation": "partial",
+    "scope": "SPARK-backed bounded XML escaping through the shared Escape_Special helper. NULL input returns NULL before document validation; otherwise doc must be NULL or a registered Document_Node. Empty input returns an independently allocated empty string. Less-than, greater-than and ampersand use named references; CR becomes &#13;; valid non-ASCII uses uppercase hexadecimal character references; quotes, TAB and LF remain literal. The subset does not retain document encoding, so explicit UTF-8 documents can differ from reference output. Invalid UTF-8/XML is rejected rather than repaired or preserved. Existing/general entity expansion and HTML behavior are unsupported. Output is independent and allocation failure returns NULL without DOM mutation. Native pointer/readability, byte access, allocation/copy/free, ABI and complete public semantics remain trusted.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/text_buffers_test.adb", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
   "function:parser.h:xmlInitParser": {
     "implementation": "partial",
     "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
