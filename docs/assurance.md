@@ -21,7 +21,7 @@ path, not a full URI or filesystem path: no percent/UTF-8 decoding, query or
 fragment parsing, backslash conversion, symlink handling or sandbox guarantee.
 Native readable/writable extents, stable input, byte values/effects, C ABI and
 complete normalization semantics remain trusted, not formally proved.
-GNATprove discharges 31 checks for `Normalize_URI_Path`, covering bounded
+GNATprove discharges 32 checks for `Normalize_URI_Path`, covering bounded
 measurement, segment/output arithmetic, in-place copy preconditions, loop
 termination and the status contract—not normalized byte equivalence or native
 memory effects.
@@ -960,7 +960,7 @@ deliberate safe subset: unlike
 the pinned reference's zero for lengths above `INT_MAX`, an over-cap scan is
 diagnosed and must not be treated as an empty string. Tests exercise the
 helper with reduced `Last` values instead of constructing an enormous public
-C string. SPARK proves `Read_Length` (2 checks) and `Measure` (2 checks),
+C string. SPARK proves `Read_Length` (4 checks) and `Measure` (2 checks),
 including scan bounds, result/status contracts, and the native read
 precondition; actual bytes, foreign pointer validity/readable bounds,
 C-side mapping/exception behavior, and full semantics remain trusted. No
@@ -1220,7 +1220,7 @@ pointer that aliases it, including a raw suffix after an embedded NUL. This is
 an intentional safety difference from the reference's realloc path; always
 copying can increase peak memory and copy work. SPARK proves bounded length and
 size arithmetic, native-call preconditions, and the status/result contract
-(`Read_Length`: 2 checks, `Build_Append`: 14, `Append`: 1). Native allocation
+(`Read_Length`: 4 checks, `Build_Append`: 14, `Append`: 1). Native allocation
 freshness, actual reads/writes/free, pointer validity, correct caller
 ownership, C diagnostics/mapping, and complete API semantics remain trusted.
 Shared ordinary/null/empty/raw-span/negative/parse and guard-page cases run

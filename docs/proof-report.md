@@ -94,7 +94,7 @@ pointer validity/extent/stability, C ABI, or complete URI semantics. Tests
 compare all nonzero byte values with the fixed reference and cover arbitrary
 non-UTF-8 bytes, aliasing, guarded early stops, limits and OOM retry.
 `xmlNormalizeURIPath` delegates to `XML3_Text.Buffers.Normalize_URI_Path`.
-The helper proves 31 checks for bounded measurement before mutation, segment
+The helper proves 32 checks for bounded measurement before mutation, segment
 and output-position arithmetic, in-place copy preconditions, loop termination,
 and the status contract. These checks do not prove normalized byte values,
 native byte effects, pointer validity or writable extents, C ABI, or complete
@@ -102,7 +102,7 @@ path semantics. Tests cover reference behavior, deliberate upstream
 root-detection differences, idempotence, byte values, guarded termini,
 read-only empty input, and the allocation-free path.
 `xmlURIUnescapeString` delegates to `XML3_Text.Buffers.Unescape_URI`.
-`URI_Hex` proves 1 check and `Unescape_URI` 18, covering the hex-result range,
+`URI_Hex` proves 1 check and `Unescape_URI` 19, covering the hex-result range,
 bounded input-span traversal, native-call preconditions and status/result/
 target contracts. They do not prove decoded byte values, target capacity,
 native reads/writes, scratch allocation/copy/free, pointer validity or full
@@ -263,7 +263,7 @@ adapter records DOM error 115 and returns -1, not a reliable empty-string
 result. Unexpected C-side exceptions map to DOM error 1 and -1. This bounded
 subset uses `Max_Bytes` (`Integer'Last - 16`) and intentionally differs from the pinned reference's zero for lengths
 above `INT_MAX`. A reduced `Last` tests this path without constructing a huge
-public C string. SPARK proves `Read_Length` (2 checks) and `Measure` (2
+public C string. SPARK proves `Read_Length` (4 checks) and `Measure` (2
 checks), including scan bounds, result/status contracts, and native-call
 preconditions. Actual native reads/bytes, pointer validity and readable
 bounds, C diagnostics/mapping, exception behavior, and complete semantics
@@ -517,7 +517,7 @@ remaining `Max_Bytes`; a NUL at the boundary is accepted, while an unresolved
 scan reports DOM error 115. `xmlStrncat` rejects lengths above the cap before
 reading either source. Cap failures return diagnostic NULL and consume `cur`;
 OOM uses the existing diagnostic and also consumes `cur`. SPARK proves
-`Read_Length` (2 checks),
+`Read_Length` (4 checks),
 `Build_Append` (14), `Append` (1), bounded arithmetic, native-call
 preconditions, and status/result contracts; actual native reads/writes,
 allocation freshness/free, pointer validity, caller ownership, C mapping, and
