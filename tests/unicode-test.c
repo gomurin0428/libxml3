@@ -20,6 +20,92 @@
 #endif
 
 typedef int (*bounded_compare_fn)(const xmlChar *, const xmlChar *, int);
+static void check_uri_path(const char *input, const char *expected) {
+    char buffer[128];
+    size_t length = strlen(input);
+    assert(length + 3 <= sizeof(buffer));
+    memset(buffer, '~', sizeof(buffer));
+    memcpy(buffer + 1, input, length + 1);
+    assert(xmlNormalizeURIPath(buffer + 1) == 0);
+    assert(strcmp(buffer + 1, expected) == 0);
+    assert(buffer[0] == '~' && buffer[length + 2] == '~');
+    assert(xmlNormalizeURIPath(buffer + 1) == 0);
+    assert(strcmp(buffer + 1, expected) == 0);
+}
+
+static void test_uri_paths(void) {
+    static const struct { const char *input, *expected, *reference; } cases[] = {
+        {"", "", NULL}, {".", "", NULL}, {"..", "..", NULL},
+        {"./", "", NULL}, {"../", "../", NULL}, {"/", "/", NULL},
+        {"//", "/", NULL}, {"///a//b///", "/a/b/", NULL},
+        {"a/.", "a/", NULL}, {"a/..", "", NULL}, {"a/b/..", "a/", NULL},
+        {"a/../", "", NULL}, {"a/b/../../c", "c", NULL},
+        {"a/../../b", "../b", NULL}, {"../a/../b", "../b", NULL},
+        {"..//../a", "../../a", "../a"}, {"/../a", "/a", "/../a"},
+        {"/a/../../b", "/b", "/../b"}, {"//../a", "/a", NULL},
+        {"./a/./b/../c/", "a/c/", NULL}, {"a/.../b", "a/.../b", NULL},
+        {"a/%2e%2e/b", "a/%2e%2e/b", NULL}, {"a\\..\\b", "a\\..\\b", NULL},
+        {"a?x/../b", "b", NULL}, {"%2f/../b", "b", NULL},
+        {"/a//./../b/.", "/b/", NULL}, {"../../a/../b", "../../b", NULL},
+        {"..//..", "../..", "../"}, {"/..", "/", "/.."},
+        {"a//.", "a/", NULL}, {"a//..", "", NULL},
+        {"\xe9\xa1\x94/../ok", "ok", NULL}
+    };
+    assert(xmlNormalizeURIPath(NULL) == -1);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        const char *expected = cases[i].expected;
+#ifdef XML3_REFERENCE_VERSION
+        if (cases[i].reference) expected = cases[i].reference;
+#endif
+        check_uri_path(cases[i].input, expected);
+    }
+    for (unsigned value = 1; value <= 255; ++value) {
+        char input[] = {(char)value, 0};
+        check_uri_path(input, value == '.' ? "" : input);
+    }
+    char *path = xmlURIUnescapeString("dir/./%E9%A1%94/../leaf", 0, NULL);
+    assert(path && xmlNormalizeURIPath(path) == 0);
+    xmlChar *escaped = xmlURIEscapeStr(BAD_CAST path, BAD_CAST "/");
+    xmlFree(path);
+    assert(escaped && strcmp((const char *)escaped, "dir/leaf") == 0);
+    path = xmlURIUnescapeString((const char *)escaped, 0, NULL);
+    xmlFree(escaped);
+    assert(path && strcmp(path, "dir/leaf") == 0);
+    xmlFree(path);
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky);
+    int code = sticky->code;
+    check_uri_path("a/../b", "b");
+    assert(xmlNormalizeURIPath(NULL) == -1);
+    assert(xmlGetLastError() == sticky && sticky->code == code);
+    xmlResetLastError();
+#if defined(__unix__)
+    long page_size = sysconf(_SC_PAGESIZE);
+    assert(page_size > 0);
+    size_t page = (size_t)page_size;
+    char *mapping = mmap(NULL, page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    char *guard = mapping + page;
+    assert(mprotect(guard, page, PROT_NONE) == 0);
+    guard[-1] = 0;
+    assert(mprotect(mapping, page, PROT_READ) == 0);
+    assert(xmlNormalizeURIPath(guard - 1) == 0);
+    assert(mprotect(mapping, page, PROT_READ | PROT_WRITE) == 0);
+    const char *inputs[] = {".", "..", "a/..", "a/.", "//", "./\xff"};
+    const char *outputs[] = {"", "..", "", "a/", "/", "\xff"};
+    for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+        size_t length = strlen(inputs[i]);
+        char *input = guard - length - 1;
+        memcpy(input, inputs[i], length + 1);
+        assert(xmlNormalizeURIPath(input) == 0);
+        assert(strcmp(input, outputs[i]) == 0);
+    }
+    assert(munmap(mapping, page * 2) == 0);
+#endif
+}
+
 static void check_uri_unescape(const char *input, int length,
                                const char *expected, size_t size) {
     char *result = xmlURIUnescapeString(input, length, NULL);
@@ -2189,6 +2275,7 @@ static void test_xhtml_identifiers(void) {
 }
 
 int main(void) {
+    test_uri_paths();
     test_uri_unescaping();
     test_uri_escaping();
     test_utf8_writing();

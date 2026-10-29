@@ -2588,6 +2588,22 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function Normalize_URI_Path (Path : System.Address) return Interfaces.C.int is
+      Status : XML3_Text.Buffers.Path_Status;
+   begin
+      XML3_Text.Buffers.Normalize_URI_Path (Path, Status);
+      case Status is
+         when XML3_Text.Buffers.Normalized => return 0;
+         when XML3_Text.Buffers.Invalid_Path => null;
+         when XML3_Text.Buffers.Path_Limit_Exceeded => Report_Dom_Error (115);
+      end case;
+      return -1;
+   exception
+      when others =>
+         Report_Dom_Error (1);
+         return -1;
+   end Normalize_URI_Path;
+
    function URI_Unescape_String
      (Input : System.Address; Length : Interfaces.C.int; Target : System.Address)
       return System.Address

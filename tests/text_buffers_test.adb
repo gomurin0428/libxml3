@@ -11,6 +11,7 @@ procedure Text_Buffers_Test is
    use type XML3_Text.Buffers.Search_Status;
    use type XML3_Text.Buffers.Slice_Status;
    use type XML3_Text.Buffers.Escape_Status;
+   use type XML3_Text.Buffers.Path_Status;
    use type XML3_Text.Text_Error_Kind;
    Left : aliased String := "aa" & Character'Val (0);
    Right : aliased String := "aa" & Character'Val (0);
@@ -26,6 +27,23 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_URI_Path is
+      Input : aliased String := "a/.." & Character'Val (0);
+      Empty : aliased String := (1 => Character'Val (0));
+      Status : XML3_Text.Buffers.Path_Status;
+   begin
+      XML3_Text.Buffers.Normalize_URI_Path (System.Null_Address, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Invalid_Path);
+      XML3_Text.Buffers.Normalize_URI_Path (Empty'Address, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Normalized);
+      XML3_Text.Buffers.Normalize_URI_Path (Input'Address, Status, 3);
+      pragma Assert (Status = XML3_Text.Buffers.Path_Limit_Exceeded
+                     and Input = "a/.." & Character'Val (0));
+      XML3_Text.Buffers.Normalize_URI_Path (Input'Address, Status, 4);
+      pragma Assert (Status = XML3_Text.Buffers.Normalized
+                     and Input (1) = Character'Val (0));
+   end Check_URI_Path;
 
    procedure Check_URI_Unescape is
       Empty : aliased String := (1 => Character'Val (0));
@@ -490,6 +508,7 @@ begin
    Check_Escape;
    Check_URI;
    Check_URI_Unescape;
+   Check_URI_Path;
    Check_Append;
    Check_Measure;
    Check_UTF8;

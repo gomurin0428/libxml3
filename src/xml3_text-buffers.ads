@@ -19,6 +19,13 @@ package XML3_Text.Buffers with SPARK_Mode is
    type Escape_Status is
      (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
 
+   type Path_Status is (Normalized, Invalid_Path, Path_Limit_Exceeded);
+   procedure Normalize_URI_Path
+     (Item : System.Address; Status : out Path_Status;
+      Limit : Byte_Count := Max_Bytes)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status = Normalized then Item /= System.Null_Address);
+
    procedure Unescape_URI
      (Input : System.Address; Length : Integer; Target : System.Address;
       Result : out System.Address; Status : out Escape_Status;

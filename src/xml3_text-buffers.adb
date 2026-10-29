@@ -4,6 +4,90 @@ package body XML3_Text.Buffers with SPARK_Mode is
    use type Interfaces.C.int;
    use type Interfaces.C.unsigned;
 
+   procedure Normalize_URI_Path
+     (Item : System.Address; Status : out Path_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Span : Byte_Count;
+      Index, Position, Segments : Byte_Count := 0;
+      Start, Finish : Byte_Count;
+      Measured, Absolute_Path, Separator, Copy_Segment, Parent : Boolean;
+   begin
+      Status := Invalid_Path;
+      if Item = System.Null_Address then
+         return;
+      end if;
+      Status := Path_Limit_Exceeded;
+      Measure (Item, Span, Measured, Limit);
+      if not Measured then
+         return;
+      end if;
+      if Span = 0 then
+         Status := Normalized;
+         return;
+      end if;
+      Absolute_Path := Native.Byte_At (Item, 0) = '/';
+      if Absolute_Path then
+         Index := 1;
+         Position := 1;
+      end if;
+      while Index < Span loop
+         pragma Loop_Invariant
+           (Position <= Index and then Index <= Span and then Segments <= Index);
+         pragma Loop_Variant (Decreases => Span - Index);
+         Start := Index;
+         while Index < Span and then Native.Byte_At (Item, Index) /= '/' loop
+            pragma Loop_Invariant (Start <= Index and then Index <= Span);
+            pragma Loop_Variant (Decreases => Span - Index);
+            Index := Index + 1;
+         end loop;
+         Finish := Index;
+         Separator := Index < Span;
+         if Separator then
+            Index := Index + 1;
+         end if;
+         Parent := Finish - Start = 2
+           and then Native.Byte_At (Item, Start) = '.'
+           and then Native.Byte_At (Item, Start + 1) = '.';
+         Copy_Segment := True;
+         if Finish = Start or else
+           (Finish - Start = 1 and then Native.Byte_At (Item, Start) = '.')
+         then
+            Copy_Segment := False;
+         elsif Parent then
+            if Segments > 0 then
+               if Position > 0 then
+                  Position := Position - 1;
+               end if;
+               while Position > 0 and then Native.Byte_At (Item, Position - 1) /= '/' loop
+                  pragma Loop_Invariant (Position <= Start);
+                  pragma Loop_Variant (Decreases => Position);
+                  Position := Position - 1;
+               end loop;
+               Segments := Segments - 1;
+               Copy_Segment := False;
+            elsif Absolute_Path then
+               Copy_Segment := False;
+            end if;
+         else
+            Segments := Segments + 1;
+         end if;
+         if Copy_Segment then
+            for J in Start .. Finish - 1 loop
+               pragma Loop_Invariant (Position <= J);
+               Native.Write_Byte (Item, Position, Native.Byte_At (Item, J));
+               Position := Position + 1;
+            end loop;
+            if Separator then
+               Native.Write_Byte (Item, Position, '/');
+               Position := Position + 1;
+            end if;
+         end if;
+      end loop;
+      Native.Write_Byte (Item, Position, Character'Val (0));
+      Status := Normalized;
+   end Normalize_URI_Path;
+
    function URI_Hex (Value : Character) return Integer is
      (if Value in '0' .. '9' then Character'Pos (Value) - Character'Pos ('0')
       elsif Value in 'a' .. 'f' then Character'Pos (Value) - Character'Pos ('a') + 10
