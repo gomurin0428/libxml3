@@ -57,8 +57,8 @@ encoding, and formatted memory serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,085 checks
-(1,124 flow and 10,961 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,087 checks
+(1,126 flow and 10,961 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 138 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -213,7 +213,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,085-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,087-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for
@@ -530,6 +530,12 @@ test exercises this full internal sequence on the mixed parser sample, checks
 preservation and remapped metadata, injects failure at all three allocation
 stages, and checks invalid-binding rejection with exactly-once cleanup. It also
 checks detached lifetime and final arena release.
+
+The materializer distinguishes absent PI data from present-but-empty data
+using the parsed target and value positions. The shared SPARK predicate
+controls both arena budgeting and content construction: no-data PI content
+remains NULL without reserving a terminator byte, while separator-only PI data
+gets an owned empty string. No C-adapter or serializer special case is needed.
 
 The materializer performs direct non-ghost construction and O(1) tail appends,
 so its assembly work is linear in emitted nodes and namespaces. Assertion-enabled

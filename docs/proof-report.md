@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=30 -j4
 ```
 
-It completed successfully: **12,085 checks, 1,124 by flow analysis and 10,961
+It completed successfully: **12,087 checks, 1,126 by flow analysis and 10,961
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -467,13 +467,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 304 |
+| Data dependencies | 305 |
 | Initialization | 667 |
 | Runtime checks | 5,328 |
 | Assertions | 1,623 |
 | Functional contracts | 3,952 |
-| Termination | 211 |
-| **Total** | **12,085** |
+| Termination | 212 |
+| **Total** | **12,087** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -519,6 +519,14 @@ Materialize.Build → Store.Adopt_Arena → Import.Adopt → Synchronize`.
 `Discard_Arena` retires an unpublished source after failed adoption and then
 releases its backing state. Failed adoption leaves that source valid and
 caller-owned until cleanup. Errors remain distinct from memory exhaustion.
+
+`Materialize.Has_PI_Data` distinguishes a PI with no data from a separator
+followed by empty data by comparing the parser's `Value_First` position with
+the target's `Name_Last`. The predicate is shared by `Add_Node_Budget` and
+`Fill_Node`: absent data remains a NULL content pointer without an
+arena terminator allocation, while present-but-empty data receives an owned
+empty string. This preserves the distinction during parse, serialization,
+and reparsing without a serializer or C-adapter special case.
 
 `xmlDocDumpMemory` delegates to `xmlDocDumpMemoryEnc` with NULL encoding, and a
 NULL encoding passed to `xmlDocDumpMemoryEnc` selects the same default mode.
@@ -876,7 +884,7 @@ e2260fcf82907bb5ccda14864e1588c24cb4d0d70f302f75df123c8d9baeed31  include/libxml
 52e084ef12d2239ac64a139f045ae4d845569ed4888dc87a36e9c2be0de52169  include/libxml/entities.h
 9b689c6c3cfa14bebfba10dab5867c00fa877d16cfba660974b3f820fe6ea104  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
-a9d3d0e407fd1c36cb33e262b9d131c3116a115fde8f323ecbd32c83b1dbf131  src/xml3_dom-materialize.adb
+13a759727eaecdc34897f4eb3a458b1903ea4aafa2c513107ed8b4b1b0eaa577  src/xml3_dom-materialize.adb
 11b0272dbbf8cf7988fb7c96ef8f104f22db1a1390e2c3f5df0bd6d3f6ef60c1  src/xml3_dom-materialize.ads
 5c33afb0ce5370d8abe9f5d3d8ebaed2b59d66ade90b7e266117f3bc2e35f65f  src/xml3_dom.adb
 5c298c2db1d690d6c4a90f23b2f0746aabccb76c00a3c3193eee4374eab9431b  src/xml3_dom.ads
@@ -926,7 +934,7 @@ b195a46e8e64db9d7dde75947ef6f31ab8c0ef05a75cf823db90e266976d91b9  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-06419e61e162036242ef1990c6bba21853529bd6f6ae3ac0c322c48c16a51305  Makefile
+0b2c28182a4577439e69be87b693164dc049227f139b46bddd2790494d30c4af  Makefile
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

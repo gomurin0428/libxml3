@@ -107,10 +107,10 @@ static void expect_formatted_output(const char *input, const char *expected,
 }
 
 static void test_formatted_serialization(void) {
-    expect_formatted_output("<!--before--><r><a/><b><c/></b><!--n--><?p d?></r><?after done?>",
+    expect_formatted_output("<!--before--><r><a/><b><c/></b><!--n--><?p d?></r><?after?>",
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         "<!--before-->\n<r>\n  <a/>\n  <b>\n    <c/>\n  </b>\n"
-        "  <!--n-->\n  <?p d?>\n</r>\n<?after done?>\n", "UTF-8", 1);
+        "  <!--n-->\n  <?p d?>\n</r>\n<?after?>\n", "UTF-8", 1);
     expect_formatted_output("<r>before<a><b/></a>after<![CDATA[x]]></r>",
         "<?xml version=\"1.0\"?>\n"
         "<r>before<a><b/></a>after<![CDATA[x]]></r>\n", NULL, 1);
@@ -151,6 +151,65 @@ static void test_formatted_serialization(void) {
     assert(doc);
     xmlDocDumpFormatMemory(doc, &memory, &size, 1);
     assert(memory && strcmp((const char *)memory, "<?xml version=\"1.0\"?>\n") == 0);
+    xmlFree(memory);
+    xmlFreeDoc(doc);
+}
+
+static void assert_parsed_pi_content(xmlDocPtr doc) {
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    assert(root && doc->children->type == XML_PI_NODE);
+    assert(doc->children->content == NULL && root->next->content == NULL);
+    xmlNodePtr absent = root->children;
+    xmlNodePtr empty = absent->next;
+    xmlNodePtr blanks = empty->next;
+    xmlNodePtr data = blanks->next;
+    xmlNodePtr unicode = data->next;
+    assert(absent->type == XML_PI_NODE && absent->content == NULL);
+    assert(empty->type == XML_PI_NODE && empty->content && empty->content[0] == 0);
+    assert(blanks->type == XML_PI_NODE && blanks->content && blanks->content[0] == 0);
+    assert(data->type == XML_PI_NODE && xmlStrEqual(data->content, BAD_CAST "é&amp;  "));
+    assert(unicode->type == XML_PI_NODE && xmlStrEqual(unicode->name, BAD_CAST "名"));
+    assert(unicode->content == NULL && unicode->next == NULL);
+    xmlChar *content = xmlNodeGetContent(absent);
+    assert(content && content[0] == 0);
+    xmlFree(content);
+}
+
+static void test_parsed_pi_content(void) {
+    char input[] = "<?before?><r><?absent?><?empty ?><?blanks \t\r\n?>"
+                   "<?data é&amp;  ?><?名?></r><?after?>";
+    const char *expected = "<?xml version=\"1.0\"?>\n<?before?>\n"
+        "<r><?absent?><?empty ?><?blanks ?><?data é&amp;  ?><?名?></r>\n<?after?>\n";
+    const char *formatted = "<?xml version=\"1.0\"?>\n<?before?>\n<r>\n"
+        "  <?absent?>\n  <?empty ?>\n  <?blanks ?>\n  <?data é&amp;  ?>\n"
+        "  <?名?>\n</r>\n<?after?>\n";
+    xmlDocPtr doc = xmlReadMemory(input, (int)strlen(input), NULL, NULL, 0);
+    xmlChar *memory = NULL, *pretty = NULL;
+    int size = 0, pretty_size = 0;
+    assert(doc);
+    memset(input, 'x', sizeof(input) - 1);
+    assert_parsed_pi_content(doc);
+    xmlDocDumpMemory(doc, &memory, &size);
+    assert(memory && size == (int)strlen(expected));
+    assert(strcmp((const char *)memory, expected) == 0);
+    xmlDocDumpFormatMemory(doc, &pretty, &pretty_size, 1);
+    assert(pretty && pretty_size == (int)strlen(formatted));
+    assert(strcmp((const char *)pretty, formatted) == 0);
+    assert_parsed_pi_content(doc);
+    xmlFree(pretty);
+    xmlFreeDoc(doc);
+    doc = xmlReadMemory((const char *)memory, size, NULL, NULL, 0);
+    xmlFree(memory);
+    assert(doc);
+    assert_parsed_pi_content(doc);
+    xmlNodePtr absent = xmlDocGetRootElement(doc)->children;
+    xmlNodeSetContent(absent, BAD_CAST "");
+    assert(absent->content && absent->content[0] == 0);
+    xmlNodeSetContent(absent, NULL);
+    assert(absent->content == NULL);
+    xmlDocDumpMemory(doc, &memory, &size);
+    assert(memory && size == (int)strlen(expected));
+    assert(strcmp((const char *)memory, expected) == 0);
     xmlFree(memory);
     xmlFreeDoc(doc);
 }
@@ -911,6 +970,7 @@ int main(int argc, char **argv) {
     test_pointer_contracts();
     test_default_serialization();
     test_formatted_serialization();
+    test_parsed_pi_content();
     test_default_rejections_and_metadata();
     test_namespace_shadowing();
     test_namespace_escaping();
@@ -930,6 +990,7 @@ int main(int argc, char **argv) {
 int main(void) {
     test_default_serialization();
     test_formatted_serialization();
+    test_parsed_pi_content();
     test_shared_lexical_cases();
     test_cdata_construction();
     test_constructed_comments_and_pi(0);
