@@ -2178,15 +2178,26 @@ static void test_qname_splitting(void) {
         memcpy(input, cases[i].input, size);
         int length = -97;
         const xmlChar *view = xmlSplitQName3(BAD_CAST input, &length);
+        xmlChar *prefix = (xmlChar *)1;
+        xmlChar *local = xmlSplitQName2(BAD_CAST input, &prefix);
         if (cases[i].prefix) {
             assert(length == (int)strlen(cases[i].prefix));
             assert(view == BAD_CAST (input + length + 1));
+            assert(prefix && local);
+            assert(strcmp((const char *)prefix, cases[i].prefix) == 0);
+            assert(strcmp((const char *)local, cases[i].local) == 0);
         } else {
             assert(view == NULL && length == -97);
+            assert(prefix == NULL && local == NULL);
         }
+        xmlFree(prefix);
+        xmlFree(local);
     }
     int length = -97;
     mapping[page - 1] = ':';
+    xmlChar *prefix = (xmlChar *)1;
+    assert(xmlSplitQName2(BAD_CAST (mapping + page - 1), &prefix) == NULL && prefix == NULL);
+    assert(xmlSplitQName2(BAD_CAST (mapping + page), NULL) == NULL);
     assert(xmlSplitQName3(BAD_CAST (mapping + page - 1), &length) == NULL);
     assert(length == -97);
     assert(xmlSplitQName3(BAD_CAST (mapping + page), NULL) == NULL);
@@ -2211,14 +2222,20 @@ static void test_qname_splitting(void) {
         xmlFree(local);
         xmlFree(prefix);
     }
-    {
+    for (int copied = 0; copied < 2; ++copied) {
         xmlChar *input = xmlStrdup(BAD_CAST "p:root");
         assert(input);
         int length = -1;
         const xmlChar *view = xmlSplitQName3(input, &length);
         assert(view && length == 1);
-        xmlChar *prefix = xmlStrndup(input, length);
-        xmlChar *local = xmlStrdup(view);
+        xmlChar *prefix = NULL;
+        xmlChar *local;
+        if (copied) {
+            local = xmlSplitQName2(input, &prefix);
+        } else {
+            prefix = xmlStrndup(input, length);
+            local = xmlStrdup(view);
+        }
         assert(prefix && local);
         xmlFree(input);
         assert(xmlValidateNCName(prefix, 0) == 0 && xmlValidateNCName(local, 0) == 0);

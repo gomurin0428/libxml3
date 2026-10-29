@@ -3,7 +3,7 @@ with XML3_Native_Memory;
 
 package XML3_Text.QNames with SPARK_Mode is
    use type System.Address;
-   type Split_Status is (No_Prefix, Split_Done, No_Memory);
+   type Split_Status is (No_Prefix, Split_Done, No_Memory, Split_Limit_Exceeded);
    type Build_Status is (Built, Invalid_Argument, No_Memory, Limit_Exceeded);
 
    type Comparison_Status is (Different, Same, Comparison_Limit_Exceeded);
@@ -46,11 +46,11 @@ package XML3_Text.QNames with SPARK_Mode is
          and then (for all I in 1 .. Prefix_Length'Result => Input (I) /= ':'));
 
    procedure Split
-     (Input : String; Prefix, Local : out System.Address;
-      Status : out Split_Status)
+     (Input : System.Address; Prefix, Local : out System.Address;
+      Status : out Split_Status; Last : Byte_Count := Max_Bytes)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
-       Pre => Input'First = 1 and then Input'Last in 0 .. Max_Bytes,
        Post => (if Status = Split_Done then
          Prefix /= System.Null_Address and then Local /= System.Null_Address
-         else Prefix = System.Null_Address and then Local = System.Null_Address);
+         else Prefix = System.Null_Address and then Local = System.Null_Address)
+         and then (if Input = System.Null_Address then Status = No_Prefix);
 end XML3_Text.QNames;

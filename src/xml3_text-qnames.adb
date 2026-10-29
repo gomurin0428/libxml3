@@ -135,26 +135,44 @@ package body XML3_Text.QNames with SPARK_Mode is
    end Prefix_Length;
 
    procedure Split
-     (Input : String; Prefix, Local : out System.Address;
-      Status : out Split_Status)
+     (Input : System.Address; Prefix, Local : out System.Address;
+      Status : out Split_Status; Last : Byte_Count := Max_Bytes)
    is
-      Length : constant Byte_Count := Prefix_Length (Input);
+      Length, Local_Length : Byte_Count;
+      Ignored_Local : System.Address;
+      pragma Unreferenced (Ignored_Local);
+      Located : Prefix_Status;
+      Measured : Boolean;
+      Copied : XML3_Text.Buffers.Slice_Status;
+      use type XML3_Text.Buffers.Slice_Status;
       Prefix_Buffer, Local_Buffer : System.Address := System.Null_Address;
    begin
       Prefix := System.Null_Address;
       Local := System.Null_Address;
       Status := No_Prefix;
-      if Length = 0 then
+      Locate_Prefix (Input, Length, Ignored_Local, Located, Last);
+      if Located = Prefix_Limit_Exceeded then
+         Status := Split_Limit_Exceeded;
+         return;
+      elsif Located = Prefix_Absent then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure
+        (Input, Local_Length, Measured, Last => Last, Start => Length + 1);
+      if not Measured then
+         Status := Split_Limit_Exceeded;
+         return;
+      elsif Local_Length = 0 then
          return;
       end if;
       Status := No_Memory;
-      XML3_Text.Buffers.Duplicate (Input (1 .. Length), Prefix_Buffer);
-      if Prefix_Buffer = System.Null_Address then
+      XML3_Text.Buffers.Copy_Span (Input, 0, Length, Prefix_Buffer, Copied);
+      if Copied /= XML3_Text.Buffers.Sliced then
          return;
       end if;
-      XML3_Text.Buffers.Duplicate
-        (Input (Length + 2 .. Input'Last), Local_Buffer);
-      if Local_Buffer = System.Null_Address then
+      XML3_Text.Buffers.Copy_Span
+        (Input, Length + 1, Local_Length, Local_Buffer, Copied);
+      if Copied /= XML3_Text.Buffers.Sliced then
          Native.Free (Prefix_Buffer);
          return;
       end if;

@@ -178,9 +178,10 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    procedure Measure
      (Item : System.Address; Length : out Byte_Count; Success : out Boolean;
-      Last : Byte_Count := Max_Bytes)
+      Last : Byte_Count := Max_Bytes; Start : Byte_Count := 0)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
-       Post => Length <= Last and then (if not Success then Length = 0);
+       Pre => Start <= Last,
+       Post => Length <= Last - Start and then (if not Success then Length = 0);
 
    procedure Append
      (Item, Addition : System.Address; Length : Integer; Terminated : Boolean;
@@ -244,6 +245,15 @@ package XML3_Text.Buffers with SPARK_Mode is
          and then (Has_Right or else Right'Length = 0),
        Post => (if Status = Copied then Result /= System.Null_Address
                 else Result = System.Null_Address);
+
+   procedure Copy_Span
+     (Item : System.Address; Start, Length : Byte_Count;
+      Result : out System.Address; Status : out Slice_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Item /= System.Null_Address and then Length <= Max_Bytes - Start,
+       Post => Status in Sliced | No_Memory
+         and then (if Status = Sliced then Result /= System.Null_Address
+                   else Result = System.Null_Address);
 
    procedure Duplicate (Input : String; Result : out System.Address)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),

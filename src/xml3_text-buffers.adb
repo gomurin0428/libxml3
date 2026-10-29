@@ -576,15 +576,6 @@ package body XML3_Text.Buffers with SPARK_Mode is
    procedure Copy_Span
      (Item : System.Address; Start, Length : Byte_Count;
       Result : out System.Address; Status : out Slice_Status)
-     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
-       Pre => Item /= System.Null_Address and then Length <= Max_Bytes - Start,
-       Post => Status in Sliced | No_Memory
-         and then (if Status = Sliced then Result /= System.Null_Address
-                   else Result = System.Null_Address);
-
-   procedure Copy_Span
-     (Item : System.Address; Start, Length : Byte_Count;
-      Result : out System.Address; Status : out Slice_Status)
    is
       Current : Character;
    begin
@@ -1005,17 +996,17 @@ package body XML3_Text.Buffers with SPARK_Mode is
 
    procedure Read_Length
      (Item : System.Address; Last : Byte_Count;
-      Length : out Byte_Count; Found : out Boolean)
+      Length : out Byte_Count; Found : out Boolean; Start : Byte_Count := 0)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),
-       Pre => Item /= System.Null_Address,
-       Post => Length <= Last and then (if not Found then Length = 0)
+       Pre => Item /= System.Null_Address and then Start <= Last,
+       Post => Length <= Last - Start and then (if not Found then Length = 0)
    is
    begin
       Length := 0;
       Found := False;
-      for Index in 0 .. Last loop
+      for Index in Start .. Last loop
          if Native.Byte_At (Item, Index) = Character'Val (0) then
-            Length := Index;
+            Length := Index - Start;
             Found := True;
             return;
          end if;
@@ -1024,14 +1015,14 @@ package body XML3_Text.Buffers with SPARK_Mode is
 
    procedure Measure
      (Item : System.Address; Length : out Byte_Count; Success : out Boolean;
-      Last : Byte_Count := Max_Bytes)
+      Last : Byte_Count := Max_Bytes; Start : Byte_Count := 0)
    is
    begin
       if Item = System.Null_Address then
          Length := 0;
          Success := True;
       else
-         Read_Length (Item, Last, Length, Success);
+         Read_Length (Item, Last, Length, Success, Start);
       end if;
    end Measure;
 
