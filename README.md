@@ -372,7 +372,8 @@ scan cap があり、上限を越える追加読み取りが必要なら診断�
 読み取り専用で判定します。CDATA は後者の対象ですが、前者では text としません。
 `libxml/chvalid.h` は upstream で deprecated の `xmlIsChar`, `xmlIsBlank`,
 `xmlIsBaseChar`, `xmlIsCombining`, `xmlIsDigit`, `xmlIsExtender`,
-`xmlIsIdeographic`, `xmlIsPubidChar` の8関数を公開します。
+`xmlIsIdeographic`, `xmlIsPubidChar` の8 scalar classifier と
+`xmlCharInRange` を公開します。
 `xmlIsChar` は XML 1.0 Char の範囲 (TAB/LF/CR, U+0020–D7FF, E000–FFFD,
 10000–10FFFF) を 1、それ以外を 0 と判定し、許可範囲内の supplementary noncharacter を
 追加除外しません。`xmlIsBlank` は U+0009・U+000A・U+000D・U+0020 のみ 1 です。
@@ -393,10 +394,18 @@ BaseChar 集合は CJK ideograph U+4E00 を含まず、Combining 集合は U+034
 引数は UTF-8 byte でなく unsigned scalar number で、高い unsigned 値も安全に 0 になります。
 これらの歴史的分類は locale/現代 Unicode category ではなく、現在の NCName 検証規則にも使われません
 (例: U+037F, `a` に続く U+0346, U+0BE6, U+9FA6 は引き続き NCName に使えます)。
-関数は pure SPARK helper を使い、
-pointer access・allocation・diagnostic・DOM access・lock を行いません。
-native range-table access もありません。header macros, range-group APIs, DTD subsystem は対象外です。
-C ABI と完全な upstream 意味論は未証明です。
+scalar classifier は pure SPARK helper を使い、pointer access・allocation・diagnostic・
+DOM access・lock・native range-table access を行いません。
+`xmlCharInRange` は別の generic lookup で、`val < 0x10000` なら short table、
+それ以外なら full unsigned domain の long table を選び、inclusive な `low..high`
+range を overflow-safe な lower-middle binary search で調べます。
+選択された count が正で byte span を `ptrdiff_t` で表せ、table が非NULLの場合だけ検索し、
+NULL group・非正の count・NULL table・表現上限を超える count では診断なしで0を返します。未選択の配列は読みません。
+descriptor 全体と選択された table は readable/aligned で、呼び出し中に変更されない必要があります。
+table は caller 所有の borrowed data で、昇順・非重複を前提とします。
+全表の順序検証は行わず、巨大な実配列を使うテストもありません。
+global `xmlIs*Group` tables, header macros, DTD subsystem は対象外です。
+C ABI、native layout/pointer/extents/byte reads と完全な upstream 意味論は信頼境界です。
 `libxml/tree.h` の `xmlIsXHTML` は、固定版 `tree.c:8851` に合わせて
 NUL 終端 byte 列を case-sensitive に比較します。両引数が NULL の場合のみ -1、
 それ以外は public ID `-//W3C//DTD XHTML 1.0 Strict//EN`,

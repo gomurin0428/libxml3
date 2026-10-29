@@ -2039,6 +2039,20 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         assert(!injected && allocation_count == 0);
+    } else if (strcmp(operation, "character-range") == 0) {
+        const xmlChSRange short_ranges[] = {{65, 90}};
+        const xmlChLRange long_ranges[] = {{0x10000, 0x10ffff}};
+        const xmlChRangeGroup group = {1, 1, short_ranges, long_ranges};
+        xml3_oom_enable(0);
+        assert(xmlCharInRange(65, &group) == 1);
+        assert(xmlCharInRange(91, &group) == 0);
+        assert(xmlCharInRange(0x10000, &group) == 1);
+        assert(xmlCharInRange(0x110000, &group) == 0);
+        assert(xmlCharInRange(65, NULL) == 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
     } else if (strcmp(operation, "character-classes") == 0) {
         xml3_oom_enable(0);
         assert(xmlIsChar('x') == 1 && xmlIsChar(0x10ffff) == 1);
@@ -2212,6 +2226,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "character-classes") == 0) {
         puts("character classification used no native allocations");
+        return 0;
+    }
+    if (strcmp(operation, "character-range") == 0) {
+        puts("character range lookup used no native allocations");
         return 0;
     }
     if (strcmp(operation, "xhtml-identifiers") == 0) {

@@ -38,7 +38,8 @@ ABI と完全な C semantics は信頼境界に残ります。
 
 `libxml/chvalid.h` は upstream で deprecated の `xmlIsChar`, `xmlIsBlank`,
 `xmlIsBaseChar`, `xmlIsCombining`, `xmlIsDigit`, `xmlIsExtender`,
-`xmlIsIdeographic`, `xmlIsPubidChar` の8関数を公開します。
+`xmlIsIdeographic`, `xmlIsPubidChar` の8 scalar classifier と
+`xmlCharInRange` を公開します。
 `xmlIsChar` は XML 1.0 Char production の TAB/LF/CR, U+0020–D7FF, E000–FFFD,
 10000–10FFFF を 1、それ以外を 0 と判定し、許可範囲内の supplementary noncharacter を追加除外しません。
 `xmlIsBlank` は U+0009・U+000A・U+000D・U+0020 のみ 1、それ以外を 0 とします。
@@ -56,11 +57,18 @@ Tamil の U+0BE6 は含みません。`xmlIsExtender` は U+00B7, 02D0–02D1, 0
 `-'()+,./:=?;!*#@$_%`) のみを 1 とし、TAB は含みません。
 これらは現代の Unicode category や locale ではなく、その他の値はすべて 0 です。
 引数は UTF-8 bytes でなく unsigned scalar number で、高い unsigned 値は安全に false になります。
-関数は pure SPARK classifier を使い、pointer/native range-table access・allocation・diagnostic・DOM access・lock を行いません。
+scalar classifier は pure SPARK helper を使い、pointer/native range-table access・allocation・diagnostic・DOM access・lock を行いません。
 歴史的分類は現在の NCName 規則に適用しません (U+037F, `a` に続く U+0346,
 U+0BE6 と U+9FA6 も引き続き受理されます)。
-この互換面は関数のみで、upstream header macro, range-group APIs, DTD subsystem は未実装です。
-C ABI と完全な upstream 意味論は信頼境界に残ります。
+`xmlCharInRange` は別の generic lookup です。`val < 0x10000` なら short table、
+それ以外なら full unsigned domain の long table を選び、inclusive `low..high`
+range を overflow-safe な lower-middle binary search で調べます。選択された count が正で
+byte span を `ptrdiff_t` で表せ、table が非NULLの場合だけ検索します。NULL group・非正の count・
+NULL table・表現上限を超える count では診断なしで0を返します。descriptor 全体は readable/aligned
+である必要がありますが、未選択の配列は読みません。range table は caller 所有の
+borrowed data で、昇順・非重複かつ readable/aligned であり、呼び出し中に変更されない必要があります。
+global `xmlIs*Group` tables, upstream header macros, DTD subsystem は未対応です。
+C ABI、native layout/pointer/extents/byte reads と完全な upstream 意味論は信頼境界に残ります。
 
 `xmlNodeGetLang` は node 自身から parent をたどり、最寄りの XML namespace
 `lang` の値を独立した `xmlFree` 所有文字列として返します。空または NULL 値の属性も

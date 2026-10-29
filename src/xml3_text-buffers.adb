@@ -1,6 +1,58 @@
 package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
+   use type Interfaces.C.int;
+   use type Interfaces.C.unsigned;
+
+   function Character_In_Range
+     (Code : Interfaces.C.unsigned; Group : System.Address) return Boolean
+   is
+      Item : Native.Character_Range_Group;
+      Short_Range : constant Boolean := Code < 16#10000#;
+      Stride : constant Native.Positive_Byte_Count :=
+        (if Short_Range then Native.Short_Range_Bytes else Native.Long_Range_Bytes);
+      Count : Interfaces.C.int;
+      Ranges : System.Address;
+   begin
+      if Group = System.Null_Address then
+         return False;
+      end if;
+      Native.Read_Character_Range_Group (Group, Item);
+      if Short_Range then
+         Count := Item.Short_Count;
+         Ranges := Item.Short_Ranges;
+      else
+         Count := Item.Long_Count;
+         Ranges := Item.Long_Ranges;
+      end if;
+      if Count <= 0 or else Ranges = System.Null_Address
+        or else Native.Byte_Count (Count) > Native.Byte_Count'Last / Stride
+      then
+         return False;
+      end if;
+      declare
+         Low : Natural := 0;
+         High : Natural := Natural (Count);
+         Mid : Natural;
+         Range_Low, Range_High : Interfaces.C.unsigned;
+      begin
+         while Low < High loop
+            pragma Loop_Invariant (Low <= High and then High <= Natural (Count));
+            pragma Loop_Variant (Decreases => High - Low);
+            Mid := Low + (High - Low - 1) / 2;
+            Native.Read_Character_Range
+              (Ranges, Mid, Short_Range, Range_Low, Range_High);
+            if Code < Range_Low then
+               High := Mid;
+            elsif Code > Range_High then
+               Low := Mid + 1;
+            else
+               return True;
+            end if;
+         end loop;
+      end;
+      return False;
+   end Character_In_Range;
 
    function Matches_Literal (Item : System.Address; Pattern : String)
      return Boolean

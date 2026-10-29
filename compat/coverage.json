@@ -1,49 +1,157 @@
 {
+  "field:chvalid.h:_xmlChLRange.high": {
+    "implementation": "partial",
+    "scope": "Public inclusive upper-end field of xmlChLRange, read by xmlCharInRange only in the selected long table. Native field layout, alignment, pointer validity, and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChLRange.low": {
+    "implementation": "partial",
+    "scope": "Public inclusive lower-end field of xmlChLRange, read by xmlCharInRange only in the selected long table. Native field layout, alignment, pointer validity, and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChRangeGroup.longRange": {
+    "implementation": "partial",
+    "scope": "Public borrowed pointer to the long-range array. xmlCharInRange uses this field only when val is at least 65536; pointer validity and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChRangeGroup.nbLongRange": {
+    "implementation": "partial",
+    "scope": "Public long-range count. xmlCharInRange uses this field only when val is at least 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChRangeGroup.nbShortRange": {
+    "implementation": "partial",
+    "scope": "Public short-range count. xmlCharInRange uses this field only when val is below 65536 and returns 0 for nonpositive or unrepresentable byte spans; native field layout remains trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChRangeGroup.shortRange": {
+    "implementation": "partial",
+    "scope": "Public borrowed pointer to the short-range array. xmlCharInRange uses this field only when val is below 65536; pointer validity and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChSRange.high": {
+    "implementation": "partial",
+    "scope": "Public inclusive upper-end field of xmlChSRange, read by xmlCharInRange only in the selected short table. Native field layout, alignment, pointer validity, and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "field:chvalid.h:_xmlChSRange.low": {
+    "implementation": "partial",
+    "scope": "Public inclusive lower-end field of xmlChSRange, read by xmlCharInRange only in the selected short table. Native field layout, alignment, pointer validity, and readable extent remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "function:chvalid.h:xmlCharInRange": {
+    "implementation": "partial",
+    "scope": "Generic caller-supplied range lookup over the full unsigned domain: val below 65536 selects the short table, otherwise the long table. Uses overflow-safe lower-middle binary search over inclusive low..high endpoints and requires selected ranges to be sorted and disjoint. Returns 0 without diagnostics for a NULL group, nonpositive selected count, NULL selected table, or count whose byte span exceeds ptrdiff_t capacity; the unused array is not dereferenced. No Unicode/XML validation, allocation, or table-order validation. Caller-owned descriptor/table must be readable, aligned, and stable during the call. Native layout, pointer validity/extents/byte reads, C ABI, and complete semantics remain trusted; tests do not allocate huge physical arrays.",
+    "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "struct:chvalid.h:_xmlChLRange": {
+    "implementation": "partial",
+    "scope": "Public C record for inclusive unsigned long-range endpoints consumed by xmlCharInRange. Field layout, alignment, C ABI, and actual foreign memory remain trusted and are not formally proved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "struct:chvalid.h:_xmlChRangeGroup": {
+    "implementation": "partial",
+    "scope": "Public C descriptor containing short/long counts and borrowed range-array pointers. xmlCharInRange copies the complete descriptor, then uses the selected count and pointer without dereferencing the other array. Native layout, alignment, pointer validity/extents, C ABI, and complete semantics remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "struct:chvalid.h:_xmlChSRange": {
+    "implementation": "partial",
+    "scope": "Public C record for inclusive unsigned-short range endpoints consumed by xmlCharInRange. Field layout, alignment, C ABI, and actual foreign memory remain trusted and are not formally proved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChLRange": {
+    "implementation": "partial",
+    "scope": "Public typedef for the unsigned long-range record used by xmlCharInRange; C layout and ABI correspondence remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChLRangePtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for xmlChLRange; pointer validity, readable extent, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChRangeGroup": {
+    "implementation": "partial",
+    "scope": "Public typedef for the short/long range descriptor consumed by xmlCharInRange; native record layout and ABI correspondence remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChRangeGroupPtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for xmlChRangeGroup; pointer validity, readable extent, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChSRange": {
+    "implementation": "partial",
+    "scope": "Public typedef for the unsigned-short range record used by xmlCharInRange; C layout and ABI correspondence remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
+  "typedef:chvalid.h:xmlChSRangePtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for xmlChSRange; pointer validity, readable extent, and C ABI remain trusted and unproved.",
+    "tests": ["tests/header-smoke.cpp", "tests/unicode-test.c"],
+    "proof": "not-proved"
+  },
   "function:chvalid.h:xmlIsBaseChar": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical BaseChar set: 197 short ranges plus five ranges below U+0100, mechanically matching chvalid.h and codegen/ranges.inc. U+4E00 is not included. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current NCName rules (U+037F and a followed by U+0346 remain accepted). No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not. C ABI and complete upstream semantics are not proved.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical BaseChar set: 197 short ranges plus five ranges below U+0100, mechanically matching chvalid.h and codegen/ranges.inc. U+4E00 is not included. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current NCName rules (U+037F and a followed by U+0346 remain accepted). No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Header macros, global xmlIs*Group tables, and DTD support are not implemented. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsBlank": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for U+0009, U+000A, U+000D and U+0020, otherwise 0, including unsigned values above Natural'Last. No allocation, diagnostics, lock, or DOM access. This entry covers only function symbols, not header macros or range-group APIs; C ABI and complete upstream semantics are not proved.",
+    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for U+0009, U+000A, U+000D and U+0020, otherwise 0, including unsigned values above Natural'Last. No allocation, diagnostics, lock, or DOM access. This entry covers only the scalar function; header macros and global xmlIs*Group tables are outside scope. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsCombining": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical Combining set of 95 short ranges, mechanically matching chvalid.h and codegen/ranges.inc. U+0346 is excluded even though current NCName validation accepts it after a base character. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current name rules. No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not. C ABI and complete upstream semantics are not proved.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the pinned historical Combining set of 95 short ranges, mechanically matching chvalid.h and codegen/ranges.inc. U+0346 is excluded even though current NCName validation accepts it after a base character. All other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not change current name rules. No pointer or native range-table access, allocation, diagnostics, lock, or DOM access. Header macros, global xmlIs*Group tables, and DTD support are not implemented. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsChar": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for XML 1.0 Char ranges U+0009/U+000A/U+000D, U+0020-U+D7FF, U+E000-U+FFFD and U+10000-U+10FFFF; otherwise 0. No extra noncharacter filtering is applied within the supplementary range; high unsigned values return false before narrowing. No allocation, diagnostics, lock, or DOM access. This entry covers only function symbols, not header macros or range-group APIs; C ABI and complete upstream semantics are not proved.",
+    "scope": "Deprecated upstream function exposed as a pure SPARK scalar classifier. Returns exactly 1 for XML 1.0 Char ranges U+0009/U+000A/U+000D, U+0020-U+D7FF, U+E000-U+FFFD and U+10000-U+10FFFF; otherwise 0. No extra noncharacter filtering is applied within the supplementary range; high unsigned values return false before narrowing. No allocation, diagnostics, lock, or DOM access. This entry covers only the scalar function; header macros and global xmlIs*Group tables are outside scope. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsDigit": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the fixed historical ranges U+0030-U+0039, U+0660-U+0669, U+06F0-U+06F9, U+0966-U+096F, U+09E6-U+09EF, U+0A66-U+0A6F, U+0AE6-U+0AEF, U+0B66-U+0B6F, U+0BE7-U+0BEF, U+0C66-U+0C6F, U+0CE6-U+0CEF, U+0D66-U+0D6F, U+0E50-U+0E59, U+0ED0-U+0ED9 and U+0F20-U+0F29; all other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not affect current NCName rules (U+0BE6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the fixed historical ranges U+0030-U+0039, U+0660-U+0669, U+06F0-U+06F9, U+0966-U+096F, U+09E6-U+09EF, U+0A66-U+0A6F, U+0AE6-U+0AEF, U+0B66-U+0B6F, U+0BE7-U+0BEF, U+0C66-U+0C6F, U+0CE6-U+0CEF, U+0D66-U+0D6F, U+0E50-U+0E59, U+0ED0-U+0ED9 and U+0F20-U+0F29; all other values, including high unsigned values, return 0. This legacy set is not a modern Unicode category and does not affect current NCName rules (U+0BE6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Header macros, global xmlIs*Group tables, and DTD support are not implemented.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsExtender": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+00B7, U+02D0-U+02D1, U+0387, U+0640, U+0E46, U+0EC6, U+3005, U+3031-U+3035, U+309D-U+309E and U+30FC-U+30FE; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules. No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+00B7, U+02D0-U+02D1, U+0387, U+0640, U+0E46, U+0EC6, U+3005, U+3031-U+3035, U+309D-U+309E and U+30FC-U+30FE; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules. No pointer access, allocation, diagnostics, lock, or DOM access. Header macros, global xmlIs*Group tables, and DTD support are not implemented.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsIdeographic": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+3007, U+3021-U+3029 and U+4E00-U+9FA5; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules (U+9FA6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros, range-group APIs, and DTD support are not.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for exactly U+3007, U+3021-U+3029 and U+4E00-U+9FA5; all other values, including high unsigned values, return 0. This fixed historical set is not a modern Unicode category and does not alter current name rules (U+9FA6 remains accepted). No pointer access, allocation, diagnostics, lock, or DOM access. Header macros, global xmlIs*Group tables, and DTD support are not implemented.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:chvalid.h:xmlIsPubidChar": {
     "implementation": "partial",
-    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the XML PubidChar ASCII set: SPACE, LF, CR, ASCII alphanumeric and -'()+,./:=?;!*#@$_%; TAB and all other values are excluded, including high unsigned values. This is only a character predicate, not a DTD subsystem. No pointer access, allocation, diagnostics, lock, or DOM access. Only the function is implemented; macros and range-group APIs are not. C ABI and complete upstream semantics are not proved.",
+    "scope": "Deprecated upstream function implemented as a pure SPARK scalar classifier for the XML PubidChar ASCII set: SPACE, LF, CR, ASCII alphanumeric and -'()+,./:=?;!*#@$_%; TAB and all other values are excluded, including high unsigned values. This is only a character predicate, not a DTD subsystem. No pointer access, allocation, diagnostics, lock, or DOM access. Header macros and global xmlIs*Group tables are not implemented. C ABI and complete upstream semantics are not proved.",
     "tests": ["tests/unicode-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },

@@ -23,6 +23,38 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
    function C_Memcmp (Left, Right : System.Address; Count : size_t) return int
      with Import, Convention => C, External_Name => "memcmp";
 
+   procedure Read_Character_Range_Group
+     (Base : System.Address; Value : out Character_Range_Group)
+   is
+      Item : constant Character_Range_Group with Import, Address => Base;
+   begin
+      Value := Item;
+   end Read_Character_Range_Group;
+
+   procedure Read_Character_Range
+     (Base : System.Address; Index : Natural; Short_Range : Boolean;
+      Low, High : out Interfaces.C.unsigned)
+   is
+   begin
+      if Short_Range then
+         declare
+            Item : constant C_Short_Range with Import,
+              Address => Offset (Base, Byte_Count (Index) * Short_Range_Bytes);
+         begin
+            Low := unsigned (Item.Low);
+            High := unsigned (Item.High);
+         end;
+      else
+         declare
+            Item : constant C_Long_Range with Import,
+              Address => Offset (Base, Byte_Count (Index) * Long_Range_Bytes);
+         begin
+            Low := Item.Low;
+            High := Item.High;
+         end;
+      end if;
+   end Read_Character_Range;
+
    procedure Allocate (Bytes : Byte_Count; Base : out System.Address) is
    begin
       Base := C_Malloc (size_t (Bytes));
