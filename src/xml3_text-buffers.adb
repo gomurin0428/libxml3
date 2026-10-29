@@ -2,6 +2,72 @@ package body XML3_Text.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
 
+   function Special_Image (Item : Character) return String
+     with Global => null,
+       Post => Special_Image'Result'Length in 1 .. 6
+   is
+   begin
+      case Item is
+         when '<' => return "&lt;";
+         when '>' => return "&gt;";
+         when '&' => return "&amp;";
+         when '"' => return "&quot;";
+         when Character'Val (13) => return "&#13;";
+         when others => return (1 => Item);
+      end case;
+   end Special_Image;
+
+   procedure Escape_Special
+     (Input : String; Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes)
+   is
+      Length, Position : Byte_Count := 0;
+      Kind : Text_Error_Kind;
+      Error : Natural;
+      Base : System.Address;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Text;
+      Validate_UTF8 (Input, Kind, Error);
+      if Kind /= No_Text_Error then
+         return;
+      end if;
+      Status := Escape_Limit_Exceeded;
+      for Item of Input loop
+         pragma Loop_Invariant (Length <= Limit);
+         declare
+            Image : constant String := Special_Image (Item);
+         begin
+            if Image'Length > Limit - Length then
+               return;
+            end if;
+            Length := Length + Image'Length;
+         end;
+      end loop;
+      Status := Escape_No_Memory;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Base);
+      if Base = System.Null_Address then
+         return;
+      end if;
+      for Item of Input loop
+         pragma Loop_Invariant (Position <= Length);
+         declare
+            Image : constant String := Special_Image (Item);
+         begin
+            if Image'Length > Length - Position then
+               Native.Free (Base);
+               Status := Escape_Limit_Exceeded;
+               return;
+            end if;
+            Native.Write_String (Base, Position, Image);
+            Position := Position + Image'Length;
+         end;
+      end loop;
+      Native.Write_Byte (Base, Position, Character'Val (0));
+      Result := Base;
+      Status := Escaped;
+   end Escape_Special;
+
    function UTF8_Lead_Size (Item : System.Address) return Integer is
    begin
       if Item = System.Null_Address then

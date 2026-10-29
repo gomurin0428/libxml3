@@ -367,6 +367,10 @@ package XML3_C is
      (Item, Addition : System.Address; Length : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlStrncat";
 
+   function Encode_Special_Chars
+     (Document, Input : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlEncodeSpecialChars";
+
    function Str_Duplicate (Item : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlStrdup";
 

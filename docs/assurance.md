@@ -51,16 +51,30 @@ fresh-allocation appending through `XML3_Text.Buffers.Append`,
 QName building through `XML3_Text.QNames.Build`, raw substring search through
 `XML3_Text.Buffers.Find_Substring`, raw slicing through
 `XML3_Text.Buffers.Slice`, terminated byte comparisons through
-`XML3_Text.Buffers.Compare_Terminated`, and explicit UTF-8 memory serialization.
+`XML3_Text.Buffers.Compare_Terminated`, bounded special-character escaping
+through `XML3_Text.Buffers.Escape_Special`, and explicit UTF-8 memory
+serialization.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,043 checks
-(1,114 flow and 10,929 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 137 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 12,068 checks
+(1,121 flow and 10,947 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 138 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
+`xmlEncodeSpecialChars` routes through `Escape_Special`, which validates
+strict UTF-8/XML text, measures bounded expansion before allocation, and
+emits the five supported replacements (<, >, &, double quote, and CR). It
+retains apostrophe, LF, TAB, and valid Unicode; NULL is handled without a
+diagnostic, empty input receives an allocated empty result, and invalid
+UTF-8/XML is rejected rather than repaired or preserved. Tests cover exact
+output, input preservation, output ownership, serialization round-trip,
+invalid inputs, and OOM retry. The helper's proof covers its bounded checks
+and native-call preconditions, not full C output semantics. C-string
+conversion, native pointers and byte writes, allocation/free, ABI/status
+mapping, and complete libxml2 behavior remain trusted; the API is partial and
+not-proved at the public C level, and does not implement DTD/entity expansion.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
 UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
@@ -180,7 +194,7 @@ converts the C string, holds the existing lock, and publishes the result.
 Unsupported encodings, XML versions, malformed text, names, and namespace
 states are rejected rather than repaired. Native allocation and byte access
 remain trusted, and full libxml2 serializer equivalence is not claimed. These
-new units are included in the current successful 12,043-check aggregate proof; see
+new units are included in the current successful 12,068-check aggregate proof; see
 [proof-report.md](proof-report.md) for the exact result and source hashes.
 Source encoding and standalone metadata are not retained by the DOM and are
 omitted from the declaration; an empty document may produce only the

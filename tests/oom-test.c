@@ -1623,6 +1623,25 @@ int main(int argc, char **argv) {
         assert(borrower->ns == ns);
         assert(strcmp((const char *)ns->href, "urn:retired") == 0);
         xmlFreeNode(borrower);
+    } else if (strcmp(operation, "escape-special") == 0 ||
+               strcmp(operation, "escape-special-empty") == 0) {
+        int empty = strcmp(operation, "escape-special-empty") == 0;
+        xmlChar input[] = "<&>\"\r名";
+        const xmlChar *source = empty ? BAD_CAST "" : input;
+        const char *expected = empty ? "" : "&lt;&amp;&gt;&quot;&#13;名";
+        xml3_oom_enable(fail_index);
+        xmlChar *escaped = xmlEncodeSpecialChars(NULL, source);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(strcmp((const char *)input, "<&>\"\r名") == 0);
+        if (injected) {
+            assert(escaped == NULL);
+            require_oom_error();
+            escaped = xmlEncodeSpecialChars(NULL, source);
+        }
+        assert(escaped && strcmp((const char *)escaped, expected) == 0);
+        xmlFree(escaped);
     } else if (strcmp(operation, "serialization") == 0) {
         static const char input[] = "<r a='v'>text</r>";
         xmlNodePtr root;

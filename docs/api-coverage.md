@@ -79,6 +79,7 @@
 
 | 宣言 | 実装 | 範囲 | テスト | C APIの証明 |
 | --- | --- | --- | --- | --- |
+| `function:entities.h:xmlEncodeSpecialChars` | partial | SPARK-backed XML special-character escaping of valid UTF-8/XML text. Escapes less/greater-than, ampersand, double quote and CR; preserves apostrophe/LF/TAB and valid non-ASCII. NULL input returns NULL; empty input allocates an empty copy; document is unused. Rejects invalid UTF-8/XML characters instead of reference replacement/preservation, checks expansion limits, and preserves input on allocation failure. Native pointer/ABI/allocator/byte writes and complete public semantics remain unproved; no DTD/entity subsystem is provided. | [tests/unicode-test.c](../tests/unicode-test.c), [tests/text_buffers_test.adb](../tests/text_buffers_test.adb), [tests/oom-test.c](../tests/oom-test.c) | not-proved |
 | `function:parser.h:xmlCleanupParser` | partial | 現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:parser.h:xmlInitParser` | partial | 現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c) | not-proved |
 | `function:parser.h:xmlParseDoc` | partial | NUL終端UTF-8入力の読み取り専用DOMサブセット内。strlenを使うためbinary UTF-16入力には使用できない。全オプション・全ノード型の等価性は未確認。 | [tests/api-test.c](../tests/api-test.c), [tests/error-test.c](../tests/error-test.c) | not-proved |

@@ -9,6 +9,17 @@ libxml3 は `libxml3.so` という別名の共有ライブラリです。以下�
 
 ## ヘッダーと API
 
+`libxml/entities.h` は `xmlEncodeSpecialChars` のみを公開します。文書引数は
+固定版と同じく未使用です。NULL入力は診断なしでNULL、空入力は独立した空文字列を
+返します。`<`・`>`・`&`・二重引用符を定義済み実体参照、CRを `&#13;` に置換し、
+apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参照も通常の文字列として
+エスケープします。結果は呼び出し側が `xmlFree` で解放し、入力の所有権は変わりません。
+固定版の不正な制御文字を `&#xFFFD;` に置換する動作、不正UTF-8やXMLで無効なUnicode
+文字を保持する動作は再現せず、診断とNULLで失敗します。走査・展開サイズは
+`Max_Bytes` までで、確保失敗でも入力は保持します。これはDTD・一般実体対応ではなく、
+XML文字列のエスケープのみです。C文字列の読み取り可能性・ABI・native書き込みと
+allocatorは信頼境界に残ります。
+
 `xmlNodeIsText` は text のみで 1、CDATA を含む他の kind・NULL・未登録 node で 0 です。
 `xmlIsBlankNode` は text/CDATA の content が NULL・空・XML 空白のみなら 1、他は 0 です。
 空白は space・tab・LF・CR に限り、垂直タブ・form feed・NBSP・全角空白は含めません。

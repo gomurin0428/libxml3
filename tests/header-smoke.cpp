@@ -5,6 +5,8 @@ static_assert(XML_ERR_INT_SUBSET_NOT_FINISHED == 118);
 static_assert(XML_NS_ERR_COLON == 205);
 
 int main() {
+    xmlChar *(*encode_special)(const xmlDoc *, const xmlChar *) = xmlEncodeSpecialChars;
+    (void)encode_special;
     int (*check_utf8)(const unsigned char *) = xmlCheckUTF8;
     int (*utf8_length)(const xmlChar *) = xmlUTF8Strlen;
     int (*utf8_size)(const xmlChar *, int) = xmlUTF8Strsize;

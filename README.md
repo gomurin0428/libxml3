@@ -346,6 +346,10 @@ scan cap があり、上限を越える追加読み取りが必要なら診断�
 `default` / `preserve` 以外の値は ancestor まで探索します。対応する setter は
 element に `xml:lang` / `xml:space` を設定し、NULL language は空値、space の
 0 は `default`、非0は `preserve` です。
+`xmlEncodeSpecialChars` は有効なUTF-8/XML文字列の `<`・`>`・`&`・
+二重引用符・CRをエスケープし、`xmlFree` で解放する独立した文字列を返します。
+NULL入力はNULL、空入力は空のコピーです。文書引数は参照しません。不正な文字を
+黙って置換・保持せず診断付きで拒否し、DTD・一般実体の処理は追加しません。
 `xmlSetProp` は namespace-aware QName を
 解決し、malformed QName と未束縛 prefix を拒否します。`xmlDocDumpMemoryEnc`
 は明示的なUTF-8出力のみをサポートし、encoding名のASCII大小文字を区別せず、

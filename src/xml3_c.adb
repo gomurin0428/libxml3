@@ -2669,6 +2669,37 @@ package body XML3_C is
          return System.Null_Address;
    end Str_N_Concat_New;
 
+   function Encode_Special_Chars
+     (Document, Input : System.Address) return System.Address
+   is
+      pragma Unreferenced (Document);
+      Result : System.Address;
+      Status : XML3_Text.Buffers.Escape_Status;
+   begin
+      if Input = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      XML3_Text.Buffers.Escape_Special (C_String_Value (Input), Result, Status);
+      case Status is
+         when XML3_Text.Buffers.Escaped => null;
+         when XML3_Text.Buffers.Escape_No_Memory =>
+            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         when XML3_Text.Buffers.Invalid_Text |
+              XML3_Text.Buffers.Escape_Limit_Exceeded => Report_Dom_Error (115);
+      end case;
+      return Result;
+   exception
+      when Invalid_C_String =>
+         Report_Dom_Error (115);
+         return System.Null_Address;
+      when Storage_Error =>
+         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         return System.Null_Address;
+      when others =>
+         Report_Dom_Error (1);
+         return System.Null_Address;
+   end Encode_Special_Chars;
+
    function Str_Duplicate (Item : System.Address) return System.Address is
    begin
       return Str_N_Concat_New (System.Null_Address, Item, -1);
