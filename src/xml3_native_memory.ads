@@ -11,6 +11,26 @@ is
    subtype Positive_Byte_Count is Byte_Count range 1 .. Byte_Count'Last;
    Address_Bytes : constant Positive_Byte_Count;
 
+   type Character_Range_Group is record
+      Short_Count, Long_Count : Interfaces.C.int;
+      Short_Ranges, Long_Ranges : System.Address;
+   end record with Convention => C;
+
+   Short_Range_Bytes : constant Positive_Byte_Count;
+   Long_Range_Bytes : constant Positive_Byte_Count;
+
+   procedure Read_Character_Range_Group
+     (Base : System.Address; Value : out Character_Range_Group)
+     with Global => (Input => Foreign_Memory), Pre => Base /= System.Null_Address;
+
+   procedure Read_Character_Range
+     (Base : System.Address; Index : Natural; Short_Range : Boolean;
+      Low, High : out Interfaces.C.unsigned)
+     with Global => (Input => Foreign_Memory),
+       Pre => Base /= System.Null_Address
+         and then Byte_Count (Index) <= Byte_Count'Last /
+           (if Short_Range then Short_Range_Bytes else Long_Range_Bytes);
+
    type Node_Projection is record
       Id : Natural := 0;
       Is_Document : Boolean := False;
@@ -79,6 +99,19 @@ private
 
    Address_Bytes : constant Positive_Byte_Count :=
      System.Address'Max_Size_In_Storage_Elements;
+
+   type C_Short_Range is record
+      Low, High : Interfaces.C.unsigned_short;
+   end record with Convention => C;
+
+   type C_Long_Range is record
+      Low, High : Interfaces.C.unsigned;
+   end record with Convention => C;
+
+   Short_Range_Bytes : constant Positive_Byte_Count :=
+     C_Short_Range'Max_Size_In_Storage_Elements;
+   Long_Range_Bytes : constant Positive_Byte_Count :=
+     C_Long_Range'Max_Size_In_Storage_Elements;
 
    type C_Node is record
       Private_Data : System.Address := System.Null_Address;

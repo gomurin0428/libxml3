@@ -2588,6 +2588,10 @@ package body XML3_C is
          return -1;
    end UTF8_Size;
 
+   function Char_In_Range
+     (Code : Interfaces.C.unsigned; Group : System.Address) return Interfaces.C.int is
+     (Boolean'Pos (XML3_Text.Buffers.Character_In_Range (Code, Group)));
+
    function Is_XML_Char (Code : Interfaces.C.unsigned) return Interfaces.C.int is
      (if Code > Interfaces.C.unsigned (Natural'Last) then 0
       else Boolean'Pos (XML3_Text.XML_Char (Natural (Code))));

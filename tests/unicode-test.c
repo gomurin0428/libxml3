@@ -48,6 +48,86 @@ static int expected_in_character_ranges(unsigned int code,
     return 0;
 }
 
+static void test_character_range_groups(void) {
+    static const xmlChSRange short_ranges[] = {
+        {0, 0}, {9, 13}, {65, 90}, {0xd800, 0xdfff}, {0xffff, 0xffff}
+    };
+    static const xmlChLRange long_ranges[] = {
+        {0x10000, 0x10000}, {0x10fffe, 0x110001},
+        {0x80000000u, 0x80000004u}, {UINT_MAX, UINT_MAX}
+    };
+    xmlChRangeGroup group = {5, 4, short_ranges, long_ranges};
+    for (unsigned int code = 0; code <= 0x110002; ++code) {
+        int expected = 0;
+        if (code < 0x10000) {
+            for (size_t i = 0; i < 5; ++i)
+                if (code >= short_ranges[i].low && code <= short_ranges[i].high)
+                    expected = 1;
+        } else {
+            for (size_t i = 0; i < 4; ++i)
+                if (code >= long_ranges[i].low && code <= long_ranges[i].high)
+                    expected = 1;
+        }
+        assert(xmlCharInRange(code, &group) == expected);
+    }
+    assert(xmlCharInRange(0x7fffffffu, &group) == 0);
+    assert(xmlCharInRange(0x80000000u, &group) == 1);
+    assert(xmlCharInRange(0x80000002u, &group) == 1);
+    assert(xmlCharInRange(0x80000005u, &group) == 0);
+    assert(xmlCharInRange(UINT_MAX - 1, &group) == 0);
+    assert(xmlCharInRange(UINT_MAX, &group) == 1);
+    assert(xmlCharInRange(65, NULL) == 0);
+    group.nbShortRange = group.nbLongRange = 0;
+    group.shortRange = NULL;
+    group.longRange = NULL;
+    assert(xmlCharInRange(65, &group) == 0);
+    assert(xmlCharInRange(0x10000, &group) == 0);
+#ifndef XML3_REFERENCE_VERSION
+    group.nbShortRange = group.nbLongRange = INT_MIN;
+    assert(xmlCharInRange(65, &group) == 0);
+    assert(xmlCharInRange(0x10000, &group) == 0);
+    group.nbShortRange = group.nbLongRange = 1;
+    assert(xmlCharInRange(65, &group) == 0);
+    assert(xmlCharInRange(0x10000, &group) == 0);
+#endif
+#if defined(__unix__)
+    {
+        long page_size = sysconf(_SC_PAGESIZE);
+        assert(page_size > 0);
+        size_t page = (size_t)page_size;
+        unsigned char *mapping = mmap(NULL, page * 2, PROT_READ | PROT_WRITE,
+                                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        assert(mapping != MAP_FAILED);
+        unsigned char *guard = mapping + page;
+        assert(mprotect(guard, page, PROT_NONE) == 0);
+        xmlChSRange *short_edge = (xmlChSRange *)(guard - sizeof(xmlChSRange));
+        *short_edge = (xmlChSRange){65, 90};
+        group = (xmlChRangeGroup){1, INT_MAX, short_edge, (const xmlChLRange *)guard};
+        assert(xmlCharInRange(65, &group) == 1);
+        assert(xmlCharInRange(91, &group) == 0);
+        xmlChLRange *long_edge = (xmlChLRange *)(guard - sizeof(xmlChLRange));
+        *long_edge = (xmlChLRange){0x10000, UINT_MAX};
+        group = (xmlChRangeGroup){INT_MAX, 1, (const xmlChSRange *)guard, long_edge};
+        assert(xmlCharInRange(0x10000, &group) == 1);
+        assert(xmlCharInRange(UINT_MAX, &group) == 1);
+        group = (xmlChRangeGroup){0, 0, (const xmlChSRange *)guard,
+                                 (const xmlChLRange *)guard};
+        assert(xmlCharInRange(65, &group) == 0);
+        assert(xmlCharInRange(0x10000, &group) == 0);
+        assert(munmap(mapping, page * 2) == 0);
+    }
+#endif
+    assert(!xmlReadMemory("<", 1, NULL, NULL, 0));
+    const xmlError *sticky = xmlGetLastError();
+    assert(sticky != NULL);
+    group = (xmlChRangeGroup){5, 4, short_ranges, long_ranges};
+    assert(xmlCharInRange(65, &group) == 1);
+    assert(xmlCharInRange(64, &group) == 0);
+    assert(xmlCharInRange(65, NULL) == 0);
+    assert(xmlGetLastError() == sticky);
+    xmlResetLastError();
+}
+
 static void test_character_classes(void) {
     static const unsigned int base_ranges[][2] = {
         {0x41, 0x5a}, {0x61, 0x7a}, {0xc0, 0xd6}, {0xd8, 0xf6},
@@ -1812,6 +1892,7 @@ static void test_xhtml_identifiers(void) {
 }
 
 int main(void) {
+    test_character_range_groups();
     test_xhtml_identifiers();
     test_character_classes();
     test_escaping(0);

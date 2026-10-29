@@ -1,4 +1,5 @@
 with System;
+with Interfaces.C;
 with XML3_Native_Memory;
 
 package XML3_Text.Buffers with SPARK_Mode is
@@ -17,6 +18,10 @@ package XML3_Text.Buffers with SPARK_Mode is
 
    type Escape_Status is
      (Escaped, Invalid_Text, Escape_No_Memory, Escape_Limit_Exceeded);
+
+   function Character_In_Range
+     (Code : Interfaces.C.unsigned; Group : System.Address) return Boolean
+     with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 
    function Valid_Name
      (Source : System.Address; Source_Length : Natural;
