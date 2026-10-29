@@ -527,6 +527,93 @@ package body XML3_Text.Buffers with SPARK_Mode is
       Status := Escaped;
    end Escape_Special;
 
+   procedure Escape_Bytes_Pass
+     (Input, Output : System.Address; Limit : Byte_Count;
+      Non_ASCII, Attribute, Quotes : Boolean;
+      Length : out Byte_Count; Status : out Escape_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Input /= System.Null_Address,
+       Post => Length <= Limit
+         and then Status in Escaped | Invalid_Text | Escape_Limit_Exceeded
+   is
+      Position : Byte_Count := 0;
+      Current : System.Address;
+      Code : Integer;
+      Width : Natural;
+   begin
+      Length := 0;
+      Status := Invalid_Text;
+      loop
+         pragma Loop_Invariant (Position <= Limit and then Length <= Limit);
+         pragma Loop_Variant (Increases => Position);
+         Current := Native.Offset (Input, Native.Byte_Count (Position));
+         Get_UTF8_Char (Current, Limit - Position + 1, Code, Width);
+         if Width = 0 then
+            if UTF8_Lead_Size (Current) > Limit - Position + 1 then
+               Status := Escape_Limit_Exceeded;
+            end if;
+            return;
+         elsif Code = 0 then
+            Status := Escaped;
+            return;
+         elsif Width > Limit - Position then
+            Status := Escape_Limit_Exceeded;
+            return;
+         elsif Code in 16#D800# .. 16#DFFF# or else not XML_Char (Code) then
+            return;
+         end if;
+         declare
+            Image : constant String :=
+              (if Code < 128 then Special_Image (Character'Val (Code), Attribute, Quotes)
+               elsif Non_ASCII then Character_Reference (Code)
+               else UTF8_Image (Code));
+         begin
+            if Image'Length > Limit - Length then
+               Status := Escape_Limit_Exceeded;
+               return;
+            end if;
+            if Output /= System.Null_Address then
+               Native.Write_String (Output, Length, Image);
+            end if;
+            Length := Length + Image'Length;
+         end;
+         Position := Position + Width;
+      end loop;
+   end Escape_Bytes_Pass;
+
+   procedure Escape_Special_Bytes
+     (Input : System.Address; Result : out System.Address; Status : out Escape_Status;
+      Limit : Byte_Count := Max_Bytes;
+      Non_ASCII, Attribute : Boolean := False; Quotes : Boolean := True)
+   is
+      Length, Written : Byte_Count;
+      Base : System.Address;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Text;
+      if Input = System.Null_Address then
+         return;
+      end if;
+      Escape_Bytes_Pass
+        (Input, System.Null_Address, Limit, Non_ASCII, Attribute, Quotes, Length, Status);
+      if Status /= Escaped then
+         return;
+      end if;
+      Native.Allocate (Native.Byte_Count (Length) + 1, Base);
+      if Base = System.Null_Address then
+         Status := Escape_No_Memory;
+         return;
+      end if;
+      Escape_Bytes_Pass
+        (Input, Base, Length, Non_ASCII, Attribute, Quotes, Written, Status);
+      if Status /= Escaped then
+         Native.Free (Base);
+         return;
+      end if;
+      Native.Write_Byte (Base, Written, Character'Val (0));
+      Result := Base;
+   end Escape_Special_Bytes;
+
    function UTF8_Lead_Size (Item : System.Address) return Integer is
    begin
       if Item = System.Null_Address then

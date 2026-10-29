@@ -3027,7 +3027,7 @@ package body XML3_C is
       if Input = System.Null_Address then
          return System.Null_Address;
       end if;
-      XML3_Text.Buffers.Escape_Special (C_String_Value (Input), Result, Status);
+      XML3_Text.Buffers.Escape_Special_Bytes (Input, Result, Status);
       case Status is
          when XML3_Text.Buffers.Escaped => null;
          when XML3_Text.Buffers.Escape_No_Memory =>
@@ -3037,9 +3037,6 @@ package body XML3_C is
       end case;
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when Storage_Error =>
          XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
          return System.Null_Address;

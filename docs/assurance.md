@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 12,920 checks
-(1,371 flow and 11,549 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 12,954 checks
+(1,383 flow and 11,571 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 158 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -176,20 +176,26 @@ entity loading, or editable entity nodes. The public enum and record declaration
 support for those other entity kinds. The SPARK name/value mapping and bounded lookup logic are
 covered separately, while native pointer readability, byte effects, layout, lifetime, C ABI, and
 complete public C semantics remain trusted or unproved.
-`xmlEncodeSpecialChars` routes through `Escape_Special`, which validates
-strict UTF-8/XML text, measures bounded expansion before allocation, and
+`xmlEncodeSpecialChars` routes through `Escape_Special_Bytes`, which directly
+validates strict UTF-8/XML text, measures bounded expansion before allocation, and
 emits the five supported replacements (<, >, &, double quote, and CR). It
 retains apostrophe, LF, TAB, and valid Unicode; NULL is handled without a
 diagnostic, empty input receives an allocated empty result, and invalid
 UTF-8/XML is rejected rather than repaired or preserved. Tests cover exact
 output, input preservation, output ownership, serialization round-trip,
-invalid inputs, and OOM retry. The helper's proof covers its bounded checks
-and native-call preconditions, not full C output semantics. C-string
-conversion, native pointers and byte writes, allocation/free, ABI/status
+invalid inputs, and OOM retry. GNATprove discharges 17 checks for
+`Escape_Bytes_Pass` and 5 for `Escape_Special_Bytes`; the existing
+String-based `Escape_Special` has 39 checks. `Escape_Bytes_Pass` is shared by
+measurement and construction, stops at the first invalid unit, and bounds the write pass by the
+measured allocation size. Failure frees any partial output. No C-string
+materialization is used; `Special_Image`, `Character_Reference`, and `UTF8_Image`
+remain shared primitives. The proof covers bounded arithmetic, native-call
+preconditions and status/result contracts, not full C output semantics. Native
+pointers/extents, byte effects, allocation/free, ABI/status
 mapping, and complete libxml2 behavior remain trusted; the API is partial and
 not-proved at the public C level, and does not implement DTD/entity expansion.
-`xmlEncodeEntitiesReentrant` routes through the same registered-document
-validation and `Escape_Special` implementation. Less-than, greater-than and
+`xmlEncodeEntitiesReentrant` routes through registered-document
+validation and the String-based `Escape_Special` implementation. Less-than, greater-than and
 ampersand use named references, CR becomes `&#13;`, and valid non-ASCII uses
 uppercase hexadecimal references; quotes, TAB and LF remain literal. NULL
 input bypasses document validation; otherwise only NULL or a registered
@@ -337,7 +343,7 @@ C-string conversion, allocation, byte reads/writes, and mutex behavior remain
 trusted. Source encoding and standalone metadata are not retained, so default
 output does not restore the parsed source encoding. An empty document may
 produce only the XML declaration. These units are included in the current
-successful 12,920-check aggregate proof; see [proof-report.md](proof-report.md)
+successful 12,954-check aggregate proof; see [proof-report.md](proof-report.md)
 for the command, result, and source hashes.
 
 `Adopt_Arena` initializes an empty Store or performs overflow-checked growth for

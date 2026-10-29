@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **12,920 checks, 1,371 by flow analysis and 11,549
+It completed successfully: **12,954 checks, 1,383 by flow analysis and 11,571
 by provers; 0 unproved, 0 justified**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -140,18 +140,25 @@ pointer validity/extents, allocation/free/byte effects, C ABI, or full public
 semantics. GNATprove discharges 18 checks for `Build` and 2 for `Overlaps`.
 Overlap safety is tested only for libxml3, not reference equivalence.
 `xmlEncodeSpecialChars` exports from `libxml/entities.h` and uses
-`XML3_Text.Buffers.Escape_Special`. Its 17 proved checks cover bounded
-expansion, loop/index/overflow safety, and native-call preconditions;
-`Special_Image` discharges one additional check. Tests cover the fixed
+`XML3_Text.Buffers.Escape_Special_Bytes` without C-string materialization.
+`Escape_Bytes_Pass` performs bounded direct UTF-8/XML validation, measurement
+and construction, stopping at NUL or the first invalid unit. It shares
+`Get_UTF8_Char`, `Special_Image`, `Character_Reference`, and `UTF8_Image`.
+Allocation follows successful measurement; the write pass uses that measured
+size as its cap and failures free partial output. The written proof covers
+scalar bounds, loop/index/overflow checks, native-call preconditions and the
+status/result relationship, not complete output semantics. GNATprove discharges
+17 checks for `Escape_Bytes_Pass` and 5 for `Escape_Special_Bytes`; the
+String-based `Escape_Special` has 39 checks. Tests cover the fixed
 replacements, NULL/empty behavior, Unicode, input immutability, ownership,
 round-trip serialization, invalid-input rejection, and OOM retry. The API is
-partial and not-proved at the public C level: C-string conversion, pointer
-validity, ABI/status mapping, native allocation/free and actual byte writes,
+partial and not-proved at the public C level: pointer validity/readable extents,
+ABI/status mapping, native allocation/free and actual byte effects,
 and complete libxml2 semantics remain trusted. The document argument is
 unused as in pinned libxml2 2.15.4; malformed UTF-8/XML is rejected rather than
 silently repaired or preserved, and no DTD/entity expansion is provided. The
-helper emits one analyzer warning because `Validate_UTF8`'s `Error` output is
-unused; no proof check remains unproved.
+String-based `Escape_Special` remains for internal DOM callers and emits one
+analyzer warning because `Validate_UTF8`'s `Error` output is unused.
 `xmlEncodeEntitiesReentrant` shares `Registered_Document`, `Encoding_Status`,
 and `Escape_Special` with the entity-list query. It escapes `<`, `>`, and `&`
 with named references, CR as `&#13;`, and valid non-ASCII as uppercase
@@ -572,7 +579,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 496 entity
+The 498 entity
 summaries report 0 flow errors, 158 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -606,13 +613,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 359 |
-| Initialization | 826 |
-| Runtime checks | 5,540 |
-| Assertions | 1,664 |
-| Functional contracts | 4,272 |
-| Termination | 259 |
-| **Total** | **12,920** |
+| Data dependencies | 361 |
+| Initialization | 836 |
+| Runtime checks | 5,550 |
+| Assertions | 1,666 |
+| Functional contracts | 4,281 |
+| Termination | 260 |
+| **Total** | **12,954** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1168,7 +1175,7 @@ validity/readability, native allocation/copy/free, ABI, or complete C semantics.
 ## Source identity (SHA-256)
 
 ```text
-adb619b2a08aa3ee568bd850a32aac2dce6346b63b82336d0a657a1c9a3f61ea  src/xml3_c.adb
+657c677f17bc93dd0bb57fe447c28719ea6d6a72c14e554fa6f3399425e6f2dd  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1222,8 +1229,8 @@ eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
-0ae7b87d5f0a4dfff4f2fa1555766fbfccdc90fe5d5db543c1720c3db64190c0  src/xml3_text-buffers.adb
-82ad66dff40d9b3716aaba0e4cefa5e6e4b81f2d46b169eb5f546ced02a71156  src/xml3_text-buffers.ads
+e90a052a7062323a771955dcd002050cfb1cc097a74785dc59b823aa8c2a9317  src/xml3_text-buffers.adb
+0ee5951176132380664985a03e7044f487e1b274899ef388d3f8ee677fcfd8d4  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 31f51c526e5ddaa14e289dc2e34a680b5af6b60789e973f9da99a027501dcb2e  proof.gpr

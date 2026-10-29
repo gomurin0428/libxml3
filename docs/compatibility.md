@@ -17,9 +17,12 @@ apostrophe・LF・TAB・有効な非ASCII文字は保持します。既存の参
 エスケープします。結果は呼び出し側が `xmlFree` で解放し、入力の所有権は変わりません。
 固定版の不正な制御文字を `&#xFFFD;` に置換する動作、不正UTF-8やXMLで無効なUnicode
 文字を保持する動作は再現せず、診断とNULLで失敗します。走査・展開サイズは
-`Max_Bytes` までで、確保失敗でも入力は保持します。これはDTD・一般実体対応ではなく、
-XML文字列のエスケープのみです。C文字列の読み取り可能性・ABI・native書き込みと
-allocatorは信頼境界に残ります。
+`Max_Bytes` までで、確保失敗でも入力は保持します。`Escape_Special_Bytes` がC文字列の
+中間コピーなしで直接処理します。`Escape_Bytes_Pass` はUTF-8/XML検査・計測・構築を共有し、
+NULまたは最初の不正な単位で停止します。構築時は計測済みサイズを上限にし、失敗時は
+部分出力を解放します。これはDTD・一般実体対応ではなく、XML文字列のエスケープのみです。
+pointerの有効性・読み取り可能範囲と安定性、native byte effects、allocator、ABIと完全な
+公開意味論は信頼境界に残ります。String版 `Escape_Special` は内部DOM用途に残しています。
 
 `xmlEncodeEntitiesReentrant` は NULL input なら `doc` を検証せず、診断なしで NULL を返します。
 non-NULL input では `doc == NULL` または登録済み Document_Node を受け付け、空 input も独立した空文字列にします。

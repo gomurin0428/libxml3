@@ -398,6 +398,57 @@ procedure Text_Buffers_Test is
       XML3_Native_Memory.Free (Output);
    end Check_Escape;
 
+   procedure Check_Escape_Bytes is
+      Unicode : constant String := Character'Val (16#C3#) & Character'Val (16#A9#);
+      Output : System.Address;
+      Status : XML3_Text.Buffers.Escape_Status;
+
+      procedure Run
+        (Value : String; Limit : XML3_Text.Byte_Count;
+         Wanted : XML3_Text.Buffers.Escape_Status; Expected : String := "";
+         Non_ASCII, Attribute : Boolean := False; Quotes : Boolean := True)
+      is
+         Source : aliased String := Value & Character'Val (0);
+      begin
+         XML3_Text.Buffers.Escape_Special_Bytes
+           (Source'Address, Output, Status, Limit, Non_ASCII, Attribute, Quotes);
+         pragma Assert (Status = Wanted);
+         if Status = XML3_Text.Buffers.Escaped then
+            pragma Assert (Output /= System.Null_Address);
+            for I in Expected'Range loop
+               pragma Assert (XML3_Native_Memory.Byte_At
+                 (Output, I - Expected'First) = Expected (I));
+            end loop;
+            pragma Assert (XML3_Native_Memory.Byte_At
+              (Output, Expected'Length) = Character'Val (0));
+            XML3_Native_Memory.Free (Output);
+         else
+            pragma Assert (Output = System.Null_Address);
+         end if;
+      end Run;
+   begin
+      XML3_Text.Buffers.Escape_Special_Bytes
+        (System.Null_Address, Output, Status);
+      pragma Assert (Status = XML3_Text.Buffers.Invalid_Text
+        and then Output = System.Null_Address);
+      Run ("", 0, XML3_Text.Buffers.Escaped);
+      Run ("a", 0, XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run ("a&", 5, XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run ("a&", 6, XML3_Text.Buffers.Escaped, "a&amp;");
+      Run (Unicode, 0, XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Unicode, 1, XML3_Text.Buffers.Escape_Limit_Exceeded);
+      Run (Unicode, 2, XML3_Text.Buffers.Escaped, Unicode);
+      Run (Unicode, 5, XML3_Text.Buffers.Escape_Limit_Exceeded, Non_ASCII => True);
+      Run (Unicode, 6, XML3_Text.Buffers.Escaped, "&#xE9;", Non_ASCII => True);
+      Run ("""", 1, XML3_Text.Buffers.Escaped, """", Quotes => False);
+      Run (Character'Val (9) & Character'Val (10) & '"', 15,
+           XML3_Text.Buffers.Escaped, "&#9;&#10;&quot;", Attribute => True, Quotes => False);
+      Run ((1 => Character'Val (1)), 1, XML3_Text.Buffers.Invalid_Text);
+      Run ((1 => Character'Val (16#FF#)), 1, XML3_Text.Buffers.Invalid_Text);
+      Run ("a" & Character'Val (0) & Character'Val (16#FF#), 3,
+           XML3_Text.Buffers.Escaped, "a");
+   end Check_Escape_Bytes;
+
    procedure Check_Append is
       Input, Output : System.Address;
       Status : XML3_Text.Buffers.Append_Status;
@@ -736,6 +787,7 @@ begin
      (Left'Address, Left'Address, False, Result, Limit_Flag, 0);
    pragma Assert (Result = 0 and not Limit_Flag);
    Check_Escape;
+   Check_Escape_Bytes;
    Check_URI;
    Check_URI_Unescape;
    Check_URI_Path;
