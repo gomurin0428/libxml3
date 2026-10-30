@@ -46,6 +46,7 @@ test-text-buffers: tests/text-buffers-test
 	./tests/text-buffers-test
 
 tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
+        src/xml3_error_records.ads src/xml3_error_records.adb \
         src/xml3_parser-options.ads src/xml3_parser-options.adb \
         src/xml3_parser-native_sizes.ads src/xml3_parser-workspaces.ads src/xml3_parser-workspaces.adb \
 		src/xml3_dom_store.ads src/xml3_dom_store.adb \

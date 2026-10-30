@@ -1,12 +1,13 @@
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
-with XML3_Native_Memory;
-with XML3_Text.Buffers;
+with XML3_Error_Records;
+with XML3_Text;
 
 package body XML3_Errors is
 
+   subtype Error_Record is XML3_Error_Records.Error_Record;
+
    use type Interfaces.C.int;
-   use type XML3_Text.Buffers.Concatenate_Status;
    use type System.Address;
 
    XML3_OOM : constant Interfaces.C.int := 2;
@@ -245,39 +246,8 @@ package body XML3_Errors is
       return null;
    end Internal_State;
 
-   procedure Free_Pointer (Item : in out System.Address) is
-   begin
-      if Item /= System.Null_Address then
-         XML3_Native_Memory.Free (Item);
-         Item := System.Null_Address;
-      end if;
-   end Free_Pointer;
-
-   procedure Clear_Record (Item : in out Error_Record) is
-   begin
-      Free_Pointer (Item.Message);
-      Free_Pointer (Item.File);
-      Free_Pointer (Item.Str1);
-      Free_Pointer (Item.Str2);
-      Free_Pointer (Item.Str3);
-      Item := (others => <>);
-   end Clear_Record;
-
-   function Duplicate (Item : System.Address) return System.Address is
-      Copy   : System.Address;
-      Status : XML3_Text.Buffers.Concatenate_Status;
-   begin
-      XML3_Text.Buffers.Concatenate_Bytes
-        (Item, System.Null_Address, 0, Copy, Status);
-      if Status = XML3_Text.Buffers.Copied then
-         return Copy;
-      else
-         return System.Null_Address;
-      end if;
-   exception
-      when others =>
-         return System.Null_Address;
-   end Duplicate;
+   procedure Clear_Record (Item : in out Error_Record)
+     renames XML3_Error_Records.Release;
 
    procedure Set_OOM is
       State : constant Error_State_Access := Current_State (False);
@@ -325,41 +295,14 @@ package body XML3_Errors is
    is
       State : constant Error_State_Access := Current_State (True);
       Replacement : Error_Record := (others => <>);
+      Success : Boolean;
    begin
-      Replacement.Domain := Domain;
-      Replacement.Code := Code;
-      Replacement.Level := Level;
-      Replacement.Line := Line;
-      Replacement.Int1 := Int1;
-      Replacement.Int2 := Int2;
-      Replacement.Message := Duplicate (Message);
-      if Message /= System.Null_Address
-        and then Replacement.Message = System.Null_Address
-      then
-         Set_OOM;
-         return;
-      end if;
-      Replacement.File := Duplicate (File);
-      if File /= System.Null_Address and then Replacement.File = System.Null_Address then
-         Clear_Record (Replacement);
-         Set_OOM;
-         return;
-      end if;
-      Replacement.Str1 := Duplicate (Str1);
-      if Str1 /= System.Null_Address and then Replacement.Str1 = System.Null_Address then
-         Clear_Record (Replacement);
-         Set_OOM;
-         return;
-      end if;
-      Replacement.Str2 := Duplicate (Str2);
-      if Str2 /= System.Null_Address and then Replacement.Str2 = System.Null_Address then
-         Clear_Record (Replacement);
-         Set_OOM;
-         return;
-      end if;
-      Replacement.Str3 := Duplicate (Str3);
-      if Str3 /= System.Null_Address and then Replacement.Str3 = System.Null_Address then
-         Clear_Record (Replacement);
+      XML3_Error_Records.Clone
+        ((Domain => Domain, Code => Code, Level => Level, Line => Line,
+          Int1 => Int1, Int2 => Int2, Message => Message, File => File,
+          Str1 => Str1, Str2 => Str2, Str3 => Str3, others => <>),
+         Replacement, Success);
+      if not Success then
          Set_OOM;
          return;
       end if;
@@ -504,6 +447,7 @@ package body XML3_Errors is
    is
       Source : Error_Record;
       Copy   : Error_Record := (others => <>);
+      Success : Boolean;
    begin
       if From = System.Null_Address or else To = System.Null_Address then
          return -1;
@@ -513,31 +457,8 @@ package body XML3_Errors is
          return -1;
       end if;
       Source := Error_Conversion.To_Pointer (From).all;
-      Copy.Domain := Source.Domain;
-      Copy.Code := Source.Code;
-      Copy.Level := Source.Level;
-      Copy.Line := Source.Line;
-      Copy.Int1 := Source.Int1;
-      Copy.Int2 := Source.Int2;
-      Copy.Ctxt := Source.Ctxt;
-      Copy.Node := Source.Node;
-      Copy.Message := Duplicate (Source.Message);
-      if Source.Message /= System.Null_Address
-        and then Copy.Message = System.Null_Address
-      then
-         Set_OOM;
-         return -1;
-      end if;
-      Copy.File := Duplicate (Source.File);
-      Copy.Str1 := Duplicate (Source.Str1);
-      Copy.Str2 := Duplicate (Source.Str2);
-      Copy.Str3 := Duplicate (Source.Str3);
-      if (Source.File /= System.Null_Address and then Copy.File = System.Null_Address)
-        or else (Source.Str1 /= System.Null_Address and then Copy.Str1 = System.Null_Address)
-        or else (Source.Str2 /= System.Null_Address and then Copy.Str2 = System.Null_Address)
-        or else (Source.Str3 /= System.Null_Address and then Copy.Str3 = System.Null_Address)
-      then
-         Clear_Record (Copy);
+      XML3_Error_Records.Clone (Source, Copy, Success);
+      if not Success then
          Set_OOM;
          return -1;
       end if;

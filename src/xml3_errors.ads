@@ -3,23 +3,6 @@ with System;
 
 package XML3_Errors is
 
-   type Error_Record is record
-      Domain  : Interfaces.C.int := 0;
-      Code    : Interfaces.C.int := 0;
-      Message : System.Address := System.Null_Address;
-      Level   : Interfaces.C.int := 0;
-      File    : System.Address := System.Null_Address;
-      Line    : Interfaces.C.int := 0;
-      Str1    : System.Address := System.Null_Address;
-      Str2    : System.Address := System.Null_Address;
-      Str3    : System.Address := System.Null_Address;
-      Int1    : Interfaces.C.int := 0;
-      Int2    : Interfaces.C.int := 0;
-      Ctxt    : System.Address := System.Null_Address;
-      Node    : System.Address := System.Null_Address;
-   end record
-     with Convention => C;
-
    function Get_Last_Error return System.Address
      with Export, Convention => C, External_Name => "xmlGetLastError";
 
