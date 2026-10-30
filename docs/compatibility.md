@@ -918,6 +918,14 @@ IO/code 81、line 1 column 1 として報告します。XML parser の位置は�
 入力の decoded character column です。1 GB value profile は実際の大規模 allocation
 では試していません。
 
+UTF-16変換の計測・確保・書き込み・変換失敗時の解放はSPARKの
+`XML3_Encoding.Buffers.Convert_UTF16`で行います。native入力を指定byte数内で直接読み、
+奇数の残りbyteや不正サロゲートで停止します。String decoderとも同じcode-unit読取り、
+サロゲート判定、UTF-8生成を使います。空結果も最低1byteを確保し、計測・書き込みの
+長さ不一致では結果を公開しません。BOM/明示encodingの優先順位とcode 81/114/6の
+診断は変更しません。C側は変換結果の解析・成功後の解放とABI/例外/診断変換を担います。
+nativeの読み取り可能範囲・入力安定性、byte効果とallocator/ABIは証明の外です。
+
 文書全体に対する 64 KiB の上限はありません。通常プロファイル
 では各 QName の prefix/local-name component および PI target はそれぞれ最大
 50,000 bytes、各 decoded/normalized text・attribute・comment・CDATA・PI value は

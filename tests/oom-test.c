@@ -659,13 +659,15 @@ int main(int argc, char **argv) {
             error = xmlGetLastError();
             assert(error != NULL && error->code == XML_ERR_TAG_NAME_MISMATCH);
         }
-    } else if (strcmp(operation, "utf16") == 0) {
+    } else if (strcmp(operation, "utf16") == 0 ||
+               strcmp(operation, "utf16-empty") == 0) {
         static const unsigned char input[] = {
             0xff, 0xfe, '<', 0, 'r', 0, '/', 0, '>', 0
         };
         int status = -1;
+        int empty = strcmp(operation, "utf16-empty") == 0;
         xml3_oom_enable(fail_index);
-        doc = xml3ReadMemory((const char *)input, sizeof(input), &status);
+        doc = xml3ReadMemory((const char *)input, empty ? 2 : sizeof(input), &status);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -673,6 +675,11 @@ int main(int argc, char **argv) {
             assert(doc == NULL);
             assert(status == XML3_STATUS_NO_MEMORY);
             require_oom_error();
+        } else if (empty) {
+            assert(doc == NULL);
+            assert(status == XML3_STATUS_MALFORMED);
+            error = xmlGetLastError();
+            assert(error != NULL && error->code == XML_ERR_DOCUMENT_EMPTY);
         } else {
             assert(doc != NULL);
             assert(status == XML3_STATUS_OK);

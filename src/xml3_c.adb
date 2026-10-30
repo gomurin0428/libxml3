@@ -23,7 +23,6 @@ package body XML3_C is
    use type System.Address;
    use type Interfaces.Unsigned_32;
    use type XML3_Encoding.Encoding_Kind;
-   use type XML3_Encoding.Conversion_Status;
    use type XML3_DOM_Constructors.Construction_Status;
    use type XML3_DOM_Store.Documents.Read_Status;
    use type XML3_DOM_Store.Queries.XML_Property_Kind;
@@ -398,59 +397,30 @@ package body XML3_C is
                   Parse_And_Report (Normalized, Info);
                else
                   declare
-                     Empty_Output : String (1 .. 0) := "";
                      Decoded_Length : XML3_Text.Byte_Count;
-                     Decode_Status : XML3_Encoding.Conversion_Status;
-                     Error_Position : Natural;
+                     Decode_Status : XML3_Encoding.Buffers.Conversion_Result;
                   begin
-                     XML3_Encoding.Decode_UTF16
-                       (Normalized, Info.Kind = XML3_Encoding.UTF16LE,
-                        Empty_Output, Decoded_Length, Decode_Status,
-                        Error_Position, Measure_Only => True);
-                     if Decode_Status = XML3_Encoding.Invalid_Encoding then
-                        Report_Conversion_Error (81, 8, Status_Malformed);
-                     elsif Decode_Status =
-                       XML3_Encoding.Output_Too_Small
-                     then
-                        Report_Conversion_Error
-                          (114, 1, Status_Limit_Exceeded);
-                     else
-                        Converted_Buffer := C_Malloc
-                          (size_t (Natural'Max
-                             (1, Natural (Decoded_Length))));
-                        if Converted_Buffer = System.Null_Address then
+                     XML3_Encoding.Buffers.Convert_UTF16
+                       (Normalized_Address, Normalized_Length,
+                        Info.Kind = XML3_Encoding.UTF16LE,
+                        Converted_Buffer, Decoded_Length, Decode_Status);
+                     case Decode_Status is
+                        when XML3_Encoding.Buffers.Invalid_UTF16 =>
+                           Report_Conversion_Error (81, 8, Status_Malformed);
+                        when XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
+                           Report_Conversion_Error (114, 1, Status_Limit_Exceeded);
+                        when XML3_Encoding.Buffers.Conversion_No_Memory =>
                            Status := Status_No_Memory;
                            XML3_Errors.Report_Simple (6, 2, 3, URL);
-                        else
+                        when XML3_Encoding.Buffers.Converted =>
                            declare
                               Converted : String
                                 (1 .. Natural (Decoded_Length))
                                   with Import, Address => Converted_Buffer;
-                              Filled_Length : XML3_Text.Byte_Count;
-                              Fill_Status : XML3_Encoding.Conversion_Status;
-                              Fill_Error_Position : Natural;
                            begin
-                              XML3_Encoding.Decode_UTF16
-                                (Normalized,
-                                 Info.Kind = XML3_Encoding.UTF16LE,
-                                 Converted, Filled_Length, Fill_Status,
-                                 Fill_Error_Position);
-                              if Fill_Status = XML3_Encoding.Success
-                                and then Filled_Length = Decoded_Length
-                              then
-                                 Parse_And_Report (Converted, Info);
-                              elsif Fill_Status =
-                                XML3_Encoding.Invalid_Encoding
-                              then
-                                 Report_Conversion_Error
-                                   (81, 8, Status_Malformed);
-                              else
-                                 Report_Conversion_Error
-                                   (114, 1, Status_Limit_Exceeded);
-                              end if;
+                              Parse_And_Report (Converted, Info);
                            end;
-                        end if;
-                     end if;
+                     end case;
                   end;
                   Free_Converted;
                end if;
