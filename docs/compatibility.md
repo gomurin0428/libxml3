@@ -1045,6 +1045,9 @@ a truncated string. Record replacement/rollback, cleanup scheduling, sticky
 error semantics, TLS and emergency diagnostics remain in the native adapter.
 Callers still provide valid, readable and stable strings and live error records;
 the cap does not make arbitrary pointers safe or provide a full DoS bound.
+For a caller-constructed nonzero error with a NULL message, libxml3 still
+preserves NULL while the pinned reference supplies a default message. This
+pre-existing payload difference is not changed by the string-copy migration.
 
 Compatibility follows a safety-first policy: mimic harmless documented or
 observed API quirks, such as retaining the last error after a successful parse,
