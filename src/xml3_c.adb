@@ -39,7 +39,6 @@ package body XML3_C is
      XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements;
 
    function Multiply_Size (Left, Right : size_t) return size_t;
-   function To_Storage_Offset_Checked (Value : size_t) return Storage_Offset;
 
    function C_Malloc (Size : size_t) return System.Address
      with Import, Convention => C, External_Name => "malloc";
@@ -70,14 +69,6 @@ package body XML3_C is
       end if;
       return Left * Right;
    end Multiply_Size;
-
-   function To_Storage_Offset_Checked (Value : size_t) return Storage_Offset is
-   begin
-      if Value > size_t (Storage_Offset'Last) then
-         raise Storage_Error;
-      end if;
-      return Storage_Offset (Value);
-   end To_Storage_Offset_Checked;
 
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
@@ -278,15 +269,7 @@ package body XML3_C is
       Result : System.Address := System.Null_Address;
       Huge : Boolean := False;
       Diagnostic : XML3_Parser.Diagnostic_Info;
-      Converted_Buffer : System.Address := System.Null_Address;
-
-      procedure Free_Converted is
-      begin
-         if Converted_Buffer /= System.Null_Address then
-            C_Free (Converted_Buffer);
-            Converted_Buffer := System.Null_Address;
-         end if;
-      end Free_Converted;
+      Prepared : XML3_Encoding.Buffers.Input_View;
 
       procedure Parse_And_Report
         (Input : String; Encoding_Info : XML3_Encoding.Encoding_Info)
@@ -380,61 +363,36 @@ package body XML3_C is
             Huge := (Bits and 16#0008_0000#) /= 0;
          end;
          declare
-            Source : String (1 .. Natural (Size))
-              with Import, Address => Buffer;
+            Prepare_Status : XML3_Encoding.Buffers.Conversion_Result;
          begin
-            declare
-               Info : constant XML3_Encoding.Encoding_Info :=
-                 XML3_Encoding.Detect (Source, Requested);
-               Normalized_Length : constant Natural :=
-                 Source'Length - Info.Skip;
-               Normalized_Address : constant System.Address :=
-                 Buffer + To_Storage_Offset_Checked (size_t (Info.Skip));
-               Normalized : String (1 .. Normalized_Length)
-                 with Import, Address => Normalized_Address;
-            begin
-               if Info.Kind = XML3_Encoding.UTF8 then
-                  Parse_And_Report (Normalized, Info);
-               else
+            XML3_Encoding.Buffers.Prepare_Input
+              (Buffer, Natural (Size), Requested, Prepared, Prepare_Status);
+            case Prepare_Status is
+               when XML3_Encoding.Buffers.Invalid_UTF16 =>
+                  Report_Conversion_Error (81, 8, Status_Malformed);
+               when XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
+                  Report_Conversion_Error (114, 1, Status_Limit_Exceeded);
+               when XML3_Encoding.Buffers.Conversion_No_Memory =>
+                  Status := Status_No_Memory;
+                  XML3_Errors.Report_Simple (6, 2, 3, URL);
+               when XML3_Encoding.Buffers.Converted =>
                   declare
-                     Decoded_Length : XML3_Text.Byte_Count;
-                     Decode_Status : XML3_Encoding.Buffers.Conversion_Result;
+                     Input : String (1 .. Prepared.Length)
+                       with Import, Address => Prepared.Data;
                   begin
-                     XML3_Encoding.Buffers.Convert_UTF16
-                       (Normalized_Address, Normalized_Length,
-                        Info.Kind = XML3_Encoding.UTF16LE,
-                        Converted_Buffer, Decoded_Length, Decode_Status);
-                     case Decode_Status is
-                        when XML3_Encoding.Buffers.Invalid_UTF16 =>
-                           Report_Conversion_Error (81, 8, Status_Malformed);
-                        when XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
-                           Report_Conversion_Error (114, 1, Status_Limit_Exceeded);
-                        when XML3_Encoding.Buffers.Conversion_No_Memory =>
-                           Status := Status_No_Memory;
-                           XML3_Errors.Report_Simple (6, 2, 3, URL);
-                        when XML3_Encoding.Buffers.Converted =>
-                           declare
-                              Converted : String
-                                (1 .. Natural (Decoded_Length))
-                                  with Import, Address => Converted_Buffer;
-                           begin
-                              Parse_And_Report (Converted, Info);
-                           end;
-                     end case;
+                     Parse_And_Report (Input, Prepared.Info);
                   end;
-                  Free_Converted;
-               end if;
-            end;
+            end case;
          end;
       end;
-      Free_Converted;
+      XML3_Encoding.Buffers.Release_Input (Prepared);
       return Result;
    exception
       when Storage_Error =>
          if Result /= System.Null_Address then
             Free_Doc (Result);
          end if;
-         Free_Converted;
+         XML3_Encoding.Buffers.Release_Input (Prepared);
          Status := Status_No_Memory;
          XML3_Errors.Report_Simple (6, 2, 3, URL);
          return System.Null_Address;
@@ -442,7 +400,7 @@ package body XML3_C is
          if Result /= System.Null_Address then
             Free_Doc (Result);
          end if;
-         Free_Converted;
+         XML3_Encoding.Buffers.Release_Input (Prepared);
          XML3_Errors.Report_Simple (1, 1, 3, URL);
          Status :=
            (if XML3_Errors.Last_Error_Is_OOM

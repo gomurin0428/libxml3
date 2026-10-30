@@ -401,7 +401,7 @@
   },
   "function:parser.h:xmlReadMemory": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。 UTF-16 native変換の計測・確保・書込み・失敗時解放はSPARK Convert_UTF16で実施。String decoderとcode-unit/サロゲート判定・UTF-8生成を共用し、空結果も所有領域を確保。BOM/encoding/診断規則は維持。",
+    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。 明示encoding名はClassify_Bytesが最大9byteを直接読み、XML宣言と共通の6別名を判定。候補消失で停止、NULLは自動検出、空/未対応名はcode32で拒否。C側のencoding走査・中間文字列なし。native extent/stability/ABIは信頼境界。 UTF-16 native変換の計測・確保・書込み・失敗時解放はSPARK Convert_UTF16で実施。String decoderとcode-unit/サロゲート判定・UTF-8生成を共用し、空結果も所有領域を確保。BOM/encoding/診断規則は維持。 Prepare_Inputが最大4byteのheaderから既存Detectで判定しBOMを切り出す。UTF-8は借用、UTF-16出力は所有領域としRelease_Inputが所有領域のみ解放。",
     "tests": [
       "tests/api-test.c",
       "tests/error-test.c",

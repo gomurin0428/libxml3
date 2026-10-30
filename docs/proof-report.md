@@ -6,13 +6,20 @@ UTF-16 native conversion uses `Encoding.Buffers.Convert_UTF16` and its bounded
 two-pass helper, moving measure/allocate/fill/failure cleanup out of the C adapter.
 String and native paths share code-unit assembly, surrogate validation and UTF-8
 encoding. Native extents/stability, byte effects, allocator/ABI and full semantics
-remain trusted. Encoding detection, parser span adaptation and successful-buffer
-cleanup remain at the C boundary. Tests cover endian/length limits, empty output,
+remain trusted. `Prepare_Input` now performs bounded header detection, BOM
+skipping and optional conversion. `Release_Input` frees only owned conversion
+storage and resets its view, never freeing borrowed UTF-8. `Detect_Bytes` uses
+the existing String `Detect` on at most 4/3/2 bytes for automatic/explicit UTF-8/
+explicit UTF-16 input, with no detection reads for fewer than two input bytes.
+Parser span adaptation and diagnostics remain at the C boundary. Tests compare
+header-prefix views with String detection/conversion, ownership and repeat
+release, plus endian/length limits, empty output,
 malformed pairs, guarded input and input-protection/output/reparse/edit lifetimes;
 OOM walks include successful XML and BOM-only empty-document failure.
-GNATprove proves 4 checks for `Convert_UTF16`, 17 for `Convert_UTF16_Pass`,
-32 (2 warnings) for `Decode_UTF16`, 4 for its `Unit_At`, 2 for
-`Decode_UTF16_Pair`, and 0 for `Read_UTF16_Unit`.
+GNATprove proves 6 checks for `Detect_Bytes`, 5 for `Prepare_Input`, 1 for
+`Release_Input`, 4 for `Convert_UTF16`, and 17 for `Convert_UTF16_Pass`;
+`Decode_UTF16` proves 32 checks (2 warnings), its `Unit_At` 4,
+`Decode_UTF16_Pair` 2, and `Read_UTF16_Unit` 0.
 
 The full proof command for this source revision was:
 
@@ -20,7 +27,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,246 checks, 1,480 by flow analysis and 11,766
+It completed successfully: **13,266 checks, 1,488 by flow analysis and 11,778
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -688,7 +695,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 518 entity
+The 521 entity
 summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -722,13 +729,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 381 |
-| Initialization | 909 |
-| Runtime checks | 5,624 |
+| Data dependencies | 384 |
+| Initialization | 912 |
+| Non-aliasing | 1 |
+| Runtime checks | 5,629 |
 | Assertions | 1,671 |
-| Functional contracts | 4,396 |
-| Termination | 265 |
-| **Total** | **13,246** |
+| Functional contracts | 4,403 |
+| Termination | 266 |
+| **Total** | **13,266** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1455,7 +1463,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-cac38c81b0c68bf4fd9fd7bc1f3f56e337378a04189572c2b834c14c47e1b144  src/xml3_c.adb
+b7ff89267fb0440de4690fe2e0129b3bed87972074fdbf3a258af5baf4231f19  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1494,8 +1502,8 @@ c81096a0b4cc8789e1247d08f414d5e90bbd69e805905a9bf628c97311d87204  src/xml3_dom_s
 a6fce5e266f862563bdc60c908dd82d3b4b6e43e85a95fb569fa5d3f291ce8f5  src/xml3_dom_store.ads
 4cd0836509d8859bd5ec708a51dea1282b7e5af903611211bb2f745750938a43  src/xml3_encoding.adb
 a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encoding.ads
-d0957cece970669634fe7ee7778e1e02c3bbb43c4f9117988e117903409cc0f3  src/xml3_encoding-buffers.adb
-31b55532a13260620b23593f24d464528002d703a4f8afc115ba3b13a3e4c6bb  src/xml3_encoding-buffers.ads
+28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
+140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
 ea5fb0d9851f8262d8ced6e2b2d4319125ed28dbc93c1deedf308823214b6d01  src/xml3_errors.adb
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads

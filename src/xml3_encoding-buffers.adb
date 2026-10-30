@@ -1,6 +1,62 @@
 package body XML3_Encoding.Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
 
+   function Detect_Bytes
+     (Input : System.Address; Input_Length : XML3_Text.Byte_Count;
+      Requested : Encoding_Kind) return Encoding_Info
+     with Global => (Input => Native.Foreign_Memory),
+       Pre => Input /= System.Null_Address and then Requested /= Unsupported,
+       Post => Detect_Bytes'Result.Skip <= Input_Length
+         and then Detect_Bytes'Result.Kind /= UTF16
+   is
+      Probe_Length : constant Natural :=
+        (if Input_Length < 2 then 0 else Natural'Min
+           (Input_Length, (case Requested is
+              when UTF16 | UTF16LE | UTF16BE => 2,
+              when UTF8 => 3, when others => 4)));
+      Header : String (1 .. Probe_Length) := (others => Character'Val (0));
+   begin
+      if Probe_Length > 0 then
+         Native.Read_String (Input, Header);
+      end if;
+      return Detect (Header, Requested);
+   end Detect_Bytes;
+
+   procedure Prepare_Input
+     (Input : System.Address; Input_Length : XML3_Text.Byte_Count;
+      Requested : Encoding_Kind; Result : out Input_View;
+      Status : out Conversion_Result)
+   is
+      Normalized : System.Address;
+   begin
+      Result := (others => <>);
+      Result.Info := Detect_Bytes (Input, Input_Length, Requested);
+      Normalized := (if Result.Info.Skip = 0 then Input else
+        Native.Offset (Input, Native.Byte_Count (Result.Info.Skip)));
+      if Normalized = System.Null_Address then
+         Status := Conversion_Limit_Exceeded;
+         return;
+      end if;
+      if Result.Info.Kind = UTF8 then
+         Result.Data := Normalized;
+         Result.Length := Input_Length - Result.Info.Skip;
+         Status := Converted;
+      else
+         Convert_UTF16
+           (Normalized, Input_Length - Result.Info.Skip,
+            Result.Info.Kind = UTF16LE, Result.Data, Result.Length, Status);
+         Result.Owns_Data := Status = Converted;
+      end if;
+   end Prepare_Input;
+
+   procedure Release_Input (Item : in out Input_View) is
+   begin
+      if Item.Owns_Data then
+         Native.Free (Item.Data);
+      end if;
+      Item := (others => <>);
+   end Release_Input;
+
    procedure Convert_UTF16_Pass
      (Input : System.Address; Input_Length : XML3_Text.Byte_Count;
       Little_Endian : Boolean; Target : System.Address;

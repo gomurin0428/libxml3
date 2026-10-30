@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,246 checks
-(1,480 flow and 11,766 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,266 checks
+(1,488 flow and 11,778 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1521,16 +1521,21 @@ Native UTF-16 conversion now uses `Encoding.Buffers.Convert_UTF16` and its
 bounded two-pass helper. Measurement, exact-sized allocation (at least one byte
 for empty output), direct writing, fill-length validation and failure cleanup
 are in SPARK. Both the String decoder and native converter share code-unit
-assembly, surrogate validation and UTF-8 encoding. The adapter retains encoding
-detection, parsing of the resulting span, eventual successful-buffer cleanup,
-and error/exception/ABI mapping. Input extents/stability, native byte effects,
+assembly, surrogate validation and UTF-8 encoding. `Prepare_Input` now owns
+detection, BOM skipping and optional conversion; `Release_Input` frees only
+owned UTF-16 output and resets the view, leaving borrowed UTF-8 untouched.
+`Detect_Bytes` copies at most four bytes for automatic detection, three for
+explicit UTF-8 or two for explicit UTF-16; fewer than two input bytes need no
+detection reads. It reuses String `Detect`. The adapter retains parser span
+adaptation and error/exception/ABI mapping. Input extents/stability, native byte effects,
 allocator freshness/behavior and complete encoding equivalence remain trusted.
 Tests cover both endians, exact/small output limits, empty results, malformed
 pairs, guarded source boundaries, source-protection/output/reparse/edit lifetimes
 and injected allocation failure including BOM-only input. GNATprove proves
-4 checks for `Convert_UTF16`, 17 for `Convert_UTF16_Pass`, 32 (2 warnings) for
-`Decode_UTF16`, 4 for its `Unit_At`, 2 for `Decode_UTF16_Pair`, and 0 for
-`Read_UTF16_Unit`.
+6 checks for `Detect_Bytes`, 5 for `Prepare_Input`, 1 for `Release_Input`,
+4 for `Convert_UTF16`, and 17 for `Convert_UTF16_Pass`; `Decode_UTF16` proves
+32 checks (2 warnings), its `Unit_At` 4, `Decode_UTF16_Pair` 2, and
+`Read_UTF16_Unit` 0.
 Unknown explicit names fail rather than falling back. Auto-detected declaration
 mismatches produce warning 113 on success. Malformed UTF-16 is rejected before
 the parser at IO/code 81 and 1:1; later parser positions use decoded UTF-8
