@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,322 checks
-(1,516 flow and 11,806 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,328 checks
+(1,520 flow and 11,808 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -977,6 +977,23 @@ small byte limits, growth to
 the cap without large allocations, all four injected failures with every other
 block freed once, repeat release, arena-growth OOM/retry, and editing/output/
 reparsing after releasing original input.
+
+`Parser.Outcomes` decides the retry and reporting policy of the parse loop in
+SPARK. `After_Attempt` maps a `Documents.Read_Status` and the current capacity
+to `Finished`, `Grow`, or `Limit_Reached`, and its contract ties `Grow` to a
+capacity below the node cap, so the adapter's growth step stays within
+`Workspaces.Capacity`. `Report_For` maps the finished read status and the
+parser diagnostic code to the diagnostic the adapter publishes: no report,
+the parser diagnostic itself, out of memory, internal error, unsupported
+feature, or resource limit. The adapter keeps allocation, locking, the native
+`Documents.Read` call, thread-local error inspection, document release after an
+out-of-memory report, the C status mapping and exception handling; none of
+those are proved. The policy functions make no claim about the native parse
+itself, allocator behavior, or message text. GNATprove proves 1 check each for
+`After_Attempt` and `Report_For`. Tests cover every read status against the
+initial, middle, next-to-last and last capacity and against diagnostic codes
+0, 1, 4, 114 and 115, compared with the adapter's former decisions, plus the
+existing arena-growth OOM/retry and large-document reuse cases.
 
 The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
 though the library creates no Ada tasks. On the supported Linux runtime,

@@ -15,6 +15,7 @@ with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Parser.Options;
+with XML3_Parser.Outcomes;
 with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
@@ -30,7 +31,6 @@ package body XML3_C is
    use type XML3_DOM_Store.Queries.Space_Policy;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
-   Arena_Status : constant int := -1;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -44,8 +44,11 @@ package body XML3_C is
       Validation_Error : Boolean := True);
    procedure Build
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
-      Result : out System.Address; Status : out int;
+      Result : out System.Address;
+      Status : out XML3_DOM_Store.Documents.Read_Status;
       Diagnostic : out XML3_Parser.Diagnostic_Info);
+   function Status_For
+     (Status : XML3_DOM_Store.Documents.Read_Status) return int;
    function Parse_Buffer
      (Buffer : System.Address; Size : Interfaces.C.int;
       URL, Encoding : System.Address; Options : Interfaces.C.int;
@@ -103,11 +106,24 @@ package body XML3_C is
       end case;
    end Report_Operation_Status;
 
+   function Status_For
+     (Status : XML3_DOM_Store.Documents.Read_Status) return int
+   is
+     (case Status is
+        when XML3_DOM_Store.Documents.Parsed => Status_OK,
+        when XML3_DOM_Store.Documents.Malformed => Status_Malformed,
+        when XML3_DOM_Store.Documents.Unsupported => Status_Unsupported,
+        when XML3_DOM_Store.Documents.Limit_Exceeded => Status_Limit_Exceeded,
+        when XML3_DOM_Store.Documents.Arena_Exhausted => Status_Internal_Error,
+        when XML3_DOM_Store.Documents.No_Memory => Status_No_Memory,
+        when XML3_DOM_Store.Documents.Internal_Error => Status_Internal_Error);
+
    procedure Build_Arena
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
       Capacity : Positive; Nodes_Buffer, Names_Buffer,
       Scratch_A_Buffer, Scratch_B_Buffer : System.Address;
-      Result : out System.Address; Status : out int;
+      Result : out System.Address;
+      Status : out XML3_DOM_Store.Documents.Read_Status;
       Diagnostic : out XML3_Parser.Diagnostic_Info)
    is
       Nodes : XML3_Parser.Node_Array (1 .. Capacity)
@@ -118,10 +134,9 @@ package body XML3_C is
         with Import, Address => Scratch_A_Buffer;
       Scratch_B : String (1 .. Input'Length)
         with Import, Address => Scratch_B_Buffer;
-      Read_Status : XML3_DOM_Store.Documents.Read_Status;
    begin
       Result := System.Null_Address;
-      Status := Status_Internal_Error;
+      Status := XML3_DOM_Store.Documents.Internal_Error;
       Diagnostic :=
         (Domain => 1, Code => 0, Level => 0, Byte_Position => 1,
          Int1 => 0, Int2 => 0);
@@ -131,48 +146,34 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Read
            (Input, Huge, Encoding, Nodes, Names, Scratch_A, Scratch_B,
-            Result, Read_Status, Diagnostic);
+            Result, Status, Diagnostic);
       end;
-      case Read_Status is
-         when XML3_DOM_Store.Documents.Parsed =>
-            Status := Status_OK;
-         when XML3_DOM_Store.Documents.Malformed =>
-            Status := Status_Malformed;
-         when XML3_DOM_Store.Documents.Unsupported =>
-            Status := Status_Unsupported;
-         when XML3_DOM_Store.Documents.Limit_Exceeded =>
-            Status := Status_Limit_Exceeded;
-         when XML3_DOM_Store.Documents.Arena_Exhausted =>
-            Status := Arena_Status;
-         when XML3_DOM_Store.Documents.No_Memory =>
-            Status := Status_No_Memory;
-         when XML3_DOM_Store.Documents.Internal_Error =>
-            Status := Status_Internal_Error;
-      end case;
    exception
       when Storage_Error =>
          Result := System.Null_Address;
-         Status := Status_No_Memory;
+         Status := XML3_DOM_Store.Documents.No_Memory;
       when XML3_DOM_Lock.Lock_Error =>
          Result := System.Null_Address;
-         Status := Status_Internal_Error;
+         Status := XML3_DOM_Store.Documents.Internal_Error;
       when others =>
          Result := System.Null_Address;
-         Status := Status_Internal_Error;
+         Status := XML3_DOM_Store.Documents.Internal_Error;
    end Build_Arena;
 
    procedure Build
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
-      Result : out System.Address; Status : out int;
+      Result : out System.Address;
+      Status : out XML3_DOM_Store.Documents.Read_Status;
       Diagnostic : out XML3_Parser.Diagnostic_Info)
    is
       package Workspaces renames XML3_Parser.Workspaces;
+      package Outcomes renames XML3_Parser.Outcomes;
       Capacity : Workspaces.Capacity := Workspaces.Initial_Capacity (Input'Length);
       Workspace : Workspaces.Buffers;
       Allocated : Workspaces.Allocation_Result;
    begin
       Result := System.Null_Address;
-      Status := Status_Internal_Error;
+      Status := XML3_DOM_Store.Documents.Internal_Error;
       Diagnostic :=
         (Domain => 1, Code => 0, Level => 0, Byte_Position => 1,
          Int1 => 0, Int2 => 0);
@@ -180,7 +181,7 @@ package body XML3_C is
          Workspaces.Allocate (Capacity, Input'Length, Workspace, Allocated);
          case Allocated is
             when Workspaces.No_Memory | Workspaces.Limit_Exceeded =>
-               Status := Status_No_Memory;
+               Status := XML3_DOM_Store.Documents.No_Memory;
                return;
             when Workspaces.Allocated => null;
          end case;
@@ -189,23 +190,25 @@ package body XML3_C is
             Workspace.Names, Workspace.Scratch_A, Workspace.Scratch_B, Result, Status,
             Diagnostic);
          Workspaces.Release (Workspace);
-         exit when Status /= Arena_Status;
-         if Capacity = XML3_Parser.Max_Nodes then
-            Status := Status_Limit_Exceeded;
-            return;
-         else
-            Capacity := Workspaces.Next_Capacity (Capacity);
-         end if;
+         case Outcomes.After_Attempt (Status, Capacity) is
+            when Outcomes.Finished =>
+               exit;
+            when Outcomes.Limit_Reached =>
+               Status := XML3_DOM_Store.Documents.Limit_Exceeded;
+               return;
+            when Outcomes.Grow =>
+               Capacity := Workspaces.Next_Capacity (Capacity);
+         end case;
       end loop;
    exception
       when Storage_Error =>
          Workspaces.Release (Workspace);
          Result := System.Null_Address;
-         Status := Status_No_Memory;
+         Status := XML3_DOM_Store.Documents.No_Memory;
       when others =>
          Workspaces.Release (Workspace);
          Result := System.Null_Address;
-         Status := Status_Internal_Error;
+         Status := XML3_DOM_Store.Documents.Internal_Error;
    end Build;
 
    function Parse_Buffer
@@ -221,35 +224,38 @@ package body XML3_C is
       procedure Parse_And_Report
         (Input : String; Encoding_Info : XML3_Encoding.Encoding_Info)
       is
+         package Outcomes renames XML3_Parser.Outcomes;
+         use type XML3_Parser.Outcomes.Report_Kind;
+         Outcome : XML3_DOM_Store.Documents.Read_Status;
+         Report : XML3_Parser.Outcomes.Report_Kind;
       begin
-         Build (Input, Huge, Encoding_Info, Result, Status, Diagnostic);
-         if Status = Status_No_Memory then
-            XML3_Errors.Report_Simple (6, 2, 3, URL);
-         elsif Status = Status_Internal_Error then
-            XML3_Errors.Report_Simple (1, 1, 3, URL);
-         elsif Status = Status_Unsupported and then Diagnostic.Code = 0 then
-            XML3_Errors.Report_Simple (1, 115, 3, URL);
-         elsif Status = Status_OK then
-            if Diagnostic.Code /= 0 then
-               XML3_Errors.Report
-                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
-                  Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
-               if XML3_Errors.Last_Error_Is_OOM then
-                  if Result /= System.Null_Address then
-                     Free_Doc (Result);
-                     Result := System.Null_Address;
-                  end if;
-                  Status := Status_No_Memory;
-               end if;
-            end if;
-         elsif Status /= Arena_Status then
-            if Diagnostic.Code = 0 then
+         Build (Input, Huge, Encoding_Info, Result, Outcome, Diagnostic);
+         Status := Status_For (Outcome);
+         Report := Outcomes.Report_For (Outcome, Diagnostic.Code);
+         case Report is
+            when Outcomes.No_Report =>
+               null;
+            when Outcomes.Report_No_Memory =>
+               XML3_Errors.Report_Simple (6, 2, 3, URL);
+            when Outcomes.Report_Internal =>
                XML3_Errors.Report_Simple (1, 1, 3, URL);
-            else
+            when Outcomes.Report_Unsupported_Feature =>
+               XML3_Errors.Report_Simple (1, 115, 3, URL);
+            when Outcomes.Report_Limit_Exceeded =>
+               XML3_Errors.Report_Simple (1, 114, 3, URL);
+            when Outcomes.Report_Diagnostic =>
                XML3_Errors.Report
                  (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
                   Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
+         end case;
+         if Status = Status_OK and then Report = Outcomes.Report_Diagnostic
+           and then XML3_Errors.Last_Error_Is_OOM
+         then
+            if Result /= System.Null_Address then
+               Free_Doc (Result);
+               Result := System.Null_Address;
             end if;
+            Status := Status_No_Memory;
          end if;
          if Status /= Status_OK and then XML3_Errors.Last_Error_Is_OOM then
             Status := Status_No_Memory;
