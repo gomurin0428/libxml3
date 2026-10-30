@@ -34,6 +34,32 @@ package XML3_Diagnostic_Codes with SPARK_Mode is
      (Present => True, Domain => 2, Code => 115);
    DOM_Internal_Error : constant Diagnostic_Code :=
      (Present => True, Domain => 2, Code => 1);
+   DOM_Invalid_Character : constant Diagnostic_Code :=
+     (Present => True, Domain => 2, Code => 9);
+
+   --  Causes the adapter reports from its own exception handlers and
+   --  argument guards.  Causes that share a (domain, code) pair are kept
+   --  apart so that each call site still names what actually happened.
+   type Adapter_Failure is
+     (Lock_Failure,
+      Unexpected_Exception,
+      Unexpected_Namespace_Exception,
+      Invalid_Argument,
+      Unsupported_Text,
+      Invalid_Character,
+      Allocation_Failure,
+      Parser_Exception);
+
+   function For_Failure (Failure : Adapter_Failure) return Diagnostic_Code
+   is
+     (case Failure is
+        when Lock_Failure | Unexpected_Exception => DOM_Internal_Error,
+        when Unexpected_Namespace_Exception | Invalid_Argument
+           | Unsupported_Text => DOM_Invalid_Argument,
+        when Invalid_Character => DOM_Invalid_Character,
+        when Allocation_Failure => Out_Of_Memory,
+        when Parser_Exception => Parser_Internal_Error)
+   with Global => null;
 
    function For_Operation
      (Status : XML3_DOM_Constructors.Construction_Status;

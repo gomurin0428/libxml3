@@ -2180,4 +2180,54 @@ begin
            Codes.Unsupported_Feature);
    end;
    Ada.Text_IO.Put_Line ("Parse request admission policy passed");
+   declare
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Codes.Diagnostic_Code;
+      use type Interfaces.C.int;
+
+      --  Reproduces the literals the adapter used at each call site before
+      --  the failure causes moved into SPARK.
+      function Reference_Failure
+        (Failure : Codes.Adapter_Failure) return Codes.Diagnostic_Code
+      is
+      begin
+         case Failure is
+            when Codes.Lock_Failure | Codes.Unexpected_Exception =>
+               return (Present => True, Domain => 2, Code => 1);
+            when Codes.Unexpected_Namespace_Exception
+               | Codes.Invalid_Argument | Codes.Unsupported_Text =>
+               return (Present => True, Domain => 2, Code => 115);
+            when Codes.Invalid_Character =>
+               return (Present => True, Domain => 2, Code => 9);
+            when Codes.Allocation_Failure =>
+               return (Present => True, Domain => 6, Code => 2);
+            when Codes.Parser_Exception =>
+               return (Present => True, Domain => 1, Code => 1);
+         end case;
+      end Reference_Failure;
+
+      Domains : Natural := 0;
+   begin
+      for Failure in Codes.Adapter_Failure loop
+         declare
+            Item : constant Codes.Diagnostic_Code :=
+              Codes.For_Failure (Failure);
+         begin
+            pragma Assert (Item = Reference_Failure (Failure));
+            pragma Assert (Item.Present);
+            pragma Assert (Item.Domain in 1 .. 6);
+            Domains := Domains + 1;
+         end;
+      end loop;
+      pragma Assert (Domains = 8);
+      pragma Assert
+        (Codes.For_Failure (Codes.Invalid_Character) =
+           Codes.DOM_Invalid_Character);
+      pragma Assert
+        (Codes.For_Failure (Codes.Allocation_Failure) = Codes.Out_Of_Memory);
+      pragma Assert
+        (Codes.For_Failure (Codes.Parser_Exception) =
+           Codes.Parser_Internal_Error);
+   end;
+   Ada.Text_IO.Put_Line ("Adapter failure code selection passed");
 end DOM_Bridge_Test;

@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,346 checks
-(1,538 flow and 11,808 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,348 checks
+(1,540 flow and 11,808 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1023,6 +1023,18 @@ the previous adapter order exactly; the functions are total expression
 functions and prove 0 checks. Tests cover every buffer presence, boundary
 size, requested encoding and option profile against the former order, and a
 C test uses an unreadable encoding pointer with a rejected buffer argument.
+
+`Diagnostic_Codes.Adapter_Failure` names the causes the adapter reports from
+its own exception handlers and argument guards, and `For_Failure` maps each
+cause to the published pair: lock failures and unexpected exceptions to
+(2, 1), unexpected namespace exceptions, invalid arguments and unsupported
+text to (2, 115), an invalid character to (2, 9), an allocation failure to
+(6, 2) and an unexpected parser exception to (1, 1). Causes that share a
+pair are kept apart so each call site names what happened. Which exception
+is caught, which guard fires, the reported level and the file address stay
+trusted adapter behavior. The decisions reproduce the previous adapter
+literals exactly; the function is a total expression function and proves 0
+checks, and tests compare every cause with the former literals.
 
 The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
 though the library creates no Ada tasks. On the supported Linux runtime,
