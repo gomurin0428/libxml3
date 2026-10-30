@@ -192,8 +192,22 @@ static void test_large_document_and_arena(void) {
     assert(doc);
     xmlNodePtr root = xmlDocGetRootElement(doc);
     assert(root && xmlChildElementCount(root) == siblings);
-    xmlFreeDoc(doc);
     free(xml);
+    xmlNodeSetContent(root->children, BAD_CAST "edited &amp; retained");
+    xmlChar *saved = NULL;
+    int saved_length = 0;
+    xmlDocDumpMemory(doc, &saved, &saved_length);
+    assert(saved && saved_length > 0);
+    xmlFreeDoc(doc);
+    doc = parse((const char *)saved, (size_t)saved_length, quiet_options());
+    xmlFree(saved);
+    assert(doc);
+    root = xmlDocGetRootElement(doc);
+    assert(root && xmlChildElementCount(root) == siblings);
+    xmlChar *edited = xmlNodeGetContent(root->children);
+    assert(edited && xmlStrEqual(edited, BAD_CAST "edited & retained"));
+    xmlFree(edited);
+    xmlFreeDoc(doc);
 
     const size_t part = 6000000;
     length = 3 + 3 + part + 4 + 3 + part + 4 + 4;
