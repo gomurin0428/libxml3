@@ -1410,7 +1410,7 @@
   },
   "function:tree.h:xmlNewNs": {
     "implementation": "partial",
-    "scope": "href/prefix をコピーして standalone または element 宣言を作成。NULL と empty prefix/href を区別し、同じ要素の local prefix 重複を拒否。constructed namespace は明示 reservation を持つ。",
+    "scope": "href/prefix をSPARKで計測しSPARK Stringへコピーして standalone または element 宣言を作成。C側の中間Stringはなく、nonNULL要素は登録・種類を確認してから入力を読む。NULL と empty prefix/href を区別し、同じ要素の local prefix 重複を拒否。constructed namespace は明示 reservation を持つ。native可読性・extent/stability・byte効果・ABIと完全な公開意味論は証明外。",
     "tests": [
       "tests/namespace-edit-test.c",
       "tests/oom-test.c",

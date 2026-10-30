@@ -123,6 +123,9 @@ text では tab/LF/quote を raw のまま残し、CR は `&#13;`、非 ASCII �
 NULL list は NULL、選択 text のない non-NULL list は独立した空文字列です。
 返却値は source DOM と独立し `xmlFree` で解放できます。OOM は NULL として返り、source DOM は変更しません。
 HTML/entity expansion は未対応です。
+`xmlNewNs` のhref/prefixはSPARKで計測してコピーします。nonNULL要素は登録・種類を
+先に確認し、不正なら両入力を読みません。NULL/空の区別と既存の宣言・所有権処理を保ちます。
+
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
 source の `next`、`context`、`_private` はコピーせず、返却された reservation は呼び出し側が

@@ -47,8 +47,7 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Create_Namespace
-        (Element : System.Address; Href, Prefix : String;
-         Has_Href, Has_Prefix : Boolean; Result : out System.Address;
+        (Element, Href, Prefix : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 

@@ -1703,24 +1703,15 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Href_Text : constant String :=
-           (if Href = System.Null_Address then "" else C_String_Value (Href));
-         Prefix_Text : constant String :=
-           (if Prefix = System.Null_Address then ""
-            else C_String_Value (Prefix));
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Create_Namespace
-           (Node, Href_Text, Prefix_Text, Href /= System.Null_Address,
-            Prefix /= System.Null_Address, Result, Status);
+           (Node, Href, Prefix, Result, Status);
       end;
       Report_Operation_Status (Status);
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

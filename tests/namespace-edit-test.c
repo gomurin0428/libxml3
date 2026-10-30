@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #ifdef XML3_REFERENCE_TEST
@@ -7,6 +8,99 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+static void namespace_field_is(const xmlChar *value, const char *expected) {
+    assert((value == NULL) == (expected == NULL));
+    if (expected) assert(strcmp((const char *)value, expected) == 0);
+}
+
+static void test_namespace_input(void) {
+    static const char *hrefs[] = {"urn:guard", "", NULL};
+    static const char *prefixes[] = {"p\xc3\xa9", "", NULL};
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 4, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    assert(mprotect(mapping + page * 3, (size_t)page, PROT_NONE) == 0);
+    for (size_t i = 0; i < sizeof(hrefs) / sizeof(hrefs[0]); ++i) {
+        for (size_t j = 0; j < sizeof(prefixes) / sizeof(prefixes[0]); ++j) {
+            char *href = NULL, *prefix = NULL;
+            if (hrefs[i]) {
+                size_t bytes = strlen(hrefs[i]) + 1;
+                href = mapping + page - bytes;
+                memcpy(href, hrefs[i], bytes);
+            }
+            if (prefixes[j]) {
+                size_t bytes = strlen(prefixes[j]) + 1;
+                prefix = mapping + page * 3 - bytes;
+                memcpy(prefix, prefixes[j], bytes);
+            }
+            xmlNsPtr source = xmlNewNs(NULL, BAD_CAST href, BAD_CAST prefix);
+            assert(source);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page, PROT_NONE) == 0);
+            namespace_field_is(source->href, hrefs[i]);
+            namespace_field_is(source->prefix, prefixes[j]);
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+            xmlNsPtr ns = xmlNewNs(root, source->href, source->prefix);
+            assert(ns && root->nsDef == ns && ns->next == NULL);
+            xmlFreeNs(source);
+            namespace_field_is(ns->href, hrefs[i]);
+            namespace_field_is(ns->prefix, prefixes[j]);
+            if (hrefs[i]) {
+                assert(xmlNewNs(root, ns->href, ns->prefix) == NULL);
+                assert(root->nsDef == ns && ns->next == NULL);
+            }
+            if (i == 0 && j != 1) {
+                xmlSetNs(root, ns);
+                assert(xmlNewTextChild(root, ns, BAD_CAST "c", BAD_CAST "kept"));
+                xmlChar *output = NULL;
+                int length = 0;
+                xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+                assert(output && length > 0);
+                xmlFreeDoc(doc);
+                doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+                assert(doc);
+                root = xmlDocGetRootElement(doc);
+                assert(root->ns && root->children && root->children->ns);
+                namespace_field_is(root->ns->href, hrefs[i]);
+                namespace_field_is(root->ns->prefix, prefixes[j]);
+                assert(xmlNodeSetContent(root->children, BAD_CAST "edited") == 0);
+                xmlChar *value = xmlNodeGetContent(root->children);
+                assert(value && strcmp((const char *)value, "edited") == 0);
+                xmlFree(value);
+                xmlFree(output);
+            }
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page,
+                            PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr text = xmlNewText(BAD_CAST "kept");
+    assert(doc && text);
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlNodePtr invalid[] = {(xmlNodePtr)protected, (xmlNodePtr)doc, text};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        xmlResetLastError();
+        assert(xmlNewNs(invalid[i], protected, protected) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    }
+    assert(doc->children == NULL && strcmp((const char *)text->content, "kept") == 0);
+    xmlFreeNode(text);
+    xmlFreeDoc(doc);
+#endif
+    xmlResetLastError();
+    assert(munmap(mapping, (size_t)page * 4) == 0);
+}
 
 static void value_is(xmlNodePtr node, const char *expected) {
     xmlChar *value = xmlNodeGetContent(node);
@@ -518,6 +612,7 @@ static void test_namespace_lists(void) {
 }
 
 int main(void) {
+    test_namespace_input();
     test_namespace_copies();
     test_namespace_lists();
 #ifdef XML3_REFERENCE_TEST

@@ -483,7 +483,10 @@ unlink します。これは attached attribute の unlink を呼び出し側に
 `xml:space` は XML namespace 宣言を作成または再利用し、後続の属性操作が失敗すると
 暗黙宣言も rollback します。値は raw string として扱い、entity syntax を展開しません。
 
-`xmlNewNs` は href/prefix をコピーし、NULL と empty string を区別します。同じ要素
+`xmlNewNs` は href/prefix をSPARKで上限内まで計測してコピーし、C側で中間Stringを
+作りません。nonNULL要素は登録・種類を先に確認し、不正ならhref/prefixを読みません。
+SPARK内のStringから既存のnamespace constructorを呼び、入力計測失敗では作成を始めません。
+NULL と empty string を区別します。同じ要素
 上の重複 prefix は拒否し、失敗時は既存宣言 chain を変更しません。`xmlSetNs` は
 element/attribute の namespace 参照のみを変更し、NULL で解除します。`xmlFreeNs`
 は detached の独立作成 namespace のみを解放でき、attached 宣言や parsed namespace

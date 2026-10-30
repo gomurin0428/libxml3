@@ -208,6 +208,53 @@ package body XML3_DOM_Store with SPARK_Mode is
       Status := Created;
    end Create_Namespace;
 
+   procedure Create_Namespace
+     (S : in out Store; Element, Href, Prefix : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Href_Length, Prefix_Length : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Element /= System.Null_Address
+        and then (E = Null_Node
+          or else Node (S.Current.all, E).Kind /= Element_Node)
+      then
+         return;
+      end if;
+      if Href /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Href, Href_Length, Found);
+         if not Found then
+            return;
+         end if;
+      end if;
+      if Prefix /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Prefix, Prefix_Length, Found);
+         if not Found then
+            return;
+         end if;
+      end if;
+      declare
+         Href_Size : constant XML3_Text.Byte_Count := Href_Length;
+         Prefix_Size : constant XML3_Text.Byte_Count := Prefix_Length;
+         Href_Text : String (1 .. Href_Size) := (others => Character'Val (0));
+         Prefix_Text : String (1 .. Prefix_Size) := (others => Character'Val (0));
+      begin
+         if Href /= System.Null_Address then
+            Native.Read_String (Href, Href_Text);
+         end if;
+         if Prefix /= System.Null_Address then
+            Native.Read_String (Prefix, Prefix_Text);
+         end if;
+         Create_Namespace
+           (S, Element, Href_Text, Prefix_Text,
+            Href /= System.Null_Address, Prefix /= System.Null_Address,
+            Result, Status);
+      end;
+   end Create_Namespace;
+
    procedure Copy_Namespace
      (S : in out Store; Source : System.Address;
       Result : out System.Address; Status : out Operation_Status)
