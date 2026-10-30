@@ -443,14 +443,18 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
 
    procedure Replace_Content
      (S : in out Store; N : Node_Ref; Value : String;
-      Append_Mode, Has_Content : Boolean; Status : out Operation_Status)
+      Append_Mode, Has_Content : Boolean; Status : out Operation_Status;
+      Content_Source : System.Address := System.Null_Address;
+      Source_Length : Natural := 0)
      with Pre => S.Current /= null
        and then Valid (S.Current.all)
        and then Can_Edit (S.Current.all)
        and then not Projection_Required (S.Current.all)
        and then Facades_Present (S.Current.all)
        and then N in 1 .. Node_Ref (Node_Count (S.Current.all))
-       and then Node (S.Current.all, N).State = Live,
+       and then Node (S.Current.all, N).State = Live
+       and then (if Content_Source = System.Null_Address then Source_Length = 0
+         else Has_Content and then Value'Length = 0),
      Post => S.Current /= null
        and then Valid (S.Current.all)
        and then Can_Edit (S.Current.all)
@@ -478,9 +482,14 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
 
    procedure Replace_Content
      (S : in out Store; N : Node_Ref; Value : String;
-      Append_Mode, Has_Content : Boolean; Status : out Operation_Status)
+      Append_Mode, Has_Content : Boolean; Status : out Operation_Status;
+      Content_Source : System.Address := System.Null_Address;
+      Source_Length : Natural := 0)
    is
       Target : constant Node_View := Node (S.Current.all, N);
+      Value_Length : constant Natural :=
+        (if Content_Source = System.Null_Address then Value'Length
+         else Source_Length);
       Length : Natural;
       Buffer, Suffix_Address : System.Address := System.Null_Address;
       Own : Owner_Ref := Null_Owner;
@@ -488,13 +497,13 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Status := Limit_Exceeded;
       if Append_Mode
-        and then (Value'Length > Natural'Last - Target.Content_Length
-          or else Target.Content_Length + Value'Length > Integer'Last - 1)
+        and then (Value_Length > Natural'Last - Target.Content_Length
+          or else Target.Content_Length + Value_Length > Integer'Last - 1)
       then
          return;
       end if;
       if Has_Content and then not Append_Mode
-        and then Value'Length > Integer'Last - 1
+        and then Value_Length > Integer'Last - 1
       then
          return;
       end if;
@@ -510,7 +519,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
 
       Length := (if Append_Mode then Target.Content_Length else Natural (0))
-        + (if Has_Content then Value'Length else Natural (0));
+        + (if Has_Content then Value_Length else Natural (0));
       if Has_Content then
          Ensure_Capacity
            (S.Current, Node_Count (S.Current.all),
@@ -539,7 +548,11 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          if Append_Mode then
             Native.Copy_Bytes (Target.Content, Buffer, Target.Content_Length);
          end if;
-         Native.Write_String (Suffix_Address, 0, Value);
+         if Content_Source = System.Null_Address then
+            Native.Write_String (Suffix_Address, 0, Value);
+         else
+            Native.Copy_Bytes (Content_Source, Suffix_Address, Source_Length);
+         end if;
          Native.Write_Byte (Buffer, Length, Character'Val (0));
          Register_Owner (S.Current.all, Buffer, Own, Success);
          if not Success then
@@ -564,11 +577,15 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    end Replace_Content;
 
    procedure Append
-      (S : in out Store; Facade : System.Address; Suffix : String;
-      Status : out Operation_Status; Has_Input : Boolean := False;
+     (S : in out Store; Facade, Suffix : System.Address;
+      Length : Integer; Bounded : Boolean; Status : out Operation_Status;
       Text_Only : Boolean := False)
    is
-      N : constant Node_Ref := Find_Node (S, Facade);
+      N : constant Node_Ref := Find_Registered_Node (S, Facade);
+      Has_Input : constant Boolean := Suffix /= System.Null_Address
+        and then (Text_Only or else (Bounded and then Length > 0));
+      Span : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
       Tail : Node_Ref;
       New_Node : Node_Ref;
       Ignored_Namespace : Namespace_Ref;
@@ -585,7 +602,22 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       then
          return;
       end if;
-      if Suffix'Length = 0 and then not Has_Input then
+      if Suffix /= System.Null_Address then
+         if Bounded then
+            if Length > XML3_Text.Max_Bytes then
+               return;
+            elsif Length > 0 then
+               XML3_Text.Buffers.Measure_Byte_Prefix
+                 (Suffix, XML3_Text.Byte_Count (Length), Span);
+            end if;
+         else
+            XML3_Text.Buffers.Measure (Suffix, Span, Found);
+            if not Found then
+               return;
+            end if;
+         end if;
+      end if;
+      if Span = 0 and then not Has_Input then
          Status := Created;
          return;
       end if;
@@ -593,7 +625,8 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       case Node (S.Current.all, N).Kind is
          when Text_Node | CData_Node | Comment_Node
            | Processing_Instruction_Node =>
-            Replace_Content (S, N, Suffix, True, True, Status);
+            Replace_Content
+              (S, N, "", True, True, Status, Suffix, Span);
 
          when Element_Node | Attribute_Node =>
             if Node (S.Current.all, N).Kind = Attribute_Node
@@ -611,14 +644,16 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
                   return;
                end if;
                if Node (S.Current.all, Tail).Kind = Text_Node then
-                  Replace_Content (S, Tail, Suffix, True, True, Status);
+                  Replace_Content
+                    (S, Tail, "", True, True, Status, Suffix, Span);
                   return;
                end if;
             end if;
 
             Create_Node
-              (S.Current, Text_Node, "text", Suffix, True, Null_Namespace,
-               New_Node, Ignored_Namespace, Created_Status);
+              (S.Current, Text_Node, "text", "", True, Null_Namespace,
+               New_Node, Ignored_Namespace, Created_Status,
+               Content_Source => Suffix, Source_Length => Span);
             if Created_Status /= Created then
                Status := Created_Status;
                return;

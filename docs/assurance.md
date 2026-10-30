@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,052 checks
-(1,418 flow and 11,634 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,053 checks
+(1,419 flow and 11,634 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 162 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -493,11 +493,17 @@ operations; C ABI conversion and facade projection remain trusted boundaries.
 
 `xmlNodeAddContent` の分岐、末尾Textの選択、owner reservation、content projection、
 attach/cleanup は SPARK Store/Runtime が管理します。C adapter は guarded Runtime 呼出し、
-NUL終端 string の変換、戻り値変換に限定されます。既存の末尾 Text facade を保った
+アドレス/長さ/モードの転送、戻り値変換に限定されます。既存の末尾 Text facade を保った
 scalar replacement は新 buffer を登録・投影してから旧 buffer を同期解放します。
 element/attribute に text child がない場合は SPARK が text node を作成して core の
 `Attach_Child` に渡します。XML 構文の妥当性検査と escaping は serialization が担当します。
 入力中の文字参照は解釈・展開せず、raw の `&` は出力時に escaping します。
+`Find_Registered_Node` で登録を照合してから `Measure` / `Measure_Byte_Prefix` で計測し、
+native spanを `Replace_Content` または既存の `Create_Node` に渡します。中間Stringは作らず、
+新bufferへの旧本文とsuffixのコピーが完了してからpinを更新するため、自己aliasでも旧領域は先に解放しません。
+このコピーの実byte効果・foreign extent/stability・ABIは引き続き信頼境界です。
+GNATprove は `Store.Content.Append` 36 checks、`Replace_Content` 69 checks、
+`Runtime.Add_Content` 1 check を証明します。
 
 `xmlNodeSetContent` も node-kind 分岐、XML reference decoder、subtree retirement、
 owner/pin lifetime は SPARK Store/Runtime に置きます。predefined/numeric references は
@@ -527,8 +533,8 @@ NUL-terminated 変換です。この pointer 走査は形式証明外で、正�
 非終端バッファと長さ 0 の入力を guard page で検査します。置換・所有権・解放判断は
 既存の SPARK 実装のままです。新しい ABI entry の追加が証明範囲を広げる主張ではありません。
 
-`xmlNodeAddContentLen` も同じ bounded string 変換を使います。C 境界は正の長さの non-NULL
-入力かを渡し、Store が空の入力を無操作として扱うか、空の text として扱うかを決めます。
+`xmlNodeAddContentLen` もSPARKのbounded計測を使います。Store が長さとNULL入力から
+空の入力を無操作として扱うか、空の text として扱うかを決めます。
 接続・文字列結合・失敗時の保持は既存の Append operation を再利用し、`Ready` 契約は
 維持しています。guard page、空の text の確保失敗と再試行、UTF-8 の分割追記から出力への
 回復は実行テストの根拠であり、C pointer の読み取り安全性の形式証明ではありません。
@@ -665,7 +671,7 @@ ABI, native pointer validity, or all public semantics.
 
 `xmlTextConcat` の scalar kind 制限は `Store.Content.Append` で行い、空入力の
 no-op 判定より先に検査します。内容の準備・pin 更新・確保失敗時の保持は既存の
-`Replace_Content` 契約を再利用します。C は既存の文字列変換・mutex・戻り値変換を共用し、
+`Replace_Content` 契約を再利用します。C はアドレス/長さ/モード転送・mutex・戻り値変換を共用し、
 node をたどりません。新しい入口の全意味論を証明したという主張ではなく、kind・長さ・
 NULL/空・alias・guard page・文書先行解放・出力・確保失敗後の再試行を C テストで検査します。
 

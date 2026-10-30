@@ -377,6 +377,10 @@ element/attribute の末尾に text child があればその content を置換�
 保ち、なければ `"text"` node を追加します。text、CDATA、comment、PI は content を
 連結します。NULL/empty content と document node は no-op、NULL node と未登録 facade
 は失敗します。無効な XML 文字列は保持し、serializer 側で検査します。
+追記APIはnodeの登録照合（`xmlTextConcat` はkind検査も）を入力読み取りより先に行います。
+計測はSPARKのbounded helperを共用し、C側の中間Stringは作りません。新bufferへ旧本文と
+native suffixをコピーした後でowner/pinを置き換え、入力が旧本文内を指す場合も保持します。
+新しいtext childの作成には既存のnative span constructorを使います。読み取り可能な入力範囲と安定性は呼び出し側の前提です。
 `xmlNodeSetContent` は text/CDATA/comment/PI の raw content を置換し、element/attribute
 では predefined entity と decimal/hex numeric reference だけをデコードした replacement
 text child を準備して attach し、その後で旧 child subtree を解放します。準備や attach が
