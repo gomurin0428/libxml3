@@ -28,6 +28,30 @@ GNATprove proves 1 check each for `Clone`, `Copy_Field`, `Free_Pointer` and
 `Release`; the `Same_Metadata` and `Same_String_Presence` predicates have no
 checks. `Release` carries five trusted native-call termination warnings.
 
+The same unit now owns the per-thread slot transitions. `Error_Slot` pairs the
+C-layout record with the emergency flag, keeping the record first so the
+published `xmlError` address is unchanged. `Clear_Slot` releases the owned
+strings of a normal record and only zeroes an emergency one, whose message is
+borrowed from the static table; its postcondition is the empty slot, so the
+flag is the invariant that stands for "borrowed" and no owning release can run
+on a borrowed message. `Install` clears the slot and moves the replacement in,
+with a postcondition that the slot now holds the old replacement value and the
+replacement is empty, so the strings keep exactly one owner.
+`Fill_Out_Of_Memory` and `Install_Out_Of_Memory` set the (6, 2, 3, message)
+diagnostic from the `Out_Of_Memory` expression function, the latter marking the
+slot as emergency. `Decide_Copy` reproduces the ordered `xmlCopyError`
+decision (NULL operand or emergency destination reject, identical operands are
+already copied, otherwise clone) and `Select_Last_Error` the published-record
+choice. GNATprove proves 1 check each for `Clear_Slot`, `Install`,
+`Fill_Out_Of_Memory` and `Install_Out_Of_Memory`, and 0 for the two decision
+functions and `Out_Of_Memory`. One flow warning notes that the slot
+`Clear_Slot` writes in `Install_Out_Of_Memory` is overwritten by the
+out-of-memory fields; the call is still required for its release effect.
+A bridge regression installs and clears owned and emergency slots, checks that
+a static message survives both clearing and replacement, and compares
+`Decide_Copy` over all 16 flag combinations and `Select_Last_Error` over its
+inputs against test-local copies of the former adapter order.
+
 `Text.Location_At` now owns the error adapter's line/column scan and is reused
 for parser opening-tag lines. It has no global/native/allocator effects and
 proves positive counter bounds and safe scan arithmetic under `Max_Bytes`.
@@ -175,7 +199,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,348 checks, 1,540 by flow analysis and 11,808
+It completed successfully: **13,363 checks, 1,551 by flow analysis and 11,812
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -843,8 +867,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 556 entity
-summaries report 0 flow errors, 180 warnings, and 0 `pragma Assume`
+The 563 entity
+summaries report 0 flow errors, 181 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -865,7 +889,7 @@ include trusted termination
 diagnostics for native reads, allocation, writes and frees; an unreachable/no-effect
 diagnostic also remains for the portable pointer-array size guard on this 64-bit
 host. The workspace unit adds eight such native-call diagnostics: four for
-`Allocate` and four for `Free`. These are distinct from the 180 per-entity
+`Allocate` and four for `Free`. These are distinct from the 181 per-entity
 analyzer warnings above and do not prove allocator side effects.
 The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
 Runtime wrapper, unused helper outputs, and trusted native-call termination
@@ -879,14 +903,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 409 |
-| Initialization | 918 |
+| Data dependencies | 416 |
+| Initialization | 919 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,646 |
 | Assertions | 1,669 |
-| Functional contracts | 4,419 |
-| Termination | 286 |
-| **Total** | **13,348** |
+| Functional contracts | 4,423 |
+| Termination | 289 |
+| **Total** | **13,363** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1655,7 +1679,7 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-077822cdb3ef0a69bcc0dd321f0aad86b6bd9a36203b95c6f848c8f0751249cf  src/xml3_errors.adb
+444eaf136e485153f345127e3c15cc087c0ee80f2b46c47dc0e575eb2ad10713  src/xml3_errors.adb
 8cd2d2fedd9befc9f727d8f9055c94250484c83a543be7dcd9b1b6c76452199e  src/xml3_diagnostic_messages.ads
 5731a2fbf1783f9b160e1562c00371f2758263b2a2509c93e05ca693a15130a3  src/xml3_diagnostic_codes.ads
 4f7208d868ea68bab954462f28935f2c67528729bb4bb6362e59472510cff397  src/xml3_errors.ads
@@ -1692,9 +1716,9 @@ d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serializ
 c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
 b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
-9553b7ab13639b9345de865f3a1704a0d2687d74986ae15418e4e2fc2c615300  src/xml3_error_records.ads
-c62d0f71c8ee467db9065663921b4bc5b344020d5e47c6dbb045b346627dd925  src/xml3_error_records.adb
-1b617cfe28de402236848dc6ca46d4c5b3627efaac758551008a6d95b03de4ee  tests/dom_bridge_test.adb
+4e35496028bcf7a470a78d6e8426f07769a48b1f3f2fb1b85bf062db997e6320  src/xml3_error_records.ads
+d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
+31235b8975b79c670345b1b5c23f745f691c54484c235cea41ce5d75f0b83013  tests/dom_bridge_test.adb
 3adf3593b26c324cc96c5f954174d601e99d238d3e8b2f29f00af796e20a8570  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```

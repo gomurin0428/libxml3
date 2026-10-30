@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,348 checks
-(1,540 flow and 11,808 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,363 checks
+(1,551 flow and 11,812 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -1100,6 +1100,14 @@ or development-profile testing, and neither profile proves the trusted boundary.
   Each non-NULL field uses the existing `Concatenate_Bytes` helper with NULL
   right input and length zero, preserving empty strings/raw bytes and the common
   byte cap. Copying stops on the first failure; release never frees context/node.
+  The per-thread slot transitions are also SPARK: `Error_Slot` keeps the record
+  first so the published address is unchanged, `Clear_Slot` releases owned
+  strings but only zeroes an emergency record whose message is borrowed from
+  the static table, `Install` moves a replacement in and leaves it empty, and
+  `Install_Out_Of_Memory` fills the (6, 2, 3, message) diagnostic and marks the
+  slot. `Decide_Copy` and `Select_Last_Error` state the ordered `xmlCopyError`
+  and `xmlGetLastError` choices. TLS, the global emergency record, exception
+  handlers and address conversion stay in the trusted adapter.
   These contracts do not prove native pointer validity, allocator freshness,
   distinct ownership or byte contents. Source strings must be readable/stable;
   released non-NULL strings must be distinct owned allocations. Native failures

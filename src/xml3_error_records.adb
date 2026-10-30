@@ -69,4 +69,36 @@ package body XML3_Error_Records with SPARK_Mode is
          Release (Target);
       end if;
    end Clone;
+
+   procedure Clear_Slot (Slot : in out Error_Slot) is
+   begin
+      if Slot.Emergency then
+         Slot.Error := Empty_Record;
+      else
+         Release (Slot.Error);
+      end if;
+      Slot.Emergency := False;
+   end Clear_Slot;
+
+   procedure Install (Slot : in out Error_Slot; Replacement : in out Error_Record)
+   is
+   begin
+      Clear_Slot (Slot);
+      Slot.Error := Replacement;
+      Replacement := Empty_Record;
+   end Install;
+
+   procedure Fill_Out_Of_Memory
+     (Item : out Error_Record; Message : System.Address) is
+   begin
+      Item := Out_Of_Memory (Message);
+   end Fill_Out_Of_Memory;
+
+   procedure Install_Out_Of_Memory
+     (Slot : in out Error_Slot; Message : System.Address) is
+   begin
+      Clear_Slot (Slot);
+      Fill_Out_Of_Memory (Slot.Error, Message);
+      Slot.Emergency := True;
+   end Install_Out_Of_Memory;
 end XML3_Error_Records;

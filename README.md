@@ -634,6 +634,10 @@ UTF-8は元入力の借用、UTF-16変換後は所有領域として区別し、
 計測と独立コピーは既存のSPARK byteコピーを使い、NULLと空文字列・任意byteを区別して保ちます。
 各文字列の上限は共通の`XML3_Text.Max_Bytes`で、上限・確保失敗は従来のOOM経路へ写像します。
 5文字列の一括複製と途中失敗時の解放はSPARKの`XML3_Error_Records`へまとめています。
+threadごとのスロット遷移も同じunitの`Error_Slot`・`Clear_Slot`・`Install`・
+`Install_Out_Of_Memory`が担い、通常recordの5文字列は解放し、静的messageを借用する
+緊急recordはゼロ化のみとします。`Decide_Copy`と`Select_Last_Error`が
+`xmlCopyError`と`xmlGetLastError`の判定順を表します。
 数値・context/node値とNULLの保持、失敗時の空状態を契約で扱い、失敗後は残りの文字列を読みません。
 公開レコードへの置換・TLS・緊急診断とnative所有権の前提は引き続き証明外です。
 code/domainからmessage種別を選ぶ方針はSPARKの`XML3_Diagnostic_Messages.Kind_For`にあります。
