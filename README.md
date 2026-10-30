@@ -135,6 +135,8 @@ HTML/entity expansion は未対応です。
 登録確認後に読み取ります。URIによる照合・旧値保持・namespace所有権の契約は維持します。
 `xmlSetProp` のQName/値も要素の登録確認後にSPARK内で計測・コピーし、既存の
 prefix解決、非修飾属性の更新、暗黙XML namespaceの作成・失敗時の巻き戻しを再利用します。
+`xmlUnsetProp` / `xmlUnsetNsProp` は共通SPARK経路で登録確認・名前の計測/コピー・
+削除を行い、非修飾/URI照合を区別します。C側の汎用文字列走査・変換ヘルパーは不要になりました。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

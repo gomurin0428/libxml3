@@ -1919,6 +1919,26 @@ int main(int argc, char **argv) {
         assert(path != NULL && strcmp((const char *)path, "/root/p:after") == 0);
         xmlFree(path);
         assert(node->parent == root && node->children == child && node->ns == ns);
+    } else if (strcmp(operation, "attr-unset") == 0) {
+        xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
+        assert(node);
+        xmlNsPtr ns = xmlNewNs(node, BAD_CAST "urn:p", BAD_CAST "p");
+        assert(ns);
+        xmlAttrPtr plain = xmlNewProp(node, BAD_CAST "name", BAD_CAST "plain");
+        xmlAttrPtr qualified = xmlNewNsProp(node, ns, BAD_CAST "name", BAD_CAST "qualified");
+        assert(plain && qualified);
+        xml3_oom_enable(0);
+        assert(xmlUnsetProp(node, plain->name) == 0);
+        assert(node->properties == qualified && qualified->prev == NULL);
+        assert(xmlUnsetNsProp(node, ns, qualified->name) == 0);
+        assert(node->properties == NULL);
+        assert(xmlUnsetProp(node, BAD_CAST "name") == -1);
+        assert(xmlUnsetNsProp(node, ns, BAD_CAST "name") == -1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!injected && allocation_count == 0);
+        xmlFreeNode(node);
     } else if (strcmp(operation, "ns-noalloc") == 0) {
         xmlNodePtr node = xmlNewNode(NULL, BAD_CAST "node");
         xmlNsPtr first = xmlNewNs(NULL, BAD_CAST "urn:first", BAD_CAST "p");
@@ -2465,6 +2485,10 @@ int main(int argc, char **argv) {
     }
     if (strcmp(operation, "ns-noalloc") == 0) {
         puts("namespace setters and standalone free used no allocations");
+        return 0;
+    }
+    if (strcmp(operation, "attr-unset") == 0) {
+        puts("property removal used no native allocations");
         return 0;
     }
     if (strcmp(operation, "dom-adjacent-sibling") == 0) {

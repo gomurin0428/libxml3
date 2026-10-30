@@ -339,6 +339,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test last-child 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test release-lists 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test ns-noalloc 0
+	LD_LIBRARY_PATH=lib ./tests/oom-test attr-unset 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test validate-name 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test string-compare 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test full-string-compare 0

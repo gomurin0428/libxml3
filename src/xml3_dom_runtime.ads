@@ -181,7 +181,7 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Unset_Namespace_Property
-        (Element, Ns : System.Address; Name : String; Removed : out Boolean;
+        (Element, Ns, Name : System.Address; Removed : out Boolean;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
@@ -191,7 +191,7 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Unset_Property
-        (Element : System.Address; Name : String;
+        (Element, Name : System.Address;
          Removed : out Boolean;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
