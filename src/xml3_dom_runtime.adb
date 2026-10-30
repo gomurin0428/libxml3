@@ -406,13 +406,13 @@ is
       procedure Search_Namespace
         (Facade : System.Address;
          Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind;
-         Has_Value : Boolean; Value : String;
+         Value : System.Address;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Queries.Lookup_Namespace
-           (Current, Facade, Mode, Has_Value, Value, Result, Status);
+           (Current, Facade, Mode, Value, Result, Status);
       end Search_Namespace;
 
       procedure Get_Content

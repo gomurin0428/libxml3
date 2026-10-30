@@ -247,7 +247,7 @@ is
       procedure Search_Namespace
         (Facade : System.Address;
          Mode : XML3_DOM_Store.Queries.Namespace_Query_Kind;
-         Has_Value : Boolean; Value : String;
+         Value : System.Address;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));

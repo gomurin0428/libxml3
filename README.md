@@ -125,6 +125,8 @@ NULL list は NULL、選択 text のない non-NULL list は独立した空文�
 HTML/entity expansion は未対応です。
 `xmlNewNs` のhref/prefixはSPARKで計測してコピーします。nonNULL要素は登録・種類を
 先に確認し、不正なら両入力を読みません。NULL/空の区別と既存の宣言・所有権処理を保ちます。
+`xmlSearchNs` / `xmlSearchNsByHref` の検索入力も登録確認後にSPARKで計測・コピーし、
+親走査・隠蔽判定と文書なしnodeの組み込みxml宣言の作成・再利用は既存処理を使います。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

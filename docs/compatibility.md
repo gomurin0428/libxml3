@@ -202,6 +202,11 @@ lookup は NULL になり得ますが、子孫の lookup は shadowing を尊重
 宣言は既存 Store の規則で末尾に追加します（固定版の先頭追加とは順序が異なります）。
 prefix 検索は NULL href の宣言を飛ばしますが、href 検索は NULL と空文字列を区別します。
 NULL href 宣言も同じ prefix の祖先宣言を href 検索で隠す、という固定版の扱いを保ちます。
+検索入力の計測・コピーはSPARK側で行い、C側では中間Stringを作りません。NULL nodeでは
+従来どおり診断を変更せず返し、未登録nodeでは検索入力を読まず診断115で拒否します。
+従来の未登録nodeの無診断NULLとは異なります。計測上限超過の115と、通常の未検出で
+診断を変えない挙動は保ちます。`doc` 引数は
+無視します。NULL検索と空文字列は区別し、検索値のXML/UTF-8検証は追加しません。
 
 `xmlGetNsList` / `xmlGetNsListSafe` は管理対象 node facade のみを対象とし、node から祖先へたどり、各 element の namespace
 宣言を近い要素順・`nsDef` 宣言順に返します。同じ prefix（default prefix を含む）は

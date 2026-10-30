@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,095 checks
-(1,430 flow and 11,665 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 165 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,112 checks
+(1,436 flow and 11,676 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 166 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -771,11 +771,19 @@ The comparison itself allocates nothing and performs no writes.
 属性検索・内容のコピーはSPARK側のままで、新たな所有権モデルは追加していません。
 戻り値と出力 pointer の C ABI 契約そのものは証明外で、固定版比較と確保失敗テストで検査します。
 
-公開 namespace 検索は `Store.Queries.Lookup_Namespace` を通ります。まず純粋な
+公開 namespace 検索は `Store.Queries.Lookup_Namespace` を通ります。native overloadは
+nodeの登録確認後に `Measure` / `Read_String` でSPARK内の検索Stringを作り、C側の
+変換を不要にします。NULL検索と空文字列は区別し、未登録nodeでは検索値を読みません。
+guard page、shadowing、検索結果を使った出力・再読み込み・編集とimplicit XML宣言の
+再利用は実行テストの根拠で、native可読性・extent/stability・byte効果・ABIは証明外です。
+既存のString経路ではまず純粋な
 `Search_Namespace` で検索し、必要な場合だけ最も近い文書なし element へ
-`Store.Create_Namespace` で組み込み `xml` 宣言を追加します。C 境界には変更を加えません。
+`Store.Create_Namespace` で組み込み `xml` 宣言を追加します。未登録nodeは診断115を返し、
+計測上限超過も従来どおり115です。通常の未検出は診断を変更しません。
 属性更新内部では純粋な検索を維持し、更新失敗時の宣言の巻き戻し処理は変えていません。
 固定版比較・作成失敗後の再試行・既存宣言の保持・再検索の確保不要を実行検査します。
+GNATprove は native `Lookup_Namespace` overload で11 checks（1 warning）、
+既存 String overload で13 checks、`Runtime.Search_Namespace` で1 checkを証明します。
 
 `xmlNewDocNode` / `xmlNewDocRawNode` は `Runtime.New_Doc_Node` と
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。
