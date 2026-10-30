@@ -1,8 +1,11 @@
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
+with XML3_Error_Records;
 with XML3_Text;
 
 package body XML3_Errors is
+
+   subtype Error_Record is XML3_Error_Records.Error_Record;
 
    use type Interfaces.C.int;
    use type System.Address;

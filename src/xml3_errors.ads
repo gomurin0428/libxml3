@@ -1,10 +1,7 @@
 with Interfaces.C;
 with System;
-with XML3_Error_Records;
 
 package XML3_Errors is
-
-   subtype Error_Record is XML3_Error_Records.Error_Record;
 
    function Get_Last_Error return System.Address
      with Export, Convention => C, External_Name => "xmlGetLastError";
