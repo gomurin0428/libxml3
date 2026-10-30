@@ -8,7 +8,6 @@ package body XML3_DOM_Runtime
 is
    use type XML3_DOM.Node_Kind;
    use type XML3_DOM_Store.Operation_Status;
-   use type XML3_DOM_Store.Queries.XML_Property_Kind;
    use type System.Address;
 
    function Has_Colon (Name : String) return Boolean is
@@ -369,19 +368,12 @@ is
 
       procedure Set_XML_Property
         (Element : System.Address; Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
-         Value : String; Has_Value : Boolean; Space_Value : Integer;
+         Value : System.Address; Space_Value : Integer;
          Status : out XML3_DOM_Store.Operation_Status)
       is
-         Property : System.Address;
       begin
-         XML3_DOM_Store.Properties.Set_Qualified_Property
-           (Current, Element,
-            (if Mode = XML3_DOM_Store.Queries.Language_Property
-             then "xml:lang" else "xml:space"),
-            (if Mode = XML3_DOM_Store.Queries.Language_Property then Value
-             elsif Space_Value = 0 then "default" else "preserve"),
-            Mode = XML3_DOM_Store.Queries.Space_Property or else Has_Value,
-            Property, Status);
+         XML3_DOM_Store.Properties.Set_XML_Property
+           (Current, Element, Mode, Value, Space_Value, Status);
       end Set_XML_Property;
 
       procedure Test_Node

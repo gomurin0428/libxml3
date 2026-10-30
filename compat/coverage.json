@@ -946,14 +946,14 @@
   },
   "function:tree.h:xmlNodeSetLang": {
     "implementation": "partial",
-    "scope": "SPARK Runtime/Store sets the XML-namespaced lang property on managed elements. NULL sets an empty value rather than removing the attribute. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Native ABI and full public semantics are not proved.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "SPARK Runtime/Store sets the XML-namespaced lang property on managed elements. NULL sets an empty value rather than removing the attribute. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Native addresses enter Store directly: element registration/kind checks precede bounded measurement and copying into a SPARK String; no C language conversion. Old aliased attribute content remains live until the copy finishes. Values remain raw, including invalid UTF-8/XML bytes which are rejected at serialization; no language-tag validation. Native ABI, extents/stability, byte effects and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNodeSetSpacePreserve": {
     "implementation": "partial",
-    "scope": "SPARK Runtime/Store sets the XML-namespaced space property on managed elements: zero maps to default and every nonzero integer to preserve. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Native ABI and full public semantics are not proved.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "SPARK Runtime/Store sets the XML-namespaced space property on managed elements: zero maps to default and every nonzero integer to preserve. Returns 0 on success, 1 for invalid input and -1 on allocation failure; qualified-property rollback is reused. Shared native Store entry validates element registration/kind before editing and never reads a language input in space mode. Native ABI and full public semantics are not proved.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlTextConcat": {

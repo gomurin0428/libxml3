@@ -1590,16 +1590,11 @@ package body XML3_C is
          return 1;
       end if;
       declare
-         Has_Value : constant Boolean :=
-           Mode = XML3_DOM_Store.Queries.Language_Property
-           and then Value /= System.Null_Address;
-         Value_Text : constant String :=
-           (if Has_Value then C_String_Value (Value) else "");
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Set_XML_Property
-           (Element, Mode, Value_Text, Has_Value, Integer (Space_Value), Status);
+           (Element, Mode, Value, Integer (Space_Value), Status);
       end;
       Report_Operation_Status (Status);
       if Status = XML3_DOM_Constructors.Created then
@@ -1610,9 +1605,6 @@ package body XML3_C is
          return 1;
       end if;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return 1;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return 1;

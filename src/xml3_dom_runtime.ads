@@ -225,7 +225,7 @@ is
 
       procedure Set_XML_Property
         (Element : System.Address; Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
-         Value : String; Has_Value : Boolean; Space_Value : Integer;
+         Value : System.Address; Space_Value : Integer;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 

@@ -6,6 +6,7 @@ with XML3_DOM_Store.Queries;
 with XML3_Namespaces;
 with XML3_Native_Memory;
 with XML3_Text;
+with XML3_Text.Buffers;
 
 package body XML3_DOM_Store.Properties with SPARK_Mode is
    use XML3_DOM;
@@ -1097,4 +1098,43 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
          end if;
       end;
    end Set_Qualified_Property;
+
+   procedure Set_XML_Property
+     (S : in out Store; Element : System.Address;
+      Mode : XML_Property_Kind; Value : System.Address; Space_Value : Integer;
+      Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+      Property : System.Address;
+   begin
+      Status := Invalid_Argument;
+      if E = Null_Node or else Node (S.Current.all, E).Kind /= Element_Node then
+         return;
+      end if;
+      if Mode = Space_Property then
+         Set_Qualified_Property
+           (S, Element, "xml:space",
+            (if Space_Value = 0 then "default" else "preserve"),
+            True, Property, Status);
+         return;
+      elsif Value = System.Null_Address then
+         Set_Qualified_Property
+           (S, Element, "xml:lang", "", False, Property, Status);
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Value, Length, Found);
+      if not Found then
+         return;
+      end if;
+      declare
+         Input_Length : constant XML3_Text.Byte_Count := Length;
+         Input : String (1 .. Input_Length);
+      begin
+         Native.Read_String (Value, Input);
+         Set_Qualified_Property
+           (S, Element, "xml:lang", Input, True, Property, Status);
+      end;
+   end Set_XML_Property;
 end XML3_DOM_Store.Properties;

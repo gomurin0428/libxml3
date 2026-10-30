@@ -1,5 +1,6 @@
 with System;
 with XML3_DOM;
+with XML3_DOM_Store.Queries;
 with XML3_Native_Memory;
 
 package XML3_DOM_Store.Properties with SPARK_Mode is
@@ -81,6 +82,13 @@ package XML3_DOM_Store.Properties with SPARK_Mode is
          and then (if Status = XML3_DOM_Constructors.Created
            then Result /= System.Null_Address
            else Result = System.Null_Address);
+   procedure Set_XML_Property
+     (S : in out Store; Element : System.Address;
+      Mode : XML3_DOM_Store.Queries.XML_Property_Kind;
+      Value : System.Address; Space_Value : Integer;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S), Post => Ready (S);
 private
    function Namespace_Attached
      (S : Store; Ns : System.Address) return Boolean is
