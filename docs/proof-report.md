@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,046 checks, 1,415 by flow analysis and 11,631
+It completed successfully: **13,052 checks, 1,418 by flow analysis and 11,634
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -623,12 +623,12 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 370 |
-| Initialization | 856 |
-| Runtime checks | 5,571 |
+| Initialization | 859 |
+| Runtime checks | 5,572 |
 | Assertions | 1,667 |
-| Functional contracts | 4,319 |
+| Functional contracts | 4,321 |
 | Termination | 263 |
-| **Total** | **13,046** |
+| **Total** | **13,052** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1147,17 +1147,27 @@ mapping, and diagnostic delivery remain trusted boundaries.
 
 ## `xmlStringGetNodeList` / `xmlStringLenGetNodeList`
 
-The C adapters perform bounded input conversion, locking, Runtime dispatch, and
+The C adapters forward the input address and length, perform locking, Runtime dispatch, and
 status/diagnostic mapping. `Store.Content.Parse_Content_List` validates a
-registered document before native metadata access, uses the strict SPARK text
+registered document before reading the input, uses the strict SPARK text
 decoder for UTF-8/XML and predefined/numeric references, and constructs one
 detached text node through the existing document-owner path. General/unknown
 entities and malformed input are rejected atomically; no entity-reference
 nodes are created. Empty input returns NULL. A zero length returns NULL without
 reading the input, deliberately avoiding the reference's unsafe first-byte
 read. The proof covers the selected SPARK Store/Runtime/decoder contracts, not
-C-string scanning, native pointer validity, allocation/copy, ABI, diagnostics,
+native pointer validity, allocation/copy, ABI, diagnostics,
 or complete public semantics.
+`Measure` handles every negative length; `Measure_Byte_Prefix` bounds positive
+lengths and stops at NUL. NULL input and explicit zero length bypass document
+validation and preserve diagnostics. Other invalid documents are rejected with
+code115 even for empty input, without reading it. Measured `Read_String` and
+`Decode` buffers remain in SPARK; this is not a streaming decoder. Guard-page
+tests protect the original input before attachment, serialization/free/reparse
+and editing; native-only tests cover unreadable documents/inputs, zero/NULL
+diagnostic preservation, leading NUL and over-limit rejection.
+GNATprove proves 16 checks for `Store.Content.Parse_Content_List` and 1 for
+the `Runtime.Parse_Content_List` wrapper.
 
 ## `xmlNodeListGetRawString`
 
@@ -1314,7 +1324,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-fd0f5801445424175ea2cd16b217b688ae03231624719ae62becc4d5c4d1fa22  src/xml3_c.adb
+30cb8e4ce1751c6c01b55febd8da46b8507ee1f078c1b6e90f392d2d2504adc0  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1337,10 +1347,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-dc38dbd700e1c3168d5ea2bb865d5983a1871dfb3ee24ef28cb9cd140c26c5e8  src/xml3_dom_runtime.adb
-09aa20b1d64c9825677ea883c00d98eb6b218a4bbee6e51cf7bc170a6dc3ccdd  src/xml3_dom_runtime.ads
-170a906db393e8a01ae0643dab58d5b510204b70af5fb819795b731a72236a2f  src/xml3_dom_store-content.adb
-67dc03bc1622f13dccf2f20cce7cff11c9f818c06876aa87a34f6e313780289d  src/xml3_dom_store-content.ads
+00f84f35e9862a729063917645bd3e53c046840e06db9e04ffca457f3fd2d358  src/xml3_dom_runtime.adb
+0ae84b1e81b0b83ec6e37f7bac6ef49c8a450dc77a12b29b7a29cc089fdcccbe  src/xml3_dom_runtime.ads
+8d984c8415dbb2ff4d9c20ea8030f2dcecba01c0d501fa98097b2a4975256dcb  src/xml3_dom_store-content.adb
+9191ace04a4e464c655d3bad4b22862880380add112c7ad16c75b7f5f474fb65  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
@@ -1378,7 +1388,7 @@ dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 9caf83872228b36227ad3a6dcafb9fa1bf09b99d091e1f394d6cd20c79a414a8  Makefile
 f8684434c8ee371920786d1586adc38277fada588070746f48f22c626e5c21b8  tests/oom-test.c
-7a32e3350363e9cc514f6f6ffbbfc14ebef9de3a6bbc209e302acd4434f20fb7  tests/serialization-test.c
+d9e2dbafecaf792d7cee70542a867c9d5a45c6ebbf3fd79077a00c9ea1f459e3  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```

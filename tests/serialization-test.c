@@ -26,6 +26,85 @@ enum container_api {
     CONTAINER_TEXT_CHILD, CONTAINER_PROP, CONTAINER_API_COUNT
 };
 
+static xmlNodePtr make_string_list(int mode, xmlDocPtr doc,
+                                   const xmlChar *value, int length) {
+    return mode == 0 ? xmlStringGetNodeList(doc, value)
+        : xmlStringLenGetNodeList(doc, value, mode == 1 ? length : -7);
+}
+
+static void test_string_list_input(void) {
+    static const char text[] = "a&amp;\xc3\xa9\r\n\t";
+    static const char expected[] = "a&\xc3\xa9\r\n\t";
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int mode = 0; mode < 3; ++mode) {
+        size_t bytes = sizeof(text) - (mode == 1 ? 1 : 0);
+        char *input = mapping + page - bytes;
+        memcpy(input, text, bytes);
+        xmlDocPtr doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+        xmlNodePtr list = make_string_list(mode, mode == 2 ? NULL : doc,
+            (const xmlChar *)input, sizeof(text) - 1);
+        assert(list && list->type == XML_TEXT_NODE && list->next == NULL);
+        assert(list->doc == (mode == 2 ? NULL : doc) && list->parent == NULL);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        assert(strcmp((const char *)list->content, expected) == 0);
+        assert(xmlAddChild(root, list) == list);
+        xmlChar *output = NULL;
+        int length = 0;
+        xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+        assert(output && length > 0);
+        xmlFreeDoc(doc);
+        doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+        assert(doc != NULL);
+        list = xmlDocGetRootElement(doc)->children;
+        assert(list && strcmp((const char *)list->content, expected) == 0);
+        xmlNodeAddContent(list, BAD_CAST "!");
+        assert(strcmp((const char *)list->content, "a&\xc3\xa9\r\n\t!") == 0);
+        xmlFree(output);
+        xmlFreeDoc(doc);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+#ifndef XML3_REFERENCE_TEST
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+    for (int mode = 0; mode < 3; ++mode) {
+        xmlResetLastError();
+        assert(make_string_list(mode, (xmlDocPtr)protected, protected, 1) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        xmlResetLastError();
+        assert(make_string_list(mode, (xmlDocPtr)root, protected, 1) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    }
+    xmlResetLastError();
+    assert(xmlStringLenGetNodeList(doc, protected, INT_MAX) == NULL);
+    const xmlError *error = xmlGetLastError();
+    assert(error && error->code == 115);
+    assert(xmlStringGetNodeList((xmlDocPtr)protected, NULL) == NULL);
+    assert(xmlStringLenGetNodeList((xmlDocPtr)protected, NULL, INT_MAX) == NULL);
+    assert(xmlStringLenGetNodeList((xmlDocPtr)protected, protected, 0) == NULL);
+    assert(xmlGetLastError() == error && error->code == 115);
+    xmlResetLastError();
+    assert(xmlStringGetNodeList((xmlDocPtr)protected, BAD_CAST "") == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlResetLastError();
+    mapping[page - 1] = 0;
+    assert(xmlStringLenGetNodeList(doc, BAD_CAST (mapping + page - 1), 16) == NULL);
+    assert(xmlStringGetNodeList(doc, BAD_CAST (mapping + page - 1)) == NULL);
+    assert(xmlGetLastError() == NULL);
+    assert(root->children == NULL && root->last == NULL);
+    xmlFreeDoc(doc);
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static xmlNodePtr make_container(enum container_api api, xmlDocPtr doc,
                                  xmlNodePtr parent, xmlNsPtr ns,
                                  const xmlChar *name, const xmlChar *value) {
@@ -1354,6 +1433,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_string_list_input();
     test_container_input();
     test_pi_target_input();
     test_content_input();
@@ -1398,6 +1478,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_string_list_input();
     test_container_input();
     test_pi_target_input();
     test_content_input();

@@ -86,6 +86,8 @@ predefined/numeric reference だけを展開した独立の detached text node �
 未知/general entity や malformed reference は拒否し、entity-reference node は作成しません。
 正の長さは最初の NUL または指定長まで、負の長さは NUL 終端です。長さ 0 は入力を読まず
 NULL を返し、固定版の unsafe な先頭 byte read は再現しません。
+計測はSPARK側で行い、C側の中間Stringは作りません。NULL入力・長さ0は文書にも触れず、
+それ以外は文書の登録照合を入力読み取りより先に行います。既存の復号用バッファはSPARK内に残ります。
 
 `xmlGetPredefinedEntity` は `lt`、`gt`、`amp`、`apos`、`quot` の完全一致だけを
 検索します。返る entity record と name/content の文字列は共有された read-only の

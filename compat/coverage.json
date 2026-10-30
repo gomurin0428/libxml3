@@ -587,14 +587,14 @@
   },
   "function:tree.h:xmlStringGetNodeList": {
     "implementation": "partial",
-    "scope": "Deprecated public API in pinned libxml2 2.15.4. SPARK Store/Runtime decodes valid UTF-8/XML and predefined/numeric references into one detached text node, preserving literal CR/LF/TAB. NULL/empty input returns NULL; malformed input and unknown/general entities fail atomically; no entity-reference nodes are created. Optional document must be NULL or a registered live document and is retained by the text owner pin. Native pointers/bytes, allocation/copy, ABI, and complete C semantics remain trusted.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Deprecated public API in pinned libxml2 2.15.4. SPARK Store/Runtime decodes valid UTF-8/XML and predefined/numeric references into one detached text node, preserving literal CR/LF/TAB. NULL/empty input returns NULL; malformed input and unknown/general entities fail atomically; no entity-reference nodes are created. Optional document must be NULL or a registered live document and is retained by the text owner pin. Native pointers/bytes, allocation/copy, ABI, and complete C semantics remain trusted. Native input is measured in SPARK after registered-document validation, with input/Decode buffers kept inside SPARK rather than C. NULL input/explicit zero length bypass document checks and preserve diagnostics; other invalid documents return code115 without reading even empty input.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlStringLenGetNodeList": {
     "implementation": "partial",
-    "scope": "Deprecated public API in pinned libxml2 2.15.4. Shares xmlStringGetNodeList decoding and document ownership. Negative length is NUL-terminated; positive length stops at NUL or the bound. Zero length reads no input and returns NULL rather than reproducing the reference's unsafe first-byte read/empty-node result. Malformed input and unknown/general entities fail atomically; native pointer/byte validity, allocation/copy, ABI, and complete C semantics remain trusted.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "scope": "Deprecated public API in pinned libxml2 2.15.4. Shares xmlStringGetNodeList decoding and document ownership. Negative length is NUL-terminated; positive length stops at NUL or the bound. Zero length reads no input and returns NULL rather than reproducing the reference's unsafe first-byte read/empty-node result. Malformed input and unknown/general entities fail atomically; native pointer/byte validity, allocation/copy, ABI, and complete C semantics remain trusted. Native input is measured in SPARK after registered-document validation, with input/Decode buffers kept inside SPARK rather than C. NULL input/explicit zero length bypass document checks and preserve diagnostics; other invalid documents return code115 without reading even empty input.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/header-smoke.cpp", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewTextLen": {
