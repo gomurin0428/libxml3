@@ -62,10 +62,6 @@ reparse/editing are execution tests. Native extents/stability, byte effects,
 allocation and ABI remain trusted. GNATprove proves 15 checks for the native
 `Store.Properties.Create_Property` overload (2 warnings), 28 for the existing
 String overload (2 warnings), and 1 for `Runtime.Create_Property`.
-The public
-`xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
-`xmlValidateNMToken` adapters now pass pointers directly to the analyzed
-`XML3_Text.Buffers.Validate_Name` / `Scan_Name`, without a C-string copy.
 `xmlNewNsProp` / `xmlSetNsProp` now share native
 `Properties.Edit_Namespace_Property`: registered element/namespace checks and
 non-NULL namespace-href validation precede name/value measurement and SPARK-local
@@ -79,6 +75,10 @@ semantics remain trusted.
 GNATprove proves 25 checks (2 warnings) for native
 `Store.Properties.Edit_Namespace_Property`, and 1 check each for
 `Runtime.Create_Namespace_Property` and `Runtime.Set_Namespace_Property`.
+The public
+`xmlValidateName`, `xmlValidateNCName`, `xmlValidateQName`, and
+`xmlValidateNMToken` adapters now pass pointers directly to the analyzed
+`XML3_Text.Buffers.Validate_Name` / `Scan_Name`, without a C-string copy.
 They share the bounded state machine with the four `valid.h` value predicates.
 Their bounds, termination, and written result contracts are proved, not complete
 lexical equivalence, native pointer readability/extents, byte effects, C ABI,
