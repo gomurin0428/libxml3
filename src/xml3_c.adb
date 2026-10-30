@@ -1919,7 +1919,6 @@ package body XML3_C is
      (Node, Name, Value : System.Address) return System.Address
    is
       Result : System.Address := System.Null_Address;
-      Has_Value : constant Boolean := Value /= System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
@@ -1928,24 +1927,14 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
-         Value_Text : constant String :=
-           (if Value = System.Null_Address then "" else C_String_Value (Value));
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Set_Qualified_Property
-              (Node, Name_Text, Value_Text, Has_Value, Result, Status);
-         end;
-         Report_Operation_Status (Status);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Set_Qualified_Property (Node, Name, Value, Result, Status);
       end;
+      Report_Operation_Status (Status);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

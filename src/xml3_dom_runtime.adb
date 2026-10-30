@@ -287,13 +287,12 @@ is
       end Unset_Namespace_Property;
 
       procedure Set_Qualified_Property
-        (Element : System.Address; QName, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, QName, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Properties.Set_Qualified_Property
-           (Current, Element, QName, Value, Has_Value, Result, Status);
+           (Current, Element, QName, Value, Result, Status);
       end Set_Qualified_Property;
 
       procedure Unset_Property
