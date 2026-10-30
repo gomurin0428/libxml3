@@ -628,6 +628,98 @@ static void test_attribute_value_status(void) {
 #endif
 }
 
+static void test_property_creation_input(void) {
+    static const struct { const char *name, *value; int serializable; } cases[] = {
+        {"n\xc3\xa9", "raw &amp; &#65; < > \" '\t\n\r", 1},
+        {"empty", "", 1}, {"none", NULL, 1}, {"same", "same", 1},
+        {"", "value", 0}, {"raw", "\xff", 0}
+    };
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 128);
+    char *mapping = mmap(NULL, (size_t)page * 4, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    assert(mprotect(mapping + page * 3, (size_t)page, PROT_NONE) == 0);
+    for (int detached = 0; detached < 2; ++detached) {
+        for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+            char *name = mapping + page - strlen(cases[i].name) - 1;
+            char *value = NULL;
+            memcpy(name, cases[i].name, strlen(cases[i].name) + 1);
+            if (cases[i].value) {
+                value = mapping + page * 3 - strlen(cases[i].value) - 1;
+                memcpy(value, cases[i].value, strlen(cases[i].value) + 1);
+                if (strcmp(cases[i].name, cases[i].value) == 0) value = name;
+            }
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(doc && root);
+            assert(xmlDocSetRootElement(doc, root) == NULL);
+            xmlAttrPtr attr = xmlNewProp(detached ? NULL : root, BAD_CAST name,
+                                         BAD_CAST value);
+            assert(attr);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page, PROT_NONE) == 0);
+            assert(strcmp((const char *)attr->name, cases[i].name) == 0);
+            assert(attr->parent == (detached ? NULL : root));
+            assert(attr->doc == (detached ? NULL : doc));
+            assert((attr->children != NULL) == (cases[i].value != NULL));
+            const char *expected = cases[i].value ? cases[i].value : "";
+            assert_value(attr, expected);
+            xmlAttrPtr copy = xmlNewProp(NULL, attr->name,
+                                         attr->children ? attr->children->content : NULL);
+            assert(copy && copy != attr);
+            if (detached) xmlFreeProp(attr);
+            else assert(xmlRemoveProp(attr) == 0);
+            assert(strcmp((const char *)copy->name, cases[i].name) == 0);
+            assert_value(copy, expected);
+            assert(xmlAddChild(root, (xmlNodePtr)copy) == (xmlNodePtr)copy);
+            if (cases[i].serializable) {
+                xmlChar *output = NULL;
+                int size = 0;
+                xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+                assert(output && size > 0);
+                xmlFreeDoc(doc);
+                doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+                assert(doc);
+                root = xmlDocGetRootElement(doc);
+                assert_attr_value(root, cases[i].name, NULL, 0, expected);
+                assert(xmlSetProp(root, BAD_CAST cases[i].name, BAD_CAST "edited"));
+                assert_attr_value(root, cases[i].name, NULL, 0, "edited");
+                xmlFree(output);
+            }
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    xmlNodePtr text = xmlNewText(BAD_CAST "unchanged");
+    assert(doc && root && text);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    xmlAttrPtr existing = xmlNewProp(root, BAD_CAST "keep", BAD_CAST "value");
+    assert(existing);
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlNodePtr invalid[] = {(xmlNodePtr)protected, (xmlNodePtr)doc,
+                            (xmlNodePtr)existing, text};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        xmlResetLastError();
+        assert(!xmlNewProp(invalid[i], protected, protected));
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        assert(root->properties == existing && existing->next == NULL);
+        assert_value(existing, "value");
+    }
+    xmlResetLastError();
+    assert(!xmlNewProp((xmlNodePtr)protected, NULL, protected));
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    xmlFreeNode(text);
+    xmlFreeDoc(doc);
+#endif
+    assert(munmap(mapping, (size_t)page * 4) == 0);
+}
+
 static void test_property_search_input(void) {
     static const char document[] = "<r xmlns:p='urn:p' p:n\xc3\xa9='qualified' "
         "n\xc3\xa9='A&amp;B' empty=''><c/></r>";
@@ -742,6 +834,7 @@ static void test_property_search_input(void) {
 }
 
 int main(void) {
+    test_property_creation_input();
     test_property_search_input();
     test_attribute_value_status();
     test_free_prop_list();

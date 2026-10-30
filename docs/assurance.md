@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,131 checks
-(1,441 flow and 11,690 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 168 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,151 checks
+(1,446 flow and 11,705 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 170 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -764,6 +764,16 @@ scan cap は長い入力の一律拒否ではありません。Native
 byte reads、foreign pointer validity/bounds、actual contents、address arithmetic、C mapping、
 full public equivalence remain trusted. XML-name/UTF-8 validation is not performed.
 The comparison itself allocates nothing and performs no writes.
+
+`xmlNewProp` はnative `Properties.Create_Property` overloadを通り、非NULL elementの
+登録・種類を確認した後、名前/値をSPARK内で計測・コピーします。既存String overloadの
+colon拒否、raw値、NULL/emptyのtext-child区別、単独/接続属性の所有権・巻き戻しを再利用
+します。Cはアドレス転送・mutex・status/exception変換のみです。入力が属性の既存fieldを
+指す場合も、旧属性を解放する前に新属性側のコピーを完了します。走査上限は114、無効な
+要素は115で拒否します。native可読性・extent/stability・byte効果・ABI/allocatorは証明外
+です。guarded入力と元属性の解放後の出力・再読み込み・編集は固定版比較で検査します。
+GNATprove は native overload で15 checks（2 warnings）、既存String overloadで28 checks
+（2 warnings）、`Runtime.Create_Property` で1 checkを証明します。
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
 `Get_Content` を再利用します。`xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` と

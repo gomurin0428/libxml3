@@ -881,7 +881,7 @@
   },
   "function:tree.h:xmlNewProp": {
     "implementation": "partial",
-    "scope": "colon のない namespace-free attribute を raw C string から作成。XML name/UTF-8 検証なし。NULL value は child なし、empty value は text child。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "scope": "Native name/value inputs are measured/copied in SPARK Properties.Create_Property after non-NULL element registration/kind checks. Reuses String construction for colon-free raw names/values without XML-name/UTF-8 validation or reference decoding. NULL element creates a detached attribute; duplicate names append. NULL value has no text child; empty value has an empty child. Input and alias-source attribute lifetimes are independent. Scan exhaustion reports114 rather than former conversion115; invalid context reports115 before reads and failure preserves existing properties. Native extents/stability, byte effects, allocator/ABI and full public semantics remain trusted or unproved.",
     "tests": [
       "tests/attribute-test.c",
       "tests/oom-test.c"

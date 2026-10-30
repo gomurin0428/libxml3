@@ -489,6 +489,51 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
       Status := Created;
    end Create_Property;
 
+   procedure Create_Property
+     (S : in out Store; Element, Name, Value : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Name_Length, Value_Length : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Name = System.Null_Address
+        or else (Element /= System.Null_Address
+          and then (E = Null_Node
+            or else Node (S.Current.all, E).Kind /= Element_Node))
+      then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      if Value /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Value, Value_Length, Found);
+         if not Found then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+      end if;
+      declare
+         Name_Size : constant XML3_Text.Byte_Count := Name_Length;
+         Value_Size : constant XML3_Text.Byte_Count := Value_Length;
+         Name_Text : String (1 .. Name_Size);
+         Value_Text : String (1 .. Value_Size) := (others => Character'Val (0));
+      begin
+         Native.Read_String (Name, Name_Text);
+         if Value /= System.Null_Address then
+            Native.Read_String (Value, Value_Text);
+         end if;
+         Create_Property
+           (S, Element, Name_Text, Value_Text, Value /= System.Null_Address,
+            Result, Status);
+      end;
+   end Create_Property;
+
    procedure Set_Property
      (S : in out Store; Element : System.Address;
       Name, Value : String; Has_Value : Boolean;
