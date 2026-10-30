@@ -2,6 +2,21 @@
 
 ## Result
 
+`XML3_Error_Records` now owns cloning, partial-copy rollback and release of the
+five diagnostic strings. Its record declaration keeps the existing C layout;
+`XML3_Errors` uses a subtype rather than a second native representation. The
+contracts preserve numeric/context/node values and NULL presence on success
+and clear the temporary record on failure or release. Copies stop at the first
+failure. Native readability/stability, allocation freshness, distinct ownership
+and byte effects remain assumptions; these structural contracts do not prove
+foreign memory safety or exception behavior. Public record replacement, TLS
+and emergency-record selection remain trusted. Native tests exercise every
+allocation failure, exactly-once prefix cleanup, length-limit rollback,
+unreadable unused fields, independent copies, repeated release and retry.
+GNATprove proves 1 check each for `Clone`, `Copy_Field`, `Free_Pointer` and
+`Release`; the `Same_Metadata` and `Same_String_Presence` predicates have no
+checks. `Release` carries five trusted native-call termination warnings.
+
 `Text.Location_At` now owns the error adapter's line/column scan and is reused
 for parser opening-tag lines. It has no global/native/allocator effects and
 proves positive counter bounds and safe scan arithmetic under `Max_Bytes`.
@@ -14,13 +29,13 @@ input adaptation are not implied by these range contracts.
 
 Diagnostic message/file/payload duplication now reuses the proved
 `Text.Buffers.Concatenate_Bytes` path, removing the error adapter's direct
-strlen/malloc/memcpy implementation. This is a new call site, not new proved
-error-record/TLS behavior or a new semantic claim for `xmlCopyError`. Tests cover
+strlen/malloc/memcpy implementation. The per-string copy algorithm is reused
+without new algorithm coverage or a proof of full `xmlCopyError` semantics. Tests cover
 NULL/empty/raw bytes, NUL at a protected page boundary, independent copies after
 source protection and record reset, copied URLs reused in diagnostics, small
 scan limits and allocation-failure rollback/retry including empty strings.
 The helper retains its existing native assumptions and common byte cap; cap
-failures map to the existing OOM path. Error records, cleanup scheduling, TLS,
+failures map to the existing OOM path. Public error-record replacement, TLS,
 exception mapping and native ABI remain trusted.
 
 `Parser.Options.Classify` now owns the allowed-bit and HUGE-profile policy in
@@ -83,7 +98,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,304 checks, 1,502 by flow analysis and 11,802
+It completed successfully: **13,320 checks, 1,514 by flow analysis and 11,806
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -751,8 +766,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 532 entity
-summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
+The 539 entity
+summaries report 0 flow errors, 180 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -773,7 +788,7 @@ include trusted termination
 diagnostics for native reads, allocation, writes and frees; an unreachable/no-effect
 diagnostic also remains for the portable pointer-array size guard on this 64-bit
 host. The workspace unit adds eight such native-call diagnostics: four for
-`Allocate` and four for `Free`. These are distinct from the 175 per-entity
+`Allocate` and four for `Free`. These are distinct from the 180 per-entity
 analyzer warnings above and do not prove allocator side effects.
 The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
 Runtime wrapper, unused helper outputs, and trusted native-call termination
@@ -787,14 +802,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 390 |
-| Initialization | 914 |
+| Data dependencies | 396 |
+| Initialization | 918 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,646 |
 | Assertions | 1,669 |
-| Functional contracts | 4,413 |
-| Termination | 271 |
-| **Total** | **13,304** |
+| Functional contracts | 4,417 |
+| Termination | 273 |
+| **Total** | **13,320** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1516,12 +1531,11 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 75 hashes identify the source files and build/test configuration
+The following 80 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
-```text
-fd7fb375690d7823060d353454965556dd0565882ed6cedd3a992c297f567925  src/xml3_c.adb
+```textfd7fb375690d7823060d353454965556dd0565882ed6cedd3a992c297f567925  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1563,8 +1577,8 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-d450b21610792c937f487832483aaae23c1a68251aed7aa6d7161f68329874d0  src/xml3_errors.adb
-bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
+454ede9af4d3bfd2cb734964af4fb55b8e1f1a0092e34b51b5b9d0136822a8bb  src/xml3_errors.adb
+169589373eb1fa90c9f3e2ff31892fe2a91b3bf2a38e0ac34327b7829cf0df06  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
 27864d51e26e31e6459e0201d2932aa596592cc020366a3e60efd894a2f8ac92  src/xml3_native_memory.adb
@@ -1586,9 +1600,9 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-b9dd937ced8626bdb077be20e5a16d4ae16c41d79f043a9798deaceb4b6e8090  proof.gpr
+8d829512fd8f6aa9e24e036ff602366184ea78e4b4becb7ab62c501f0f5fedec  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-044d130a70cff97b045583f7506ed562fe30502cc017a9da39f97d4517a9c368  Makefile
+66d892b1db73f05e04c3ac14a8eee2f98a26dbd0dd6513cf61a7540fe98b8eff  Makefile
 2a4d029dbefd939c092fd316dbcffa0da1109738020c7daea3224b0a70033a2e  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
@@ -1596,6 +1610,11 @@ d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serializ
 c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
 b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
+9553b7ab13639b9345de865f3a1704a0d2687d74986ae15418e4e2fc2c615300  src/xml3_error_records.ads
+c62d0f71c8ee467db9065663921b4bc5b344020d5e47c6dbb045b346627dd925  src/xml3_error_records.adb
+522dd9a859369a431e22fb41ddaf10971faa0696d5ed8fc5bf2b7a0d08797806  tests/dom_bridge_test.adb
+6669c100bb3f96760e4631086ba2d4e691e1d8af38ba9082bbc24248ef4d232f  tests/dom_bridge_test.gpr
+1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```
 
 A source or contract change invalidates this record until proof is rerun.

@@ -1041,8 +1041,16 @@ diagnostics and all five string fields accepted by `xmlCopyError`, without
 UTF-8/XML validation or URL interpretation. Each string is limited to
 `XML3_Text.Max_Bytes` bytes, with the terminator allowed at that inclusive offset.
 Limit or allocation failures use the existing OOM/error-copy failure path, not
-a truncated string. Record replacement/rollback, cleanup scheduling, sticky
-error semantics, TLS and emergency diagnostics remain in the native adapter.
+a truncated string. `XML3_Error_Records.Clone` groups all five copies and
+releases the successful prefix if any later field fails. It stops at the first
+failure rather than reading or allocating the remaining fields. The original
+destination is still replaced only after a successful clone. NULL/empty strings,
+numeric fields and borrowed context/node pointers are preserved; `Release`
+frees only the five owned strings and clears the record. The unchanged C-layout
+record declaration is now shared through a subtype in `XML3_Errors`.
+Public record replacement, sticky error semantics, TLS and emergency diagnostics
+remain in the native adapter; emergency borrowed strings are never passed to
+the owning release operation.
 Callers still provide valid, readable and stable strings and live error records;
 the cap does not make arbitrary pointers safe or provide a full DoS bound.
 For a caller-constructed nonzero error with a NULL message, libxml3 still

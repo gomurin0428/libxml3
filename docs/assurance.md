@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,304 checks
-(1,502 flow and 11,802 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,320 checks
+(1,514 flow and 11,806 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -1034,14 +1034,20 @@ or development-profile testing, and neither profile proves the trusted boundary.
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
   are trusted, not discharged by the recorded proof result.
-* `XML3_Errors` is also outside SPARK. It delegates diagnostic string
-  measurement/allocation/copy to the existing SPARK `Concatenate_Bytes` helper,
-  using NULL right input and length zero. This preserves NULL/empty and raw bytes,
-  applies the common byte cap and removes direct strlen/malloc/memcpy calls.
-  Deallocation uses the shared native-memory adapter. Error record transactions,
-  cleanup scheduling, TLS, exception/OOM mapping and emergency records remain
-  outside proof; the existing native readability/stability, allocator and byte
-  effect assumptions still apply. The C shim provides only pthread TLS key access and thread-exit
+* `XML3_Errors` is also outside SPARK. `XML3_Error_Records` now owns typed record
+  cloning, partial-copy rollback and release scheduling. It retains the same
+  C-layout record declaration, exposed by a subtype in the adapter. `Clone`
+  requires an empty destination and preserves numeric/context/node fields and
+  string NULL presence on success; failure and `Release` leave an empty record.
+  Each non-NULL field uses the existing `Concatenate_Bytes` helper with NULL
+  right input and length zero, preserving empty strings/raw bytes and the common
+  byte cap. Copying stops on the first failure; release never frees context/node.
+  These contracts do not prove native pointer validity, allocator freshness,
+  distinct ownership or byte contents. Source strings must be readable/stable;
+  released non-NULL strings must be distinct owned allocations. Native failures
+  and exception behavior remain trusted, not inferred from the structural
+  record contracts. Public record replacement, TLS, exception/OOM mapping and
+  emergency borrowed records remain outside proof. The C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
   not prove it free of memory errors or exceptions.
   Diagnostic line/column calculation delegates to pure SPARK

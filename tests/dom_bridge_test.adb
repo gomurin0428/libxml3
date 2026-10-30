@@ -16,6 +16,7 @@ with XML3_Native_Memory;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Parser.Workspaces;
+with XML3_Error_Records;
 with XML3_Parser.Options;
 with XML3_Encoding;
 
@@ -1525,6 +1526,77 @@ begin
          and then XML3_DOM_Store.Is_Empty (Managed));
    end;
    Ada.Text_IO.Put_Line ("Unpublished document rollback and Store reuse passed");
+
+   declare
+      package Records renames XML3_Error_Records;
+      use type Records.Error_Record;
+      Data : aliased String := "ab" & Character'Val (0);
+      Blank : aliased String := "" & Character'Val (0);
+      Original : constant Records.Error_Record :=
+        (Domain => 1, Code => 9, Level => 3, Line => 7, Int1 => 23, Int2 => 2,
+         Ctxt => Data'Address, Node => Blank'Address, Message => Blank'Address,
+         File => Data'Address, Str1 => Data'Address, Str2 => Data'Address,
+         Str3 => Data'Address);
+      Source : Records.Error_Record := Original;
+      Copy : Records.Error_Record;
+      Success : Boolean;
+      procedure Fail_Malloc_Nth (Nth : Interfaces.C.unsigned)
+        with Import, Convention => C, External_Name => "bridge_fail_workspace_malloc_nth";
+      procedure Check_Malloc_Failure
+        with Import, Convention => C, External_Name => "bridge_check_malloc_failure";
+      procedure Begin_Tracking
+        with Import, Convention => C, External_Name => "bridge_begin_malloc_tracking";
+      procedure End_Tracking
+        with Import, Convention => C, External_Name => "bridge_end_malloc_tracking";
+   begin
+      Records.Clone (Records.Empty_Record, Copy, Success, 0);
+      pragma Assert (Success and then Copy = Records.Empty_Record);
+      Records.Release (Copy);
+      Records.Clone (Original, Copy, Success);
+      pragma Assert (Success and then Records.Same_Metadata (Original, Copy)
+        and then Records.Same_String_Presence (Original, Copy));
+      Data (1 .. 2) := "zz";
+      pragma Assert (Native.Byte_At (Copy.Message, 0) = Character'Val (0)
+        and then Native.Byte_At (Copy.File, 0) = 'a'
+        and then Native.Byte_At (Copy.Str1, 1) = 'b'
+        and then Native.Byte_At (Copy.Str2, 0) = 'a'
+        and then Native.Byte_At (Copy.Str3, 1) = 'b');
+      Records.Release (Copy);
+      Records.Release (Copy);
+      pragma Assert (Copy = Records.Empty_Record);
+      Data (1 .. 2) := "ab";
+      Source.File := System.Null_Address;
+      Source.Str2 := System.Null_Address;
+      Records.Clone (Source, Copy, Success);
+      pragma Assert (Success and then Records.Same_Metadata (Source, Copy)
+        and then Records.Same_String_Presence (Source, Copy));
+      Records.Release (Copy);
+      Source := Original;
+      Source.File := Blank'Address;
+      Source.Str1 := Blank'Address;
+      Source.Str3 := System.Storage_Elements.To_Address (1);
+      Begin_Tracking;
+      Records.Clone (Source, Copy, Success, 1);
+      End_Tracking;
+      pragma Assert (not Success and then Copy = Records.Empty_Record);
+      Source := Original;
+      Source.File := System.Storage_Elements.To_Address (1);
+      Fail_Malloc_Nth (1);
+      Records.Clone (Source, Copy, Success);
+      Check_Malloc_Failure;
+      pragma Assert (not Success and then Copy = Records.Empty_Record);
+      for Nth in 1 .. 5 loop
+         Fail_Malloc_Nth (Interfaces.C.unsigned (Nth));
+         Records.Clone (Original, Copy, Success);
+         Check_Malloc_Failure;
+         pragma Assert (not Success and then Copy = Records.Empty_Record);
+         Records.Clone (Original, Copy, Success);
+         pragma Assert (Success and then Records.Same_Metadata (Original, Copy)
+           and then Records.Same_String_Presence (Original, Copy));
+         Records.Release (Copy);
+      end loop;
+   end;
+   Ada.Text_IO.Put_Line ("Error record cloning, rollback and retry passed");
 
    declare
       package Workspaces renames XML3_Parser.Workspaces;

@@ -94,9 +94,10 @@ static xmlDoc import_original_snapshot;
 static unsigned import_frees, import_failures;
 static size_t import_failure_size;
 static unsigned fail_malloc_nth, malloc_calls, injected_malloc_failures;
-static void *failure_allocations[3];
+enum { FAILURE_ALLOCATION_CAPACITY = 5 };
+static void *failure_allocations[FAILURE_ALLOCATION_CAPACITY];
 static unsigned failure_allocation_count;
-static int failure_allocation_freed[3], track_failure_allocations;
+static int failure_allocation_freed[FAILURE_ALLOCATION_CAPACITY], track_failure_allocations;
 static int track_after_failure;
 static void *materialize_arena;
 static xmlDoc *materialize_doc;
@@ -133,7 +134,7 @@ void bridge_fail_malloc_nth(unsigned nth) {
     malloc_calls = 0;
     injected_malloc_failures = 0;
     failure_allocation_count = 0;
-    for (unsigned i = 0; i < 3; ++i) {
+    for (unsigned i = 0; i < FAILURE_ALLOCATION_CAPACITY; ++i) {
         failure_allocations[i] = NULL;
         failure_allocation_freed[i] = 0;
     }
@@ -145,7 +146,7 @@ void bridge_begin_malloc_tracking(void) {
     malloc_calls = 0;
     injected_malloc_failures = 0;
     failure_allocation_count = 0;
-    for (unsigned i = 0; i < 3; ++i) {
+    for (unsigned i = 0; i < FAILURE_ALLOCATION_CAPACITY; ++i) {
         failure_allocations[i] = NULL;
         failure_allocation_freed[i] = 0;
     }
@@ -230,7 +231,7 @@ void * __wrap_malloc(size_t size) {
     void *result = __real_malloc(size);
     if (track_failure_allocations && (injected_malloc_failures == 0 || track_after_failure) &&
         result != NULL) {
-        assert(failure_allocation_count < 3);
+        assert(failure_allocation_count < FAILURE_ALLOCATION_CAPACITY);
         failure_allocations[failure_allocation_count++] = result;
     }
     return result;
