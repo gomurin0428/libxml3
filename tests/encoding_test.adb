@@ -8,6 +8,7 @@ with XML3_Text;
 
 procedure Encoding_Test is
    use type XML3_Encoding.Encoding_Kind;
+   use type XML3_Encoding.Encoding_Info;
    use type XML3_Encoding.Conversion_Status;
    use type XML3_Encoding.Buffers.Conversion_Result;
    use type System.Address;
@@ -195,6 +196,69 @@ begin
          Assert (Converted = XML3_Encoding.Buffers.Invalid_UTF16
                  and Result = System.Null_Address and Length = 0);
       end;
+   end;
+   declare
+      type Header_Array is array (Positive range <>) of String (1 .. 4);
+      Headers : constant Header_Array :=
+        (B (16#EF#) & B (16#BB#) & B (16#BF#) & '<',
+         B (16#FF#) & B (16#FE#) & '<' & B (0),
+         B (16#FE#) & B (16#FF#) & B (0) & '<',
+         '<' & B (0) & '?' & B (0), B (0) & '<' & B (0) & '?',
+         "abcd", B (16#FF#) & B (0) & 'A' & B (0),
+         B (16#EF#) & B (16#BB#) & B (0) & B (0),
+         B (16#FF#) & B (16#FE#) & B (16#FF#) & B (16#FE#),
+         B (0) & B (0) & B (0) & B (0));
+      View : XML3_Encoding.Buffers.Input_View;
+      Prepared : XML3_Encoding.Buffers.Conversion_Result;
+      Info : XML3_Encoding.Encoding_Info;
+   begin
+      for Header of Headers loop
+         for Requested in XML3_Encoding.Encoding_Kind range
+           XML3_Encoding.Unspecified .. XML3_Encoding.UTF16BE
+         loop
+            for Size in 0 .. Header'Length loop
+               Info := XML3_Encoding.Detect (Header (1 .. Size), Requested);
+               XML3_Encoding.Buffers.Prepare_Input
+                 (Header'Address, Size, Requested, View, Prepared);
+               Assert (View.Info = Info);
+               if Info.Kind = XML3_Encoding.UTF8 then
+                  Assert (Prepared = XML3_Encoding.Buffers.Converted
+                          and not View.Owns_Data and View.Length = Size - Info.Skip
+                          and View.Data = XML3_Native_Memory.Offset
+                            (Header'Address, XML3_Native_Memory.Byte_Count (Info.Skip)));
+               else
+                  declare
+                     Source : constant String (1 .. Size - Info.Skip) :=
+                       Header (Info.Skip + 1 .. Size);
+                     Expected_Output : String (1 .. 6);
+                  begin
+                     XML3_Encoding.Decode_UTF16
+                       (Source, Info.Kind = XML3_Encoding.UTF16LE,
+                        Expected_Output, Filled, Status, Error_Position);
+                     if Status = XML3_Encoding.Success then
+                        Assert (Prepared = XML3_Encoding.Buffers.Converted
+                                and View.Owns_Data and View.Length = Filled);
+                        declare
+                           Actual : String (1 .. View.Length);
+                        begin
+                           XML3_Native_Memory.Read_String (View.Data, Actual);
+                           Assert (Actual = Expected_Output (1 .. Filled));
+                        end;
+                     else
+                        Assert (Prepared = XML3_Encoding.Buffers.Invalid_UTF16
+                                and View.Data = System.Null_Address
+                                and View.Length = 0 and not View.Owns_Data);
+                     end if;
+                  end;
+               end if;
+               XML3_Encoding.Buffers.Release_Input (View);
+               Assert (View.Data = System.Null_Address and View.Length = 0
+                       and not View.Owns_Data);
+               XML3_Encoding.Buffers.Release_Input (View);
+               Assert (View.Data = System.Null_Address and not View.Owns_Data);
+            end loop;
+         end loop;
+      end loop;
    end;
    Ada.Text_IO.Put_Line ("UTF-16 decoder tests passed");
 end Encoding_Test;

@@ -618,6 +618,9 @@ UTF-16のnative入力はSPARKで直接計測・変換し、出力領域の確保
 SPARK内で行います。既存のString decoderとサロゲート判定・UTF-8生成を共用し、
 空の変換結果も独立領域を確保します。入力は変換中に読み取り可能かつ安定している必要があり、
 nativeメモリのbyte効果・allocator・ABIは引き続き信頼境界です。
+その前後のBOM判定・先頭の切り出し・解放もSPARKで扱います。自動検出は最大4byte、
+明示UTF-8は最大3byte、明示UTF-16は最大2byteを読み、2byte未満なら判定では読みません。
+UTF-8は元入力の借用、UTF-16変換後は所有領域として区別し、借用入力は解放しません。
 
 エラー API は `xmlGetLastError`、明示 reset/copy と OS thread ごとの所有状態を
 提供し、成功後も直前のエラーを保持します。互換方針は、last-error 保持など害のない

@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               381           381                                       .           .          .
+Data Dependencies               384           384                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  909           909                                       .           .          .
-Non-Aliasing                      .             .                                       .           .          .
-Run-time Checks                5624             .      5624 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
+Initialization                  912           912                                       .           .          .
+Non-Aliasing                      1             1                                       .           .          .
+Run-time Checks                5629             .      5629 (CVC5 94%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1671             .    1671 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           4396             .     4396 (CVC5 68%, Trivial 3%, Z3 29%)           .          .
+Functional Contracts           4403             .     4403 (CVC5 68%, Trivial 3%, Z3 29%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     265           190                    75 (CVC5 95%, Z3 5%)           .          .
+Termination                     266           191                    75 (CVC5 96%, Z3 4%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13246    1480 (11%)                             11766 (89%)           .          .
+Total                         13266    1488 (11%)                             11778 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
@@ -417,11 +417,14 @@ in unit xml3_encoding, 11 subprograms and packages out of 11 analyzed
   XML3_Encoding.Read_UTF16_Unit at xml3_encoding.ads:55 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Encoding.Upper at xml3_encoding.ads:79 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Encoding.Valid_Name at xml3_encoding.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-in unit xml3_encoding-buffers, 4 subprograms and packages out of 4 analyzed
+in unit xml3_encoding-buffers, 7 subprograms and packages out of 7 analyzed
   XML3_Encoding.Buffers at xml3_encoding-buffers.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Encoding.Buffers.Classify_Bytes at xml3_encoding-buffers.ads:21 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
-  XML3_Encoding.Buffers.Convert_UTF16 at xml3_encoding-buffers.ads:10 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Encoding.Buffers.Convert_UTF16_Pass at xml3_encoding-buffers.adb:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_Encoding.Buffers.Classify_Bytes at xml3_encoding-buffers.ads:47 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  XML3_Encoding.Buffers.Convert_UTF16 at xml3_encoding-buffers.ads:36 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Encoding.Buffers.Convert_UTF16_Pass at xml3_encoding-buffers.adb:60 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_Encoding.Buffers.Detect_Bytes at xml3_encoding-buffers.adb:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  XML3_Encoding.Buffers.Prepare_Input at xml3_encoding-buffers.ads:17 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  XML3_Encoding.Buffers.Release_Input at xml3_encoding-buffers.ads:31 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_namespaces, 8 subprograms and packages out of 8 analyzed
   XML3_Namespaces at xml3_namespaces.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Namespaces.Resolve at xml3_namespaces.ads:17 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (152 checks)
