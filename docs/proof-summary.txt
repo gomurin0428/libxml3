@@ -4,23 +4,23 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               416           416                                       .           .          .
+Data Dependencies               417           417                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  919           919                                       .           .          .
+Initialization                  924           924                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                5646             .      5646 (CVC5 92%, Trivial 0%, Z3 7%)           .          .
-Assertions                     1669             .    1669 (CVC5 64%, Trivial 11%, Z3 25%)           .          .
-Functional Contracts           4423             .     4423 (CVC5 68%, Trivial 3%, Z3 30%)           .          .
+Run-time Checks                5647             .      5647 (CVC5 92%, Trivial 0%, Z3 7%)           .          .
+Assertions                     1674             .    1674 (CVC5 64%, Trivial 11%, Z3 25%)           .          .
+Functional Contracts           4426             .     4426 (CVC5 68%, Trivial 3%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     289           215                    74 (CVC5 93%, Z3 7%)           .          .
+Termination                     290           215                    75 (CVC5 93%, Z3 7%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13363    1551 (12%)                             11812 (88%)           .          .
+Total                         13379    1557 (12%)                             11822 (88%)           .          .
 
 
 max steps used for successful proof: 1191869
 
-Analyzed 30 units
+Analyzed 31 units
 in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -498,6 +498,10 @@ in unit xml3_parser, 16 subprograms and packages out of 16 analyzed
   XML3_Parser.Parse.Skip_Space at xml3_parser.adb:228 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
   XML3_Parser.Parse.Validate_Value at xml3_parser.adb:326 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
   XML3_Parser.Space at xml3_parser.adb:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+in unit xml3_parser-attempts, 3 subprograms and packages out of 3 analyzed
+  XML3_Parser.Attempts at xml3_parser-attempts.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Attempts.Attempt_Procedure at xml3_parser-attempts.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Attempts.Run at xml3_parser-attempts.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
 in unit xml3_parser-native_sizes, 1 subprograms and packages out of 1 analyzed
   XML3_Parser.Native_Sizes at xml3_parser-native_sizes.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_parser-options, 2 subprograms and packages out of 2 analyzed

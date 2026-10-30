@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,363 checks
-(1,551 flow and 11,812 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,379 checks
+(1,557 flow and 11,822 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -994,6 +994,22 @@ itself, allocator behavior, or message text. GNATprove proves 1 check each for
 initial, middle, next-to-last and last capacity and against diagnostic codes
 0, 1, 4, 114 and 115, compared with the adapter's former decisions, plus the
 existing arena-growth OOM/retry and large-document reuse cases.
+
+`Parser.Attempts` drives the parse retry loop itself in SPARK. `Run` takes one
+`Attempt_Procedure`, starts at `Workspaces.Initial_Capacity`, and repeats
+allocate / attempt / release until `Outcomes.After_Attempt` finishes the read,
+reports the node limit, or grows the capacity. A loop invariant and exit
+assertions state that the workspace is empty whenever the loop starts an
+iteration or returns, so no allocated workspace escapes, and a loop variant on
+the growing capacity proves that the loop terminates. The termination of a
+single attempt is not proved: GNAT rejects `Always_Terminates` on an
+access-to-subprogram type, so it remains a trusted property of the adapter's
+`Build_Arena`, which also keeps the address overlays, the DOM lock, the native
+read call and the exception-to-status mapping and catches every exception, so
+none can propagate into the proved loop. GNATprove proves 10 checks for `Run`.
+Tests script the attempt sequence: two exhausted arenas then a parsed document,
+a malformed document on the first attempt, and a byte limit that makes the
+workspace allocation fail.
 
 `Diagnostic_Codes` holds the remaining status-to-(domain, code) selection in
 SPARK. `For_Operation` covers the DOM construction statuses with the

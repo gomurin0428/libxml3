@@ -15,6 +15,7 @@ with XML3_Encoding.Buffers;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Parser.Attempts;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
 with XML3_Parser.Requests;
@@ -183,46 +184,30 @@ package body XML3_C is
       Diagnostic : out XML3_Parser.Diagnostic_Info)
    is
       package Workspaces renames XML3_Parser.Workspaces;
-      package Outcomes renames XML3_Parser.Outcomes;
-      Capacity : Workspaces.Capacity := Workspaces.Initial_Capacity (Input'Length);
-      Workspace : Workspaces.Buffers;
-      Allocated : Workspaces.Allocation_Result;
-   begin
-      Result := System.Null_Address;
-      Status := XML3_DOM_Store.Documents.Internal_Error;
-      Diagnostic :=
-        (Domain => 1, Code => 0, Level => 0, Byte_Position => 1,
-         Int1 => 0, Int2 => 0);
-      loop
-         Workspaces.Allocate (Capacity, Input'Length, Workspace, Allocated);
-         case Allocated is
-            when Workspaces.No_Memory | Workspaces.Limit_Exceeded =>
-               Status := XML3_DOM_Store.Documents.No_Memory;
-               return;
-            when Workspaces.Allocated => null;
-         end case;
+
+      --  Downward closure over this call's input; the attempt itself keeps
+      --  the address overlays, the DOM lock and the exception mapping.
+      procedure Attempt
+        (Capacity : Workspaces.Capacity; Workspace : Workspaces.Buffers;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Documents.Read_Status;
+         Diagnostic : out XML3_Parser.Diagnostic_Info)
+      is
+      begin
          Build_Arena
-           (Input, Huge, Encoding, Capacity, Workspace.Nodes,
-            Workspace.Names, Workspace.Scratch_A, Workspace.Scratch_B, Result, Status,
+           (Input, Huge, Encoding, Capacity, Workspace.Nodes, Workspace.Names,
+            Workspace.Scratch_A, Workspace.Scratch_B, Result, Status,
             Diagnostic);
-         Workspaces.Release (Workspace);
-         case Outcomes.After_Attempt (Status, Capacity) is
-            when Outcomes.Finished =>
-               exit;
-            when Outcomes.Limit_Reached =>
-               Status := XML3_DOM_Store.Documents.Limit_Exceeded;
-               return;
-            when Outcomes.Grow =>
-               Capacity := Workspaces.Next_Capacity (Capacity);
-         end case;
-      end loop;
-   exception
+      end Attempt;
+    begin
+      XML3_Parser.Attempts.Run
+        (Attempt'Unrestricted_Access, Input'Length, Result, Status,
+         Diagnostic);
+    exception
       when Storage_Error =>
-         Workspaces.Release (Workspace);
          Result := System.Null_Address;
          Status := XML3_DOM_Store.Documents.No_Memory;
       when others =>
-         Workspaces.Release (Workspace);
          Result := System.Null_Address;
          Status := XML3_DOM_Store.Documents.Internal_Error;
    end Build;

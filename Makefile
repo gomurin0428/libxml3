@@ -50,6 +50,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
         src/xml3_diagnostic_codes.ads \
         src/xml3_encoding-buffers.ads src/xml3_encoding-buffers.adb \
         src/xml3_error_records.ads src/xml3_error_records.adb \
+        src/xml3_parser-attempts.ads src/xml3_parser-attempts.adb \
         src/xml3_parser-options.ads src/xml3_parser-options.adb \
         src/xml3_parser-outcomes.ads \
         src/xml3_parser-requests.ads \
