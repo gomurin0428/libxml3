@@ -3,6 +3,8 @@ project Encoding_Test is
    for Source_Files use
       ("xml3_text.ads", "xml3_text.adb",
       "xml3_encoding.ads", "xml3_encoding.adb",
+      "xml3_encoding-buffers.ads", "xml3_encoding-buffers.adb",
+      "xml3_native_memory.ads", "xml3_native_memory.adb",
       "encoding_test.adb");
    for Main use ("encoding_test.adb");
    for Object_Dir use "../obj/encoding-test";

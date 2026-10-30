@@ -98,6 +98,30 @@ package body XML3_Encoding with SPARK_Mode is
       return Result;
    end Detect;
 
+   function Read_UTF16_Unit
+     (First, Second : Character; Little_Endian : Boolean) return UTF16_Unit is
+     (if Little_Endian then Character'Pos (First) + Character'Pos (Second) * 256
+      else Character'Pos (First) * 256 + Character'Pos (Second));
+
+   procedure Decode_UTF16_Pair
+     (High, Low : UTF16_Unit; Have_Low : Boolean;
+      Code, Consumed : out Natural)
+   is
+   begin
+      Code := 0;
+      Consumed := 0;
+      if High in 16#D800# .. 16#DBFF# then
+         if not Have_Low or else Low not in 16#DC00# .. 16#DFFF# then
+            return;
+         end if;
+         Code := 16#10000# + (High - 16#D800#) * 1024 + Low - 16#DC00#;
+         Consumed := 4;
+      elsif High not in 16#DC00# .. 16#DFFF# then
+         Code := High;
+         Consumed := 2;
+      end if;
+   end Decode_UTF16_Pair;
+
    procedure Decode_UTF16
      (Input : String;
       Little_Endian : Boolean;
@@ -108,9 +132,9 @@ package body XML3_Encoding with SPARK_Mode is
       Measure_Only : Boolean := False)
    is
       I : Positive := 1;
-      C : Natural range 0 .. 16#10FFFF#;
-      High, Low : Natural range 0 .. 16#FFFF#;
-      Consumed : Positive range 2 .. 4;
+      C, Consumed : Natural;
+      High, Low : UTF16_Unit;
+      Have_Low : Boolean;
       Width : Positive range 1 .. 4;
 
       function Unit_At (Position : Positive) return Natural
@@ -118,11 +142,9 @@ package body XML3_Encoding with SPARK_Mode is
           and then Position < Input'Last,
           Post => Unit_At'Result <= 16#FFFF#
       is
-         First : constant Natural := Character'Pos (Input (Position));
-         Second : constant Natural := Character'Pos (Input (Position + 1));
       begin
-         return (if Little_Endian then First + Second * 256
-                 else First * 256 + Second);
+         return Read_UTF16_Unit
+           (Input (Position), Input (Position + 1), Little_Endian);
       end Unit_At;
    begin
       Output := (others => Character'Val (0));
@@ -139,21 +161,12 @@ package body XML3_Encoding with SPARK_Mode is
             return;
          end if;
          High := Unit_At (I);
-         Consumed := 2;
-         if High in 16#D800# .. 16#DBFF# then
-            if Input'Length - I < 3 then
-               return;
-            end if;
-            Low := Unit_At (I + 2);
-            if Low not in 16#DC00# .. 16#DFFF# then
-               return;
-            end if;
-            C := 16#10000# + (High - 16#D800#) * 1024 + Low - 16#DC00#;
-            Consumed := 4;
-         elsif High in 16#DC00# .. 16#DFFF# then
+         Have_Low := High in 16#D800# .. 16#DBFF#
+           and then Input'Length - I >= 3;
+         Low := (if Have_Low then Unit_At (I + 2) else 0);
+         Decode_UTF16_Pair (High, Low, Have_Low, C, Consumed);
+         if Consumed = 0 then
             return;
-         else
-            C := High;
          end if;
          Width := XML3_Text.UTF8_Width (C);
          if Width > XML3_Text.Max_Bytes - Length

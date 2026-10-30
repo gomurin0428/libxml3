@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,205 checks
-(1,457 flow and 11,748 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,246 checks
+(1,480 flow and 11,766 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -213,19 +213,22 @@ effects, allocation/free, ABI, and complete libxml2 semantics
 remain trusted; DTD/general-entity expansion and HTML behavior are unsupported.
 The parser postcondition requires every output node's parent to precede it and
 every name/value span to lie within the input, including well-defined empty spans.
-UTF-8 text-decoder output never exceeds its input length. The UTF-16 decoder
-measures its exact UTF-8 output length before allocation and checks bounded
-conversion arithmetic and writes. Numeric reference arithmetic is checked
-before multiplication. Termination of core `Parse`, text and UTF-16 decoding,
-and namespace `Resolve` is proved with `Always_Terminates` and loop variants;
+UTF-8 text-decoder output never exceeds its input length. The String UTF-16
+decoder validates bounded output arithmetic and writes. Native UTF-16 conversion
+uses a bounded measure pass, exact allocation (at least one byte for empty
+output), and a bounded fill pass with length validation. Numeric reference
+arithmetic is checked before multiplication. Termination of core `Parse`, text
+and UTF-16 decoding, and namespace `Resolve` is proved with `Always_Terminates`
+and loop variants;
 this does **not**
 claim an end-to-end CPU-time or memory-use theorem.
 
 The proof establishes SPARK run-time bounds, arithmetic safety, written
 contracts, and termination for the selected core units. It does not prove
 functional equivalence of UTF-8/UTF-16 behavior to libxml2, XML conformance, or
-absence of vulnerabilities. Conversion-buffer allocation, pointer arithmetic,
-and the FFI remain outside proof.
+absence of vulnerabilities. SPARK proves conversion sizing and bounded writes;
+native allocator effects/freshness, pointer arithmetic, and the FFI remain
+outside proof.
 
 An accepted document contains one root element with balanced, matching tags.
 That XML-language property is tested and reviewed, **not formally proved by the
@@ -1514,6 +1517,20 @@ byte effects, ABI, and full parser semantics remain outside the proof.
 GNATprove reports 3 checks for `Classify_Bytes`; shared `Classify`,
 `Equal_Name`, and `Upper` have 1, 5, and 1 checks. These checks do not establish
 native pointer readability or byte effects.
+Native UTF-16 conversion now uses `Encoding.Buffers.Convert_UTF16` and its
+bounded two-pass helper. Measurement, exact-sized allocation (at least one byte
+for empty output), direct writing, fill-length validation and failure cleanup
+are in SPARK. Both the String decoder and native converter share code-unit
+assembly, surrogate validation and UTF-8 encoding. The adapter retains encoding
+detection, parsing of the resulting span, eventual successful-buffer cleanup,
+and error/exception/ABI mapping. Input extents/stability, native byte effects,
+allocator freshness/behavior and complete encoding equivalence remain trusted.
+Tests cover both endians, exact/small output limits, empty results, malformed
+pairs, guarded source boundaries, source-protection/output/reparse/edit lifetimes
+and injected allocation failure including BOM-only input. GNATprove proves
+4 checks for `Convert_UTF16`, 17 for `Convert_UTF16_Pass`, 32 (2 warnings) for
+`Decode_UTF16`, 4 for its `Unit_At`, 2 for `Decode_UTF16_Pair`, and 0 for
+`Read_UTF16_Unit`.
 Unknown explicit names fail rather than falling back. Auto-detected declaration
 mismatches produce warning 113 on success. Malformed UTF-16 is rejected before
 the parser at IO/code 81 and 1:1; later parser positions use decoded UTF-8

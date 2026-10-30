@@ -491,6 +491,72 @@ static void test_terminated_input(void) {
     assert(munmap(mapping, (size_t)page * 2) == 0);
 }
 
+static void test_utf16_boundaries(void) {
+    static const char xml[] = "<r>A\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80</r>";
+    static const char text[] = "A\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80";
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    unsigned char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int big_endian = 0; big_endian < 2; ++big_endian) {
+        for (int bom = 0; bom < 2; ++bom) {
+            size_t length;
+            unsigned char *encoded = utf16_from_utf8(xml, big_endian, bom, &length);
+            assert(length < (size_t)page);
+            unsigned char *input = mapping + page - length;
+            memcpy(input, encoded, length);
+            free(encoded);
+            const char *encoding = bom ? NULL : (big_endian ? "UTF-16BE" : "UTF-16LE");
+            xmlDocPtr doc = parse_reset(input, length, encoding, 0);
+            assert(doc != NULL);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+            assert(content && strcmp((const char *)content, text) == 0);
+            xmlFree(content);
+            xmlChar *output = NULL;
+            int size = 0;
+            xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+            assert(output && size > 0);
+            xmlFreeDoc(doc);
+            doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+            assert(doc != NULL);
+            xmlFree(output);
+            content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+            assert(content && strcmp((const char *)content, text) == 0);
+            xmlFree(content);
+            xmlNodeSetContent(xmlDocGetRootElement(doc), BAD_CAST "updated");
+            content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+            assert(content && strcmp((const char *)content, "updated") == 0);
+            xmlFree(content);
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    static const unsigned char invalid[][4] = {
+        {0, 0xdc}, {0, 0xd8}, {0, 0xd8, 0}, {0, 0xd8, 'A', 0}, {'A'}
+    };
+    static const size_t lengths[] = {2, 2, 3, 4, 1};
+    for (size_t i = 0; i < sizeof(lengths) / sizeof(*lengths); ++i) {
+        unsigned char *input = mapping + page - lengths[i];
+        memcpy(input, invalid[i], lengths[i]);
+        assert(parse_reset(input, lengths[i], "UTF-16LE", 0) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 81);
+    }
+    unsigned char *input = mapping + page - 2;
+    input[0] = 0;
+    input[1] = 0xdc;
+    assert(parse_reset(input, 6, "UTF-16LE", 0) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 81);
+    assert(parse_reset(mapping + page, 1, "UTF-16LE", 0) == NULL);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 81);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 int main(void) {
     check_reference_version();
     assert_utf16_tree(0, 1, NULL);
@@ -506,6 +572,7 @@ int main(void) {
     test_source_ownership();
     test_encoding_name_boundaries();
     test_terminated_input();
+    test_utf16_boundaries();
     puts("UTF-16 integration tests passed");
     return 0;
 }

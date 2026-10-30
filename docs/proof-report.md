@@ -2,13 +2,25 @@
 
 ## Result
 
+UTF-16 native conversion uses `Encoding.Buffers.Convert_UTF16` and its bounded
+two-pass helper, moving measure/allocate/fill/failure cleanup out of the C adapter.
+String and native paths share code-unit assembly, surrogate validation and UTF-8
+encoding. Native extents/stability, byte effects, allocator/ABI and full semantics
+remain trusted. Encoding detection, parser span adaptation and successful-buffer
+cleanup remain at the C boundary. Tests cover endian/length limits, empty output,
+malformed pairs, guarded input and input-protection/output/reparse/edit lifetimes;
+OOM walks include successful XML and BOM-only empty-document failure.
+GNATprove proves 4 checks for `Convert_UTF16`, 17 for `Convert_UTF16_Pass`,
+32 (2 warnings) for `Decode_UTF16`, 4 for its `Unit_At`, 2 for
+`Decode_UTF16_Pair`, and 0 for `Read_UTF16_Unit`.
+
 The full proof command for this source revision was:
 
 ```sh
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,205 checks, 1,457 by flow analysis and 11,748
+It completed successfully: **13,246 checks, 1,480 by flow analysis and 11,766
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -570,7 +582,7 @@ libxml3-only.
 1, 25, and 10 checks for those helpers respectively. `Write_UTF8_Char`
 checks its bounded loop and contract before calling the existing trusted
 `XML3_Native_Memory.Write_Byte`. `XML3_Text.Decode` and
-`XML3_Encoding.Decode_UTF16` reuse the shared encoder and prove 65 and 33
+`XML3_Encoding.Decode_UTF16` reuse the shared encoder and prove 65 and 32
 checks respectively. These results cover SPARK scalar calculation, bounds,
 and written contracts, not native byte contents, output pointer validity or
 extent, C ABI, or complete API semantics. Exhaustive scalar round trips,
@@ -676,7 +688,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 514 entity
+The 518 entity
 summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -710,13 +722,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 377 |
-| Initialization | 892 |
+| Data dependencies | 381 |
+| Initialization | 909 |
 | Runtime checks | 5,624 |
-| Assertions | 1,667 |
-| Functional contracts | 4,383 |
-| Termination | 262 |
-| **Total** | **13,205** |
+| Assertions | 1,671 |
+| Functional contracts | 4,396 |
+| Termination | 265 |
+| **Total** | **13,246** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1443,7 +1455,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-e906b9c780fe519d651b8ccb2e4abb1d202825ca118581a8e5b60dce15b4b8c1  src/xml3_c.adb
+cac38c81b0c68bf4fd9fd7bc1f3f56e337378a04189572c2b834c14c47e1b144  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1480,10 +1492,10 @@ d53d133bd34b92601a890f9a18201edf0326034012df801e5394d3c3e38dc904  src/xml3_dom_s
 af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
 c81096a0b4cc8789e1247d08f414d5e90bbd69e805905a9bf628c97311d87204  src/xml3_dom_store.adb
 a6fce5e266f862563bdc60c908dd82d3b4b6e43e85a95fb569fa5d3f291ce8f5  src/xml3_dom_store.ads
-d6e1af24bbd85fb650716149f6a027e398b36daecba00be6179d6a910bcaf34d  src/xml3_encoding.adb
-9ceb46a1797cfb01ee7a6ecb3a73ad5901bd264edb9715929d6c5f5882e2683e  src/xml3_encoding.ads
-ebe2fb7188a68cf66761bc33a6667f1d2a51b6bedc5fa6ace8d746bd0ac33cca  src/xml3_encoding-buffers.adb
-de07017f1ffcf80bed5df4869f67e2875dd2abaabbca37340c1ea179a7232b34  src/xml3_encoding-buffers.ads
+4cd0836509d8859bd5ec708a51dea1282b7e5af903611211bb2f745750938a43  src/xml3_encoding.adb
+a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encoding.ads
+d0957cece970669634fe7ee7778e1e02c3bbb43c4f9117988e117903409cc0f3  src/xml3_encoding-buffers.adb
+31b55532a13260620b23593f24d464528002d703a4f8afc115ba3b13a3e4c6bb  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
 ea5fb0d9851f8262d8ced6e2b2d4319125ed28dbc93c1deedf308823214b6d01  src/xml3_errors.adb
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
@@ -1505,8 +1517,8 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-a1951306759422edb139e879c7c8a6f6ff47248f22c618717fca4c78a4325cdd  Makefile
-1ecbc99bfee21d07958175ebf893ed24118665b4ac369cebb970501a4f8cf1f8  tests/oom-test.c
+e50f8b03b68adbe0357f6a9c6ac0dcd22d7617d1ccebccd99fd873460777ca91  Makefile
+14b377569fa7c620f43f8432d8b20028365fb975bd26335f950129f6d3956ed8  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml

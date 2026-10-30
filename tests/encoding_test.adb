@@ -1,11 +1,16 @@
 with Ada.Assertions; use Ada.Assertions;
 with Ada.Text_IO;
 with XML3_Encoding;
+with XML3_Encoding.Buffers;
+with XML3_Native_Memory;
+with System;
 with XML3_Text;
 
 procedure Encoding_Test is
    use type XML3_Encoding.Encoding_Kind;
    use type XML3_Encoding.Conversion_Status;
+   use type XML3_Encoding.Buffers.Conversion_Result;
+   use type System.Address;
 
    function B (Value : Natural) return Character is
      (Character'Val (Value));
@@ -145,5 +150,51 @@ begin
               and Error_Position = 1);
    end;
 
+   declare
+      Source : aliased String := Full_Input;
+      Result : System.Address;
+      Length : XML3_Text.Byte_Count;
+      Converted : XML3_Encoding.Buffers.Conversion_Result;
+      Output : String (1 .. Expected'Length);
+   begin
+      for Little in Boolean loop
+         if not Little then
+            for I in 0 .. Source'Length / 2 - 1 loop
+               Source (I * 2 + 1) := Full_Input (I * 2 + 2);
+               Source (I * 2 + 2) := Full_Input (I * 2 + 1);
+            end loop;
+         else
+            Source := Full_Input;
+         end if;
+         XML3_Encoding.Buffers.Convert_UTF16
+           (Source'Address, Source'Length, Little, Result, Length, Converted,
+            Limit => Expected'Length);
+         Assert (Converted = XML3_Encoding.Buffers.Converted
+                 and Result /= System.Null_Address and Length = Expected'Length);
+         Source := (others => B (0));
+         XML3_Native_Memory.Read_String (Result, Output);
+         Assert (Output = Expected);
+         XML3_Native_Memory.Free (Result);
+      end loop;
+      Source := Full_Input;
+      XML3_Encoding.Buffers.Convert_UTF16
+        (Source'Address, Source'Length, True, Result, Length, Converted,
+         Limit => Expected'Length - 1);
+      Assert (Converted = XML3_Encoding.Buffers.Conversion_Limit_Exceeded
+              and Result = System.Null_Address and Length = 0);
+      XML3_Encoding.Buffers.Convert_UTF16
+        (Source'Address, 0, True, Result, Length, Converted, Limit => 0);
+      Assert (Converted = XML3_Encoding.Buffers.Converted
+              and Result /= System.Null_Address and Length = 0);
+      XML3_Native_Memory.Free (Result);
+      declare
+         Invalid : aliased constant String := B (0) & B (16#D8#) & B (16#41#) & B (0);
+      begin
+         XML3_Encoding.Buffers.Convert_UTF16
+           (Invalid'Address, Invalid'Length, True, Result, Length, Converted);
+         Assert (Converted = XML3_Encoding.Buffers.Invalid_UTF16
+                 and Result = System.Null_Address and Length = 0);
+      end;
+   end;
    Ada.Text_IO.Put_Line ("UTF-16 decoder tests passed");
 end Encoding_Test;

@@ -614,6 +614,10 @@ XML宣言のencoding分類とも対応表を共用します。明示 encoding �
 不明な encoding を暗黙 fallback しません。自動検出と宣言の不一致は成功時 warning
 113 になります。変換前の malformed UTF-16 は IO/code 81 at 1:1、parser error
 position は変換後 UTF-8 の character column で示されます。
+UTF-16のnative入力はSPARKで直接計測・変換し、出力領域の確保と変換失敗時の解放も
+SPARK内で行います。既存のString decoderとサロゲート判定・UTF-8生成を共用し、
+空の変換結果も独立領域を確保します。入力は変換中に読み取り可能かつ安定している必要があり、
+nativeメモリのbyte効果・allocator・ABIは引き続き信頼境界です。
 
 エラー API は `xmlGetLastError`、明示 reset/copy と OS thread ごとの所有状態を
 提供し、成功後も直前のエラーを保持します。互換方針は、last-error 保持など害のない

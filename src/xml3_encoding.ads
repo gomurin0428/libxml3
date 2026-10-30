@@ -51,6 +51,20 @@ package XML3_Encoding with SPARK_Mode is
          and then (if Status = Success then Error_Position = 0
                    else Error_Position in 1 .. Input'Length);
 private
+   subtype UTF16_Unit is Natural range 0 .. 16#FFFF#;
+   function Read_UTF16_Unit
+     (First, Second : Character; Little_Endian : Boolean) return UTF16_Unit
+     with Global => null;
+
+   procedure Decode_UTF16_Pair
+     (High, Low : UTF16_Unit; Have_Low : Boolean;
+      Code, Consumed : out Natural)
+     with Global => null,
+       Post => Code <= 16#10FFFF#
+         and then Code not in 16#D800# .. 16#DFFF#
+         and then Consumed in 0 | 2 | 4
+         and then Consumed <= (if Have_Low then 4 else 2);
+
    subtype Name_Length is Positive range 1 .. 8;
    type Name_Entry is record
       Length : Name_Length;
