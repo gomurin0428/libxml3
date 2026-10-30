@@ -931,7 +931,104 @@ static void test_property_setting_input(void) {
     assert(munmap(mapping, (size_t)page * 4) == 0);
 }
 
+static void test_property_removal_input(void) {
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 64);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    static const char key[] = "n\xc3\xa9";
+    char *name = mapping + page - sizeof(key);
+    for (int mode = 0; mode < 3; ++mode) {
+        memcpy(name, key, sizeof(key));
+        xmlDocPtr doc = xmlNewDoc(NULL);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(doc && root);
+        assert(xmlDocSetRootElement(doc, root) == NULL);
+        xmlNsPtr p = xmlNewNs(root, BAD_CAST "urn:p", BAD_CAST "p");
+        xmlNsPtr q = xmlNewNs(root, BAD_CAST "urn:p", BAD_CAST "q");
+        assert(p && q);
+        xmlNsPtr target = mode == 2 ? p : NULL;
+        xmlAttrPtr keep = xmlNewNsProp(root, target ? NULL : p, BAD_CAST key, BAD_CAST "keep");
+        xmlAttrPtr first = xmlNewNsProp(root, target, BAD_CAST key, BAD_CAST "first");
+        xmlAttrPtr second = xmlNewNsProp(root, target, BAD_CAST key, BAD_CAST "second");
+        assert(keep && first && second);
+        int marker;
+        second->_private = &marker;
+        assert((mode == 0 ? xmlUnsetProp(root, BAD_CAST name)
+                         : xmlUnsetNsProp(root, target ? q : NULL, BAD_CAST name)) == 0);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        assert(root->properties == keep && keep->next == second && second->prev == keep);
+        assert(second->next == NULL && second->_private == &marker);
+        assert_value(second, "second");
+        assert((mode == 0 ? xmlUnsetProp(root, second->name)
+                         : xmlUnsetNsProp(root, target ? q : NULL, second->name)) == 0);
+        assert(keep->next == NULL && keep->prev == NULL);
+        assert_value(keep, "keep");
+        xmlResetLastError();
+        assert((mode == 0 ? xmlUnsetProp(root, BAD_CAST key)
+                         : xmlUnsetNsProp(root, target ? q : NULL, BAD_CAST key)) == -1);
+        assert(xmlGetLastError() == NULL);
+        xmlChar *output = NULL;
+        int size = 0;
+        xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+        assert(output && size > 0);
+        xmlFreeDoc(doc);
+        doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+        assert(doc);
+        root = xmlDocGetRootElement(doc);
+        keep = xmlHasNsProp(root, BAD_CAST key, mode == 2 ? NULL : BAD_CAST "urn:p");
+        assert(keep && root->properties == keep && keep->next == NULL);
+        assert(!xmlHasNsProp(root, BAD_CAST key, mode == 2 ? BAD_CAST "urn:p" : NULL));
+        assert(xmlSetNsProp(root, keep->ns, keep->name, BAD_CAST "edited") == keep);
+        assert_value(keep, "edited");
+        xmlFree(output);
+        xmlFreeDoc(doc);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+#ifndef XML3_REFERENCE_TEST
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    xmlNodePtr text = xmlNewText(BAD_CAST "text");
+    xmlNsPtr no_href = xmlNewNs(NULL, NULL, BAD_CAST "empty");
+    assert(doc && root && text && no_href);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    xmlAttrPtr keep = xmlNewProp(root, BAD_CAST "keep", BAD_CAST "old");
+    assert(keep);
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlNodePtr invalid[] = {(xmlNodePtr)protected, (xmlNodePtr)doc, (xmlNodePtr)keep, text};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        assert(xmlUnsetProp(invalid[i], protected) == -1);
+        assert_tree_error();
+        assert(xmlUnsetNsProp(invalid[i], NULL, protected) == -1);
+        assert_tree_error();
+    }
+    assert(xmlUnsetNsProp(root, (xmlNsPtr)protected, protected) == -1);
+    assert_tree_error();
+    assert(xmlUnsetNsProp(root, no_href, protected) == -1);
+    assert_tree_error();
+    assert(xmlUnsetProp((xmlNodePtr)protected, NULL) == -1);
+    assert_tree_error();
+    assert(xmlUnsetNsProp((xmlNodePtr)protected, (xmlNsPtr)protected, NULL) == -1);
+    assert_tree_error();
+    assert(xmlUnsetProp(root, BAD_CAST "p:keep") == -1);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlUnsetProp(root, BAD_CAST "missing") == -1);
+    assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    assert(xmlUnsetNsProp(root, NULL, BAD_CAST "p:keep") == -1);
+    assert_tree_error();
+    assert(root->properties == keep && keep->next == NULL);
+    assert_value(keep, "old");
+    xmlFreeNs(no_href);
+    xmlFreeNode(text);
+    xmlFreeDoc(doc);
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 int main(void) {
+    test_property_removal_input();
     test_property_setting_input();
     test_property_creation_input();
     test_property_search_input();

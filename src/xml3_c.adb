@@ -39,8 +39,6 @@ package body XML3_C is
    Name_Bytes : constant Storage_Offset :=
      XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements;
 
-   Invalid_C_String : exception;
-
    function Multiply_Size (Left, Right : size_t) return size_t;
    function To_Storage_Offset_Checked (Value : size_t) return Storage_Offset;
 
@@ -50,11 +48,6 @@ package body XML3_C is
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
 
-   function Byte_At (Base : System.Address; Offset : Natural) return Character;
-   function Scan_Length (Item : System.Address; Limit : Natural) return Integer;
-   function To_String (Item : System.Address; Length : Natural) return String;
-   function C_String_Value
-     (Item : System.Address; Default : String := "") return String;
    procedure Set_Status (Target : System.Address; Value : int);
    procedure Set_Address
      (Target : System.Address; Value : System.Address);
@@ -71,15 +64,6 @@ package body XML3_C is
       URL, Encoding : System.Address; Options : Interfaces.C.int;
       Status : out int) return System.Address;
 
-   function Byte_At (Base : System.Address; Offset : Natural) return Character
-   is
-      Item : Character
-        with Import,
-          Address => Base + To_Storage_Offset_Checked (size_t (Offset));
-   begin
-      return Item;
-   end Byte_At;
-
    function Multiply_Size (Left, Right : size_t) return size_t is
    begin
       if Right /= 0 and then Left > size_t'Last / Right then
@@ -95,41 +79,6 @@ package body XML3_C is
       end if;
       return Storage_Offset (Value);
    end To_Storage_Offset_Checked;
-
-   function Scan_Length (Item : System.Address; Limit : Natural) return Integer
-   is
-   begin
-      if Item = System.Null_Address or else Limit = 0 then
-         return -1;
-      end if;
-      for Offset in 0 .. Limit - 1 loop
-         if Byte_At (Item, Offset) = Character'Val (0) then
-            return Offset;
-         end if;
-      end loop;
-      return -1;
-   end Scan_Length;
-
-   function To_String (Item : System.Address; Length : Natural) return String is
-      Source : String (1 .. Length) with Import, Address => Item;
-   begin
-      return Source;
-   end To_String;
-
-   function C_String_Value
-     (Item : System.Address; Default : String := "") return String
-   is
-      Length : Integer;
-   begin
-      if Item = System.Null_Address then
-         return Default;
-      end if;
-      Length := Scan_Length (Item, Max_Input + 1);
-      if Length < 0 then
-         raise Invalid_C_String;
-      end if;
-      return To_String (Item, Natural (Length));
-   end C_String_Value;
 
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
@@ -1857,12 +1806,11 @@ package body XML3_C is
          return -1;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Unset_Namespace_Property
-           (Node, Ns, Name_Text, Removed, Status);
+           (Node, Ns, Name, Removed, Status);
       end;
       if Status = XML3_DOM_Constructors.Created and then Removed then
          return 0;
@@ -1870,9 +1818,6 @@ package body XML3_C is
       Report_Operation_Status (Status);
       return -1;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return -1;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return -1;
@@ -1958,27 +1903,17 @@ package body XML3_C is
          return -1;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Unset_Property (Node, Name_Text, Removed, Status);
-         end;
-         if Status /= XML3_DOM_Constructors.Created then
-            Report_Operation_Status (Status);
-            return -1;
-         end if;
-         if Removed then
-            return 0;
-         end if;
-         return -1;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Unset_Property (Node, Name, Removed, Status);
       end;
+      if Status = XML3_DOM_Constructors.Created and then Removed then
+         return 0;
+      end if;
+      Report_Operation_Status (Status);
+      return -1;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return -1;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return -1;

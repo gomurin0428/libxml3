@@ -531,6 +531,11 @@ local name を許します。`xmlSetNsProp` と `xmlUnsetNsProp` は prefix/name
 address、`_private`、list position と sibling links を保ち、allocation 失敗では
 旧 namespace/value を保ちます。`xmlRemoveProp` と `xmlFreeProp` は qualified attribute
 にも適用されます。
+`xmlUnsetProp` / `xmlUnsetNsProp` のnative名前は共通SPARK経路で計測・コピーします。
+先に要素/namespaceを登録照合し、不正な対象・NULL hrefのnamespaceは入力を読まず115で
+拒否します。走査上限は114です。非修飾削除だけがコロンを拒否し、namespace-aware削除は
+URI/local nameで照合します（NULL namespaceは非修飾のみ）。最初の重複だけを削除し、
+欠落は診断を変えず-1です。削除対象自身の名前を渡せ、native領域の確保は行いません。
 `xmlNewNsProp` / `xmlSetNsProp` はnative名前/値を共通のSPARK経路へ渡し、要素と
 名前空間の登録・種類（名前空間は非NULL hrefも）を確認してから計測・コピーします。
 不正な対象は入力を読まず115で拒否します。NULL namespaceは従来どおり非修飾属性で、

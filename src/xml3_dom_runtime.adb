@@ -10,16 +10,6 @@ is
    use type XML3_DOM_Store.Operation_Status;
    use type System.Address;
 
-   function Has_Colon (Name : String) return Boolean is
-   begin
-      for I in Name'Range loop
-         if Name (I) = ':' then
-            return True;
-         end if;
-      end loop;
-      return False;
-   end Has_Colon;
-
       procedure Read
         (Input : String; Huge : Boolean;
          Encoding : XML3_Encoding.Encoding_Info;
@@ -278,12 +268,12 @@ is
       end Set_Namespace_Property;
 
       procedure Unset_Namespace_Property
-        (Element, Ns : System.Address; Name : String; Removed : out Boolean;
+        (Element, Ns, Name : System.Address; Removed : out Boolean;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
-         XML3_DOM_Store.Properties.Unset_Namespace_Property
-           (Current, Element, Ns, Name, Removed, Status);
+         XML3_DOM_Store.Properties.Unset_Property
+           (Current, Element, Ns, Name, True, Removed, Status);
       end Unset_Namespace_Property;
 
       procedure Set_Qualified_Property
@@ -296,28 +286,13 @@ is
       end Set_Qualified_Property;
 
       procedure Unset_Property
-        (Element : System.Address; Name : String;
+        (Element, Name : System.Address;
          Removed : out Boolean;
          Status : out XML3_DOM_Store.Operation_Status)
       is
-         Property : System.Address;
       begin
-         Removed := False;
-         if Has_Colon (Name) then
-            Status := XML3_DOM_Constructors.Invalid_Argument;
-            return;
-         end if;
-         XML3_DOM_Store.Queries.Find_Property
-           (Current, Element, Name, XML3_DOM_Store.Queries.No_Namespace, "",
-            Property, Status);
-         if Status /= XML3_DOM_Constructors.Created
-           or else Property = System.Null_Address
-         then
-            return;
-         end if;
-         XML3_DOM_Store.Release
-           (Current, Property, XML3_DOM_Store.Plain_Attribute, True, Status);
-         Removed := Status = XML3_DOM_Constructors.Created;
+         XML3_DOM_Store.Properties.Unset_Property
+           (Current, Element, System.Null_Address, Name, False, Removed, Status);
       end Unset_Property;
 
       procedure Find_Property

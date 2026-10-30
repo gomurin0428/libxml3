@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,202 checks
-(1,456 flow and 11,746 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 174 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,205 checks
+(1,457 flow and 11,748 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -764,6 +764,18 @@ scan cap は長い入力の一律拒否ではありません。Native
 byte reads、foreign pointer validity/bounds、actual contents、address arithmetic、C mapping、
 full public equivalence remain trusted. XML-name/UTF-8 validation is not performed.
 The comparison itself allocates nothing and performs no writes.
+
+`xmlUnsetProp` / `xmlUnsetNsProp` は共通のnative `Properties.Unset_Property` へ
+転送します。要素/namespaceの登録照合を名前の計測/コピーより先に行い、非修飾/URI照合、
+plain APIだけのコロン拒否、対応するrelease種別を保ちます。既存のStore状態不変条件・
+lookup/releaseを利用し、最初の重複だけを削除し、欠落は診断を変更しません。C側の
+Byte_At/Scan_Length/To_String/C_String_Valueと専用例外、Runtimeの重複Has_Colonは
+削除しました。guarded名前の保護後のリンク確認・自己名を入力にした削除・出力/再読み込み/
+編集は固定版比較、無効対象での入力読み取り回避はlibxml3限定検査です。native確保なしも
+注入テストで確認します。native可読性・extent/stability・byte効果・ABI・完全な公開意味論
+は証明外です。無効対象は115、走査上限は114です。
+GNATprove は `Store.Properties.Unset_Property` で20 checks（2 warnings）、
+`Runtime.Unset_Property` と `Runtime.Unset_Namespace_Property` で各0 checksを報告します。
 
 `xmlSetProp` はnative `Properties.Set_Qualified_Property` overloadを通り、要素の登録・
 種類を確認後、QName/値をSPARK内で計測・コピーします。既存String overloadのprefix解決、

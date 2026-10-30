@@ -900,7 +900,7 @@
   },
   "function:tree.h:xmlUnsetProp": {
     "implementation": "partial",
-    "scope": "同名の namespace-free attribute を削除。欠落・非対応は -1。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
+    "scope": "Native name measured/copied by common SPARK Unset_Property after registered-element/kind checks; no C intermediate String. Remove first same-name namespace-free attribute, reject colon names, preserve ordering and release ownership. Own-name aliases supported without native allocation. Missing returns-1 without diagnostic change; invalid context115 before name reads, scan exhaustion114. Store invariants retained; native pointer extent/stability, byte effects, allocator/ABI and full public semantics remain trusted/unproved.",
     "tests": [
       "tests/attribute-test.c",
       "tests/oom-test.c"
@@ -1518,9 +1518,11 @@
   },
   "function:tree.h:xmlUnsetNsProp": {
     "implementation": "partial",
-    "scope": "namespace URI と local name で属性を照合して削除。欠落時は -1。",
+    "scope": "Native name through common SPARK Unset_Property after registered-element/namespace and nonNULL href checks. URI/local-name lookup (NULL namespace means no namespace), first duplicate removal, own-name aliases, no native allocation. Missing returns-1 preserving diagnostics; invalid context115 without name reads, scan exhaustion114. Store invariants and release ownership retained; native extents/stability, byte effects, allocator/ABI and full public semantics remain trusted/unproved.",
     "tests": [
-      "tests/namespace-edit-test.c"
+      "tests/namespace-edit-test.c",
+      "tests/attribute-test.c",
+      "tests/oom-test.c"
     ],
     "proof": "not-proved"
   }

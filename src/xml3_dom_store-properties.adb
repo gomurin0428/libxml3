@@ -1076,21 +1076,26 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
       end;
    end Edit_Namespace_Property;
 
-   procedure Unset_Namespace_Property
-     (S : in out Store; Element, Ns : System.Address; Name : String;
+   procedure Unset_Property
+     (S : in out Store; Element, Ns, Name : System.Address;
+      Namespace_Aware : Boolean;
       Removed : out Boolean; Status : out Operation_Status)
    is
-      E : constant Node_Ref := Find_Node (S, Element);
-      Q : constant Namespace_Ref := Find_Namespace (S, Ns);
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Q : constant Namespace_Ref := Find_Registered_Namespace (S, Ns);
       Href_Length : constant Natural :=
         (if Q = Null_Namespace then 1
          else Namespace (S.Current.all, Q).Href_Length);
       Href_Value : String (1 .. Href_Length) := (others => ' ');
       Attribute : System.Address := System.Null_Address;
+      Name_Length : XML3_Text.Byte_Count;
+      Found : Boolean;
    begin
       Removed := False;
       Status := Invalid_Argument;
-      if E = Null_Node or else Node (S.Current.all, E).Kind /= Element_Node
+      if Name = System.Null_Address or else E = Null_Node
+        or else Node (S.Current.all, E).Kind /= Element_Node
+        or else (not Namespace_Aware and then Ns /= System.Null_Address)
         or else (Ns /= System.Null_Address
           and then (Q = Null_Namespace
             or else Namespace (S.Current.all, Q).Href =
@@ -1098,21 +1103,37 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
       then
          return;
       end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Status := Limit_Exceeded;
+         return;
+      end if;
       if Q /= Null_Namespace and then Href_Value'Length > 0 then
          Native.Read_String (Namespace (S.Current.all, Q).Href, Href_Value);
       end if;
-      XML3_DOM_Store.Queries.Find_Property
-        (S, Element, Name,
-         (if Q = Null_Namespace then No_Namespace else Exact_Namespace),
-         (if Q = Null_Namespace then "" else Href_Value),
-         Attribute, Status);
+      declare
+         Name_Size : constant XML3_Text.Byte_Count := Name_Length;
+         Name_Text : String (1 .. Name_Size);
+      begin
+         Native.Read_String (Name, Name_Text);
+         if not Namespace_Aware and then Has_Colon (Name_Text) then
+            return;
+         end if;
+         XML3_DOM_Store.Queries.Find_Property
+           (S, Element, Name_Text,
+            (if Q = Null_Namespace then No_Namespace else Exact_Namespace),
+            (if Q = Null_Namespace then "" else Href_Value),
+            Attribute, Status);
+      end;
       if Status /= Created or else Attribute = System.Null_Address then
          return;
       end if;
       XML3_DOM_Store.Release
-        (S, Attribute, Namespaced_Attribute, True, Status);
+        (S, Attribute,
+         (if Namespace_Aware then Namespaced_Attribute else Plain_Attribute),
+         True, Status);
       Removed := Status = Created;
-   end Unset_Namespace_Property;
+   end Unset_Property;
 
    procedure Set_Qualified_Property
      (S : in out Store; Element : System.Address;
