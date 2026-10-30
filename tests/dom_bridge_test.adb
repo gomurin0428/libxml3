@@ -15,6 +15,7 @@ with XML3_DOM.Materialize;
 with XML3_Native_Memory;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Parser.Attempts;
 with XML3_Parser.Workspaces;
 with XML3_Error_Records;
 with XML3_Diagnostic_Messages;
@@ -2340,4 +2341,84 @@ begin
       end loop;
    end;
    Ada.Text_IO.Put_Line ("Error slot ownership transitions passed");
+   declare
+      package Attempts renames XML3_Parser.Attempts;
+      package Workspaces renames XML3_Parser.Workspaces;
+      package Documents renames XML3_DOM_Store.Documents;
+      use type Documents.Read_Status;
+
+      Script : array (1 .. 4) of Documents.Read_Status :=
+        (others => Documents.Arena_Exhausted);
+      Script_Length : Natural := 0;
+      Attempt_Count : Natural := 0;
+      First_Capacity : Natural := 0;
+      Last_Capacity : Natural := 0;
+      Buffers_Ready : Boolean := True;
+
+      --  Scripted attempt: records what the driver handed over and returns
+      --  the next planned status.
+      procedure Scripted
+        (Capacity : Workspaces.Capacity; Workspace : Workspaces.Buffers;
+         Result : out System.Address;
+         Status : out Documents.Read_Status;
+         Diagnostic : out XML3_Parser.Diagnostic_Info)
+      is
+      begin
+         Attempt_Count := Attempt_Count + 1;
+         if Attempt_Count = 1 then
+            First_Capacity := Capacity;
+         end if;
+         Last_Capacity := Capacity;
+         Buffers_Ready := Buffers_Ready and then Workspaces.Ready (Workspace);
+         Result := System.Null_Address;
+         Diagnostic := (others => <>);
+         if Attempt_Count <= Script_Length then
+            Status := Script (Attempt_Count);
+         else
+            Status := Documents.Parsed;
+         end if;
+      end Scripted;
+
+      Result : System.Address;
+      Status : Documents.Read_Status;
+      Diagnostic : XML3_Parser.Diagnostic_Info;
+      Initial : constant Natural := Workspaces.Initial_Capacity (16);
+   begin
+      --  Two exhausted arenas, then a parsed document: three attempts over
+      --  the initial capacity and its two successors.
+      Script :=
+        (1 => Documents.Arena_Exhausted, 2 => Documents.Arena_Exhausted,
+         3 => Documents.Parsed, 4 => Documents.Parsed);
+      Script_Length := 3;
+      Attempts.Run
+        (Scripted'Unrestricted_Access, 16, Result, Status, Diagnostic);
+      pragma Assert (Status = Documents.Parsed);
+      pragma Assert (Attempt_Count = 3);
+      pragma Assert (Buffers_Ready);
+      pragma Assert (First_Capacity = Initial);
+      pragma Assert
+        (Last_Capacity =
+           Workspaces.Next_Capacity (Workspaces.Next_Capacity (Initial)));
+      --  A malformed document finishes on the first attempt.
+      Attempt_Count := 0;
+      First_Capacity := 0;
+      Last_Capacity := 0;
+      Script := (1 => Documents.Malformed, others => Documents.Parsed);
+      Script_Length := 1;
+      Attempts.Run
+        (Scripted'Unrestricted_Access, 16, Result, Status, Diagnostic);
+      pragma Assert (Status = Documents.Malformed);
+      pragma Assert (Attempt_Count = 1 and then First_Capacity = Initial);
+      pragma Assert (Buffers_Ready);
+      --  A workspace that cannot be allocated reports no memory without
+      --  running any attempt.
+      Attempt_Count := 0;
+      Script_Length := 0;
+      Attempts.Run
+        (Scripted'Unrestricted_Access, 16, Result, Status, Diagnostic,
+         Limit => 1);
+      pragma Assert (Status = Documents.No_Memory);
+      pragma Assert (Attempt_Count = 0 and then Result = System.Null_Address);
+   end;
+   Ada.Text_IO.Put_Line ("Parse attempt loop driving passed");
 end DOM_Bridge_Test;

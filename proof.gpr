@@ -5,6 +5,7 @@ project Proof is
                         "xml3_diagnostic_codes.ads",
                         "xml3_error_records.ads", "xml3_error_records.adb",
                         "xml3_parser-native_sizes.ads",
+                        "xml3_parser-attempts.ads", "xml3_parser-attempts.adb",
                         "xml3_parser-options.ads", "xml3_parser-options.adb",
                         "xml3_parser-outcomes.ads",
                         "xml3_parser-requests.ads",

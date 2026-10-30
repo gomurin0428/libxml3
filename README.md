@@ -640,6 +640,14 @@ threadごとのスロット遷移も同じunitの`Error_Slot`・`Clear_Slot`・`
 `xmlCopyError`と`xmlGetLastError`の判定順を表します。
 数値・context/node値とNULLの保持、失敗時の空状態を契約で扱い、失敗後は残りの文字列を読みません。
 公開レコードへの置換・TLS・緊急診断とnative所有権の前提は引き続き証明外です。
+
+parseの再試行ループ自体もSPARKの`XML3_Parser.Attempts.Run`が駆動します。初期容量から
+workspaceの確保・1回のattempt・解放を繰り返し、`Outcomes.After_Attempt`に従って終了・
+node上限報告・容量拡大を選びます。loop不変式と各出口のassertionでworkspaceが空であること、
+容量のloop variantでループの停止を証明しています。1回のattemptの停止性は
+access-to-subprogram型に`Always_Terminates`を付けられないため信頼前提のままで、
+address overlay・DOM lock・nativeのread呼び出し・例外からstatusへの写像は引き続き
+adapterの`Build_Arena`が担い、全例外を捕捉するため証明済みループへ例外は漏れません。
 code/domainからmessage種別を選ぶ方針はSPARKの`XML3_Diagnostic_Messages.Kind_For`にあります。
 code固有の対応が優先し、次にdomain 8のUTF-8とdomain 3のnamespace、最後に汎用messageです。
 code 4は入力があれば開始tag、なければ空文書のmessageになります。負のcodeはdomain側の
