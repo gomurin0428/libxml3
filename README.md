@@ -588,6 +588,11 @@ NULLと空のcontentは区別し、NULL contentのコメントは出力しませ
 にあります。将来の完全 API 互換は目標であり、現在の実装が達成したという意味
 ではありません。
 
+読み込みオプションはSPARKの`Parser.Options.Classify`で
+通常・HUGE・未対応に分類します。対応するNOERROR/NOWARNING/NONET/HUGE以外のbitと
+負値は拒否し、HUGEで未対応機能を有効にはしません。`xmlReadMemory`ではencoding名の
+判定後、本文を読む前に分類し、既存の診断の優先順位を保ちます。
+
 通常 parser profile は name component/PI target を 50,000 bytes、decoded value
 を 10,000,000 bytes、深さを 256 に制限します。`XML_PARSE_HUGE` はそれぞれ
 10,000,000 bytes、1,000,000,000 bytes、2,048 に拡張します。文書全体の 64 KiB

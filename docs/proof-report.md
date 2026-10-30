@@ -2,6 +2,17 @@
 
 ## Result
 
+`Parser.Options.Classify` now owns the allowed-bit and HUGE-profile policy in
+SPARK, replacing C adapter bit tests. Its pure contract characterizes accepted
+non-negative masks and HUGE selection; no input/allocator/diagnostic effects
+are introduced. The adapter keeps encoding-error precedence and rejects
+unsupported options before reading the memory input. Tests cover every accepted
+combination and individual bit, negative values, guarded rejection, diagnostic
+allocation failures, and edit/output/reparse lifetimes with profile-dependent
+depth limits. GNATprove proves 4 checks for `Parser.Options.Classify`. C
+ABI/ordering/diagnostic mapping and complete semantics remain outside that
+contract.
+
 Parser workspaces now use `XML3_Parser.Workspaces` for checked native allocation,
 partial-allocation rollback, release/reset, initial capacity and capped doubling.
 The four native allocation calls and minimum one-byte scratch blocks are retained.
@@ -47,7 +58,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,289 checks, 1,497 by flow analysis and 11,792
+It completed successfully: **13,295 checks, 1,499 by flow analysis and 11,796
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -715,7 +726,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 529 entity
+The 531 entity
 summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -751,14 +762,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 388 |
+| Data dependencies | 389 |
 | Initialization | 913 |
 | Non-aliasing | 1 |
-| Runtime checks | 5,636 |
+| Runtime checks | 5,639 |
 | Assertions | 1,671 |
-| Functional contracts | 4,410 |
-| Termination | 270 |
-| **Total** | **13,289** |
+| Functional contracts | 4,411 |
+| Termination | 271 |
+| **Total** | **13,295** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1480,12 +1491,12 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 70 hashes identify the source files and build/test configuration
+The following 72 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-bf36e22de25789eda7faf5782029ba0b2a118df8b950db07a58d7e381a7d8c48  src/xml3_c.adb
+fd7fb375690d7823060d353454965556dd0565882ed6cedd3a992c297f567925  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1538,6 +1549,8 @@ a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parse
 80ac8796a138b37de53368b154c0d1b0c9a98038d26d774f3a50658b670dd7ce  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
 b65a6b5269e0a457b0362da1986fb73db64415f9ac5588b5cd1d475dbdc3a9cb  src/xml3_parser-native_sizes.ads
+dd8bc8decd0750060ca05fecd2522078d80a198292f76f0e7396e1ef07796fe5  src/xml3_parser-options.ads
+4b43adf88af05f6c81c8c1e33f58ecb427de967c49869d5236f007628c49848b  src/xml3_parser-options.adb
 ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
 614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
 eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
@@ -1548,10 +1561,10 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-2a122351dcbbf92a271f8aa1eeef1d26f9429b50a83ddb21f581dd36289eee6d  proof.gpr
+b9dd937ced8626bdb077be20e5a16d4ae16c41d79f043a9798deaceb4b6e8090  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-28cf147b8e6306c393f9048848d42e87b95558269bc27b11a262a80fec95d89e  Makefile
-320ae36171d7144d753b751edfaf7a2ce001c3d32bd6caa7c0328a7f8d1c81ab  tests/oom-test.c
+782e8ed2357bd96dd7fa57a05e70a2fe1b4224cd6acbd19d3dfbc4dfa977c764  Makefile
+1981e689575ff08de97e5a16c80d07115dd2daddb3b924a5147399dfddeb7fdc  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml

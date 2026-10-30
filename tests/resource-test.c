@@ -238,6 +238,34 @@ static void test_large_document_and_arena(void) {
     free(xml);
 }
 
+static void test_option_profiles(void) {
+    const int flags[] = {XML_PARSE_NOERROR, XML_PARSE_NOWARNING,
+                         XML_PARSE_NONET, XML_PARSE_HUGE};
+    for (unsigned combination = 0; combination < 16; ++combination) {
+        int options = 0;
+        for (unsigned bit = 0; bit < 4; ++bit)
+            if (combination & (1u << bit)) options |= flags[bit];
+        char input[] = "<r><x/></r>";
+        xmlDocPtr doc = parse(input, sizeof(input) - 1, options);
+        assert(doc);
+        memset(input, 0, sizeof(input));
+        xmlNodeSetContent(xmlDocGetRootElement(doc)->children, BAD_CAST "retained");
+        xmlChar *saved = NULL;
+        int length = 0;
+        xmlDocDumpMemory(doc, &saved, &length);
+        assert(saved && length > 0);
+        xmlFreeDoc(doc);
+        doc = parse((const char *)saved, (size_t)length, options);
+        xmlFree(saved);
+        assert(doc);
+        xmlChar *content = xmlNodeGetContent(xmlDocGetRootElement(doc));
+        assert(content && xmlStrEqual(content, BAD_CAST "retained"));
+        xmlFree(content);
+        xmlFreeDoc(doc);
+        check_depth(257, 1, options, (options & XML_PARSE_HUGE) != 0);
+    }
+}
+
 static void test_huge_does_not_enable_features(void) {
     const char *malformed = "<r>";
     assert(!parse(malformed, strlen(malformed),
@@ -251,6 +279,8 @@ static void test_huge_does_not_enable_features(void) {
 #else
     const char *dtd = "<!DOCTYPE r [<!ENTITY x 'v'>]><r/>";
     assert(!parse(dtd, strlen(dtd), quiet_options() | XML_PARSE_HUGE));
+    const char *external = "<!DOCTYPE r [<!ENTITY x SYSTEM 'urn:xml3:blocked'>]><r>&x;</r>";
+    assert(!parse(external, strlen(external), quiet_options() | XML_PARSE_HUGE));
     assert(!parse("<r/>", 4, quiet_options() | XML_PARSE_HUGE | (1 << 4)));
 #endif
 }
@@ -338,6 +368,7 @@ int main(void) {
     check_depth(2049, 1, quiet_options() | XML_PARSE_HUGE, 0);
     check_depth(2049, 0, quiet_options() | XML_PARSE_HUGE, 0);
     test_large_document_and_arena();
+    test_option_profiles();
     test_huge_does_not_enable_features();
     test_near_limit_reference_boundaries();
     puts("resource tests passed");

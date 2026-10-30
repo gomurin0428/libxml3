@@ -939,8 +939,15 @@ nativeの読み取り可能範囲・入力安定性、byte効果とallocator/ABI
 参照の decode/正規化後の各 value に適用され、入力全体や文書内の全 value の合計
 には適用されません。
 
-これらは parser resource profile であり、コア表現上限とは別です。入力 byte index
-の表現境界は `Integer'Last - 16`、node ID の表現境界はその半分です。2,048
+これらは parser resource profile であり、コア表現上限や機能対応とは別です。
+SPARKの`Parser.Options.Classify`は非負の
+NOERROR/NOWARNING/NONET/HUGEの組み合わせだけを受理し、HUGE bitの有無でprofileを選びます。
+未知bit・負値はHUGEと組み合わせても拒否します。`xmlReadMemory`の検査順は
+入力pointer/長さ→encoding名→options→本文で、未対応encodingのcode 32はoptionsのcode 115に
+優先します。拒否は本文を読みませんが、NUL終端APIはこれに先立って入力長を計測します。
+診断の確保失敗は従来どおりOOMです。DTD・外部実体・recoveryなどの対応は増えません。
+
+入力 byte indexの表現境界は `Integer'Last - 16`、node ID の表現境界はその半分です。2,048
 node という総数上限はありません。C `int` の入力長が表現境界を超える場合は拒否
 します。`Parser.Workspaces`が呼び出しごとの4つのheap作業領域を確保し、部分失敗時は
 すべて解放して空に戻します。再確保前には空であることが前提です。scratchは空入力でも

@@ -664,6 +664,22 @@ int main(int argc, char **argv) {
         assert(memory && size == (int)strlen(expected));
         assert(strcmp((const char *)memory, expected) == 0);
         xmlFree(memory);
+    } else if (strcmp(operation, "option-rejection") == 0) {
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory("<r/>", 4, NULL, NULL, XML_PARSE_HUGE | 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!doc);
+        if (injected) {
+            require_oom_error();
+        } else {
+            error = xmlGetLastError();
+            assert(error && error->domain == XML_FROM_PARSER && error->code == 115);
+        }
+        xmlResetLastError();
+        doc = xmlReadMemory("<r/>", 4, NULL, NULL, XML_PARSE_HUGE);
+        assert(doc && xmlGetLastError() == NULL);
     } else if (strcmp(operation, "malformed") == 0) {
         int status = -1;
         xml3_oom_enable(fail_index);

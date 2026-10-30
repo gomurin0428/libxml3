@@ -16,6 +16,7 @@ with XML3_Native_Memory;
 with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Parser.Workspaces;
+with XML3_Parser.Options;
 with XML3_Encoding;
 
 procedure DOM_Bridge_Test is
@@ -1572,6 +1573,35 @@ begin
       end loop;
    end;
    Ada.Text_IO.Put_Line ("Parser workspace bounds, growth, failure cleanup and retry passed");
+
+   declare
+      package Options renames XML3_Parser.Options;
+      use type Options.Profile;
+      use type Interfaces.C.int;
+   begin
+      for Combination in 0 .. 15 loop
+         declare
+            Bits : constant Interfaces.C.unsigned := Interfaces.C.unsigned (Combination);
+            Value : constant Interfaces.C.int := Interfaces.C.int
+              ((if (Bits and 1) /= 0 then 32 else 0)
+               + (if (Bits and 2) /= 0 then 64 else 0)
+               + (if (Bits and 4) /= 0 then 2_048 else 0)
+               + (if (Bits and 8) /= 0 then 524_288 else 0));
+         begin
+            pragma Assert (Options.Classify (Value) =
+              (if Combination >= 8 then Options.Huge else Options.Normal));
+         end;
+      end loop;
+      for Bit in 0 .. 30 loop
+         pragma Assert (Options.Classify (Interfaces.C.int (2 ** Bit)) =
+           (case Bit is when 5 | 6 | 11 => Options.Normal,
+                        when 19 => Options.Huge,
+                        when others => Options.Unsupported));
+      end loop;
+      pragma Assert (Options.Classify (-1) = Options.Unsupported);
+      pragma Assert (Options.Classify (Interfaces.C.int'First) = Options.Unsupported);
+   end;
+   Ada.Text_IO.Put_Line ("Parser option combinations, individual bits and negatives passed");
 
    declare
       use type XML3_DOM_Constructors.Construction_Status;
