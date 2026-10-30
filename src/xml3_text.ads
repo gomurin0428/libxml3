@@ -4,6 +4,19 @@ package XML3_Text with SPARK_Mode is
    type Text_Error_Kind is (No_Text_Error, Invalid_UTF8, Invalid_XML_Character);
    type Name_Kind is (XML_Name, NCName, QName, NMToken);
 
+   type Text_Location is record
+      Line, Column : Positive := 1;
+   end record;
+
+   function Location_At
+     (Input : String; Byte_Position : Natural) return Text_Location
+     with Global => null,
+       Pre => Input'Length <= Max_Bytes,
+       Post => Location_At'Result.Line <= Input'Length + 1
+         and then Location_At'Result.Column <= Input'Length + 1
+         and then Location_At'Result.Line <= Natural'Max (1, Byte_Position)
+         and then Location_At'Result.Column <= Natural'Max (1, Byte_Position);
+
    type Entity_Kind is
      (No_Entity, Entity_Lt, Entity_Gt, Entity_Amp, Entity_Apos, Entity_Quot);
    subtype Predefined_Entity_Kind is Entity_Kind range Entity_Lt .. Entity_Quot;

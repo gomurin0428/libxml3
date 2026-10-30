@@ -1049,6 +1049,19 @@ For a caller-constructed nonzero error with a NULL message, libxml3 still
 preserves NULL while the pinned reference supplies a default message. This
 pre-existing payload difference is not changed by the string-copy migration.
 
+`XML3_Text.Location_At` now computes diagnostic line/column and the parser's
+opening-tag line through one pure SPARK scan. The position is a one-based byte
+offset relative to the supplied string, not its Ada lower bound; zero means
+the start and a position beyond EOF scans only the available input. LF advances
+the line and resets column to one; other bytes outside `80..BF` advance the
+column. CR and TAB each count as one column, while UTF-8 continuation bytes do
+not. This preserves current diagnostic rules, including the pinned lone-CR
+quirk. It is neither UTF-8 validation nor grapheme/display-width calculation.
+Input length is bounded by `Max_Bytes`; counters cannot exceed the consumed
+prefix length plus one. Native input adaptation, coordinate/status/message
+mapping, encoding-conversion policy and the error-record lifecycle remain in
+the trusted boundary.
+
 Compatibility follows a safety-first policy: mimic harmless documented or
 observed API quirks, such as retaining the last error after a successful parse,
 but do not emulate memory corruption, invalid memory access, unbounded or unsafe

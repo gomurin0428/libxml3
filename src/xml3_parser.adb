@@ -62,19 +62,10 @@ package body XML3_Parser with SPARK_Mode is
           and then Location <= Input'Length + 1,
           Post => Line_At'Result in 1 .. Location
       is
-         I : Position := 1;
-         Line : Natural := 1;
+         Place : constant XML3_Text.Text_Location :=
+           XML3_Text.Location_At (Input, Location);
       begin
-         while I < Location and then I <= Input'Last loop
-            pragma Loop_Invariant (I in 1 .. Location);
-            pragma Loop_Invariant (Line in 1 .. I);
-            pragma Loop_Variant (Increases => I);
-            if Input (I) = Character'Val (10) then
-               Line := Line + 1;
-            end if;
-            I := I + 1;
-         end loop;
-         return Line;
+         return Place.Line;
       end Line_At;
 
       procedure Advance_Line (Location : Position; Result : out Natural)

@@ -18,6 +18,7 @@ procedure Text_Buffers_Test is
    use type XML3_Text.Buffers.Escape_Status;
    use type XML3_Text.Buffers.Path_Status;
    use type XML3_Text.Text_Error_Kind;
+   use type XML3_Text.Text_Location;
    Left : aliased String := "aa" & Character'Val (0);
    Right : aliased String := "aa" & Character'Val (0);
    Result : Integer;
@@ -32,6 +33,31 @@ procedure Text_Buffers_Test is
         (Left'Address, Right'Address, Ignore_Case, Result, Limit_Flag, Last);
       pragma Assert (Result = Expected and Limit_Flag = Exceeded);
    end Check;
+
+   procedure Check_Locations is
+      Input : constant String (5 .. 12) := "a" & Character'Val (16#C3#)
+        & Character'Val (16#A9#) & Character'Val (13) & Character'Val (10)
+        & Character'Val (16#80#) & "b" & Character'Val (10);
+      Expected : constant array (Natural range 0 .. 9) of XML3_Text.Text_Location :=
+        ((1, 1), (1, 1), (1, 2), (1, 3), (1, 3), (1, 4),
+         (2, 1), (2, 1), (2, 2), (3, 1));
+      High : constant String (Integer'Last - 1 .. Integer'Last) :=
+        "x" & Character'Val (10);
+   begin
+      for Position in Expected'Range loop
+         pragma Assert (XML3_Text.Location_At (Input, Position) = Expected (Position));
+      end loop;
+      pragma Assert (XML3_Text.Location_At (Input, Natural'Last) = (3, 1));
+      pragma Assert (XML3_Text.Location_At (High, Natural'Last) = (2, 1));
+      pragma Assert (XML3_Text.Location_At ("", 0) = (1, 1));
+      pragma Assert (XML3_Text.Location_At ("", Natural'Last) = (1, 1));
+      for Byte in 0 .. 255 loop
+         pragma Assert
+           (XML3_Text.Location_At (Character'Val (Byte) & "x", 2) =
+              (if Byte = 10 then (2, 1)
+               elsif Byte in 16#80# .. 16#BF# then (1, 1) else (1, 2)));
+      end loop;
+   end Check_Locations;
 
    procedure Check_Byte_Prefix is
       Input : aliased String := "ab";
@@ -832,6 +858,7 @@ begin
    Check_QName_Build;
    Check_Concatenate;
    Check_Byte_Prefix;
+   Check_Locations;
    Check_Streaming_Name_Validation;
    Check_Append;
    Check_Measure;

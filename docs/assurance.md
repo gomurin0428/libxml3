@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,295 checks
-(1,499 flow and 11,796 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,304 checks
+(1,502 flow and 11,802 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1044,6 +1044,14 @@ or development-profile testing, and neither profile proves the trusted boundary.
   effect assumptions still apply. The C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
   not prove it free of memory errors or exceptions.
+  Diagnostic line/column calculation delegates to pure SPARK
+  `XML3_Text.Location_At`, also used for parser opening-tag lines. Its contracts
+  bound positive counters by input length/position; loop/index arithmetic is
+  proved for arbitrary String lower bounds under the common length cap. The
+  helper proves 13 checks and the parser's `Line_At` wrapper proves 4.
+  LF/non-continuation-byte semantics are regression-tested, not a proof of full
+  diagnostic or Unicode correctness. Native span adaptation, C integer mapping
+  and parser error-position selection remain trusted or separately scoped.
 * The C caller must supply readable input buffers of the declared length, valid
   NUL-terminated strings where required, and live handles created by this library.
   Use-after-free, forged pointers, double frees, and caller mutation of exposed

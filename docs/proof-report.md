@@ -2,6 +2,16 @@
 
 ## Result
 
+`Text.Location_At` now owns the error adapter's line/column scan and is reused
+for parser opening-tag lines. It has no global/native/allocator effects and
+proves positive counter bounds and safe scan arithmetic under `Max_Bytes`.
+Position zero stays at the start, positions beyond EOF clamp to available bytes,
+and offsets are independent of the String lower bound. Tests cover every byte
+class, LF/CR/continuation prefixes, empty input, maximum position/index values,
+and pinned CRLF/multibyte/TAB diagnostics copied across input overwrite, reset
+and a successful retry. Full Unicode/diagnostic semantics, C mapping and native
+input adaptation are not implied by these range contracts.
+
 Diagnostic message/file/payload duplication now reuses the proved
 `Text.Buffers.Concatenate_Bytes` path, removing the error adapter's direct
 strlen/malloc/memcpy implementation. This is a new call site, not new proved
@@ -62,6 +72,10 @@ GNATprove proves 6 checks for `Detect_Bytes`, 5 for `Prepare_Input`, 1 for
 `Release_Input`, 4 for `Convert_UTF16`, and 17 for `Convert_UTF16_Pass`;
 `Decode_UTF16` proves 32 checks (2 warnings), its `Unit_At` 4,
 `Decode_UTF16_Pair` 2, and `Read_UTF16_Unit` 0.
+`XML3_Text.Location_At` proves 13 checks for bounded line/column accounting;
+the parser's `Line_At` wrapper proves 4 checks while reusing that helper.
+These establish the written bounds and scan safety, not complete diagnostic
+or Unicode correctness.
 
 The full proof command for this source revision was:
 
@@ -69,7 +83,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,295 checks, 1,499 by flow analysis and 11,796
+It completed successfully: **13,304 checks, 1,502 by flow analysis and 11,802
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -737,7 +751,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 531 entity
+The 532 entity
 summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -773,14 +787,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 389 |
-| Initialization | 913 |
+| Data dependencies | 390 |
+| Initialization | 914 |
 | Non-aliasing | 1 |
-| Runtime checks | 5,639 |
-| Assertions | 1,671 |
-| Functional contracts | 4,411 |
+| Runtime checks | 5,646 |
+| Assertions | 1,669 |
+| Functional contracts | 4,413 |
 | Termination | 271 |
-| **Total** | **13,295** |
+| **Total** | **13,304** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1549,13 +1563,13 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-92491e7f950f1f3bebb022c4a0cfeb18690524db4a98f8c06e4138ac31f7df33  src/xml3_errors.adb
+d450b21610792c937f487832483aaae23c1a68251aed7aa6d7161f68329874d0  src/xml3_errors.adb
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
 27864d51e26e31e6459e0201d2932aa596592cc020366a3e60efd894a2f8ac92  src/xml3_native_memory.adb
 253b7461252644c8b3d4135feba70582d31163dc1d2e6d44813beb1cc18dad6b  src/xml3_native_memory.ads
-a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parser.adb
+f2fdbfe6f216161279e01d8d92865681219620eb456f9d82a188bcad48fde183  src/xml3_parser.adb
 8a8a1072a61711b93dcd35e5d7f10f2850d7180f6768b601478e0cde8364dc5c  src/xml3_serialization.adb
 80ac8796a138b37de53368b154c0d1b0c9a98038d26d774f3a50658b670dd7ce  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
@@ -1564,8 +1578,8 @@ dd8bc8decd0750060ca05fecd2522078d80a198292f76f0e7396e1ef07796fe5  src/xml3_parse
 4b43adf88af05f6c81c8c1e33f58ecb427de967c49869d5236f007628c49848b  src/xml3_parser-options.adb
 ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
 614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
-eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
-26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
+7e4bd00be06a5c10475e8ddf61f96d6506f8ab16579ef1b04dcff900de16b2f7  src/xml3_text.adb
+09ed865f956f0e09bf54f4aa6bb8e5ca5ede9ff144d15492ca37c3c3c8343c84  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
 c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-buffers.adb
@@ -1575,12 +1589,12 @@ dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml
 b9dd937ced8626bdb077be20e5a16d4ae16c41d79f043a9798deaceb4b6e8090  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 044d130a70cff97b045583f7506ed562fe30502cc017a9da39f97d4517a9c368  Makefile
-256204fe558ebe366f8b4967b226bd82026d57e695feda6d3c677f3c26150a88  tests/error-test.c
+2a4d029dbefd939c092fd316dbcffa0da1109738020c7daea3224b0a70033a2e  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
 c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
-db669aa6d4d6c4629c9c1d204ea57c5b63b958c7dccb0376260b8bd3e09f15e5  tests/text_buffers_test.adb
+b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 
