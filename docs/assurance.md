@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,334 checks
-(1,526 flow and 11,808 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,346 checks
+(1,538 flow and 11,808 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1008,6 +1008,21 @@ inspection and exception handling remain trusted adapter behavior, as do the
 exception-handler mappings that report out of memory or an internal error.
 The functions are total expression functions and prove 0 checks; tests compare
 every input value with the former adapter literals.
+
+`Parser.Requests` holds the pre-parse admission order of `Parse_Buffer`.
+`Check_Arguments` sees only the buffer presence and the size,
+`After_Encoding` only the classified encoding and `After_Options` only the
+option profile, so each stage is evaluated at the point where its input is
+legal to read: a rejected argument check cannot have read the caller's
+encoding name. `Admit` composes the stages and specifies the order, and
+`Huge_Requested` reports the HUGE profile. Reading the native encoding
+pointer, classifying the name and the option bits, publishing the
+diagnostic, the thread-local out-of-memory fixup, the C status values and
+exception handling remain trusted adapter behavior. The decisions reproduce
+the previous adapter order exactly; the functions are total expression
+functions and prove 0 checks. Tests cover every buffer presence, boundary
+size, requested encoding and option profile against the former order, and a
+C test uses an unreadable encoding pointer with a rejected buffer argument.
 
 The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
 though the library creates no Ada tasks. On the supported Linux runtime,

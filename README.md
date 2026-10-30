@@ -643,6 +643,9 @@ messageへ写像します。message本文と静的addressの表はtrustedなadap
 status から公開する (domain, code) の組を選ぶ方針はSPARKの`XML3_Diagnostic_Codes`
 にあります。DOM操作のstatus、入力変換の結果、parseの報告種別、および
 encoding・option拒否の定数を一か所で扱い、報告しない場合も明示します。
+parse要求の受理順序はSPARKの`XML3_Parser.Requests`にあります。引数検査、encoding、
+optionの順を段階ごとの関数で表し、引数が不正な場合にencoding名を読まないことを
+明示します。
 診断の行・列計算もSPARKの`Location_At`を使い、解析器の開始行計算と共用します。
 LFだけで改行し、列はUTF-8継続byte以外を数えます。CR・TABも1列として扱い、
 UTF-8検証や表示幅計算は行いません。位置0は先頭、末尾を超える位置はEOFへ制限します。

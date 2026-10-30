@@ -4,7 +4,7 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               402           402                                       .           .          .
+Data Dependencies               408           408                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  918           918                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
@@ -12,20 +12,21 @@ Run-time Checks                5646             .      5646 (CVC5 92%, Trivial 0
 Assertions                     1669             .    1669 (CVC5 64%, Trivial 11%, Z3 25%)           .          .
 Functional Contracts           4419             .     4419 (CVC5 68%, Trivial 3%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     279           205                    74 (CVC5 93%, Z3 7%)           .          .
+Termination                     285           211                    74 (CVC5 93%, Z3 7%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13334    1526 (11%)                             11808 (89%)           .          .
+Total                         13346    1538 (12%)                             11808 (88%)           .          .
 
 
 max steps used for successful proof: 1191869
 
-Analyzed 29 units
-in unit xml3_diagnostic_codes, 4 subprograms and packages out of 4 analyzed
-  XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Operation at xml3_diagnostic_codes.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Preparation at xml3_diagnostic_codes.ads:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Report at xml3_diagnostic_codes.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+Analyzed 30 units
+in unit xml3_diagnostic_codes, 5 subprograms and packages out of 5 analyzed
+  XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Operation at xml3_diagnostic_codes.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Preparation at xml3_diagnostic_codes.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Report at xml3_diagnostic_codes.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_diagnostic_messages, 2 subprograms and packages out of 2 analyzed
   XML3_Diagnostic_Messages at xml3_diagnostic_messages.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Messages.Kind_For at xml3_diagnostic_messages.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -498,6 +499,13 @@ in unit xml3_parser-outcomes, 3 subprograms and packages out of 3 analyzed
   XML3_Parser.Outcomes at xml3_parser-outcomes.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Outcomes.After_Attempt at xml3_parser-outcomes.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Parser.Outcomes.Report_For at xml3_parser-outcomes.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+in unit xml3_parser-requests, 6 subprograms and packages out of 6 analyzed
+  XML3_Parser.Requests at xml3_parser-requests.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Requests.Admit at xml3_parser-requests.ads:61 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Requests.After_Encoding at xml3_parser-requests.ads:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Requests.After_Options at xml3_parser-requests.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Requests.Check_Arguments at xml3_parser-requests.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Requests.Huge_Requested at xml3_parser-requests.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_parser-workspaces, 7 subprograms and packages out of 7 analyzed
   XML3_Parser.Workspaces at xml3_parser-workspaces.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Workspaces.Allocate at xml3_parser-workspaces.ads:32 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)

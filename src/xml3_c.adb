@@ -17,6 +17,7 @@ with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
+with XML3_Parser.Requests;
 with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
@@ -30,8 +31,6 @@ package body XML3_C is
    use type XML3_DOM_Store.Documents.Read_Status;
    use type XML3_DOM_Store.Queries.XML_Property_Kind;
    use type XML3_DOM_Store.Queries.Space_Policy;
-
-   Max_Input : constant := XML3_Text.Max_Bytes;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -119,6 +118,15 @@ package body XML3_C is
         when XML3_DOM_Store.Documents.Arena_Exhausted => Status_Internal_Error,
         when XML3_DOM_Store.Documents.No_Memory => Status_No_Memory,
         when XML3_DOM_Store.Documents.Internal_Error => Status_Internal_Error);
+
+   function Status_For_Admission
+     (Kind : XML3_Parser.Requests.Admission_Kind) return int
+   is
+     (case Kind is
+        when XML3_Parser.Requests.Admitted => Status_OK,
+        when XML3_Parser.Requests.Invalid_Argument => Status_Invalid_Argument,
+        when XML3_Parser.Requests.Unsupported_Encoding
+           | XML3_Parser.Requests.Unsupported_Options => Status_Unsupported);
 
    procedure Build_Arena
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
@@ -222,6 +230,8 @@ package body XML3_C is
       Huge : Boolean := False;
       Diagnostic : XML3_Parser.Diagnostic_Info;
       Prepared : XML3_Encoding.Buffers.Input_View;
+      package Requests renames XML3_Parser.Requests;
+      use type XML3_Parser.Requests.Admission_Kind;
 
       procedure Parse_And_Report
         (Input : String; Encoding_Info : XML3_Encoding.Encoding_Info)
@@ -266,40 +276,47 @@ package body XML3_C is
             Status := Status_No_Memory;
          end if;
       end Report_Conversion_Error;
+
+      procedure Reject (Kind : Requests.Admission_Kind) is
+      begin
+         Status := Status_For_Admission (Kind);
+         Report_Code (XML3_Diagnostic_Codes.For_Admission (Kind), URL);
+         if XML3_Errors.Last_Error_Is_OOM then
+            Status := Status_No_Memory;
+         end if;
+      end Reject;
    begin
       Status := Status_Internal_Error;
-      if Buffer = System.Null_Address
-        or else Size < 0
-        or else Size > int (Max_Input)
-      then
-         Status := Status_Invalid_Argument;
-         return System.Null_Address;
-      end if;
+      declare
+         Arguments : constant Requests.Admission_Kind :=
+           Requests.Check_Arguments (Buffer /= System.Null_Address, Size);
+      begin
+         if Arguments /= Requests.Admitted then
+            Status := Status_For_Admission (Arguments);
+            return System.Null_Address;
+         end if;
+      end;
       declare
          Requested : constant XML3_Encoding.Encoding_Kind :=
            XML3_Encoding.Buffers.Classify_Bytes (Encoding);
+         Encoding_Admission : constant Requests.Admission_Kind :=
+           Requests.After_Encoding (Requested);
       begin
-         if Requested = XML3_Encoding.Unsupported then
-            Status := Status_Unsupported;
-            Report_Code (XML3_Diagnostic_Codes.Unsupported_Encoding, URL);
-            if XML3_Errors.Last_Error_Is_OOM then
-               Status := Status_No_Memory;
-            end if;
+         if Encoding_Admission /= Requests.Admitted then
+            Reject (Encoding_Admission);
             return System.Null_Address;
          end if;
          declare
             Selected : constant XML3_Parser.Options.Profile :=
               XML3_Parser.Options.Classify (Options);
+            Option_Admission : constant Requests.Admission_Kind :=
+              Requests.After_Options (Selected);
          begin
-            if Selected = XML3_Parser.Options.Unsupported then
-               Status := Status_Unsupported;
-               Report_Code (XML3_Diagnostic_Codes.Unsupported_Feature, URL);
-               if XML3_Errors.Last_Error_Is_OOM then
-                  Status := Status_No_Memory;
-               end if;
+            if Option_Admission /= Requests.Admitted then
+               Reject (Option_Admission);
                return System.Null_Address;
             end if;
-            Huge := Selected = XML3_Parser.Options.Huge;
+            Huge := Requests.Huge_Requested (Selected);
          end;
          declare
             Prepare_Status : XML3_Encoding.Buffers.Conversion_Result;

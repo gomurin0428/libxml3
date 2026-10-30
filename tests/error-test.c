@@ -519,6 +519,28 @@ static void test_unsupported_feature(void) {
     xmlResetLastError();
 }
 
+static void test_argument_guard(void) {
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 0);
+    char *mapping = mmap(NULL, (size_t)page, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+    /*  A rejected buffer argument must be decided before the encoding name
+        is read, so an unreadable encoding pointer is never dereferenced.  */
+    assert(xmlReadMemory(NULL, 1, NULL, mapping, 0) == NULL);
+    assert(xmlReadMemory("<r/>", -1, NULL, mapping, 0) == NULL);
+#ifndef XML3_REFERENCE_TEST
+    {
+        int status = -1;
+        assert(xml3ReadMemory(NULL, 1, &status) == NULL);
+        assert(status == XML3_STATUS_INVALID_ARGUMENT);
+    }
+#endif
+    assert(munmap(mapping, (size_t)page) == 0);
+    xmlResetLastError();
+}
+
 int main(void) {
     check_reference_version();
     test_lifecycle();
@@ -530,6 +552,7 @@ int main(void) {
     test_location_variants();
     test_message_categories();
     test_unsupported_feature();
+    test_argument_guard();
     puts("error tests passed");
     return 0;
 }
