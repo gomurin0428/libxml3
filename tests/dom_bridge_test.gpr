@@ -12,6 +12,7 @@ project DOM_Bridge_Test is
       "xml3_dom-import.ads", "xml3_dom-import.adb",
       "xml3_dom_allocation.ads", "xml3_dom_allocation.adb",
       "xml3_namespaces.ads", "xml3_namespaces.adb",
+      "xml3_diagnostic_messages.ads",
       "xml3_error_records.ads", "xml3_error_records.adb",
       "xml3_text.ads", "xml3_text.adb",
       "xml3_text-buffers.ads", "xml3_text-buffers.adb",

@@ -17,6 +17,7 @@ with XML3_Namespaces;
 with XML3_Parser;
 with XML3_Parser.Workspaces;
 with XML3_Error_Records;
+with XML3_Diagnostic_Messages;
 with XML3_Parser.Options;
 with XML3_Encoding;
 
@@ -1726,4 +1727,132 @@ begin
    end;
    Ada.Text_IO.Put_Line
      ("Constructed namespace retention and exactly-once release passed");
+   declare
+      package Messages renames XML3_Diagnostic_Messages;
+      use type Messages.Message_Kind;
+      use type Interfaces.C.int;
+      Seen : array (Messages.Message_Kind) of Boolean := (others => False);
+
+      --  Reproduces the ordered if-chain that selected messages before the
+      --  policy moved into SPARK, including the old Code 4 input rule.
+      function Reference_Kind
+        (Code, Domain : Interfaces.C.int; Has_Input : Boolean)
+         return Messages.Message_Kind
+      is
+         Fallback : constant Messages.Message_Kind :=
+           (if Domain = 8 then Messages.UTF8
+            elsif Domain = 3 then Messages.Namespace
+            else Messages.Generic_Error);
+      begin
+         if Code < 0 then
+            return Fallback;
+         elsif Code = 2 then
+            return Messages.No_Memory;
+         elsif Code = 1 then
+            return Messages.Internal;
+         elsif Code = 4 then
+            return (if Has_Input then Messages.Start else Messages.Empty);
+         elsif Code = 5 then
+            return Messages.Extra_Content;
+         elsif Code = 9 then
+            return Messages.Invalid_Character;
+         elsif Code = 6 or else Code = 7 or else Code = 8 then
+            return Messages.Character_Reference;
+         elsif Code = 23 then
+            return Messages.Entity_Semicolon;
+         elsif Code = 26 or else Code = 27 then
+            return Messages.Entity;
+         elsif Code = 29 then
+            return Messages.External_Entity;
+         elsif Code = 32 then
+            return Messages.Encoding;
+         elsif Code = 79 then
+            return Messages.Encoding_Name;
+         elsif Code = 113 then
+            return Messages.Encoding_Mismatch;
+         elsif Code = 34 or else Code = 40 then
+            return Messages.Attribute_Unclosed;
+         elsif Code = 38 then
+            return Messages.Quote;
+         elsif Code = 39 then
+            return Messages.Attribute_Required;
+         elsif Code = 41 then
+            return Messages.Attribute_Value;
+         elsif Code = 68 then
+            return Messages.Name;
+         elsif Code = 75 then
+            return Messages.Equal;
+         elsif Code = 42 then
+            return Messages.Duplicate_Attribute;
+         elsif Code = 73 then
+            return Messages.Start_Tag;
+         elsif Code = 77 then
+            return Messages.End_Tag;
+         elsif Code = 78 then
+            return Messages.Standalone;
+         elsif Code = 57 then
+            return Messages.XML_Declaration;
+         elsif Code = 80 then
+            return Messages.Comment_Hyphen;
+         elsif Code = 110 then
+            return Messages.Name_Length;
+         elsif Code = 114 then
+            return Messages.Resource;
+         elsif Code = 115 then
+            return Messages.Unsupported;
+         elsif Code = 76 then
+            return Messages.Tag;
+         elsif Code = 62 then
+            return Messages.CData_Position;
+         elsif Code = 45 then
+            return Messages.Comment;
+         elsif Code = 63 then
+            return Messages.CData;
+         elsif Code = 47 then
+            return Messages.PI;
+         elsif Code = 64 then
+            return Messages.Reserved_Name;
+         elsif Domain = 8 or else Code = 81 then
+            return Messages.UTF8;
+         elsif Domain = 3 then
+            return Messages.Namespace;
+         else
+            return Messages.Generic_Error;
+         end if;
+      end Reference_Kind;
+
+      procedure Check (Code, Domain : Interfaces.C.int) is
+      begin
+         for Has_Input in Boolean loop
+            declare
+               Kind : constant Messages.Message_Kind :=
+                 Messages.Kind_For (Code, Domain, Has_Input);
+            begin
+               pragma Assert (Kind = Reference_Kind (Code, Domain, Has_Input));
+               Seen (Kind) := True;
+            end;
+         end loop;
+         pragma Assert
+           (Messages.Kind_For (Code, Domain)
+            = Messages.Kind_For (Code, Domain, False));
+      end Check;
+
+      procedure Check_Domains (Code : Interfaces.C.int) is
+      begin
+         for Domain in -2 .. 12 loop
+            Check (Code, Interfaces.C.int (Domain));
+         end loop;
+         Check (Code, Interfaces.C.int'First);
+         Check (Code, Interfaces.C.int'Last);
+      end Check_Domains;
+   begin
+      for Code in -3 .. 130 loop
+         Check_Domains (Interfaces.C.int (Code));
+      end loop;
+      Check_Domains (Interfaces.C.int'First);
+      Check_Domains (Interfaces.C.int'Last);
+      pragma Assert (for all Kind in Messages.Message_Kind => Seen (Kind));
+   end;
+   Ada.Text_IO.Put_Line
+     ("Diagnostic message selection regression passed");
 end DOM_Bridge_Test;

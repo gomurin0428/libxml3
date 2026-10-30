@@ -4,7 +4,7 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               396           396                                       .           .          .
+Data Dependencies               397           397                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  918           918                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
@@ -12,15 +12,18 @@ Run-time Checks                5646             .      5646 (CVC5 92%, Trivial 0
 Assertions                     1669             .    1669 (CVC5 64%, Trivial 11%, Z3 25%)           .          .
 Functional Contracts           4417             .     4417 (CVC5 68%, Trivial 3%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     273           199                    74 (CVC5 93%, Z3 7%)           .          .
+Termination                     274           200                    74 (CVC5 93%, Z3 7%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13320    1514 (11%)                             11806 (89%)           .          .
+Total                         13322    1516 (11%)                             11806 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
 
-Analyzed 26 units
+Analyzed 27 units
+in unit xml3_diagnostic_messages, 2 subprograms and packages out of 2 analyzed
+  XML3_Diagnostic_Messages at xml3_diagnostic_messages.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Messages.Kind_For at xml3_diagnostic_messages.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_dom, 140 subprograms and packages out of 140 analyzed
   XML3_DOM at xml3_dom.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
   XML3_DOM.Acknowledge_Projection at xml3_dom.ads:1448 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)

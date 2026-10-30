@@ -442,6 +442,23 @@ static void test_location_variants(void) {
 
 static void test_message_categories(void) {
     xmlResetLastError();
+    assert(xmlReadMemory("", 0, "empty.xml", NULL, 0) == NULL);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->code == XML_ERR_DOCUMENT_EMPTY);
+#ifndef XML3_REFERENCE_TEST
+    assert(strstr(xmlGetLastError()->message, "Document is empty") != NULL);
+#endif
+
+    xmlResetLastError();
+    assert(xmlReadMemory("junk", 4, NULL, NULL, 0) == NULL);
+    assert(xmlGetLastError() != NULL);
+    assert(xmlGetLastError()->code == XML_ERR_DOCUMENT_EMPTY);
+#ifndef XML3_REFERENCE_TEST
+    assert(strstr(xmlGetLastError()->message,
+                  "Start tag expected, '<' not found") != NULL);
+#endif
+
+    xmlResetLastError();
     assert(xmlReadMemory("<r/><s/>", 8, NULL, NULL, 0) == NULL);
     assert(xmlGetLastError() != NULL);
     assert(xmlGetLastError()->code == XML_ERR_DOCUMENT_END);
@@ -467,6 +484,24 @@ static void test_message_categories(void) {
                   "XML declaration is not finished") != NULL);
 #endif
     xmlResetLastError();
+
+#ifndef XML3_REFERENCE_TEST
+    {
+        xmlDocPtr doc = xmlReadMemory("<r>text</r>", 11, NULL, NULL, 0);
+        xmlNodePtr root;
+
+        assert(doc != NULL);
+        root = xmlDocGetRootElement(doc);
+        assert(root != NULL);
+        xmlNodeSetName(root, (const xmlChar *)"1bad");
+        assert(xmlGetLastError() != NULL);
+        assert(xmlGetLastError()->domain == 2);
+        assert(strstr(xmlGetLastError()->message,
+                      "Unsupported parser option or feature") != NULL);
+        xmlFreeDoc(doc);
+        xmlResetLastError();
+    }
+#endif
 }
 
 static void test_unsupported_feature(void) {
