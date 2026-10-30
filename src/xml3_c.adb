@@ -31,6 +31,7 @@ package body XML3_C is
    use type XML3_DOM_Store.Documents.Read_Status;
    use type XML3_DOM_Store.Queries.XML_Property_Kind;
    use type XML3_DOM_Store.Queries.Space_Policy;
+   use all type XML3_Diagnostic_Codes.Adapter_Failure;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -38,7 +39,9 @@ package body XML3_C is
    procedure Set_Status (Target : System.Address; Value : int);
    procedure Set_Address
      (Target : System.Address; Value : System.Address);
-   procedure Report_Dom_Error (Code : int);
+   procedure Report_Failure
+     (Failure : XML3_Diagnostic_Codes.Adapter_Failure;
+      File : System.Address := System.Null_Address);
    procedure Report_Code
      (Item : XML3_Diagnostic_Codes.Diagnostic_Code;
       File : System.Address := System.Null_Address);
@@ -83,10 +86,13 @@ package body XML3_C is
       end;
    end Set_Address;
 
-   procedure Report_Dom_Error (Code : int) is
+   procedure Report_Failure
+     (Failure : XML3_Diagnostic_Codes.Adapter_Failure;
+      File : System.Address := System.Null_Address)
+   is
    begin
-      XML3_Errors.Report_Simple (2, Code, 3, System.Null_Address);
-   end Report_Dom_Error;
+      Report_Code (XML3_Diagnostic_Codes.For_Failure (Failure), File);
+   end Report_Failure;
 
    procedure Report_Code
      (Item : XML3_Diagnostic_Codes.Diagnostic_Code;
@@ -356,14 +362,14 @@ package body XML3_C is
          end if;
          XML3_Encoding.Buffers.Release_Input (Prepared);
          Status := Status_No_Memory;
-         XML3_Errors.Report_Simple (6, 2, 3, URL);
+         Report_Failure (Allocation_Failure, URL);
          return System.Null_Address;
       when others =>
          if Result /= System.Null_Address then
             Free_Doc (Result);
          end if;
          XML3_Encoding.Buffers.Release_Input (Prepared);
-         XML3_Errors.Report_Simple (1, 1, 3, URL);
+         Report_Failure (Parser_Exception, URL);
          Status :=
            (if XML3_Errors.Last_Error_Is_OOM
             then Status_No_Memory else Status_Internal_Error);
@@ -393,11 +399,11 @@ package body XML3_C is
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          Set_Status (Status, Status_No_Memory);
          return System.Null_Address;
       when others =>
-         XML3_Errors.Report_Simple (1, 1, 3, System.Null_Address);
+         Report_Failure (Parser_Exception);
          Set_Status
            (Status,
             (if XML3_Errors.Last_Error_Is_OOM
@@ -415,10 +421,10 @@ package body XML3_C is
       return Parse_Buffer (Buffer, Size, URL, Encoding, Options, Code);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, URL);
+         Report_Failure (Allocation_Failure, URL);
          return System.Null_Address;
       when others =>
-         XML3_Errors.Report_Simple (1, 1, 3, URL);
+         Report_Failure (Parser_Exception, URL);
          return System.Null_Address;
    end Read_Memory;
 
@@ -431,10 +437,10 @@ package body XML3_C is
         (Buffer, Size, System.Null_Address, System.Null_Address, 0, Code);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         XML3_Errors.Report_Simple (1, 1, 3, System.Null_Address);
+         Report_Failure (Parser_Exception);
          return System.Null_Address;
    end Parse_Memory;
 
@@ -457,10 +463,10 @@ package body XML3_C is
         (Cur, int (Length), URL, Encoding, Options, Code);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, URL);
+         Report_Failure (Allocation_Failure, URL);
          return System.Null_Address;
       when others =>
-         XML3_Errors.Report_Simple (1, 1, 3, URL);
+         Report_Failure (Parser_Exception, URL);
          return System.Null_Address;
    end Read_Doc;
 
@@ -487,13 +493,13 @@ package body XML3_C is
       return (if Result then 1 else 0);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return 0;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return 0;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Test_Node;
 
@@ -530,13 +536,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Select_Element_Node;
 
@@ -562,13 +568,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Doc;
 
@@ -607,7 +613,7 @@ package body XML3_C is
       if Document = System.Null_Address
         or else Memory = System.Null_Address
       then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return;
       end if;
       declare
@@ -627,13 +633,13 @@ package body XML3_C is
       return;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return;
    end Doc_Dump_Format_Memory_Enc;
 
@@ -655,7 +661,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return System.Null_Address;
       end if;
       declare
@@ -675,13 +681,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Container_Node;
 
@@ -758,13 +764,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Content_Node;
 
@@ -795,13 +801,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end String_Len_Get_Node_List;
 
@@ -898,13 +904,13 @@ package body XML3_C is
       return Previous;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Doc_Set_Root_Element;
 
@@ -943,13 +949,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Add_Node;
 
@@ -989,13 +995,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Replace_Node;
 
@@ -1016,13 +1022,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Text_Merge;
 
@@ -1052,13 +1058,13 @@ package body XML3_C is
               else 1);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return (if Text_Only then -1 else 1);
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return (if Text_Only then -1 else 1);
    end Node_Append_Content;
 
@@ -1101,11 +1107,11 @@ package body XML3_C is
       Report_Operation_Status (Status, Validation_Error => True);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
    end Node_Set_Name;
 
    function Node_Set_Content_Len
@@ -1130,13 +1136,13 @@ package body XML3_C is
               else 1);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return 1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 1;
    end Node_Set_Content_Len;
 
@@ -1163,11 +1169,11 @@ package body XML3_C is
       Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
    end Unlink_Node;
 
    procedure Free_Managed_Node
@@ -1193,11 +1199,11 @@ package body XML3_C is
       Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
    end Free_Managed_Node;
 
    procedure Free_Node (Node : System.Address) is
@@ -1227,11 +1233,11 @@ package body XML3_C is
       Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
    end Free_Doc;
 
    function Get_Node_String
@@ -1258,13 +1264,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Get_Node_String;
 
@@ -1296,13 +1302,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Get_List_String;
 
@@ -1342,13 +1348,13 @@ package body XML3_C is
       return Interfaces.C.long (Result);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return -1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Node_Get_Line_No;
 
@@ -1376,15 +1382,15 @@ package body XML3_C is
       Report_Operation_Status (Status, Validation_Error => False);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when Storage_Error =>
          Result := System.Null_Address;
          Space := XML3_DOM_Store.Queries.Unspecified;
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       when others =>
          Result := System.Null_Address;
          Space := XML3_DOM_Store.Queries.Unspecified;
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
    end Get_Inherited_XML_Property;
 
    function Node_Get_Lang (Node : System.Address) return System.Address is
@@ -1425,7 +1431,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Element = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return 1;
       end if;
       declare
@@ -1445,13 +1451,13 @@ package body XML3_C is
       end if;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return 1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 1;
    end Set_XML_Property;
 
@@ -1503,15 +1509,15 @@ package body XML3_C is
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Code := -1;
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
          Code := -1;
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
          Code := -1;
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Get_Property_Value;
 
@@ -1543,13 +1549,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Ns;
 
@@ -1571,10 +1577,10 @@ package body XML3_C is
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Copy_Ns;
 
@@ -1594,9 +1600,9 @@ package body XML3_C is
       Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when others =>
-         Report_Dom_Error (115);
+         Report_Failure (Unexpected_Namespace_Exception);
    end Set_Ns;
 
    procedure Free_Ns (Ns : System.Address) is
@@ -1615,9 +1621,9 @@ package body XML3_C is
       Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
       when others =>
-         Report_Dom_Error (115);
+         Report_Failure (Unexpected_Namespace_Exception);
    end Free_Ns;
 
    function New_Ns_Prop
@@ -1628,7 +1634,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return System.Null_Address;
       end if;
       declare
@@ -1642,13 +1648,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Ns_Prop;
 
@@ -1660,7 +1666,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return System.Null_Address;
       end if;
       declare
@@ -1674,13 +1680,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Set_Ns_Prop;
 
@@ -1692,7 +1698,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return -1;
       end if;
       declare
@@ -1709,13 +1715,13 @@ package body XML3_C is
       return -1;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return -1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Unset_Ns_Prop;
 
@@ -1727,7 +1733,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return System.Null_Address;
       end if;
       declare
@@ -1740,13 +1746,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end New_Prop;
 
@@ -1758,7 +1764,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return System.Null_Address;
       end if;
       declare
@@ -1771,13 +1777,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Set_Prop;
 
@@ -1789,7 +1795,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return -1;
       end if;
       declare
@@ -1805,13 +1811,13 @@ package body XML3_C is
       return -1;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return -1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Unset_Prop;
 
@@ -1820,7 +1826,7 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Attribute = System.Null_Address then
-         Report_Dom_Error (115);
+         Report_Failure (Invalid_Argument);
          return -1;
       end if;
       declare
@@ -1837,13 +1843,13 @@ package body XML3_C is
       return -1;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return -1;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return -1;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Remove_Prop;
 
@@ -1879,13 +1885,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Has_Prop;
 
@@ -1915,11 +1921,11 @@ package body XML3_C is
    exception
       when Storage_Error =>
          Code := -1;
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
          Code := -1;
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Namespace_List_Value;
 
@@ -1944,7 +1950,7 @@ package body XML3_C is
       return Code;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Get_Ns_List_Safe;
 
@@ -1970,13 +1976,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Search_Ns;
 
@@ -2002,13 +2008,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Search_Ns_By_Href;
 
@@ -2037,13 +2043,13 @@ package body XML3_C is
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Has_Ns_Prop;
 
@@ -2085,7 +2091,7 @@ package body XML3_C is
       return Code;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Node_Get_Attr_Value;
 
@@ -2147,13 +2153,13 @@ package body XML3_C is
       return unsigned_long (Count);
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Report_Dom_Error (1);
+         Report_Failure (Lock_Failure);
          return 0;
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return 0;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Child_Element_Count;
 
@@ -2163,12 +2169,12 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Check_UTF8 (Item, Status);
       if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       return (if Status = XML3_Text.Buffers.UTF8_Valid then 1 else 0);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Check_UTF8;
 
@@ -2179,7 +2185,7 @@ package body XML3_C is
       use type XML3_Text.Buffers.UTF8_Status;
    begin
       if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       return (if Status = XML3_Text.Buffers.UTF8_Valid then int (Length) else -1);
    end UTF8_Length_Result;
@@ -2192,7 +2198,7 @@ package body XML3_C is
       return UTF8_Length_Result (Length, Status);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end UTF8_Str_Length;
 
@@ -2206,7 +2212,7 @@ package body XML3_C is
       return UTF8_Length_Result (Size, Status);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end UTF8_Str_Size;
 
@@ -2215,7 +2221,7 @@ package body XML3_C is
       return int (XML3_Text.Buffers.UTF8_Lead_Size (Item));
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end UTF8_Size;
 
@@ -2226,12 +2232,13 @@ package body XML3_C is
       case Status is
          when XML3_Text.Buffers.Normalized => return 0;
          when XML3_Text.Buffers.Invalid_Path => null;
-         when XML3_Text.Buffers.Path_Limit_Exceeded => Report_Dom_Error (115);
+         when XML3_Text.Buffers.Path_Limit_Exceeded =>
+            Report_Failure (Unsupported_Text);
       end case;
       return -1;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Normalize_URI_Path;
 
@@ -2246,16 +2253,17 @@ package body XML3_C is
       case Status is
          when XML3_Text.Buffers.Escaped | XML3_Text.Buffers.Invalid_Text => null;
          when XML3_Text.Buffers.Escape_No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         when XML3_Text.Buffers.Escape_Limit_Exceeded => Report_Dom_Error (115);
+            Report_Failure (Allocation_Failure);
+         when XML3_Text.Buffers.Escape_Limit_Exceeded =>
+            Report_Failure (Unsupported_Text);
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end URI_Unescape_String;
 
@@ -2268,16 +2276,17 @@ package body XML3_C is
       case Status is
          when XML3_Text.Buffers.Escaped | XML3_Text.Buffers.Invalid_Text => null;
          when XML3_Text.Buffers.Escape_No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         when XML3_Text.Buffers.Escape_Limit_Exceeded => Report_Dom_Error (115);
+            Report_Failure (Allocation_Failure);
+         when XML3_Text.Buffers.Escape_Limit_Exceeded =>
+            Report_Failure (Unsupported_Text);
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end URI_Escape_Str;
 
@@ -2290,7 +2299,7 @@ package body XML3_C is
       return int (Written);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Copy_Char_Multi_Byte;
 
@@ -2344,7 +2353,7 @@ package body XML3_C is
       return Result;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Get_Document_Entity;
 
@@ -2385,12 +2394,12 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Compare_UTF8_Character (Left, Right, Result, Invalid);
       if Invalid then
-         Report_Dom_Error (9);
+         Report_Failure (Invalid_Character);
       end if;
       return int (Result);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end UTF8_Char_Compare;
 
@@ -2401,12 +2410,12 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Find_UTF8_Character (Item, Pattern, Index, Status);
       if Status = XML3_Text.Buffers.Search_Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       return (if Status = XML3_Text.Buffers.Matched then int (Index) else -1);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end UTF8_Str_Location;
 
@@ -2432,7 +2441,7 @@ package body XML3_C is
       end;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          Set_Status (Length, 0);
          return -1;
    end Get_UTF8_Char;
@@ -2448,18 +2457,18 @@ package body XML3_C is
         (Item, Addition, Integer (Length), Terminated, Result, Status);
       case Status is
          when XML3_Text.Buffers.Append_No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            Report_Failure (Allocation_Failure);
          when XML3_Text.Buffers.Append_Limit_Exceeded =>
-            Report_Dom_Error (115);
+            Report_Failure (Unsupported_Text);
          when others => null;
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Append_String;
 
@@ -2479,12 +2488,12 @@ package body XML3_C is
       XML3_Text.Buffers.Compare_Terminated
         (Left, Right, Ignore_Case, Result, Limit_Exceeded);
       if Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       return Interfaces.C.int (Result);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Compare_Strings;
 
@@ -2512,12 +2521,12 @@ package body XML3_C is
          when XML3_Text.QNames.Different =>
             return 0;
          when XML3_Text.QNames.Comparison_Limit_Exceeded =>
-            Report_Dom_Error (115);
+            Report_Failure (Unsupported_Text);
             return 0;
       end case;
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Str_Q_Equal;
 
@@ -2533,7 +2542,7 @@ package body XML3_C is
          when XML3_Text.Buffers.No_Match =>
             return System.Null_Address;
          when XML3_Text.Buffers.Search_Limit_Exceeded =>
-            Report_Dom_Error (115);
+            Report_Failure (Unsupported_Text);
             return System.Null_Address;
       end case;
    end Search_Result;
@@ -2548,7 +2557,7 @@ package body XML3_C is
       return Search_Result (Item, Position, Status);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end UTF8_Str_Position;
 
@@ -2564,7 +2573,7 @@ package body XML3_C is
       return Search_Result (Item, Position, Status);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Str_Character;
 
@@ -2580,7 +2589,7 @@ package body XML3_C is
       return Search_Result (Item, Position, Status);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Find_Substring;
 
@@ -2605,7 +2614,7 @@ package body XML3_C is
            (Left, Right, Integer (Length), Ignore_Case));
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return 0;
    end Compare_Bounded_Strings;
 
@@ -2635,16 +2644,17 @@ package body XML3_C is
       case Status is
          when XML3_Text.Buffers.Copied | XML3_Text.Buffers.No_Input => null;
          when XML3_Text.Buffers.No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         when XML3_Text.Buffers.Limit_Exceeded => Report_Dom_Error (115);
+            Report_Failure (Allocation_Failure);
+         when XML3_Text.Buffers.Limit_Exceeded =>
+            Report_Failure (Unsupported_Text);
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Str_N_Concat_New;
 
@@ -2662,17 +2672,18 @@ package body XML3_C is
       case Status is
          when XML3_Text.Buffers.Escaped => null;
          when XML3_Text.Buffers.Escape_No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            Report_Failure (Allocation_Failure);
          when XML3_Text.Buffers.Invalid_Text |
-              XML3_Text.Buffers.Escape_Limit_Exceeded => Report_Dom_Error (115);
+              XML3_Text.Buffers.Escape_Limit_Exceeded =>
+                 Report_Failure (Unsupported_Text);
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Encode_Special_Chars;
 
@@ -2697,10 +2708,10 @@ package body XML3_C is
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Encode_Entities_Reentrant;
 
@@ -2711,9 +2722,9 @@ package body XML3_C is
    begin
       case Status is
          when XML3_Text.Buffers.No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            Report_Failure (Allocation_Failure);
          when XML3_Text.Buffers.Slice_Limit_Exceeded =>
-            Report_Dom_Error (115);
+            Report_Failure (Unsupported_Text);
          when others => null;
       end case;
       return Result;
@@ -2740,10 +2751,10 @@ package body XML3_C is
       return Slice_Result (Result, Status);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Char_Str_N_Duplicate;
 
@@ -2768,10 +2779,10 @@ package body XML3_C is
       return Slice_Result (Result, Status);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Str_Sub_Copy;
 
@@ -2793,10 +2804,10 @@ package body XML3_C is
       return Slice_Result (Result, Status);
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end UTF8_Str_Sub_Copy;
 
@@ -2806,13 +2817,13 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Measure (Item, Length, Success);
       if not Success then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
          return -1;
       end if;
       return int (Length);
    exception
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return -1;
    end Str_Length;
 
@@ -2827,18 +2838,18 @@ package body XML3_C is
         (Name, Prefix, Memory, Integer (Length), Result, Status);
       case Status is
          when XML3_Text.QNames.No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+            Report_Failure (Allocation_Failure);
          when XML3_Text.QNames.Limit_Exceeded =>
-            Report_Dom_Error (115);
+            Report_Failure (Unsupported_Text);
          when others => null;
       end case;
       return Result;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Build_QName;
 
@@ -2853,18 +2864,18 @@ package body XML3_C is
       end if;
       XML3_Text.QNames.Split (Name, Prefix_Value, Local, Status);
       if Status = XML3_Text.QNames.No_Memory then
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
       elsif Status = XML3_Text.QNames.Split_Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       Set_Address (Prefix, Prefix_Value);
       return Local;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Split_QName2;
 
@@ -2879,7 +2890,7 @@ package body XML3_C is
       end if;
       XML3_Text.QNames.Locate_Prefix (Name, Count, Local, Status);
       if Status = XML3_Text.QNames.Prefix_Limit_Exceeded then
-         Report_Dom_Error (115);
+         Report_Failure (Unsupported_Text);
       end if;
       if Status /= XML3_Text.QNames.Prefix_Found then
          return System.Null_Address;
@@ -2888,10 +2899,10 @@ package body XML3_C is
       return Local;
    exception
       when Storage_Error =>
-         XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
+         Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Report_Dom_Error (1);
+         Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Split_QName3;
 

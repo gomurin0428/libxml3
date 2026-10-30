@@ -4,7 +4,7 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               408           408                                       .           .          .
+Data Dependencies               409           409                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  918           918                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
@@ -12,21 +12,22 @@ Run-time Checks                5646             .      5646 (CVC5 92%, Trivial 0
 Assertions                     1669             .    1669 (CVC5 64%, Trivial 11%, Z3 25%)           .          .
 Functional Contracts           4419             .     4419 (CVC5 68%, Trivial 3%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     285           211                    74 (CVC5 93%, Z3 7%)           .          .
+Termination                     286           212                    74 (CVC5 93%, Z3 7%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13346    1538 (12%)                             11808 (88%)           .          .
+Total                         13348    1540 (12%)                             11808 (88%)           .          .
 
 
 max steps used for successful proof: 1191869
 
 Analyzed 30 units
-in unit xml3_diagnostic_codes, 5 subprograms and packages out of 5 analyzed
+in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Operation at xml3_diagnostic_codes.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Preparation at xml3_diagnostic_codes.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Diagnostic_Codes.For_Report at xml3_diagnostic_codes.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Failure at xml3_diagnostic_codes.ads:53 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Operation at xml3_diagnostic_codes.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Preparation at xml3_diagnostic_codes.ads:77 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Diagnostic_Codes.For_Report at xml3_diagnostic_codes.ads:91 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_diagnostic_messages, 2 subprograms and packages out of 2 analyzed
   XML3_Diagnostic_Messages at xml3_diagnostic_messages.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Messages.Kind_For at xml3_diagnostic_messages.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
