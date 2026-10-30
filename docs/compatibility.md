@@ -481,7 +481,12 @@ unlink を要求する upstream 動作より安全な差です。
 拒否します。`xmlSetProp` は QName を解決でき、`xmlRemoveProp` と `xmlFreeProp` は
 qualified attribute にも適用できます。`xmlNewProp(NULL, ...)` は detached attribute を作成し、
 重複名は既存順の末尾に追加します。NULL value は text child なし、empty value は
-empty text child です。`xmlSetProp` は同名の no-namespace attribute があれば
+empty text child です。`xmlNewProp` は非NULL要素の登録・種類を確認してから名前/値を
+SPARKで計測・コピーし、C側に中間Stringを作りません。元入力や複製元属性を解放しても
+新属性の名前・値は独立しています。colon拒否以外の名前/UTF-8検証や値の参照復号は
+追加せず、走査上限超過は文字列変換診断115ではなく共通の上限診断114とします。
+不正な要素は入力を読まず115で拒否し、失敗時に元の属性列を保持します。
+`xmlSetProp` は同名の no-namespace attribute があれば
 attribute pointer、`_private`、sibling links を保って値を置換し、なければ末尾に追加
 します。置換時に旧 value children は解放されます。新しい値の割り当てを置換前に
 完了するため、OOM では元の property list と値を保持します。`xmlUnsetProp` と

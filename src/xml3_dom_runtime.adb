@@ -241,13 +241,12 @@ is
       end Release_List;
 
       procedure Create_Property
-        (Element : System.Address; Name, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, Name, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Properties.Create_Property
-           (Current, Element, Name, Value, Has_Value, Result, Status);
+           (Current, Element, Name, Value, Result, Status);
       end Create_Property;
 
       procedure Set_Property

@@ -129,6 +129,8 @@ HTML/entity expansion は未対応です。
 親走査・隠蔽判定と文書なしnodeの組み込みxml宣言の作成・再利用は既存処理を使います。
 属性の取得・存在確認も名前/URIをSPARK内で計測・コピーします。要素の登録・種類を
 先に確認し、借用属性と独立した属性値の所有権、namespaceフィルタは従来どおりです。
+`xmlNewProp` の名前/値もSPARK内で計測・コピーし、既存の属性作成・接続・失敗時の
+巻き戻しを再利用します。単独属性、重複名の末尾追加、NULL値と空値の区別を維持します。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

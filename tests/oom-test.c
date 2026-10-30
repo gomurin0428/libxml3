@@ -987,7 +987,9 @@ int main(int argc, char **argv) {
             assert(strcmp((const char *)merge_left->content, "leftright") == 0);
             merge_right = NULL;
         }
-    } else if (strcmp(operation, "attr-new") == 0) {
+    } else if (strcmp(operation, "attr-new") == 0 ||
+               strcmp(operation, "attr-new-empty") == 0) {
+        const char *value = strcmp(operation, "attr-new-empty") == 0 ? "" : "value";
         xmlNodePtr root;
         xmlAttrPtr before, after, created;
         xmlNodePtr before_child, after_child;
@@ -1002,7 +1004,7 @@ int main(int argc, char **argv) {
         before_child = before->children;
         after_child = after->children;
         xml3_oom_enable(fail_index);
-        created = xmlNewProp(root, BAD_CAST "middle", BAD_CAST "value");
+        created = xmlNewProp(root, BAD_CAST "middle", BAD_CAST value);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -1020,14 +1022,17 @@ int main(int argc, char **argv) {
             assert(before->next == after && after->prev == before);
             assert(after->next == created && created->prev == after);
             assert(created->next == NULL);
-            assert(strcmp((const char *)created->children->content, "value") == 0);
+            assert(strcmp((const char *)created->children->content, value) == 0);
             xmlFreeProp(created);
         }
-    } else if (strcmp(operation, "attr-detached") == 0) {
+    } else if (strcmp(operation, "attr-detached") == 0 ||
+               strcmp(operation, "attr-detached-null") == 0) {
+        const xmlChar *value = strcmp(operation, "attr-detached-null") == 0
+            ? NULL : BAD_CAST "value";
         xmlAttrPtr created;
 
         xml3_oom_enable(fail_index);
-        created = xmlNewProp(NULL, BAD_CAST "standalone", BAD_CAST "value");
+        created = xmlNewProp(NULL, BAD_CAST "standalone", value);
         injected = xml3_oom_was_injected();
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
@@ -1037,8 +1042,9 @@ int main(int argc, char **argv) {
         } else {
             assert(created != NULL && created->parent == NULL &&
                    created->doc == NULL);
-            assert(created->children != NULL);
-            assert(strcmp((const char *)created->children->content, "value") == 0);
+            assert((created->children != NULL) == (value != NULL));
+            if (value)
+                assert(strcmp((const char *)created->children->content, "value") == 0);
             xmlFreeProp(created);
         }
     } else if (strcmp(operation, "attr-set-new") == 0) {
