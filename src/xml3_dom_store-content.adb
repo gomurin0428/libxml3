@@ -240,17 +240,16 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    end New_Doc_Content_Bytes;
 
    procedure Parse_Content_List
-     (S : in out Store; Doc : System.Address; Content : String;
+     (S : in out Store; Doc, Content : System.Address; Length : Integer;
       Result : out System.Address; Status : out Operation_Status)
    is
-      Decoded : String (1 .. Content'Length);
-      Length : XML3_Text.Byte_Count;
-      Valid : Boolean;
+      Span : XML3_Text.Byte_Count;
+      Found : Boolean;
       D : Node_Ref;
    begin
       Result := System.Null_Address;
       Status := Created;
-      if Content'Length = 0 then
+      if Content = System.Null_Address or else Length = 0 then
          return;
       end if;
       Status := Invalid_Argument;
@@ -261,19 +260,39 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       then
          return;
       end if;
-      if Content'First /= 1 or else Content'Last > XML3_Text.Max_Bytes then
-         Status := Limit_Exceeded;
+      if Length < 0 then
+         XML3_Text.Buffers.Measure (Content, Span, Found);
+         if not Found then
+            return;
+         end if;
+      else
+         if Length > XML3_Text.Max_Bytes then
+            return;
+         end if;
+         XML3_Text.Buffers.Measure_Byte_Prefix
+           (Content, XML3_Text.Byte_Count (Length), Span);
+      end if;
+      if Span = 0 then
+         Status := Created;
          return;
       end if;
-      XML3_Text.Decode
-        (Content, False, True, Decoded, Length, Valid,
-         Normalize_Line_Endings => False);
-      if not Valid then
-         return;
-      end if;
-      New_Doc_Content
-        (S, Doc, Text_Node, "text", Decoded (1 .. Integer (Length)), True,
-         Result, Status);
+      declare
+         Input_Length : constant XML3_Text.Byte_Count := Span;
+         Input, Decoded : String (1 .. Input_Length);
+         Decoded_Length : XML3_Text.Byte_Count;
+         Valid : Boolean;
+      begin
+         Native.Read_String (Content, Input);
+         XML3_Text.Decode
+           (Input, False, True, Decoded, Decoded_Length, Valid,
+            Normalize_Line_Endings => False);
+         if not Valid then
+            return;
+         end if;
+         New_Doc_Content
+           (S, Doc, Text_Node, "text", Decoded (1 .. Integer (Decoded_Length)), True,
+            Result, Status);
+      end;
    end Parse_Content_List;
 
    procedure Construct_Container

@@ -200,13 +200,13 @@ is
       end New_Doc_Content;
 
       procedure Parse_Content_List
-        (Doc : System.Address; Content : String;
+        (Doc, Content : System.Address; Length : Integer;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Content.Parse_Content_List
-           (Current, Doc, Content, Result, Status);
+           (Current, Doc, Content, Length, Result, Status);
       end Parse_Content_List;
 
       procedure Set_Root

@@ -963,18 +963,15 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Content : constant String := C_String_Prefix (Value, Length);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
-         XML3_DOM_Runtime.Parse_Content_List (Doc, Content, Result, Status);
+         XML3_DOM_Runtime.Parse_Content_List
+           (Doc, Value, Integer (Length), Result, Status);
       end;
       Report_Operation_Status (Status);
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

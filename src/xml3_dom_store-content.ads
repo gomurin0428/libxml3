@@ -48,7 +48,7 @@ package XML3_DOM_Store.Content with SPARK_Mode is
            Result /= System.Null_Address else Result = System.Null_Address);
 
    procedure Parse_Content_List
-     (S : in out Store; Doc : System.Address; Content : String;
+     (S : in out Store; Doc, Content : System.Address; Length : Integer;
       Result : out System.Address; Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S), Post => Ready (S)
