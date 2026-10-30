@@ -630,7 +630,11 @@ nativeメモリのbyte効果・allocator・ABIは引き続き信頼境界です�
 UTF-8は元入力の借用、UTF-16変換後は所有領域として区別し、借用入力は解放しません。
 
 エラー API は `xmlGetLastError`、明示 reset/copy と OS thread ごとの所有状態を
-提供し、成功後も直前のエラーを保持します。互換方針は、last-error 保持など害のない
+提供し、成功後も直前のエラーを保持します。診断のmessage・URL/file・追加文字列の
+計測と独立コピーは既存のSPARK byteコピーを使い、NULLと空文字列・任意byteを区別して保ちます。
+各文字列の上限は共通の`XML3_Text.Max_Bytes`で、上限・確保失敗は従来のOOM経路へ写像します。
+レコードの更新・巻き戻し・TLS・緊急診断は引き続き証明外です。
+互換方針は、last-error 保持など害のない
 既知の挙動は可能な範囲で合わせる一方、memory corruption、不正 access、無制限な
 resource use、悪用可能な upstream bug は再現しないことです。固定版との既知の差は
 比較で明示し、namespace の fail-closed 動作と value near-limit 差も保持します。
