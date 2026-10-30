@@ -619,6 +619,27 @@ int main(int argc, char **argv) {
             assert(status == XML3_STATUS_OK);
             assert(xmlGetLastError() == NULL);
         }
+    } else if (strcmp(operation, "arena-growth") == 0) {
+        enum { siblings = 3000, length = 7 + siblings * 4 };
+        char input[length];
+        memcpy(input, "<r>", 3);
+        for (int i = 0; i < siblings; ++i)
+            memcpy(input + 3 + i * 4, "<x/>", 4);
+        memcpy(input + 3 + siblings * 4, "</r>", 4);
+        int status = -1;
+        xml3_oom_enable(fail_index);
+        doc = xml3ReadMemory(input, length, &status);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!doc && status == XML3_STATUS_NO_MEMORY);
+            require_oom_error();
+            doc = xml3ReadMemory(input, length, &status);
+        }
+        memset(input, 0, sizeof(input));
+        assert(doc && status == XML3_STATUS_OK);
+        assert(xmlChildElementCount(xmlDocGetRootElement(doc)) == siblings);
     } else if (strcmp(operation, "parsed-pi") == 0) {
         const char *input = "<r><?bare?><?empty ?></r>";
         const char *expected = "<?xml version=\"1.0\"?>\n<r><?bare?><?empty ?></r>\n";

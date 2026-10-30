@@ -97,6 +97,7 @@ static unsigned fail_malloc_nth, malloc_calls, injected_malloc_failures;
 static void *failure_allocations[3];
 static unsigned failure_allocation_count;
 static int failure_allocation_freed[3], track_failure_allocations;
+static int track_after_failure;
 static void *materialize_arena;
 static xmlDoc *materialize_doc;
 static xmlNode *materialize_nodes[12];
@@ -151,6 +152,11 @@ void bridge_begin_malloc_tracking(void) {
     track_failure_allocations = 1;
 }
 
+void bridge_fail_workspace_malloc_nth(unsigned nth) {
+    bridge_fail_malloc_nth(nth);
+    track_after_failure = 1;
+}
+
 void bridge_end_malloc_tracking(void) {
     assert(fail_malloc_nth == 0 && injected_malloc_failures == 0);
     assert(failure_allocation_count == 3);
@@ -164,6 +170,7 @@ void bridge_check_malloc_failure(void) {
     for (unsigned i = 0; i < failure_allocation_count; ++i)
         assert(failure_allocation_freed[i] == 1);
     track_failure_allocations = 0;
+    track_after_failure = 0;
 }
 
 unsigned bridge_import_free_count(void) {
@@ -221,7 +228,7 @@ void * __wrap_malloc(size_t size) {
         return NULL;
     }
     void *result = __real_malloc(size);
-    if (track_failure_allocations && injected_malloc_failures == 0 &&
+    if (track_failure_allocations && (injected_malloc_failures == 0 || track_after_failure) &&
         result != NULL) {
         assert(failure_allocation_count < 3);
         failure_allocations[failure_allocation_count++] = result;

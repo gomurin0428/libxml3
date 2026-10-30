@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,266 checks
-(1,488 flow and 11,778 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,289 checks
+(1,497 flow and 11,792 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -940,11 +940,32 @@ proved. Ownership, graph topology, validation, release decisions, and policy
 remain in SPARK.
 
 `XML3_C` is an ABI adapter over `XML3_DOM_Runtime`. Parsing calls
-`Documents.Read` with bounded C-allocated workspaces; constructors, queries,
+`Documents.Read` with bounded native workspaces managed by SPARK; constructors, queries,
 mutation and release call typed Runtime operations. The adapter still performs
 foreign pointer/string conversion and error translation and is not itself
 formally proved. The Runtime delegates to proved Store operations; the public
 API as a whole is not thereby claimed to be formally verified.
+
+`Parser.Workspaces` checks per-block byte limits before multiplying capacity by
+native node/name sizes, allocates four buffers and releases all partial results
+on allocation failure. Empty scratch spans retain one byte of backing storage.
+Allocation requires an empty buffer set; successful calls return four non-null
+addresses, failures return an empty set, and release resets it. Initial capacity
+and capped doubling are in SPARK; retry control and array overlays remain in C.
+The sizes use compiler-derived `Node'Max_Size_In_Storage_Elements` and
+`Name_Info'Max_Size_In_Storage_Elements` attributes, not hard-coded values.
+Because GNATprove does not accept these attributes in SPARK, their definitions
+are exposed as deferred constants by `XML3_Parser.Native_Sizes`, with the
+attribute expressions in its non-SPARK private part; their correspondence to
+native allocation byte units and C/Ada layout remains trusted. Allocation
+freshness and actual allocation/free effects are also trusted, not consequences
+of these contracts. GNATprove proves 10 checks for `Workspaces.Allocate`, 1 for
+`Initial_Capacity`, 2 for `Next_Capacity`, and 1 for `Release`; `Empty` and
+`Ready` have 0 checks. `XML3_Parser.Native_Sizes` proves 0 checks. Tests cover
+small byte limits, growth to
+the cap without large allocations, all four injected failures with every other
+block freed once, repeat release, arena-growth OOM/retry, and editing/output/
+reparsing after releasing original input.
 
 The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
 though the library creates no Ada tasks. On the supported Linux runtime,

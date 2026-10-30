@@ -942,10 +942,13 @@ nativeの読み取り可能範囲・入力安定性、byte効果とallocator/ABI
 これらは parser resource profile であり、コア表現上限とは別です。入力 byte index
 の表現境界は `Integer'Last - 16`、node ID の表現境界はその半分です。2,048
 node という総数上限はありません。C `int` の入力長が表現境界を超える場合は拒否
-します。C adapter は呼び出しごとの heap workspace と DOM block を確保し、node
-arena の不足時は上限まで幾何学的に拡張して同じ parser を再実行します。
-SPARK core は allocator/FFI を使用しませんが、C adapter の割り当てや所有権境界は
-proof 範囲外です。1 GB value profile の厳密な境界はその大きさで実 allocation
+します。`Parser.Workspaces`が呼び出しごとの4つのheap作業領域を確保し、部分失敗時は
+すべて解放して空に戻します。再確保前には空であることが前提です。scratchは空入力でも
+最低1byteを確保し、各領域のbyte上限を乗算前に検査します。サイズ拒否は従来の
+サイズ計算失敗と同じno-memoryへ写像します。初期容量・上限付き倍増もSPARKで計算し、
+C側はnode arena不足時に同じparserを再実行します。DOM blockは既存のSPARK経路で作成します。
+allocatorの実動作・freshness、native layout/byte effects、C側のarray overlay・再試行・lock・
+診断/例外変換と完全な所有権意味論はproof範囲外です。1 GB value profile の厳密な境界はその大きさで実 allocation
 test をしていません。
 
 2.15.4 との境界互換性には既知の差があります。固定版は通常の名前と PI target

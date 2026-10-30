@@ -15,6 +15,7 @@ with XML3_Encoding.Buffers;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
 with XML3_Text.QNames;
@@ -29,19 +30,8 @@ package body XML3_C is
    use type XML3_DOM_Store.Queries.Space_Policy;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
-   Initial_Arena : constant := 2_048;
    Allowed_Options : constant Interfaces.Unsigned_32 := 16#0008_0860#;
    Arena_Status : constant int := -1;
-
-   Parser_Node_Bytes : constant Storage_Offset :=
-     XML3_Parser.Node'Max_Size_In_Storage_Elements;
-   Name_Bytes : constant Storage_Offset :=
-     XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements;
-
-   function Multiply_Size (Left, Right : size_t) return size_t;
-
-   function C_Malloc (Size : size_t) return System.Address
-     with Import, Convention => C, External_Name => "malloc";
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -61,14 +51,6 @@ package body XML3_C is
      (Buffer : System.Address; Size : Interfaces.C.int;
       URL, Encoding : System.Address; Options : Interfaces.C.int;
       Status : out int) return System.Address;
-
-   function Multiply_Size (Left, Right : size_t) return size_t is
-   begin
-      if Right /= 0 and then Left > size_t'Last / Right then
-         raise Storage_Error;
-      end if;
-      return Left * Right;
-   end Multiply_Size;
 
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
@@ -185,32 +167,10 @@ package body XML3_C is
       Result : out System.Address; Status : out int;
       Diagnostic : out XML3_Parser.Diagnostic_Info)
    is
-      Capacity : Natural := Natural'Max
-        (1, Natural'Min (Initial_Arena, Input'Length));
-      Nodes_Buffer : System.Address := System.Null_Address;
-      Names_Buffer : System.Address := System.Null_Address;
-      Scratch_A_Buffer : System.Address := System.Null_Address;
-      Scratch_B_Buffer : System.Address := System.Null_Address;
-
-      procedure Free_Workspaces is
-      begin
-         if Nodes_Buffer /= System.Null_Address then
-            C_Free (Nodes_Buffer);
-            Nodes_Buffer := System.Null_Address;
-         end if;
-         if Names_Buffer /= System.Null_Address then
-            C_Free (Names_Buffer);
-            Names_Buffer := System.Null_Address;
-         end if;
-         if Scratch_A_Buffer /= System.Null_Address then
-            C_Free (Scratch_A_Buffer);
-            Scratch_A_Buffer := System.Null_Address;
-         end if;
-         if Scratch_B_Buffer /= System.Null_Address then
-            C_Free (Scratch_B_Buffer);
-            Scratch_B_Buffer := System.Null_Address;
-         end if;
-      end Free_Workspaces;
+      package Workspaces renames XML3_Parser.Workspaces;
+      Capacity : Workspaces.Capacity := Workspaces.Initial_Capacity (Input'Length);
+      Workspace : Workspaces.Buffers;
+      Allocated : Workspaces.Allocation_Result;
    begin
       Result := System.Null_Address;
       Status := Status_Internal_Error;
@@ -218,45 +178,33 @@ package body XML3_C is
         (Domain => 1, Code => 0, Level => 0, Byte_Position => 1,
          Int1 => 0, Int2 => 0);
       loop
-         Nodes_Buffer := C_Malloc
-           (Multiply_Size (size_t (Capacity), size_t (Parser_Node_Bytes)));
-         Names_Buffer := C_Malloc
-           (Multiply_Size (size_t (Capacity), size_t (Name_Bytes)));
-         Scratch_A_Buffer := C_Malloc
-           (size_t (Natural'Max (1, Input'Length)));
-         Scratch_B_Buffer := C_Malloc
-           (size_t (Natural'Max (1, Input'Length)));
-         if Nodes_Buffer = System.Null_Address
-           or else Names_Buffer = System.Null_Address
-           or else Scratch_A_Buffer = System.Null_Address
-           or else Scratch_B_Buffer = System.Null_Address
-         then
-            Free_Workspaces;
-            Status := Status_No_Memory;
-            return;
-         end if;
+         Workspaces.Allocate (Capacity, Input'Length, Workspace, Allocated);
+         case Allocated is
+            when Workspaces.No_Memory | Workspaces.Limit_Exceeded =>
+               Status := Status_No_Memory;
+               return;
+            when Workspaces.Allocated => null;
+         end case;
          Build_Arena
-           (Input, Huge, Encoding, Positive (Capacity), Nodes_Buffer,
-            Names_Buffer, Scratch_A_Buffer, Scratch_B_Buffer, Result, Status,
+           (Input, Huge, Encoding, Capacity, Workspace.Nodes,
+            Workspace.Names, Workspace.Scratch_A, Workspace.Scratch_B, Result, Status,
             Diagnostic);
-         Free_Workspaces;
+         Workspaces.Release (Workspace);
          exit when Status /= Arena_Status;
          if Capacity = XML3_Parser.Max_Nodes then
             Status := Status_Limit_Exceeded;
             return;
-         elsif Capacity > XML3_Parser.Max_Nodes / 2 then
-            Capacity := XML3_Parser.Max_Nodes;
          else
-            Capacity := Capacity * 2;
+            Capacity := Workspaces.Next_Capacity (Capacity);
          end if;
       end loop;
    exception
       when Storage_Error =>
-         Free_Workspaces;
+         Workspaces.Release (Workspace);
          Result := System.Null_Address;
          Status := Status_No_Memory;
       when others =>
-         Free_Workspaces;
+         Workspaces.Release (Workspace);
          Result := System.Null_Address;
          Status := Status_Internal_Error;
    end Build;

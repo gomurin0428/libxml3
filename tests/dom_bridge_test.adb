@@ -15,6 +15,7 @@ with XML3_DOM.Materialize;
 with XML3_Native_Memory;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Parser.Workspaces;
 with XML3_Encoding;
 
 procedure DOM_Bridge_Test is
@@ -1523,6 +1524,54 @@ begin
          and then XML3_DOM_Store.Is_Empty (Managed));
    end;
    Ada.Text_IO.Put_Line ("Unpublished document rollback and Store reuse passed");
+
+   declare
+      package Workspaces renames XML3_Parser.Workspaces;
+      use type Workspaces.Allocation_Result;
+      Item : Workspaces.Buffers;
+      Status : Workspaces.Allocation_Result;
+      Count : Workspaces.Capacity := 1;
+      procedure Fail_Malloc_Nth (Nth : Interfaces.C.unsigned)
+        with Import, Convention => C, External_Name => "bridge_fail_workspace_malloc_nth";
+      procedure Check_Malloc_Failure
+        with Import, Convention => C, External_Name => "bridge_check_malloc_failure";
+   begin
+      pragma Assert (Workspaces.Initial_Capacity (0) = 1);
+      pragma Assert (Workspaces.Initial_Capacity (1) = 1);
+      pragma Assert (Workspaces.Initial_Capacity (10_000) = 2_048);
+      while Count < Workspaces.Capacity'Last loop
+         declare
+            Next : constant Workspaces.Capacity := Workspaces.Next_Capacity (Count);
+         begin
+            pragma Assert (Next > Count and then Next =
+              (if Count > Workspaces.Capacity'Last / 2
+               then Workspaces.Capacity'Last else Count * 2));
+            Count := Next;
+         end;
+      end loop;
+      pragma Assert (Workspaces.Next_Capacity (Count) = Count);
+      Workspaces.Allocate (1, 0, Item, Status);
+      pragma Assert (Status = Workspaces.Allocated and then Workspaces.Ready (Item));
+      Workspaces.Release (Item);
+      Workspaces.Release (Item);
+      pragma Assert (Workspaces.Empty (Item));
+      Workspaces.Allocate (1, 0, Item, Status, Limit => 0);
+      pragma Assert (Status = Workspaces.Limit_Exceeded and then Workspaces.Empty (Item));
+      Workspaces.Allocate (1, 1_025, Item, Status, Limit => 1_024);
+      pragma Assert (Status = Workspaces.Limit_Exceeded and then Workspaces.Empty (Item));
+      Workspaces.Allocate (Workspaces.Capacity'Last, 0, Item, Status, Limit => 1_024);
+      pragma Assert (Status = Workspaces.Limit_Exceeded and then Workspaces.Empty (Item));
+      for Nth in 1 .. 4 loop
+         Fail_Malloc_Nth (Interfaces.C.unsigned (Nth));
+         Workspaces.Allocate (8, 32, Item, Status);
+         Check_Malloc_Failure;
+         pragma Assert (Status = Workspaces.No_Memory and then Workspaces.Empty (Item));
+         Workspaces.Allocate (8, 32, Item, Status);
+         pragma Assert (Status = Workspaces.Allocated and then Workspaces.Ready (Item));
+         Workspaces.Release (Item);
+      end loop;
+   end;
+   Ada.Text_IO.Put_Line ("Parser workspace bounds, growth, failure cleanup and retry passed");
 
    declare
       use type XML3_DOM_Constructors.Construction_Status;

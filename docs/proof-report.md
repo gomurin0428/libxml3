@@ -2,6 +2,26 @@
 
 ## Result
 
+Parser workspaces now use `XML3_Parser.Workspaces` for checked native allocation,
+partial-allocation rollback, release/reset, initial capacity and capped doubling.
+The four native allocation calls and minimum one-byte scratch blocks are retained.
+Per-block bounds are checked before multiplication; native sizes/layout, allocator
+freshness and byte effects remain trusted. The C adapter retains array overlays,
+the retry loop, locking and status/exception/diagnostic mapping; allocation-size
+rejection keeps the existing no-memory mapping. Tests cover small byte limits,
+growth to the cap without large allocation, each failed allocation and all remaining
+blocks freed once, repeated release, arena-growth OOM/retry and source-free
+edit/serialize/reparse workflows. Complete ownership and parser semantics are not
+proved by the non-null/reset contracts. Node/name allocation sizes are derived
+from `XML3_Parser.Node'Max_Size_In_Storage_Elements` and
+`XML3_Namespaces.Name_Info'Max_Size_In_Storage_Elements`, not hard-coded. Those
+attributes are declared in the non-SPARK private part of `XML3_Parser.Native_Sizes`
+because GNATprove does not accept them in SPARK; their correspondence to native
+allocation byte units and C/Ada layout remains trusted. GNATprove proves 10 checks
+for `Workspaces.Allocate`, 1 for `Initial_Capacity`, 2 for `Next_Capacity`, and
+1 for `Release`; `Empty` and `Ready` have 0 checks. The
+`XML3_Parser.Native_Sizes` package summary has 0 checks.
+
 UTF-16 native conversion uses `Encoding.Buffers.Convert_UTF16` and its bounded
 two-pass helper, moving measure/allocate/fill/failure cleanup out of the C adapter.
 String and native paths share code-unit assembly, surrogate validation and UTF-8
@@ -27,7 +47,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,266 checks, 1,488 by flow analysis and 11,778
+It completed successfully: **13,289 checks, 1,497 by flow analysis and 11,792
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -695,7 +715,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 521 entity
+The 529 entity
 summaries report 0 flow errors, 175 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -716,7 +736,9 @@ namespace-list, namespace-copy, QName, substring-search, and slicing paths
 include trusted termination
 diagnostics for native reads, allocation, writes and frees; an unreachable/no-effect
 diagnostic also remains for the portable pointer-array size guard on this 64-bit
-host.
+host. The workspace unit adds eight such native-call diagnostics: four for
+`Allocate` and four for `Free`. These are distinct from the 175 per-entity
+analyzer warnings above and do not prove allocator side effects.
 The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
 Runtime wrapper, unused helper outputs, and trusted native-call termination
 warnings. They do not represent unproved checks.
@@ -729,14 +751,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 384 |
-| Initialization | 912 |
+| Data dependencies | 388 |
+| Initialization | 913 |
 | Non-aliasing | 1 |
-| Runtime checks | 5,629 |
+| Runtime checks | 5,636 |
 | Assertions | 1,671 |
-| Functional contracts | 4,403 |
-| Termination | 266 |
-| **Total** | **13,266** |
+| Functional contracts | 4,410 |
+| Termination | 270 |
+| **Total** | **13,289** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1458,12 +1480,12 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 67 hashes identify the source files and build/test configuration
+The following 70 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-b7ff89267fb0440de4690fe2e0129b3bed87972074fdbf3a258af5baf4231f19  src/xml3_c.adb
+bf36e22de25789eda7faf5782029ba0b2a118df8b950db07a58d7e381a7d8c48  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1515,6 +1537,9 @@ a2dd0794d3179e2f24d0827e75171abd04f416c952369a2266237ef9640a115f  src/xml3_parse
 8a8a1072a61711b93dcd35e5d7f10f2850d7180f6768b601478e0cde8364dc5c  src/xml3_serialization.adb
 80ac8796a138b37de53368b154c0d1b0c9a98038d26d774f3a50658b670dd7ce  src/xml3_serialization.ads
 5883e231cf0b6c7d7d81f6958665c21d77188f1bae9678a3706e4372c5c686df  src/xml3_parser.ads
+b65a6b5269e0a457b0362da1986fb73db64415f9ac5588b5cd1d475dbdc3a9cb  src/xml3_parser-native_sizes.ads
+ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
+614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
 eec5b19f01e1825c382a1df63677de010e792560f6874926f0dbfa927d06cc23  src/xml3_text.adb
 26b152be00875c73f149041cb8e5ae0e0524065f8c8c5095c85389b2d36fcae9  src/xml3_text.ads
 05e393dd15e0bcd89400ce784838371941f95bd1ac2e129fdb396f4cba94485e  src/xml3_text-qnames.adb
@@ -1523,10 +1548,10 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
+2a122351dcbbf92a271f8aa1eeef1d26f9429b50a83ddb21f581dd36289eee6d  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-e50f8b03b68adbe0357f6a9c6ac0dcd22d7617d1ccebccd99fd873460777ca91  Makefile
-14b377569fa7c620f43f8432d8b20028365fb975bd26335f950129f6d3956ed8  tests/oom-test.c
+28cf147b8e6306c393f9048848d42e87b95558269bc27b11a262a80fec95d89e  Makefile
+320ae36171d7144d753b751edfaf7a2ce001c3d32bd6caa7c0328a7f8d1c81ab  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml

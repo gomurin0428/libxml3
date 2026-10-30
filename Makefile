@@ -46,6 +46,7 @@ test-text-buffers: tests/text-buffers-test
 	./tests/text-buffers-test
 
 tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests/dom_bridge_facade.c \
+        src/xml3_parser-native_sizes.ads src/xml3_parser-workspaces.ads src/xml3_parser-workspaces.adb \
 		src/xml3_dom_store.ads src/xml3_dom_store.adb \
 		src/xml3_dom_store-queries.ads src/xml3_dom_store-queries.adb \
 		src/xml3_dom_store-properties.ads src/xml3_dom_store-properties.adb \
@@ -57,6 +58,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
 		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
 		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \
 		src/xml3_parser.ads src/xml3_parser.adb \
+		src/xml3_parser-native_sizes.ads \
 		src/xml3_encoding.ads src/xml3_encoding.adb
 	$(ADA_BIN)/gprbuild -p -P tests/dom_bridge_test.gpr -o dom-bridge-test
 
@@ -320,7 +322,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test document-entity 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test name-values 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test uri-unescape-inplace 0
-	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success parsed-pi malformed utf16 utf16-empty warning copy replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
+	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success arena-growth parsed-pi malformed utf16 utf16-empty warning copy replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \

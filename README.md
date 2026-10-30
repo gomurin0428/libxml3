@@ -591,8 +591,10 @@ NULLと空のcontentは区別し、NULL contentのコメントは出力しませ
 通常 parser profile は name component/PI target を 50,000 bytes、decoded value
 を 10,000,000 bytes、深さを 256 に制限します。`XML_PARSE_HUGE` はそれぞれ
 10,000,000 bytes、1,000,000,000 bytes、2,048 に拡張します。文書全体の 64 KiB
-上限や 2,048-node policy cap はなく、C adapter は heap arena を必要に応じて
-拡張します。これらは表現・割り当て可能性の保証や完全な DoS 防止を意味せず、
+上限や 2,048-node policy cap はなく、heap arena は必要に応じて拡張します。
+作業領域のサイズ検査・4領域の確保・部分失敗の解放と容量増加の計算はSPARKの
+`Parser.Workspaces`が担当します。C側にはarray overlay・再試行・lock・診断変換が残ります。
+これらは表現・割り当て可能性の保証や完全な DoS 防止を意味せず、
 詳細な既知の互換差と境界は compatibility/assurance 文書を参照してください。
 
 UTF-16 の binary input には、明示長を渡せる `xmlReadMemory` を使用します。
