@@ -135,7 +135,7 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Set_Content
-        (Facade : System.Address; Content : String; Has_Content : Boolean;
+        (Facade, Content : System.Address; Length : Integer;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 

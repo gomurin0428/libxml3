@@ -81,6 +81,9 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlNodeAddContent` / `xmlNodeAddContentLen` / `xmlTextConcat` の本文はSPARKで計測し、
 C側の中間Stringなしで新しい所有領域へ直接コピーします。未登録nodeとscalar限定APIの
 不適切なkindは入力読み取り前に拒否し、既存本文を入力として使う場合もコピー完了まで旧領域を保持します。
+`xmlNodeSetContent` / `xmlNodeSetContentLen` も登録照合・入力計測をSPARKで行い、
+scalar本文は直接コピーします。要素・属性だけはSPARK内のバッファで文字参照を復号し、
+新しい本文の準備・接続に成功してから旧子ノードを解放します。
 `xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
 列挙し、同じ prefix は最初の宣言だけを含めます。組み込み `xml` binding は追加せず、
 `doc` 引数は無視します。返却配列は `xmlFree` で解放し、各 namespace pointer は借用です。

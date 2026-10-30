@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,053 checks, 1,419 by flow analysis and 11,634
+It completed successfully: **13,056 checks, 1,421 by flow analysis and 11,635
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -623,12 +623,12 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 370 |
-| Initialization | 860 |
+| Initialization | 862 |
 | Runtime checks | 5,570 |
 | Assertions | 1,667 |
-| Functional contracts | 4,323 |
+| Functional contracts | 4,324 |
 | Termination | 263 |
-| **Total** | **13,053** |
+| **Total** | **13,056** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -741,7 +741,8 @@ complete and facades present. Its frame preserves node and namespace counts,
 unrelated live node views, and all target-node fields other than content
 address, length, and pin on success; a non-success status leaves the target
 node unchanged.
-It now accepts an optional native span, retaining the String path for setters.
+It accepts native spans for both append and scalar replacement; the obsolete
+String path has been removed.
 Append copies old content and the measured suffix into a fresh owned buffer
 before projection/pin updates, keeping aliased old content live until both
 copies finish. Creating a trailing text child reuses `Create_Node`'s native
@@ -749,10 +750,14 @@ span path. There is no intermediate input String in either append path.
 Serialization tests cover guarded exact-count/terminated inputs, source
 protection before serialization/free/reparse/editing, native self-aliasing,
 invalid-facade/kind read avoidance and NULL/zero/nonpositive-length distinctions.
-GNATprove proves 36 checks for `Store.Content.Append`, 69 for private
-`Replace_Content`, and 1 for `Runtime.Add_Content`.
+GNATprove proves 36 checks for `Store.Content.Append`, 67 for private
+`Replace_Content`, and 1 for `Runtime.Add_Content`. `Store.Content.Set` proves
+34 checks and `Runtime.Set_Content` proves 1.
 `xmlNodeSetContent` routes through `Runtime.Set_Content` and
-`XML3_DOM_Store.Content.Set`. Element/Attribute input is decoded before
+`XML3_DOM_Store.Content.Set`. C forwards addresses and the original integer
+length; Store validates the registered facade before native measurement.
+Scalar input uses the shared native-span replacement helper without an
+intermediate String. Element/Attribute input is copied into SPARK buffers and decoded before
 mutation; the replacement text child is attached before old children are
 retired. The `Retained_Ancestor` ghost lemma relates current live ancestry to
 the original state for the iterative namespace-aware retirement frame.
@@ -766,12 +771,16 @@ claimed. Runtime tests cover append and replacement semantics, decoding,
 aliasing, facade and detached namespace-owner lifetime, and allocation-failure
 rollback/retry; those are test evidence, not formal claims.
 
-`xmlNodeSetContentLen` adds no SPARK Store/Runtime code and makes no new proof
-claim. Its exported wrapper uses the trusted `C_String_Prefix`/`Scan_Length`
-conversion in `xml3_c.adb` before calling the existing `Runtime.Set_Content`;
-foreign pointer validity and bounded scanning are outside GNATprove. Runtime
-tests exercise non-terminated bounded input and a zero-length pointer at a
-guard page. The pinned reference parser reads `content[0]` even when `len` is
+`xmlNodeSetContentLen` uses `Measure` for negative lengths and
+`Measure_Byte_Prefix` for bounded nonnegative lengths in Store. NULL input
+skips measurement and length rejection; zero length never reads the input.
+Unregistered facades and oversized non-NULL input lengths fail before input
+reads. Native pointer readability/extents/stability, byte effects, allocator,
+ABI and complete public semantics remain trusted boundaries. Runtime tests
+exercise guarded bounded/terminated input, source protection followed by
+serialization/free/reparse/editing, scalar self-aliasing, and replacement
+from content in a child that is then retired.
+The pinned reference parser reads `content[0]` even when `len` is
 zero, so the guard-page case is library-only; the safe empty-value behavior is
 test evidence, not a formal pointer-safety claim.
 
@@ -1334,7 +1343,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-d8bed6e9e467632bc52a05b3d69f8d556057f87c76745b9c279ab0cc93eb31ad  src/xml3_c.adb
+bc9eb4ce13660a2928f8ae58c669b3c3c71c56f62a1d9902f9eee1db37f56b50  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1357,10 +1366,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-72edd372aa23df82992e6e9972e16cbd583ceb5ab380da538b87b36af52f49aa  src/xml3_dom_runtime.adb
-39e22969b381db70e9333cae0e2bf31e4d4246bb3e000745813be2c57e378d3f  src/xml3_dom_runtime.ads
-29f115400d8e384b2fefe574a0ec214a0e2f381440bc01847c8cd1186573c947  src/xml3_dom_store-content.adb
-5211eb2d1bf0b7fd6e4c3cce8970c1b8639b15831ca05d4228d182c29275c3f2  src/xml3_dom_store-content.ads
+0382d38ef109c7b15e9e9536f4500d54aa1b97de24e31f0ea2be2cd7cd8e6d5d  src/xml3_dom_runtime.adb
+8860cb621c0ca497930daecbd7d07e97f3f765fe9ec4a88deca2959c7527ce46  src/xml3_dom_runtime.ads
+18e18442a65357e6cea514f3e0473899e17f03f48b505bd8d18c56ad62556b68  src/xml3_dom_store-content.adb
+9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
@@ -1398,7 +1407,7 @@ dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 9caf83872228b36227ad3a6dcafb9fa1bf09b99d091e1f394d6cd20c79a414a8  Makefile
 f8684434c8ee371920786d1586adc38277fada588070746f48f22c626e5c21b8  tests/oom-test.c
-1d5ac3e9909853977aef29017de60400e47eed68a687b17b36a8c932e1436448  tests/serialization-test.c
+831259a7035006ea0f02955bfce4ce35cd57698c84ed48057fc18dc9872ba5e4  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```

@@ -405,8 +405,13 @@ NULL content は子を作らず、empty string は空の text 子を作る点も
 固定版と同じ NUL-terminated 入力です。NUL 後の見えない bytes を scalar の確保領域に
 残す upstream の挙動は再現せず、論理的な文字列だけを保存します。要素・属性では途中で
 切れた参照や UTF-8 を拒否し、元の tree を保持します。長さには既存の入力上限を適用します。
-長さ 0 は空文字列として既存 setter に渡し、要素の children を空にします。固定版の parser は
+長さ 0 は空の本文として扱い、要素の children を空にします。固定版の parser は
 長さ 0 でも先頭 byte を読み、非 NUL なら空の text child を作るため、この挙動は再現しません。
+両setterはC側でStringを作らず、SPARKでnodeの登録照合をしてから入力を計測します。
+scalarはnative spanを直接コピーし、要素・属性だけは入力/復号バッファを使います。
+NULL本文は長さによらずNULL、長さ0のnon-NULL本文は空として扱います。未登録nodeと
+non-NULL本文への過大な長さ指定は入力を読まずcode115で拒否します。旧本文や旧子の本文を
+入力として使っても、必要なコピー・復号が終わるまでは解放しません。
 `xmlNodeAddContentLen` は raw text を長さ指定で追記します。置換とは異なり、長さ 0 以下
 または NULL content は何もしません。正の長さは最初の NUL または指定末尾までを読み、
 NUL 後の見えない bytes は保存しません。先頭が NUL でも正の長さの入力なら、必要に応じて

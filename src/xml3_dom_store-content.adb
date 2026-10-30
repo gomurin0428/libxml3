@@ -442,10 +442,9 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    end New_Child;
 
    procedure Replace_Content
-     (S : in out Store; N : Node_Ref; Value : String;
-      Append_Mode, Has_Content : Boolean; Status : out Operation_Status;
-      Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+     (S : in out Store; N : Node_Ref; Content_Source : System.Address;
+      Source_Length : Natural;
+      Append_Mode, Has_Content : Boolean; Status : out Operation_Status)
      with Pre => S.Current /= null
        and then Valid (S.Current.all)
        and then Can_Edit (S.Current.all)
@@ -454,7 +453,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
        and then N in 1 .. Node_Ref (Node_Count (S.Current.all))
        and then Node (S.Current.all, N).State = Live
        and then (if Content_Source = System.Null_Address then Source_Length = 0
-         else Has_Content and then Value'Length = 0),
+         else Has_Content),
      Post => S.Current /= null
        and then Valid (S.Current.all)
        and then Can_Edit (S.Current.all)
@@ -481,15 +480,11 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
               Content_Pin => Node (S.Current.all, N).Content_Pin));
 
    procedure Replace_Content
-     (S : in out Store; N : Node_Ref; Value : String;
-      Append_Mode, Has_Content : Boolean; Status : out Operation_Status;
-      Content_Source : System.Address := System.Null_Address;
-      Source_Length : Natural := 0)
+     (S : in out Store; N : Node_Ref; Content_Source : System.Address;
+      Source_Length : Natural;
+      Append_Mode, Has_Content : Boolean; Status : out Operation_Status)
    is
       Target : constant Node_View := Node (S.Current.all, N);
-      Value_Length : constant Natural :=
-        (if Content_Source = System.Null_Address then Value'Length
-         else Source_Length);
       Length : Natural;
       Buffer, Suffix_Address : System.Address := System.Null_Address;
       Own : Owner_Ref := Null_Owner;
@@ -497,13 +492,13 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    begin
       Status := Limit_Exceeded;
       if Append_Mode
-        and then (Value_Length > Natural'Last - Target.Content_Length
-          or else Target.Content_Length + Value_Length > Integer'Last - 1)
+        and then (Source_Length > Natural'Last - Target.Content_Length
+          or else Target.Content_Length + Source_Length > Integer'Last - 1)
       then
          return;
       end if;
       if Has_Content and then not Append_Mode
-        and then Value_Length > Integer'Last - 1
+        and then Source_Length > Integer'Last - 1
       then
          return;
       end if;
@@ -519,7 +514,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       end if;
 
       Length := (if Append_Mode then Target.Content_Length else Natural (0))
-        + (if Has_Content then Value_Length else Natural (0));
+        + (if Has_Content then Source_Length else Natural (0));
       if Has_Content then
          Ensure_Capacity
            (S.Current, Node_Count (S.Current.all),
@@ -548,11 +543,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          if Append_Mode then
             Native.Copy_Bytes (Target.Content, Buffer, Target.Content_Length);
          end if;
-         if Content_Source = System.Null_Address then
-            Native.Write_String (Suffix_Address, 0, Value);
-         else
-            Native.Copy_Bytes (Content_Source, Suffix_Address, Source_Length);
-         end if;
+         Native.Copy_Bytes (Content_Source, Suffix_Address, Source_Length);
          Native.Write_Byte (Buffer, Length, Character'Val (0));
          Register_Owner (S.Current.all, Buffer, Own, Success);
          if not Success then
@@ -626,7 +617,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
          when Text_Node | CData_Node | Comment_Node
            | Processing_Instruction_Node =>
             Replace_Content
-              (S, N, "", True, True, Status, Suffix, Span);
+              (S, N, Suffix, Span, True, True, Status);
 
          when Element_Node | Attribute_Node =>
             if Node (S.Current.all, N).Kind = Attribute_Node
@@ -645,7 +636,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
                end if;
                if Node (S.Current.all, Tail).Kind = Text_Node then
                   Replace_Content
-                    (S, Tail, "", True, True, Status, Suffix, Span);
+                    (S, Tail, Suffix, Span, True, True, Status);
                   return;
                end if;
             end if;
@@ -680,21 +671,34 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
    end Append;
 
    procedure Set
-     (S : in out Store; Facade : System.Address; Content : String;
-      Has_Content : Boolean; Status : out Operation_Status)
+     (S : in out Store; Facade, Content : System.Address; Length : Integer;
+      Status : out Operation_Status)
    is
-      N : constant Node_Ref := Find_Node (S, Facade);
+      N : constant Node_Ref := Find_Registered_Node (S, Facade);
+      Has_Content : constant Boolean := Content /= System.Null_Address;
+      Span : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
       New_Node : Node_Ref;
       Ignored_Namespace : Namespace_Ref;
       Created_Status, Cleanup_Status : Operation_Status;
-      Attached, Decoded_Valid : Boolean;
-      Decoded_Length : XML3_Text.Byte_Count;
-      Decoded : String (1 .. Content'Length) :=
-        (others => Character'Val (0));
+      Attached : Boolean;
    begin
       Status := Invalid_Argument;
       if N = Null_Node then
          return;
+      end if;
+      if Has_Content then
+         if Length < 0 then
+            XML3_Text.Buffers.Measure (Content, Span, Found);
+            if not Found then
+               return;
+            end if;
+         elsif Length > XML3_Text.Max_Bytes then
+            return;
+         else
+            XML3_Text.Buffers.Measure_Byte_Prefix
+              (Content, XML3_Text.Byte_Count (Length), Span);
+         end if;
       end if;
       if Node (S.Current.all, N).Kind = Document_Node then
          Status := Created;
@@ -703,54 +707,59 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
       case Node (S.Current.all, N).Kind is
          when Text_Node | CData_Node | Comment_Node
            | Processing_Instruction_Node =>
-            Replace_Content (S, N, Content, False, Has_Content, Status);
+            Replace_Content
+              (S, N, Content, Span, False, Has_Content, Status);
          when Element_Node | Attribute_Node =>
-            if Has_Content and then Content'Length > 0 then
-               if Content'First /= 1
-                 or else Content'Last > XML3_Text.Max_Bytes
-               then
-                  Status := Limit_Exceeded;
-                  return;
+            declare
+               Input_Length : constant XML3_Text.Byte_Count := Span;
+               Input : String (1 .. Input_Length);
+               Decoded : String (1 .. Input_Length) :=
+                 (others => Character'Val (0));
+               Decoded_Length : XML3_Text.Byte_Count;
+               Decoded_Valid : Boolean;
+            begin
+               if Has_Content and then Span > 0 then
+                  Native.Read_String (Content, Input);
+                  XML3_Text.Decode
+                    (Input, False, True, Decoded, Decoded_Length,
+                     Decoded_Valid, False);
+                  if not Decoded_Valid then
+                     return;
+                  end if;
+               else
+                  Decoded_Length := 0;
                end if;
-               XML3_Text.Decode
-                 (Content, False, True, Decoded, Decoded_Length,
-                  Decoded_Valid, False);
-               if not Decoded_Valid then
-                  return;
+               New_Node := Null_Node;
+               if Decoded_Length > 0 then
+                  Create_Node
+                    (S.Current, Text_Node, "text",
+                     Decoded (1 .. Integer (Decoded_Length)), True,
+                     Null_Namespace, New_Node, Ignored_Namespace,
+                     Created_Status);
+                  if Created_Status /= Created then
+                     Status := Created_Status;
+                     return;
+                  end if;
+                  Attach_Child (S.Current.all, N, New_Node, Attached);
+                  if not Attached then
+                     XML3_DOM_Bridge.Synchronize (S.Current.all);
+                     XML3_DOM_Store.Release
+                       (S, Node (S.Current.all, New_Node).Facade,
+                        Content_Node, False, Cleanup_Status);
+                     Status := (if Cleanup_Status = Created
+                                then Invalid_Argument else Internal_Error);
+                     return;
+                  end if;
                end if;
-            else
-               Decoded_Length := 0;
-            end if;
-            New_Node := Null_Node;
-            if Decoded_Length > 0 then
-               Create_Node
-                 (S.Current, Text_Node, "text",
-                  Decoded (1 .. Integer (Decoded_Length)), True,
-                  Null_Namespace, New_Node, Ignored_Namespace,
-                  Created_Status);
-               if Created_Status /= Created then
-                  Status := Created_Status;
-                  return;
+               if Node (S.Current.all, N).Kind = Attribute_Node then
+                  Retire_Attribute_Children (S.Current.all, N, New_Node);
+               else
+                  XML3_DOM.Retire_Element_Children
+                    (S.Current.all, N, New_Node);
                end if;
-               Attach_Child (S.Current.all, N, New_Node, Attached);
-               if not Attached then
-                  XML3_DOM_Bridge.Synchronize (S.Current.all);
-                  XML3_DOM_Store.Release
-                    (S, Node (S.Current.all, New_Node).Facade,
-                     Content_Node, False, Cleanup_Status);
-                  Status := (if Cleanup_Status = Created
-                             then Invalid_Argument else Internal_Error);
-                  return;
-               end if;
-            end if;
-            if Node (S.Current.all, N).Kind = Attribute_Node then
-               Retire_Attribute_Children (S.Current.all, N, New_Node);
-            else
-               XML3_DOM.Retire_Element_Children
-                 (S.Current.all, N, New_Node);
-            end if;
-            XML3_DOM_Bridge.Synchronize (S.Current.all);
-            Status := Created;
+               XML3_DOM_Bridge.Synchronize (S.Current.all);
+               Status := Created;
+            end;
          when Document_Node =>
             Status := Created;
       end case;
