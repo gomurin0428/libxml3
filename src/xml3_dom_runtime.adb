@@ -134,27 +134,27 @@ is
       end Merge_Text;
 
       procedure New_Child
-        (Parent, Ns : System.Address; Name, Content : String;
-         Raw_Content, Has_Content : Boolean;
+        (Parent, Ns, Name, Content : System.Address;
+         Raw_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Content.New_Child
-           (Current, Parent, Ns, Name, Content, Raw_Content, Has_Content,
+           (Current, Parent, Ns, Name, Content, Raw_Content,
             Result, Status);
       end New_Child;
 
       procedure New_Doc_Node
-        (Doc, Ns : System.Address; Name, Content : String;
-         Raw_Content, Has_Content : Boolean;
+        (Doc, Ns, Name, Content : System.Address;
+         Raw_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status;
          Attribute_Mode : Boolean := False)
       is
       begin
          XML3_DOM_Store.Content.New_Doc_Node
-           (Current, Doc, Ns, Name, Content, Raw_Content, Has_Content,
+           (Current, Doc, Ns, Name, Content, Raw_Content,
             Result, Status, Attribute_Mode);
       end New_Doc_Node;
 

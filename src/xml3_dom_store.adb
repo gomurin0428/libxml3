@@ -43,6 +43,23 @@ package body XML3_DOM_Store with SPARK_Mode is
       return Null_Node;
    end Find_Node;
 
+   function Find_Registered_Namespace
+     (S : Store; Facade : System.Address) return Namespace_Ref
+   is
+      Item : Namespace_View;
+   begin
+      if S.Current = null or else Facade = System.Null_Address then
+         return Null_Namespace;
+      end if;
+      for Index in 1 .. Namespace_Count (S.Current.all) loop
+         Item := Namespace (S.Current.all, Namespace_Ref (Index));
+         if Item.State = Live and then Item.Facade = Facade then
+            return Namespace_Ref (Index);
+         end if;
+      end loop;
+      return Null_Namespace;
+   end Find_Registered_Namespace;
+
    function Find_Namespace
      (S : Store; Facade : System.Address) return Namespace_Ref
    is
@@ -280,7 +297,7 @@ package body XML3_DOM_Store with SPARK_Mode is
    is
       N : Node_Ref;
       Xml_Ns : Namespace_Ref;
-      Selected_Ns : constant Namespace_Ref := Find_Namespace (S, Ns);
+      Selected_Ns : constant Namespace_Ref := Find_Registered_Namespace (S, Ns);
       Initialized : Boolean;
    begin
       Result := System.Null_Address;

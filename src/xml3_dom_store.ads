@@ -279,6 +279,25 @@ private
          and then XML3_DOM.Node (S.Current.all, Find_Node'Result).Facade =
            Facade);
 
+   function Find_Registered_Namespace
+     (S : Store; Facade : System.Address) return XML3_DOM.Namespace_Ref
+     with Global => null,
+       Pre => S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all)),
+       Post => (if Find_Registered_Namespace'Result /= XML3_DOM.Null_Namespace then
+         S.Current /= null
+         and then Find_Registered_Namespace'Result in
+           1 .. XML3_DOM.Namespace_Ref
+             (XML3_DOM.Namespace_Count (S.Current.all))
+         and then XML3_DOM.Namespace
+           (S.Current.all, Find_Registered_Namespace'Result).State = XML3_DOM.Live
+         and then XML3_DOM.Namespace
+           (S.Current.all, Find_Registered_Namespace'Result).Facade = Facade);
+
    function Find_Namespace
      (S : Store; Facade : System.Address) return XML3_DOM.Namespace_Ref
      with Global => (Input => XML3_Native_Memory.Foreign_Memory),

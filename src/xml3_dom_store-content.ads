@@ -18,7 +18,8 @@ package XML3_DOM_Store.Content with SPARK_Mode is
            else Has_Content and then Content'Length = 0)
          and then (if Name_Source = System.Null_Address then Source_Name_Length = 0
            else Name'Length = 0
-             and then Kind = XML3_DOM.Processing_Instruction_Node),
+             and then Kind in XML3_DOM.Element_Node | XML3_DOM.Attribute_Node |
+               XML3_DOM.Processing_Instruction_Node),
        Post => Ready (S)
          and then (if Status = XML3_DOM_Constructors.Created then
            Result /= System.Null_Address else Result = System.Null_Address);
@@ -36,8 +37,8 @@ package XML3_DOM_Store.Content with SPARK_Mode is
            Result /= System.Null_Address else Result = System.Null_Address);
 
    procedure New_Doc_Node
-     (S : in out Store; Doc, Ns : System.Address;
-      Name, Content : String; Raw_Content, Has_Content : Boolean;
+     (S : in out Store; Doc, Ns, Name, Content : System.Address;
+      Raw_Content : Boolean;
       Result : out System.Address; Status : out Operation_Status;
       Attribute_Mode : Boolean := False)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
@@ -55,8 +56,8 @@ package XML3_DOM_Store.Content with SPARK_Mode is
            Result = System.Null_Address);
 
    procedure New_Child
-     (S : in out Store; Parent, Ns : System.Address;
-      Name, Content : String; Raw_Content, Has_Content : Boolean;
+     (S : in out Store; Parent, Ns, Name, Content : System.Address;
+      Raw_Content : Boolean;
       Result : out System.Address;
       Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
@@ -85,4 +86,25 @@ package XML3_DOM_Store.Content with SPARK_Mode is
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
        Post => Ready (S);
+
+private
+   procedure Construct_Container
+     (S : in out Store; Doc, Ns, Name : System.Address; Name_Length : Natural;
+      Content : String; Content_Source : System.Address; Source_Length : Natural;
+      Has_Text, Attribute_Mode : Boolean;
+      Result : out System.Address;
+      Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => (S.Current = null
+         or else
+           (XML3_DOM.Valid (S.Current.all)
+            and then XML3_DOM.Can_Edit (S.Current.all)
+            and then not XML3_DOM.Projection_Required (S.Current.all)
+            and then XML3_DOM.Facades_Present (S.Current.all)))
+         and then Name /= System.Null_Address
+         and then (if Content_Source = System.Null_Address then Source_Length = 0
+           else Content'Length = 0),
+       Post => Ready (S)
+         and then (if Status = XML3_DOM_Constructors.Created then
+           Result /= System.Null_Address else Result = System.Null_Address);
 end XML3_DOM_Store.Content;

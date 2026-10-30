@@ -89,8 +89,8 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure New_Child
-        (Parent, Ns : System.Address; Name, Content : String;
-         Raw_Content, Has_Content : Boolean;
+        (Parent, Ns, Name, Content : System.Address;
+         Raw_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
@@ -116,8 +116,8 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure New_Doc_Node
-        (Doc, Ns : System.Address; Name, Content : String;
-         Raw_Content, Has_Content : Boolean;
+        (Doc, Ns, Name, Content : System.Address;
+         Raw_Content : Boolean;
          Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status;
          Attribute_Mode : Boolean := False)

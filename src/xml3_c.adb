@@ -837,27 +837,21 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
-         Content_Text : constant String := C_String_Value (Content);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          if As_Child then
             XML3_DOM_Runtime.New_Child
-              (Context, Ns, Name_Text, Content_Text, Raw_Content,
-               Content /= System.Null_Address, Result, Status);
+              (Context, Ns, Name, Content, Raw_Content, Result, Status);
          else
             XML3_DOM_Runtime.New_Doc_Node
-              (Context, Ns, Name_Text, Content_Text, Raw_Content,
-               Content /= System.Null_Address, Result, Status, Attribute_Mode);
+              (Context, Ns, Name, Content, Raw_Content,
+               Result, Status, Attribute_Mode);
          end if;
       end;
       Report_Operation_Status (Status);
       return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

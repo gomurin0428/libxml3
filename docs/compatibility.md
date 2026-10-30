@@ -547,6 +547,10 @@ raw content はコピーされ、NULL/empty は区別します。non-NULL conten
 長さ0では入力を読みません。最初のNULまでだけを保持し、後続の隠れたbytesは保持しません。
 UTF-8/XML文字の検査は出力時に行い、`]]>` は複数CDATAに分割して値を保持します。
 
+要素・子要素・文書付き属性の共通の入力計測・コピーはSPARK側にあり、文書・親・namespaceの登録照合を入力読み取りより先に
+行います。不正なcontext/namespace pointerは直接参照しません。C側の中間Stringはなく、名前と
+raw本文は所有領域へ直接コピーします。参照展開する本文はSPARK内の入力・復号バッファを使い、
+既存の厳格な復号規則を保ちます。この経路は `xmlNewNode`・子要素・文書付き属性とも共通です。
 `xmlNewDocNode` / `xmlNewDocRawNode` は要素とその text child に文書を設定しますが、
 要素自体の parent は NULL のままです。NULL doc では文書なしの subtree を作成します。
 指定した namespace を保持し、NULL namespace では継承しません。name はコピーします。

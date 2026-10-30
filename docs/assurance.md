@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,008 checks
-(1,405 flow and 11,603 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 161 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,046 checks
+(1,415 flow and 11,631 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 162 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -344,7 +344,7 @@ and invalid document/content combinations; existing OOM walks retain retry and
 document-first-release coverage. Foreign extents/stability, actual byte effects,
 allocation/free, ABI and full API semantics remain trusted.
 GNATprove discharges 12 checks for `New_Doc_Content_Bytes`, 1 for the Runtime
-wrapper, 22 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
+wrapper, 23 for shared `New_Doc_Content`, 14 for `Find_Registered_Node`, 6 for
 `Measure_Byte_Prefix`, and 3 for `Copy_Byte_Prefix`; `Create_Node` and
 `Allocate_Node_Buffer` prove 462 and 22 checks, respectively.
 
@@ -755,8 +755,16 @@ The comparison itself allocates nothing and performs no writes.
 `Store.Content.New_Doc_Node` を通り、既存 `New_Child` も同じ未接続要素の作成処理を使います。
 文書・namespace の保持は `New_Doc_Content`、text 子の接続は既存の `Attach`、
 途中失敗での非公開ノードの解放は既存の `Release` が担当します。C 側は API 種別の
-選択・文字列変換・mutex・status/exception 変換だけを行い、`xmlNewNode` も共通経路です。
+選択・アドレス転送・mutex・status/exception 変換だけを行い、`xmlNewNode` も共通経路です。
+文書・親・namespace は登録表で照合してから名前・本文を計測します。
+`Find_Registered_Namespace` はforeign memoryを読まず、`Construct` でも同じ照合を使います。
+名前とraw本文は既存のnative span対応constructorへ渡し、参照展開時だけSPARK内で入力を
+`Read_String` して既存の `Decode` を使います。`Construct_Container` が未接続containerと
+text childの作成・接続・失敗時解放を共用します。native属性名でもcolon拒否を保ちます。
 新しい Store operation の契約は `Ready` の保持と result/status の対応です。
+GNATprove は `Find_Registered_Namespace` 14、`Store.Construct` 9、`New_Doc_Content` 23、
+`Store.Content.New_Doc_Node` 18、`New_Child` 19、`Construct_Container` 14 checks を証明し、
+Runtime の `New_Doc_Node` / `New_Child` wrappers は各1 checkです。
 全公開API意味論や C pointer の有効性を証明したという主張ではありません。
 
 `xmlNewDocProp` は同じ `Runtime.New_Doc_Node` / `Store.Content.New_Doc_Node` を
