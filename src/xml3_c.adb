@@ -1,7 +1,6 @@
 with GNAT.Threads;
 pragma Unreferenced (GNAT.Threads);
 with Interfaces.C; use Interfaces.C;
-with Interfaces;
 with System.Storage_Elements; use System.Storage_Elements;
 with XML3_DOM;
 with XML3_DOM_Constructors;
@@ -15,6 +14,7 @@ with XML3_Encoding.Buffers;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
+with XML3_Parser.Options;
 with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
@@ -22,7 +22,7 @@ with XML3_Text.QNames;
 
 package body XML3_C is
    use type System.Address;
-   use type Interfaces.Unsigned_32;
+   use type XML3_Parser.Options.Profile;
    use type XML3_Encoding.Encoding_Kind;
    use type XML3_DOM_Constructors.Construction_Status;
    use type XML3_DOM_Store.Documents.Read_Status;
@@ -30,7 +30,6 @@ package body XML3_C is
    use type XML3_DOM_Store.Queries.Space_Policy;
 
    Max_Input : constant := XML3_Text.Max_Bytes;
-   Allowed_Options : constant Interfaces.Unsigned_32 := 16#0008_0860#;
    Arena_Status : constant int := -1;
 
    procedure C_Free (Item : System.Address)
@@ -288,19 +287,11 @@ package body XML3_C is
             end if;
             return System.Null_Address;
          end if;
-         if Options < 0 then
-            Status := Status_Unsupported;
-            XML3_Errors.Report_Simple (1, 115, 3, URL);
-            if XML3_Errors.Last_Error_Is_OOM then
-               Status := Status_No_Memory;
-            end if;
-            return System.Null_Address;
-         end if;
          declare
-            Bits : constant Interfaces.Unsigned_32 :=
-              Interfaces.Unsigned_32 (Options);
+            Selected : constant XML3_Parser.Options.Profile :=
+              XML3_Parser.Options.Classify (Options);
          begin
-            if (Bits and not Allowed_Options) /= 0 then
+            if Selected = XML3_Parser.Options.Unsupported then
                Status := Status_Unsupported;
                XML3_Errors.Report_Simple (1, 115, 3, URL);
                if XML3_Errors.Last_Error_Is_OOM then
@@ -308,7 +299,7 @@ package body XML3_C is
                end if;
                return System.Null_Address;
             end if;
-            Huge := (Bits and 16#0008_0000#) /= 0;
+            Huge := Selected = XML3_Parser.Options.Huge;
          end;
          declare
             Prepare_Status : XML3_Encoding.Buffers.Conversion_Result;

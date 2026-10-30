@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,289 checks
-(1,497 flow and 11,792 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,295 checks
+(1,499 flow and 11,796 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 175 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -945,6 +945,17 @@ mutation and release call typed Runtime operations. The adapter still performs
 foreign pointer/string conversion and error translation and is not itself
 formally proved. The Runtime delegates to proved Store operations; the public
 API as a whole is not thereby claimed to be formally verified.
+
+`Parser.Options.Classify` is a pure
+SPARK classification of signed C option values into unsupported/normal/huge.
+Its contract ties acceptance to non-negative values with only the allowed bits,
+and huge selection to an accepted value with the HUGE bit. It does not read
+input, allocate, emit diagnostics or enable unsupported parser features. Native
+ABI mapping, adapter ordering/diagnostics and parser semantics are not proved
+by that bit-policy contract. GNATprove proves 4 checks for `Classify`. Tests
+cover all accepted combinations, every
+positive single bit, negatives, protected input on rejection, encoding-error
+precedence, diagnosis OOM and connected edit/output/reparse under each profile.
 
 `Parser.Workspaces` checks per-block byte limits before multiplying capacity by
 native node/name sizes, allocates four buffers and releases all partial results

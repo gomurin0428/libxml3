@@ -16,6 +16,7 @@ project DOM_Bridge_Test is
       "xml3_text-buffers.ads", "xml3_text-buffers.adb",
       "xml3_parser.ads", "xml3_parser.adb",
       "xml3_parser-native_sizes.ads",
+      "xml3_parser-options.ads", "xml3_parser-options.adb",
       "xml3_parser-workspaces.ads", "xml3_parser-workspaces.adb",
       "xml3_encoding.ads", "xml3_encoding.adb",
       "xml3_native_memory.ads", "xml3_native_memory.adb",

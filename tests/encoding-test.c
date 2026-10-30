@@ -429,6 +429,28 @@ static void test_encoding_name_boundaries(void) {
     }
     assert(xmlReadMemory(mapping + page, -1, NULL, mapping + page, 0) == NULL);
     assert(xmlReadMemory(NULL, 1, NULL, mapping + page, 0) == NULL);
+    const unsigned supported = XML_PARSE_NOERROR | XML_PARSE_NOWARNING |
+                               XML_PARSE_NONET | XML_PARSE_HUGE;
+    for (unsigned bit = 0; bit < 31; ++bit) {
+        unsigned unknown = 1u << bit;
+        if (unknown & supported) continue;
+        for (int combined = 0; combined < 2; ++combined) {
+            int options = (int)(unknown | (combined ? supported : 0));
+            xmlResetLastError();
+            assert(!xmlReadMemory(mapping + page, 1, NULL, "UTF-8", options));
+            const xmlError *error = xmlGetLastError();
+            assert(error && error->domain == XML_FROM_PARSER && error->code == 115);
+        }
+    }
+    const int negative[] = {-1, INT_MIN};
+    for (size_t i = 0; i < sizeof(negative) / sizeof(*negative); ++i) {
+        xmlResetLastError();
+        assert(!xmlReadMemory(mapping + page, 1, NULL, "UTF-8", negative[i]));
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+    }
+    xmlResetLastError();
+    assert(!xmlReadMemory(mapping + page, 1, NULL, "unknown", -1));
+    assert(xmlGetLastError() && xmlGetLastError()->code == 32);
     xmlResetLastError();
 #endif
     assert(munmap(mapping, (size_t)page * 2) == 0);

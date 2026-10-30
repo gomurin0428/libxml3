@@ -2,6 +2,7 @@ project Proof is
    for Source_Dirs use ("src");
    for Source_Files use ("xml3_text.ads", "xml3_text.adb", "xml3_parser.ads", "xml3_parser.adb",
                         "xml3_parser-native_sizes.ads",
+                        "xml3_parser-options.ads", "xml3_parser-options.adb",
                         "xml3_parser-workspaces.ads", "xml3_parser-workspaces.adb",
                         "xml3_text-qnames.ads", "xml3_text-qnames.adb",
                         "xml3_text-buffers.ads", "xml3_text-buffers.adb",

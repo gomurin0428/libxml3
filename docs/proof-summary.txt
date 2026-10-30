@@ -4,23 +4,23 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               388           388                                       .           .          .
+Data Dependencies               389           389                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  913           913                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                5636             .      5636 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
+Run-time Checks                5639             .      5639 (CVC5 94%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1671             .    1671 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           4410             .     4410 (CVC5 68%, Trivial 3%, Z3 29%)           .          .
+Functional Contracts           4411             .     4411 (CVC5 68%, Trivial 3%, Z3 29%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     270           195                    75 (CVC5 96%, Z3 4%)           .          .
+Termination                     271           196                    75 (CVC5 96%, Z3 4%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13289    1497 (11%)                             11792 (89%)           .          .
+Total                         13295    1499 (11%)                             11796 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
 
-Analyzed 24 units
+Analyzed 25 units
 in unit xml3_dom, 140 subprograms and packages out of 140 analyzed
   XML3_DOM at xml3_dom.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
   XML3_DOM.Acknowledge_Projection at xml3_dom.ads:1448 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
@@ -475,6 +475,9 @@ in unit xml3_parser, 16 subprograms and packages out of 16 analyzed
   XML3_Parser.Space at xml3_parser.adb:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_parser-native_sizes, 1 subprograms and packages out of 1 analyzed
   XML3_Parser.Native_Sizes at xml3_parser-native_sizes.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+in unit xml3_parser-options, 2 subprograms and packages out of 2 analyzed
+  XML3_Parser.Options at xml3_parser-options.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Options.Classify at xml3_parser-options.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
 in unit xml3_parser-workspaces, 7 subprograms and packages out of 7 analyzed
   XML3_Parser.Workspaces at xml3_parser-workspaces.ads:4 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Workspaces.Allocate at xml3_parser-workspaces.ads:32 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
