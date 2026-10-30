@@ -72,6 +72,7 @@ procedure Text_Buffers_Test is
    procedure Check_Concatenate is
       Left : aliased String := "ab" & Character'Val (0);
       Right : aliased String := "c" & Character'Val (0);
+      Empty : aliased String := "" & Character'Val (0);
       Result : System.Address;
       Status : XML3_Text.Buffers.Concatenate_Status;
    begin
@@ -103,6 +104,24 @@ procedure Text_Buffers_Test is
         (System.Null_Address, Right'Address, 0, Result, Status, 0);
       pragma Assert (Status = XML3_Text.Buffers.Copied
         and then XML3_Native_Memory.Byte_At (Result, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+      XML3_Text.Buffers.Concatenate_Bytes
+        (Empty'Address, System.Null_Address, 0, Result, Status, 0);
+      pragma Assert (Status = XML3_Text.Buffers.Copied
+        and then XML3_Native_Memory.Byte_At (Result, 0) = Character'Val (0));
+      XML3_Native_Memory.Free (Result);
+      for Limit in 0 .. 1 loop
+         XML3_Text.Buffers.Concatenate_Bytes
+           (Left'Address, System.Null_Address, 0, Result, Status, Limit);
+         pragma Assert (Status = XML3_Text.Buffers.Limit_Exceeded
+           and then Result = System.Null_Address);
+      end loop;
+      XML3_Text.Buffers.Concatenate_Bytes
+        (Left'Address, System.Null_Address, 0, Result, Status, 2);
+      pragma Assert (Status = XML3_Text.Buffers.Copied
+        and then XML3_Native_Memory.Byte_At (Result, 0) = 'a'
+        and then XML3_Native_Memory.Byte_At (Result, 1) = 'b'
+        and then XML3_Native_Memory.Byte_At (Result, 2) = Character'Val (0));
       XML3_Native_Memory.Free (Result);
    end Check_Concatenate;
 

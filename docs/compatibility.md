@@ -1033,6 +1033,19 @@ records; this behavior, including foreign pthread callers, is tested on Linux
 with glibc. Other POSIX platforms have not yet been validated.
 Parser-context APIs and structured error-handler APIs are not implemented.
 
+Diagnostic string duplication now uses the existing SPARK
+`Text.Buffers.Concatenate_Bytes` path with only a left input: bounded measurement,
+one native allocation, raw-byte copy and a terminating NUL. NULL stays NULL;
+empty strings get independent one-byte allocations. This applies to internal
+diagnostics and all five string fields accepted by `xmlCopyError`, without
+UTF-8/XML validation or URL interpretation. Each string is limited to
+`XML3_Text.Max_Bytes` bytes, with the terminator allowed at that inclusive offset.
+Limit or allocation failures use the existing OOM/error-copy failure path, not
+a truncated string. Record replacement/rollback, cleanup scheduling, sticky
+error semantics, TLS and emergency diagnostics remain in the native adapter.
+Callers still provide valid, readable and stable strings and live error records;
+the cap does not make arbitrary pointers safe or provide a full DoS bound.
+
 Compatibility follows a safety-first policy: mimic harmless documented or
 observed API quirks, such as retaining the last error after a successful parse,
 but do not emulate memory corruption, invalid memory access, unbounded or unsafe

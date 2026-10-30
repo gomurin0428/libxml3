@@ -2,6 +2,17 @@
 
 ## Result
 
+Diagnostic message/file/payload duplication now reuses the proved
+`Text.Buffers.Concatenate_Bytes` path, removing the error adapter's direct
+strlen/malloc/memcpy implementation. This is a new call site, not new proved
+error-record/TLS behavior or a new semantic claim for `xmlCopyError`. Tests cover
+NULL/empty/raw bytes, NUL at a protected page boundary, independent copies after
+source protection and record reset, copied URLs reused in diagnostics, small
+scan limits and allocation-failure rollback/retry including empty strings.
+The helper retains its existing native assumptions and common byte cap; cap
+failures map to the existing OOM path. Error records, cleanup scheduling, TLS,
+exception mapping and native ABI remain trusted.
+
 `Parser.Options.Classify` now owns the allowed-bit and HUGE-profile policy in
 SPARK, replacing C adapter bit tests. Its pure contract characterizes accepted
 non-negative masks and HUGE selection; no input/allocator/diagnostic effects
@@ -1491,7 +1502,7 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 72 hashes identify the source files and build/test configuration
+The following 75 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
@@ -1538,7 +1549,7 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-ea5fb0d9851f8262d8ced6e2b2d4319125ed28dbc93c1deedf308823214b6d01  src/xml3_errors.adb
+92491e7f950f1f3bebb022c4a0cfeb18690524db4a98f8c06e4138ac31f7df33  src/xml3_errors.adb
 bc9416be82db99c3e992e91890de4024179f16fec29b3685b905212913d0a2c3  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
@@ -1563,10 +1574,13 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 b9dd937ced8626bdb077be20e5a16d4ae16c41d79f043a9798deaceb4b6e8090  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-782e8ed2357bd96dd7fa57a05e70a2fe1b4224cd6acbd19d3dfbc4dfa977c764  Makefile
-1981e689575ff08de97e5a16c80d07115dd2daddb3b924a5147399dfddeb7fdc  tests/oom-test.c
+044d130a70cff97b045583f7506ed562fe30502cc017a9da39f97d4517a9c368  Makefile
+256204fe558ebe366f8b4967b226bd82026d57e695feda6d3c677f3c26150a88  tests/error-test.c
+d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
-405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
+29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
+c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
+db669aa6d4d6c4629c9c1d204ea57c5b63b958c7dccb0376260b8bd3e09f15e5  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
 

@@ -1,4 +1,4 @@
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xmlerror.h>
@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #ifdef XML3_REFERENCE_TEST
 static void check_reference_version(void) {
@@ -195,6 +197,76 @@ static void test_copy_ownership(void) {
                destination.str3 == NULL);
     }
     xmlResetError(&destination);
+}
+
+static void test_copy_boundaries(void) {
+    static const char *const values[] = {"", "診断é", "raw\xff\x80", "guarded.xml"};
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 64);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (size_t sample = 0; sample < sizeof(values) / sizeof(*values); ++sample) {
+        size_t length = strlen(values[sample]) + 1;
+        char *input = mapping + page - length;
+        memcpy(input, values[sample], length);
+        xmlError source = {0}, copy = {0}, saved = {0};
+        char **source_fields[] = {&source.message, &source.file, &source.str1,
+                                  &source.str2, &source.str3};
+        char **copy_fields[] = {&copy.message, &copy.file, &copy.str1,
+                                &copy.str2, &copy.str3};
+        char **saved_fields[] = {&saved.message, &saved.file, &saved.str1,
+                                 &saved.str2, &saved.str3};
+        source.domain = XML_FROM_PARSER;
+        source.code = XML_ERR_INVALID_CHAR;
+        source.level = XML_ERR_FATAL;
+        source.line = 17;
+        source.int1 = 23;
+        source.int2 = 42;
+        for (size_t field = 0; field < 5; ++field)
+            *source_fields[field] =
+                sample == 1 && field != 0 && field % 2 == 0 ? NULL : input;
+        assert(xmlCopyError(&source, &copy) == 0);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        for (size_t field = 0; field < 5; ++field) {
+            if (*source_fields[field] == NULL) {
+                assert(*copy_fields[field] == NULL);
+            } else {
+                assert(*copy_fields[field] && *copy_fields[field] != input);
+                assert(strcmp(*copy_fields[field], values[sample]) == 0);
+                for (size_t previous = 0; previous < field; ++previous)
+                    assert(*copy_fields[field] != *copy_fields[previous]);
+            }
+        }
+        assert(xmlCopyError(&copy, &saved) == 0);
+        xmlResetError(&copy);
+        assert(saved.domain == source.domain && saved.code == source.code);
+        assert(saved.level == source.level && saved.line == source.line);
+        assert(saved.int1 == source.int1 && saved.int2 == source.int2);
+        for (size_t field = 0; field < 5; ++field) {
+            if (*source_fields[field] == NULL)
+                assert(*saved_fields[field] == NULL);
+            else
+                assert(*saved_fields[field] && strcmp(*saved_fields[field], values[sample]) == 0);
+        }
+        if (sample == 3) {
+            xmlResetLastError();
+            assert(!xmlReadMemory("<r>", 3, saved.file, NULL, 0));
+            xmlResetError(&saved);
+            assert(xmlGetLastError() && strcmp(xmlGetLastError()->file, values[sample]) == 0);
+            assert(xmlCopyError(xmlGetLastError(), &saved) == 0);
+            xmlResetLastError();
+            assert(saved.file && strcmp(saved.file, values[sample]) == 0);
+            xmlDocPtr doc = xmlReadMemory("<r/>", 4, saved.file, NULL, 0);
+            assert(doc && xmlDocGetRootElement(doc));
+            xmlFreeDoc(doc);
+        }
+        xmlResetError(&saved);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+    xmlResetLastError();
 }
 
 static pthread_barrier_t error_ready;
@@ -399,6 +471,7 @@ int main(void) {
     test_lifecycle();
     test_read_entrypoints();
     test_copy_ownership();
+    test_copy_boundaries();
     test_thread_isolation();
     test_numeric_compatibility();
     test_location_variants();

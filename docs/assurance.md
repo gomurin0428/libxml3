@@ -1034,8 +1034,14 @@ or development-profile testing, and neither profile proves the trusted boundary.
   ownership decision, or release scheduling; the latter only allocates/frees
   the Ada backing state and integer import maps. Their body correctness and foreign-memory assumptions
   are trusted, not discharged by the recorded proof result.
-* `XML3_Errors` is also outside SPARK. Ada owns and copies error records and
-  strings; the C shim provides only pthread TLS key access and thread-exit
+* `XML3_Errors` is also outside SPARK. It delegates diagnostic string
+  measurement/allocation/copy to the existing SPARK `Concatenate_Bytes` helper,
+  using NULL right input and length zero. This preserves NULL/empty and raw bytes,
+  applies the common byte cap and removes direct strlen/malloc/memcpy calls.
+  Deallocation uses the shared native-memory adapter. Error record transactions,
+  cleanup scheduling, TLS, exception/OOM mapping and emergency records remain
+  outside proof; the existing native readability/stability, allocator and byte
+  effect assumptions still apply. The C shim provides only pthread TLS key access and thread-exit
   destructor dispatch. Allocator-failure tests exercise this boundary but do
   not prove it free of memory errors or exceptions.
 * The C caller must supply readable input buffers of the declared length, valid

@@ -746,13 +746,17 @@ int main(int argc, char **argv) {
             assert(error != NULL && error->code == 113);
             assert(error->level == XML_ERR_WARNING);
         }
-    } else if (strcmp(operation, "copy") == 0) {
+    } else if (strcmp(operation, "copy") == 0 || strcmp(operation, "copy-empty") == 0) {
         xmlError source_before;
         xmlError destination_before;
 
         xml3_oom_disable();
         init_test_error(&source, "source");
         init_test_error(&copy, "destination");
+        if (strcmp(operation, "copy-empty") == 0) {
+            source.message[0] = source.file[0] = source.str1[0] = '\0';
+            source.str2[0] = source.str3[0] = '\0';
+        }
         source_before = source;
         destination_before = copy;
         xml3_oom_enable(fail_index);
@@ -770,6 +774,9 @@ int main(int argc, char **argv) {
             assert_error_unchanged(&source, &source_before);
             assert_error_copy(&copy, &source);
         }
+        xmlResetLastError();
+        assert(xmlCopyError(&source, &copy) == 0);
+        assert_error_copy(&copy, &source);
         xmlResetError(&copy);
         xmlResetError(&source);
     } else if (strcmp(operation, "replacement") == 0) {

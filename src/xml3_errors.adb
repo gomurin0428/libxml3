@@ -1,10 +1,12 @@
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
+with XML3_Native_Memory;
+with XML3_Text.Buffers;
 
 package body XML3_Errors is
 
    use type Interfaces.C.int;
-   use type Interfaces.C.size_t;
+   use type XML3_Text.Buffers.Concatenate_Status;
    use type System.Address;
 
    XML3_OOM : constant Interfaces.C.int := 2;
@@ -20,21 +22,6 @@ package body XML3_Errors is
    function Emergency_TLS_Address return System.Address
      with Import, Convention => C,
        External_Name => "xml3ErrorsEmergencyRecord";
-
-   function C_Malloc (Size : Interfaces.C.size_t) return System.Address
-     with Import, Convention => C, External_Name => "malloc";
-
-   procedure C_Free (Item : System.Address)
-     with Import, Convention => C, External_Name => "free";
-
-   function C_Strlen (Item : System.Address) return Interfaces.C.size_t
-     with Import, Convention => C, External_Name => "strlen";
-
-   function C_Memcpy
-     (Destination : System.Address;
-      Source      : System.Address;
-      Size        : Interfaces.C.size_t) return System.Address
-     with Import, Convention => C, External_Name => "memcpy";
 
    type Error_State;
 
@@ -261,7 +248,7 @@ package body XML3_Errors is
    procedure Free_Pointer (Item : in out System.Address) is
    begin
       if Item /= System.Null_Address then
-         C_Free (Item);
+         XML3_Native_Memory.Free (Item);
          Item := System.Null_Address;
       end if;
    end Free_Pointer;
@@ -277,22 +264,16 @@ package body XML3_Errors is
    end Clear_Record;
 
    function Duplicate (Item : System.Address) return System.Address is
-      Length : Interfaces.C.size_t;
       Copy   : System.Address;
+      Status : XML3_Text.Buffers.Concatenate_Status;
    begin
-      if Item = System.Null_Address then
+      XML3_Text.Buffers.Concatenate_Bytes
+        (Item, System.Null_Address, 0, Copy, Status);
+      if Status = XML3_Text.Buffers.Copied then
+         return Copy;
+      else
          return System.Null_Address;
       end if;
-      Length := C_Strlen (Item);
-      if Length = Interfaces.C.size_t'Last then
-         return System.Null_Address;
-      end if;
-      Copy := C_Malloc (Length + 1);
-      if Copy = System.Null_Address then
-         return System.Null_Address;
-      end if;
-      Copy := C_Memcpy (Copy, Item, Length + 1);
-      return Copy;
    exception
       when others =>
          return System.Null_Address;

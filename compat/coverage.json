@@ -1420,7 +1420,7 @@
   },
   "function:xmlerror.h:xmlCopyError": {
     "implementation": "partial",
-    "scope": "Deep-copies owned strings transactionally for valid zero-initialized or previously reset destinations.",
+    "scope": "Deep-copies owned strings transactionally for valid zero-initialized or previously reset destinations. Native string measurement/allocation/byte copying uses SPARK Concatenate_Bytes with the common Max_Bytes cap; NULL/empty and raw bytes are preserved. Limit/allocation failures return failure with OOM diagnostics. Error-record transactions/TLS, native validity and full API semantics remain outside proof.",
     "tests": [
       "tests/error-test.c",
       "tests/oom-test.c",
