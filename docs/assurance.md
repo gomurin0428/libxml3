@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,328 checks
-(1,520 flow and 11,808 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,334 checks
+(1,526 flow and 11,808 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 180 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -994,6 +994,20 @@ itself, allocator behavior, or message text. GNATprove proves 1 check each for
 initial, middle, next-to-last and last capacity and against diagnostic codes
 0, 1, 4, 114 and 115, compared with the adapter's former decisions, plus the
 existing arena-growth OOM/retry and large-document reuse cases.
+
+`Diagnostic_Codes` holds the remaining status-to-(domain, code) selection in
+SPARK. `For_Operation` covers the DOM construction statuses with the
+validation flag, `For_Preparation` the input conversion results, and
+`For_Report` the parse report kinds, with named constants for the
+unsupported-encoding and unsupported-option rejections. Each result records
+whether a diagnostic is published at all, so the adapter only reports when the
+policy selects a pair. The decisions reproduce the previous adapter literals
+exactly. Message texts and static addresses, the choice between the full and
+the simple report procedure, the returned C status, thread-local error
+inspection and exception handling remain trusted adapter behavior, as do the
+exception-handler mappings that report out of memory or an internal error.
+The functions are total expression functions and prove 0 checks; tests compare
+every input value with the former adapter literals.
 
 The adapter depends on `GNAT.Threads` to load GNAT's tasking runtime even
 though the library creates no Ada tasks. On the supported Linux runtime,

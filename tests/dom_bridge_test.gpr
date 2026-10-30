@@ -13,6 +13,7 @@ project DOM_Bridge_Test is
       "xml3_dom_allocation.ads", "xml3_dom_allocation.adb",
       "xml3_namespaces.ads", "xml3_namespaces.adb",
       "xml3_diagnostic_messages.ads",
+      "xml3_diagnostic_codes.ads",
       "xml3_error_records.ads", "xml3_error_records.adb",
       "xml3_text.ads", "xml3_text.adb",
       "xml3_text-buffers.ads", "xml3_text-buffers.adb",
@@ -22,6 +23,7 @@ project DOM_Bridge_Test is
       "xml3_parser-outcomes.ads",
       "xml3_parser-workspaces.ads", "xml3_parser-workspaces.adb",
       "xml3_encoding.ads", "xml3_encoding.adb",
+      "xml3_encoding-buffers.ads", "xml3_encoding-buffers.adb",
       "xml3_native_memory.ads", "xml3_native_memory.adb",
       "xml3_dom_bridge.ads", "xml3_dom_bridge.adb",
       "dom_bridge_test.adb", "dom_bridge_facade.c");

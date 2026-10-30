@@ -21,6 +21,8 @@ with XML3_Diagnostic_Messages;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
 with XML3_Encoding;
+with XML3_Encoding.Buffers;
+with XML3_Diagnostic_Codes;
 
 procedure DOM_Bridge_Test is
    package Native renames XML3_Native_Memory;
@@ -1950,4 +1952,134 @@ begin
    end;
    Ada.Text_IO.Put_Line
      ("Parse attempt and outcome report policy passed");
+   declare
+      package Codes renames XML3_Diagnostic_Codes;
+      package Constructors renames XML3_DOM_Constructors;
+      package Buffers renames XML3_Encoding.Buffers;
+      package Outcomes renames XML3_Parser.Outcomes;
+      use type Interfaces.C.int;
+
+      function Same
+        (Item : Codes.Diagnostic_Code; Present : Boolean;
+         Domain : Interfaces.C.int; Code : Interfaces.C.int) return Boolean
+      is (Item.Present = Present
+          and then (if Present
+                    then Item.Domain = Domain and then Item.Code = Code));
+
+      --  Reproduces the literal (domain, code) pairs the adapter used
+      --  before the policy moved into SPARK.
+      function Reference_Operation
+        (Status : Constructors.Construction_Status;
+         Validation_Error : Boolean) return Codes.Diagnostic_Code
+      is
+      begin
+         case Status is
+            when Constructors.Created =>
+               return (Present => False, Domain => 0, Code => 0);
+            when Constructors.Invalid_Argument =>
+               return
+                 (if Validation_Error
+                  then (Present => True, Domain => 2, Code => 115)
+                  else (Present => False, Domain => 0, Code => 0));
+            when Constructors.No_Memory =>
+               return (Present => True, Domain => 6, Code => 2);
+            when Constructors.Limit_Exceeded =>
+               return (Present => True, Domain => 1, Code => 114);
+            when Constructors.Internal_Error =>
+               return (Present => True, Domain => 2, Code => 1);
+         end case;
+      end Reference_Operation;
+
+      function Reference_Preparation
+        (Status : Buffers.Conversion_Result) return Codes.Diagnostic_Code
+      is
+      begin
+         case Status is
+            when Buffers.Converted =>
+               return (Present => False, Domain => 0, Code => 0);
+            when Buffers.Invalid_UTF16 =>
+               return (Present => True, Domain => 8, Code => 81);
+            when Buffers.Conversion_Limit_Exceeded =>
+               return (Present => True, Domain => 1, Code => 114);
+            when Buffers.Conversion_No_Memory =>
+               return (Present => True, Domain => 6, Code => 2);
+         end case;
+      end Reference_Preparation;
+
+      function Reference_Report
+        (Kind : Outcomes.Report_Kind) return Codes.Diagnostic_Code
+      is
+      begin
+         case Kind is
+            when Outcomes.No_Report | Outcomes.Report_Diagnostic =>
+               return (Present => False, Domain => 0, Code => 0);
+            when Outcomes.Report_No_Memory =>
+               return (Present => True, Domain => 6, Code => 2);
+            when Outcomes.Report_Internal =>
+               return (Present => True, Domain => 1, Code => 1);
+            when Outcomes.Report_Unsupported_Feature =>
+               return (Present => True, Domain => 1, Code => 115);
+            when Outcomes.Report_Limit_Exceeded =>
+               return (Present => True, Domain => 1, Code => 114);
+         end case;
+      end Reference_Report;
+
+      Reported : Natural := 0;
+   begin
+      for Status in Constructors.Construction_Status loop
+         for Validation_Error in Boolean loop
+            declare
+               Item : constant Codes.Diagnostic_Code :=
+                 Codes.For_Operation (Status, Validation_Error);
+               Expected : constant Codes.Diagnostic_Code :=
+                 Reference_Operation (Status, Validation_Error);
+            begin
+               pragma Assert
+                 (Same (Item, Expected.Present, Expected.Domain,
+                        Expected.Code));
+               if Item.Present then
+                  Reported := Reported + 1;
+               end if;
+            end;
+         end loop;
+      end loop;
+      for Status in Buffers.Conversion_Result loop
+         declare
+            Item : constant Codes.Diagnostic_Code :=
+              Codes.For_Preparation (Status);
+            Expected : constant Codes.Diagnostic_Code :=
+              Reference_Preparation (Status);
+         begin
+            pragma Assert
+              (Same (Item, Expected.Present, Expected.Domain, Expected.Code));
+            if Item.Present then
+               Reported := Reported + 1;
+            end if;
+         end;
+      end loop;
+      for Kind in Outcomes.Report_Kind loop
+         declare
+            Item : constant Codes.Diagnostic_Code := Codes.For_Report (Kind);
+            Expected : constant Codes.Diagnostic_Code :=
+              Reference_Report (Kind);
+         begin
+            pragma Assert
+              (Same (Item, Expected.Present, Expected.Domain, Expected.Code));
+            if Item.Present then
+               Reported := Reported + 1;
+            end if;
+         end;
+      end loop;
+      pragma Assert (not Codes.None.Present);
+      pragma Assert (Same (Codes.Out_Of_Memory, True, 6, 2));
+      pragma Assert (Same (Codes.Resource_Limit, True, 1, 114));
+      pragma Assert (Same (Codes.Parser_Internal_Error, True, 1, 1));
+      pragma Assert (Same (Codes.Unsupported_Feature, True, 1, 115));
+      pragma Assert (Same (Codes.Unsupported_Encoding, True, 1, 32));
+      pragma Assert (Same (Codes.Invalid_UTF16_Input, True, 8, 81));
+      pragma Assert (Same (Codes.DOM_Invalid_Argument, True, 2, 115));
+      pragma Assert (Same (Codes.DOM_Internal_Error, True, 2, 1));
+      pragma Assert (Reported = 14);
+   end;
+   Ada.Text_IO.Put_Line ("Diagnostic code selection policy passed");
 end DOM_Bridge_Test;

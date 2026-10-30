@@ -9,6 +9,7 @@ with XML3_DOM_Runtime;
 with XML3_DOM_Store;
 with XML3_DOM_Store.Documents;
 with XML3_DOM_Store.Queries;
+with XML3_Diagnostic_Codes;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Errors;
@@ -39,6 +40,9 @@ package body XML3_C is
    procedure Set_Address
      (Target : System.Address; Value : System.Address);
    procedure Report_Dom_Error (Code : int);
+   procedure Report_Code
+     (Item : XML3_Diagnostic_Codes.Diagnostic_Code;
+      File : System.Address := System.Null_Address);
    procedure Report_Operation_Status
      (Status : XML3_DOM_Store.Operation_Status;
       Validation_Error : Boolean := True);
@@ -85,25 +89,23 @@ package body XML3_C is
       XML3_Errors.Report_Simple (2, Code, 3, System.Null_Address);
    end Report_Dom_Error;
 
+   procedure Report_Code
+     (Item : XML3_Diagnostic_Codes.Diagnostic_Code;
+      File : System.Address := System.Null_Address)
+   is
+   begin
+      if Item.Present then
+         XML3_Errors.Report_Simple (Item.Domain, Item.Code, 3, File);
+      end if;
+   end Report_Code;
+
    procedure Report_Operation_Status
      (Status : XML3_DOM_Store.Operation_Status;
       Validation_Error : Boolean := True)
    is
    begin
-      case Status is
-         when XML3_DOM_Constructors.Created =>
-            null;
-         when XML3_DOM_Constructors.Invalid_Argument =>
-            if Validation_Error then
-               Report_Dom_Error (115);
-            end if;
-         when XML3_DOM_Constructors.No_Memory =>
-            XML3_Errors.Report_Simple (6, 2, 3, System.Null_Address);
-         when XML3_DOM_Constructors.Limit_Exceeded =>
-            XML3_Errors.Report_Simple (1, 114, 3, System.Null_Address);
-         when XML3_DOM_Constructors.Internal_Error =>
-            Report_Dom_Error (1);
-      end case;
+      Report_Code
+        (XML3_Diagnostic_Codes.For_Operation (Status, Validation_Error));
    end Report_Operation_Status;
 
    function Status_For
@@ -232,22 +234,13 @@ package body XML3_C is
          Build (Input, Huge, Encoding_Info, Result, Outcome, Diagnostic);
          Status := Status_For (Outcome);
          Report := Outcomes.Report_For (Outcome, Diagnostic.Code);
-         case Report is
-            when Outcomes.No_Report =>
-               null;
-            when Outcomes.Report_No_Memory =>
-               XML3_Errors.Report_Simple (6, 2, 3, URL);
-            when Outcomes.Report_Internal =>
-               XML3_Errors.Report_Simple (1, 1, 3, URL);
-            when Outcomes.Report_Unsupported_Feature =>
-               XML3_Errors.Report_Simple (1, 115, 3, URL);
-            when Outcomes.Report_Limit_Exceeded =>
-               XML3_Errors.Report_Simple (1, 114, 3, URL);
-            when Outcomes.Report_Diagnostic =>
-               XML3_Errors.Report
-                 (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
-                  Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
-         end case;
+         if Report = Outcomes.Report_Diagnostic then
+            XML3_Errors.Report
+              (Diagnostic.Domain, Diagnostic.Code, Diagnostic.Level,
+               Diagnostic.Byte_Position, Diagnostic.Int1, Input, URL);
+         else
+            Report_Code (XML3_Diagnostic_Codes.For_Report (Report), URL);
+         end if;
          if Status = Status_OK and then Report = Outcomes.Report_Diagnostic
            and then XML3_Errors.Last_Error_Is_OOM
          then
@@ -263,11 +256,12 @@ package body XML3_C is
       end Parse_And_Report;
 
       procedure Report_Conversion_Error
-        (Code : Natural; Domain : Natural; Error_Status : int)
+        (Item : XML3_Diagnostic_Codes.Diagnostic_Code; Error_Status : int)
       is
       begin
          Status := Error_Status;
-         XML3_Errors.Report (Domain, Code, 3, 1, 0, "", URL);
+         XML3_Errors.Report
+           (Natural (Item.Domain), Natural (Item.Code), 3, 1, 0, "", URL);
          if XML3_Errors.Last_Error_Is_OOM then
             Status := Status_No_Memory;
          end if;
@@ -287,7 +281,7 @@ package body XML3_C is
       begin
          if Requested = XML3_Encoding.Unsupported then
             Status := Status_Unsupported;
-            XML3_Errors.Report_Simple (1, 32, 3, URL);
+            Report_Code (XML3_Diagnostic_Codes.Unsupported_Encoding, URL);
             if XML3_Errors.Last_Error_Is_OOM then
                Status := Status_No_Memory;
             end if;
@@ -299,7 +293,7 @@ package body XML3_C is
          begin
             if Selected = XML3_Parser.Options.Unsupported then
                Status := Status_Unsupported;
-               XML3_Errors.Report_Simple (1, 115, 3, URL);
+               Report_Code (XML3_Diagnostic_Codes.Unsupported_Feature, URL);
                if XML3_Errors.Last_Error_Is_OOM then
                   Status := Status_No_Memory;
                end if;
@@ -314,12 +308,18 @@ package body XML3_C is
               (Buffer, Natural (Size), Requested, Prepared, Prepare_Status);
             case Prepare_Status is
                when XML3_Encoding.Buffers.Invalid_UTF16 =>
-                  Report_Conversion_Error (81, 8, Status_Malformed);
+                  Report_Conversion_Error
+                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
+                     Status_Malformed);
                when XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
-                  Report_Conversion_Error (114, 1, Status_Limit_Exceeded);
+                  Report_Conversion_Error
+                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
+                     Status_Limit_Exceeded);
                when XML3_Encoding.Buffers.Conversion_No_Memory =>
                   Status := Status_No_Memory;
-                  XML3_Errors.Report_Simple (6, 2, 3, URL);
+                  Report_Code
+                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
+                     URL);
                when XML3_Encoding.Buffers.Converted =>
                   declare
                      Input : String (1 .. Prepared.Length)
