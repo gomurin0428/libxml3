@@ -2,6 +2,17 @@
 
 ## Result
 
+`Diagnostic_Messages.Kind_For` now owns the code/domain message selection
+policy as one pure total expression function with no globals. It proves that
+every `int` code and domain yields a `Message_Kind`, so the adapter can index
+its text table without a range or exception path; a negative code takes the
+domain fallback rather than raising. The message texts, their static
+addresses and the kind-to-address table remain trusted adapter data, and this
+contract makes no claim about libxml2 wording. A bridge regression compares
+the function against a test-local copy of the previous ordered if-chain over
+codes -3 .. 130 plus `int'First`/`int'Last`, domains -2 .. 12 plus the
+extremes and both input flags, and asserts every kind is reachable.
+
 `XML3_Error_Records` now owns cloning, partial-copy rollback and release of the
 five diagnostic strings. Its record declaration keeps the existing C layout;
 `XML3_Errors` uses a subtype rather than a second native representation. The
@@ -98,7 +109,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,320 checks, 1,514 by flow analysis and 11,806
+It completed successfully: **13,322 checks, 1,516 by flow analysis and 11,806
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -766,7 +777,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 539 entity
+The 541 entity
 summaries report 0 flow errors, 180 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -802,14 +813,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 396 |
+| Data dependencies | 397 |
 | Initialization | 918 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,646 |
 | Assertions | 1,669 |
 | Functional contracts | 4,417 |
-| Termination | 273 |
-| **Total** | **13,320** |
+| Termination | 274 |
+| **Total** | **13,322** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1531,11 +1542,12 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 80 hashes identify the source files and build/test configuration
+The following 81 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
-```textfd7fb375690d7823060d353454965556dd0565882ed6cedd3a992c297f567925  src/xml3_c.adb
+```text
+fd7fb375690d7823060d353454965556dd0565882ed6cedd3a992c297f567925  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1577,7 +1589,8 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-fce43efd8fb12ea3452e4aac0e55656d438d071a478841dba00e8d665d6f64ed  src/xml3_errors.adb
+077822cdb3ef0a69bcc0dd321f0aad86b6bd9a36203b95c6f848c8f0751249cf  src/xml3_errors.adb
+8cd2d2fedd9befc9f727d8f9055c94250484c83a543be7dcd9b1b6c76452199e  src/xml3_diagnostic_messages.ads
 4f7208d868ea68bab954462f28935f2c67528729bb4bb6362e59472510cff397  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
@@ -1600,10 +1613,10 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-8d829512fd8f6aa9e24e036ff602366184ea78e4b4becb7ab62c501f0f5fedec  proof.gpr
+abea873226f6440ab268532a21e24e11092293ae73deae8ed27ffd2a5bc77ed8  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-66d892b1db73f05e04c3ac14a8eee2f98a26dbd0dd6513cf61a7540fe98b8eff  Makefile
-2a4d029dbefd939c092fd316dbcffa0da1109738020c7daea3224b0a70033a2e  tests/error-test.c
+f2d26eeb0bc6084860b7f1dda9eae4e8cb7e41e1dbc089f411e62bc2969cb8de  Makefile
+4686e9be68965218bbf35f9b2ff1effff0bcfe8b3a72ebb27dd70e85e97922b8  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
@@ -1612,8 +1625,8 @@ b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buf
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 9553b7ab13639b9345de865f3a1704a0d2687d74986ae15418e4e2fc2c615300  src/xml3_error_records.ads
 c62d0f71c8ee467db9065663921b4bc5b344020d5e47c6dbb045b346627dd925  src/xml3_error_records.adb
-522dd9a859369a431e22fb41ddaf10971faa0696d5ed8fc5bf2b7a0d08797806  tests/dom_bridge_test.adb
-6669c100bb3f96760e4631086ba2d4e691e1d8af38ba9082bbc24248ef4d232f  tests/dom_bridge_test.gpr
+42a7e21f5a7fec318fcc474cd8d5b05beb813048725bf55f606625f92123f63f  tests/dom_bridge_test.adb
+ec502a656dadb3e82e1b0e839b6e1c9b32244eabb2291c620be39a90fd5e3a8c  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```
 

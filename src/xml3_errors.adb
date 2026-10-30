@@ -1,5 +1,6 @@
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
+with XML3_Diagnostic_Messages;
 with XML3_Error_Records;
 with XML3_Text;
 
@@ -123,82 +124,47 @@ package body XML3_Errors is
    Message_Generic : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("XML parsing error" & ASCII.LF);
 
-   function Message_For (Code : Natural; Domain : Natural) return System.Address is
-   begin
-      if Code = 2 then
-         return Message_No_Memory'Address;
-      elsif Code = 1 then
-         return Message_Internal'Address;
-      elsif Code = 4 then
-         return Message_Empty'Address;
-      elsif Code = 5 then
-         return Message_Extra_Content'Address;
-      elsif Code = 9 then
-         return Message_Invalid_Character'Address;
-      elsif Code = 6 or else Code = 7 or else Code = 8 then
-         return Message_Character_Reference'Address;
-      elsif Code = 23 then
-         return Message_Entity_Semicolon'Address;
-      elsif Code = 26 or else Code = 27 then
-         return Message_Entity'Address;
-      elsif Code = 29 then
-         return Message_External_Entity'Address;
-      elsif Code = 32 then
-         return Message_Encoding'Address;
-      elsif Code = 79 then
-         return Message_Encoding_Name'Address;
-      elsif Code = 113 then
-         return Message_Encoding_Mismatch'Address;
-      elsif Code = 34 or else Code = 40 then
-         return Message_Attribute_Unclosed'Address;
-      elsif Code = 38 then
-         return Message_Quote'Address;
-      elsif Code = 39 then
-         return Message_Attribute_Required'Address;
-      elsif Code = 41 then
-         return Message_Attribute_Value'Address;
-      elsif Code = 68 then
-         return Message_Name'Address;
-      elsif Code = 75 then
-         return Message_Equal'Address;
-      elsif Code = 42 then
-         return Message_Duplicate_Attribute'Address;
-      elsif Code = 73 then
-         return Message_Start_Tag'Address;
-      elsif Code = 77 then
-         return Message_End_Tag'Address;
-      elsif Code = 78 then
-         return Message_Standalone'Address;
-      elsif Code = 57 then
-         return Message_XML_Declaration'Address;
-      elsif Code = 80 then
-         return Message_Comment_Hyphen'Address;
-      elsif Code = 110 then
-         return Message_Name_Length'Address;
-      elsif Code = 114 then
-         return Message_Resource'Address;
-      elsif Code = 115 then
-         return Message_Unsupported'Address;
-      elsif Code = 76 then
-         return Message_Tag'Address;
-      elsif Code = 62 then
-         return Message_CData_Position'Address;
-      elsif Code = 45 then
-         return Message_Comment'Address;
-      elsif Code = 63 then
-         return Message_CData'Address;
-      elsif Code = 47 then
-         return Message_PI'Address;
-      elsif Code = 64 then
-         return Message_Reserved_Name'Address;
-      elsif Domain = 8 or else Code = 81 then
-         return Message_UTF8'Address;
-      elsif Domain = 3 then
-         return Message_Namespace'Address;
-      else
-         return Message_Generic'Address;
-      end if;
-   end Message_For;
+   use all type XML3_Diagnostic_Messages.Message_Kind;
+
+   Message_Addresses : constant array (XML3_Diagnostic_Messages.Message_Kind)
+     of System.Address :=
+     (Empty => Message_Empty'Address,
+      Start => Message_Start'Address,
+      Name => Message_Name'Address,
+      Tag => Message_Tag'Address,
+      Comment => Message_Comment'Address,
+      CData => Message_CData'Address,
+      PI => Message_PI'Address,
+      UTF8 => Message_UTF8'Address,
+      Namespace => Message_Namespace'Address,
+      No_Memory => Message_No_Memory'Address,
+      Internal => Message_Internal'Address,
+      Unsupported => Message_Unsupported'Address,
+      Extra_Content => Message_Extra_Content'Address,
+      Invalid_Character => Message_Invalid_Character'Address,
+      Character_Reference => Message_Character_Reference'Address,
+      Entity_Semicolon => Message_Entity_Semicolon'Address,
+      Entity => Message_Entity'Address,
+      External_Entity => Message_External_Entity'Address,
+      Encoding => Message_Encoding'Address,
+      Encoding_Name => Message_Encoding_Name'Address,
+      Encoding_Mismatch => Message_Encoding_Mismatch'Address,
+      Attribute_Value => Message_Attribute_Value'Address,
+      Attribute_Unclosed => Message_Attribute_Unclosed'Address,
+      Attribute_Required => Message_Attribute_Required'Address,
+      Start_Tag => Message_Start_Tag'Address,
+      End_Tag => Message_End_Tag'Address,
+      Reserved_Name => Message_Reserved_Name'Address,
+      Name_Length => Message_Name_Length'Address,
+      Resource => Message_Resource'Address,
+      Standalone => Message_Standalone'Address,
+      XML_Declaration => Message_XML_Declaration'Address,
+      Comment_Hyphen => Message_Comment_Hyphen'Address,
+      Quote => Message_Quote'Address,
+      CData_Position => Message_CData_Position'Address,
+      Equal => Message_Equal'Address,
+      Duplicate_Attribute => Message_Duplicate_Attribute'Address,
+      Generic_Error => Message_Generic'Address);
 
    function State_At
      (Address : System.Address) return Error_State_Access
@@ -336,13 +302,12 @@ package body XML3_Errors is
    is
       Location : constant XML3_Text.Text_Location :=
         XML3_Text.Location_At (Input, Byte_Position);
-      Message : System.Address;
+      Message : constant System.Address :=
+        Message_Addresses
+          (XML3_Diagnostic_Messages.Kind_For
+             (Interfaces.C.int (Code), Interfaces.C.int (Domain),
+              Has_Input => Input'Length /= 0));
    begin
-      if Code = 4 and then Input'Length /= 0 then
-         Message := Message_Start'Address;
-      else
-         Message := Message_For (Code, Domain);
-      end if;
       Set_Error
         (Interfaces.C.int (Domain),
          Interfaces.C.int (Code),
@@ -365,7 +330,8 @@ package body XML3_Errors is
    begin
       Set_Error
         (Domain, Code, Level, 0, 0, 0,
-         Message_For (Natural (Code), Natural (Domain)), File,
+         Message_Addresses (XML3_Diagnostic_Messages.Kind_For (Code, Domain)),
+         File,
          System.Null_Address, System.Null_Address, System.Null_Address);
    exception
       when others =>

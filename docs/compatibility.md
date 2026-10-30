@@ -1051,6 +1051,14 @@ record declaration is now shared through a subtype in `XML3_Errors`.
 Public record replacement, sticky error semantics, TLS and emergency diagnostics
 remain in the native adapter; emergency borrowed strings are never passed to
 the owning release operation.
+Which message text accompanies a code/domain pair is selected by the pure SPARK
+`XML3_Diagnostic_Messages.Kind_For`: code-specific messages first, then the
+UTF-8 and namespace domain fallbacks, then the generic text. Code 4 reports
+"Start tag expected, '<' not found" when the parser had input and
+"Document is empty" otherwise. The mapping is unchanged for every non-negative
+code. A negative code now receives the domain or generic message instead of
+being reported as an allocation failure, which only affects internally
+constructed diagnostics because no public API accepts a caller-supplied code.
 Callers still provide valid, readable and stable strings and live error records;
 the cap does not make arbitrary pointers safe or provide a full DoS bound.
 For a caller-constructed nonzero error with a NULL message, libxml3 still
