@@ -211,6 +211,124 @@ static void expect_tree_error(void) {
 }
 #endif
 
+static void test_namespace_property_input(void) {
+    static const struct { const char *name, *value; } cases[] = {
+        {"n\xc3\xa9", "raw &amp; &#65; < > \" '\t\n\r"},
+        {"empty", ""}, {"none", NULL}, {"same", "same"}
+    };
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 128);
+    char *mapping = mmap(NULL, (size_t)page * 4, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    assert(mprotect(mapping + page * 3, (size_t)page, PROT_NONE) == 0);
+    for (int mode = 0; mode < 4; ++mode) {
+        for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+            char *name = mapping + page - strlen(cases[i].name) - 1;
+            char *value = NULL;
+            memcpy(name, cases[i].name, strlen(cases[i].name) + 1);
+            if (cases[i].value) {
+                value = mapping + page * 3 - strlen(cases[i].value) - 1;
+                memcpy(value, cases[i].value, strlen(cases[i].value) + 1);
+                if (strcmp(cases[i].name, cases[i].value) == 0) value = name;
+            }
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(doc && root);
+            assert(xmlDocSetRootElement(doc, root) == NULL);
+            xmlNsPtr p = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "p");
+            xmlNsPtr q = xmlNewNs(root, BAD_CAST "urn:same", BAD_CAST "q");
+            assert(p && q);
+            xmlAttrPtr old = NULL;
+            int marker;
+            if (mode == 2) {
+                old = xmlNewNsProp(root, p, BAD_CAST cases[i].name, BAD_CAST "old");
+                assert(old);
+                old->_private = &marker;
+            }
+            xmlAttrPtr attr = mode < 2
+                ? xmlNewNsProp(mode == 1 ? NULL : root, p, BAD_CAST name, BAD_CAST value)
+                : xmlSetNsProp(root, q, BAD_CAST name, BAD_CAST value);
+            assert(attr && attr->ns == (mode < 2 ? p : q));
+            assert(attr->parent == (mode == 1 ? NULL : root));
+            if (old) assert(attr == old && attr->_private == &marker);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page, PROT_NONE) == 0);
+            const char *expected = cases[i].value ? cases[i].value : "";
+            assert(strcmp((const char *)attr->name, cases[i].name) == 0);
+            assert((attr->children != NULL) == (cases[i].value != NULL));
+            value_is((xmlNodePtr)attr, expected);
+            if (mode == 1) assert(xmlAddChild(root, (xmlNodePtr)attr) == (xmlNodePtr)attr);
+            assert(xmlSetNsProp(root, p, attr->name,
+                               attr->children ? attr->children->content : NULL) == attr);
+            assert(attr->ns == p);
+            value_is((xmlNodePtr)attr, expected);
+            xmlAttrPtr copy = xmlNewNsProp(NULL, q, attr->name,
+                                          attr->children ? attr->children->content : NULL);
+            assert(copy && copy != attr && copy->ns == q);
+            assert(xmlRemoveProp(attr) == 0);
+            assert(strcmp((const char *)copy->name, cases[i].name) == 0);
+            value_is((xmlNodePtr)copy, expected);
+            assert(xmlAddChild(root, (xmlNodePtr)copy) == (xmlNodePtr)copy);
+            assert(root->nsDef == p && p->next == q && q->next == NULL);
+            xmlChar *output = NULL;
+            int size = 0;
+            xmlDocDumpMemoryEnc(doc, &output, &size, "UTF-8");
+            assert(output && size > 0);
+            xmlFreeDoc(doc);
+            doc = xmlReadMemory((const char *)output, size, NULL, NULL, 0);
+            assert(doc);
+            root = xmlDocGetRootElement(doc);
+            attr = xmlHasNsProp(root, BAD_CAST cases[i].name, BAD_CAST "urn:same");
+            assert(attr);
+            value_is((xmlNodePtr)attr, expected);
+            assert(xmlSetNsProp(root, attr->ns, attr->name, BAD_CAST "edited") == attr);
+            value_is((xmlNodePtr)attr, "edited");
+            xmlFree(output);
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+            assert(mprotect(mapping + page * 2, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    assert(doc && root);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    xmlNsPtr ns = xmlNewNs(root, BAD_CAST "urn:keep", BAD_CAST "p");
+    xmlNsPtr no_href = xmlNewNs(NULL, NULL, BAD_CAST "missing");
+    assert(ns && no_href);
+    xmlAttrPtr keep = xmlNewNsProp(root, ns, BAD_CAST "keep", BAD_CAST "old");
+    assert(keep);
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlNodePtr nodes[] = {(xmlNodePtr)protected, (xmlNodePtr)doc, (xmlNodePtr)keep};
+    for (size_t i = 0; i < sizeof(nodes) / sizeof(nodes[0]); ++i) {
+        assert(!xmlNewNsProp(nodes[i], (xmlNsPtr)protected, protected, protected));
+        expect_tree_error();
+        assert(!xmlSetNsProp(nodes[i], (xmlNsPtr)protected, protected, protected));
+        expect_tree_error();
+    }
+    xmlNsPtr invalid[] = {(xmlNsPtr)protected, (xmlNsPtr)root, no_href};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        assert(!xmlNewNsProp(root, invalid[i], protected, protected));
+        expect_tree_error();
+        assert(!xmlSetNsProp(root, invalid[i], protected, protected));
+        expect_tree_error();
+        assert(root->properties == keep && keep->next == NULL && keep->ns == ns);
+        value_is((xmlNodePtr)keep, "old");
+        assert(root->nsDef == ns && ns->next == NULL);
+    }
+    assert(!xmlNewNsProp((xmlNodePtr)protected, (xmlNsPtr)protected, NULL, protected));
+    expect_tree_error();
+    assert(!xmlSetNsProp(NULL, (xmlNsPtr)protected, protected, protected));
+    expect_tree_error();
+    xmlFreeNs(no_href);
+    xmlFreeDoc(doc);
+#endif
+    assert(munmap(mapping, (size_t)page * 4) == 0);
+}
+
 static void test_namespace_property_flow(void) {
     xmlDocPtr doc = xmlNewDoc(NULL);
     xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "root");
@@ -705,6 +823,7 @@ static void test_namespace_lists(void) {
 }
 
 int main(void) {
+    test_namespace_property_input();
     test_namespace_search_input();
     test_namespace_input();
     test_namespace_copies();

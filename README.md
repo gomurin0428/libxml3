@@ -131,6 +131,8 @@ HTML/entity expansion は未対応です。
 先に確認し、借用属性と独立した属性値の所有権、namespaceフィルタは従来どおりです。
 `xmlNewProp` の名前/値もSPARK内で計測・コピーし、既存の属性作成・接続・失敗時の
 巻き戻しを再利用します。単独属性、重複名の末尾追加、NULL値と空値の区別を維持します。
+`xmlNewNsProp` / `xmlSetNsProp` も共通のSPARK入力経路を使い、要素と名前空間の
+登録確認後に読み取ります。URIによる照合・旧値保持・namespace所有権の契約は維持します。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

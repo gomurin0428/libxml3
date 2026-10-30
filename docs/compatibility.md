@@ -525,6 +525,12 @@ local name を許します。`xmlSetNsProp` と `xmlUnsetNsProp` は prefix/name
 address、`_private`、list position と sibling links を保ち、allocation 失敗では
 旧 namespace/value を保ちます。`xmlRemoveProp` と `xmlFreeProp` は qualified attribute
 にも適用されます。
+`xmlNewNsProp` / `xmlSetNsProp` はnative名前/値を共通のSPARK経路へ渡し、要素と
+名前空間の登録・種類（名前空間は非NULL hrefも）を確認してから計測・コピーします。
+不正な対象は入力を読まず115で拒否します。NULL namespaceは従来どおり非修飾属性で、
+NULL elementからの単独属性作成は `xmlNewNsProp` のみが許します。NULL値と空値、raw値、
+既存属性のfieldを使う更新・複製は維持し、走査上限超過は従来の変換115から共通の上限114へ
+揃えます。C側の中間String、名前の妥当性検証や参照復号の追加はありません。
 
 添付可能なのは documentless subtree または同一文書に属する subtree のみです。
 他文書との移動や、別文書に関連付いた node の documentless parent への移動は

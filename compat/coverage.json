@@ -1458,7 +1458,7 @@
   },
   "function:tree.h:xmlNewNsProp": {
     "implementation": "partial",
-    "scope": "namespace-aware detached/attached attribute を作成。local name と値をコピーし、NULL value と empty value を区別。expanded name が異なる重複 local name を許す。",
+    "scope": "Native name/value input through shared SPARK Edit_Namespace_Property. Registered element/namespace checks precede measurement/copy; invalid context or NULL namespace href reports115 before reads, scan exhaustion114. Existing String creation retains detached/attached attributes, raw values, NULL vs empty text children, duplicate append, namespace retention and rollback. NULL namespace selects an unqualified attribute. No added name validation or reference decoding. Native extents/stability, byte effects, allocator/ABI and full semantics remain trusted/unproved.",
     "tests": [
       "tests/namespace-edit-test.c",
       "tests/oom-test.c"
@@ -1467,7 +1467,7 @@
   },
   "function:tree.h:xmlSetNsProp": {
     "implementation": "partial",
-    "scope": "URI と local name で既存属性を照合。既存 attribute address、`_private`、list position を保持し、新値確保後に namespace/value を更新。",
+    "scope": "Native name/value input through shared SPARK Edit_Namespace_Property after registered element/namespace and non-NULL namespace-href checks. URI/local-name matching retains existing attribute address, _private and links; missing attributes are appended. NULL vs empty values and raw bytes preserved; copies complete before old children retire, including aliased input. Invalid context115 before reads; scan exhaustion114. Existing Ready/namespace attachment/rollback contracts retained. Native extents/stability, byte effects, allocator/ABI and full semantics remain trusted/unproved.",
     "tests": [
       "tests/namespace-edit-test.c",
       "tests/oom-test.c"

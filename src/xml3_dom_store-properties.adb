@@ -1019,6 +1019,63 @@ package body XML3_DOM_Store.Properties with SPARK_Mode is
       end;
    end Set_Namespace_Property;
 
+   procedure Edit_Namespace_Property
+     (S : in out Store; Element, Ns, Name, Value : System.Address;
+      Replace_Existing : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Q : constant Namespace_Ref := Find_Registered_Namespace (S, Ns);
+      Name_Length, Value_Length : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if Name = System.Null_Address
+        or else (Replace_Existing and then Element = System.Null_Address)
+        or else (Element /= System.Null_Address
+          and then (E = Null_Node
+            or else Node (S.Current.all, E).Kind /= Element_Node))
+        or else (Ns /= System.Null_Address
+          and then (Q = Null_Namespace
+            or else Namespace (S.Current.all, Q).Href = System.Null_Address))
+      then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      if Value /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Value, Value_Length, Found);
+         if not Found then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+      end if;
+      declare
+         Name_Size : constant XML3_Text.Byte_Count := Name_Length;
+         Value_Size : constant XML3_Text.Byte_Count := Value_Length;
+         Name_Text : String (1 .. Name_Size);
+         Value_Text : String (1 .. Value_Size) := (others => Character'Val (0));
+      begin
+         Native.Read_String (Name, Name_Text);
+         if Value /= System.Null_Address then
+            Native.Read_String (Value, Value_Text);
+         end if;
+         if Replace_Existing then
+            Set_Namespace_Property
+              (S, Element, Ns, Name_Text, Value_Text,
+               Value /= System.Null_Address, Result, Status);
+         else
+            Create_Namespace_Property
+              (S, Element, Ns, Name_Text, Value_Text,
+               Value /= System.Null_Address, Result, Status);
+         end if;
+      end;
+   end Edit_Namespace_Property;
+
    procedure Unset_Namespace_Property
      (S : in out Store; Element, Ns : System.Address; Name : String;
       Removed : out Boolean; Status : out Operation_Status)

@@ -75,6 +75,17 @@ package XML3_DOM_Store.Properties with SPARK_Mode is
            then Result /= System.Null_Address
            else Result = System.Null_Address);
 
+   procedure Edit_Namespace_Property
+     (S : in out Store; Element, Ns, Name, Value : System.Address;
+      Replace_Existing : Boolean;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Pre => Ready (S),
+       Post => Ready (S)
+         and then Namespace_Attached (S, Ns) = Namespace_Attached (S, Ns)'Old
+         and then (if Status = XML3_DOM_Constructors.Created then
+           Result /= System.Null_Address else Result = System.Null_Address);
+
    procedure Unset_Namespace_Property
      (S : in out Store; Element, Ns : System.Address; Name : String;
       Removed : out Boolean; Status : out Operation_Status)
