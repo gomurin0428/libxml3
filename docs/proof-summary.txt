@@ -6,16 +6,16 @@ SPARK Analysis results        Total          Flow                               
 ----------------------------------------------------------------------------------------------------------------
 Data Dependencies               370           370                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                  860           860                                       .           .          .
+Initialization                  862           862                                       .           .          .
 Non-Aliasing                      .             .                                       .           .          .
 Run-time Checks                5570             .      5570 (CVC5 93%, Trivial 0%, Z3 6%)           .          .
 Assertions                     1667             .    1667 (CVC5 65%, Trivial 11%, Z3 24%)           .          .
-Functional Contracts           4323             .     4323 (CVC5 67%, Trivial 3%, Z3 30%)           .          .
+Functional Contracts           4324             .     4324 (CVC5 67%, Trivial 3%, Z3 30%)           .          .
 LSP Verification                  .             .                                       .           .          .
 Termination                     263           189                    74 (CVC5 96%, Z3 4%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13053    1419 (11%)                             11634 (89%)           .          .
+Total                         13056    1421 (11%)                             11635 (89%)           .          .
 
 
 max steps used for successful proof: 1191869
@@ -318,8 +318,8 @@ in unit xml3_dom_store-content, 11 subprograms and packages out of 11 analyzed
   XML3_DOM_Store.Content.New_Doc_Content_Bytes at xml3_dom_store-content.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
   XML3_DOM_Store.Content.New_Doc_Node at xml3_dom_store-content.ads:39 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (18 checks)
   XML3_DOM_Store.Content.Parse_Content_List at xml3_dom_store-content.ads:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
-  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:444 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (69 checks)
-  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:83 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
+  XML3_DOM_Store.Content.Replace_Content at xml3_dom_store-content.adb:444 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (67 checks)
+  XML3_DOM_Store.Content.Set at xml3_dom_store-content.ads:83 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
   XML3_DOM_Store.Content.Set_Name at xml3_dom_store-content.ads:77 flow analyzed (0 errors, 0 checks, 3 warnings and 0 pragma Assume statements) and proved (37 checks)
 in unit xml3_dom_store-documents, 3 subprograms and packages out of 3 analyzed
   XML3_DOM_Store.Documents at xml3_dom_store-documents.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

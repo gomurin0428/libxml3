@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,053 checks
-(1,419 flow and 11,634 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,056 checks
+(1,421 flow and 11,635 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 162 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -502,8 +502,9 @@ element/attribute に text child がない場合は SPARK が text node を作�
 native spanを `Replace_Content` または既存の `Create_Node` に渡します。中間Stringは作らず、
 新bufferへの旧本文とsuffixのコピーが完了してからpinを更新するため、自己aliasでも旧領域は先に解放しません。
 このコピーの実byte効果・foreign extent/stability・ABIは引き続き信頼境界です。
-GNATprove は `Store.Content.Append` 36 checks、`Replace_Content` 69 checks、
-`Runtime.Add_Content` 1 check を証明します。
+GNATprove は `Store.Content.Append` 36 checks、`Replace_Content` 67 checks、
+`Runtime.Add_Content` 1 check、`Store.Content.Set` 34 checks、
+`Runtime.Set_Content` 1 check を証明します。
 
 `xmlNodeSetContent` も node-kind 分岐、XML reference decoder、subtree retirement、
 owner/pin lifetime は SPARK Store/Runtime に置きます。predefined/numeric references は
@@ -514,6 +515,9 @@ serialization 時に行われます。raw input reference は serializer で展�
 validation/escaping は serialization 時に行われます。new child は完全に準備して attach
 した後に旧 children を namespace-aware に retire し、失敗では旧 tree を保ちます。
 DTD/entity node types と namespace repair は未対応です。
+setterのC境界もアドレス/長さ転送・mutex・診断変換だけです。登録照合の後にSPARKで
+入力を計測し、scalarは追記と共通のnative span版 `Replace_Content` に直接渡します。
+要素・属性だけに入力/復号バッファを用意し、旧子ノードの本文が入力でも読み終えてから退役します。
 
 `xmlNewChild` は同じ Content/Runtime 層で namespace 継承、reference decoding、
 新しい element/text の構築、接続と失敗時の後始末を行います。入力用 scratch は native
@@ -527,11 +531,12 @@ API に対応する mode と content が NULL かどうかを渡すだけで、r
 作成判断は SPARK 側です。reference decoding はせず、XML/UTF-8 検査と escaping は出力時に
 行います。NULL/empty の違い、literal reference の往復、出力拒否後の内容修復を検査します。
 
-`xmlNodeSetContentLen` は C 境界で指定 byte 数内の文字列だけをコピーし、既存の
-`Runtime.Set_Content` に渡します。長さ 0 なら pointer を読まず、負の長さなら通常の
-NUL-terminated 変換です。この pointer 走査は形式証明外で、正の長さを指定した
-非終端バッファと長さ 0 の入力を guard page で検査します。置換・所有権・解放判断は
-既存の SPARK 実装のままです。新しい ABI entry の追加が証明範囲を広げる主張ではありません。
+`xmlNodeSetContentLen` は `Runtime.Set_Content` へ元のアドレスと長さを渡し、Storeが
+`Measure` / `Measure_Byte_Prefix` で計測します。長さ0は本文を読まず、負の長さはNUL終端です。
+NULL本文は長さによらずNULLとして扱い、それ以外の過大な長さは本文を読まず拒否します。
+未登録nodeも本文を読まず拒否します。guard page、入力保護後の出力・再読み込み・編集、
+scalar自己aliasと退役する子の本文を使った置換を実行検査します。native pointerの可読性・
+extent/stability・実byte効果・allocator/ABI・完全な公開意味論は形式証明外です。
 
 `xmlNodeAddContentLen` もSPARKのbounded計測を使います。Store が長さとNULL入力から
 空の入力を無操作として扱うか、空の text として扱うかを決めます。

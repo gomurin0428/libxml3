@@ -177,12 +177,12 @@ is
       end Set_Name;
 
       procedure Set_Content
-        (Facade : System.Address; Content : String; Has_Content : Boolean;
+        (Facade, Content : System.Address; Length : Integer;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Content.Set
-           (Current, Facade, Content, Has_Content, Status);
+           (Current, Facade, Content, Length, Status);
       end Set_Content;
 
       procedure New_Doc_Content

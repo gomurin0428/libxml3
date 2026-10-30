@@ -131,23 +131,6 @@ package body XML3_C is
       return To_String (Item, Natural (Length));
    end C_String_Value;
 
-   function C_String_Prefix
-     (Item : System.Address; Limit : Interfaces.C.int) return String
-   is
-      Length : Integer;
-   begin
-      if Item = System.Null_Address or else Limit = 0 then
-         return "";
-      elsif Limit < 0 then
-         return C_String_Value (Item);
-      elsif Limit > Max_Input then
-         raise Invalid_C_String;
-      end if;
-      Length := Scan_Length (Item, Natural (Limit));
-      return To_String
-        (Item, (if Length < 0 then Natural (Limit) else Natural (Length)));
-   end C_String_Prefix;
-
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
       if Target = System.Null_Address then
@@ -1294,12 +1277,11 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       declare
-         Value : constant String := C_String_Prefix (Content, Length);
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Set_Content
-           (Node, Value, Content /= System.Null_Address, Status);
+           (Node, Content, Integer (Length), Status);
       end;
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
@@ -1308,9 +1290,6 @@ package body XML3_C is
               elsif Status = XML3_DOM_Constructors.No_Memory then -1
               else 1);
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return 1;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return 1;

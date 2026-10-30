@@ -38,6 +38,104 @@ static int append_input(int mode, xmlNodePtr node, const xmlChar *value, int len
     return xmlTextConcat(node, value, mode == 2 ? length : -7);
 }
 
+static int set_input(int mode, xmlNodePtr node, const xmlChar *value, int length) {
+    return mode == 0 ? xmlNodeSetContent(node, value)
+        : xmlNodeSetContentLen(node, value, mode == 1 ? length : -7);
+}
+
+static void test_set_input(void) {
+    static const char value[] = "v&amp;\xc3\xa9";
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int mode = 0; mode < 3; ++mode) {
+        for (int path = 0; path < 3; ++path) {
+            size_t bytes = sizeof(value) - (mode == 1 ? 1 : 0);
+            char *input = mapping + page - bytes;
+            memcpy(input, value, bytes);
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+            xmlNodePtr target;
+            if (path == 0) {
+                target = xmlNewText(BAD_CAST "old");
+                assert(target && xmlAddChild(root, target) == target);
+            } else if (path == 1) {
+                target = root;
+                assert(xmlNewTextChild(root, NULL, BAD_CAST "old", BAD_CAST "kept"));
+            } else {
+                target = (xmlNodePtr)xmlNewProp(root, BAD_CAST "a", BAD_CAST "old");
+                assert(target);
+            }
+            assert(set_input(mode, target, BAD_CAST input, sizeof(value) - 1) == 0);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            const char *expected = path == 0 ? value : "v&\xc3\xa9";
+            xmlChar *content = xmlNodeGetContent(target);
+            assert(content && strcmp((const char *)content, expected) == 0);
+            xmlFree(content);
+            xmlChar *output = NULL;
+            int length = 0;
+            xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+            assert(output && length > 0);
+            xmlFreeDoc(doc);
+            doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+            assert(doc);
+            root = xmlDocGetRootElement(doc);
+            target = path == 0 ? root->children
+                : path == 1 ? root : (xmlNodePtr)root->properties;
+            assert(target);
+            content = xmlNodeGetContent(target);
+            assert(content && strcmp((const char *)content, expected) == 0);
+            xmlFree(content);
+            assert(xmlNodeSetContent(target, BAD_CAST "edited") == 0);
+            content = xmlNodeGetContent(target);
+            assert(content && strcmp((const char *)content, "edited") == 0);
+            xmlFree(content);
+            xmlFree(output);
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    for (int mode = 0; mode < 3; ++mode) {
+        xmlResetLastError();
+        assert(set_input(mode, (xmlNodePtr)protected, protected, 1) == 1);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        xmlNodePtr text = xmlNewText(BAD_CAST "prefix&amp;");
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        xmlNodePtr old = xmlNewText(BAD_CAST "&amp;");
+        assert(text && root && old && xmlAddChild(root, old) == old);
+        assert(set_input(mode, text, text->content + 6, 5) == 0);
+        assert(strcmp((const char *)text->content, "&amp;") == 0);
+        assert(set_input(mode, root, old->content, 5) == 0);
+        assert(root->children && root->children == root->last);
+        assert(strcmp((const char *)root->children->content, "&") == 0);
+        xmlChar *original = text->content;
+        xmlResetLastError();
+        assert(xmlNodeSetContentLen(text, protected, INT_MAX) == 1);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        assert(text->content == original && strcmp((const char *)original, "&amp;") == 0);
+        assert(xmlNodeSetContentLen(text, NULL, INT_MAX) == 0 && text->content == NULL);
+        assert(xmlNodeSetContentLen(text, protected, 0) == 0);
+        assert(text->content && text->content[0] == 0);
+        assert(xmlNodeSetContentLen(root, protected, 0) == 0);
+        assert(root->children == NULL && root->last == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        mapping[page - 1] = 0;
+        assert(xmlNodeSetContentLen(text, BAD_CAST (mapping + page - 1), 16) == 0);
+        assert(text->content && text->content[0] == 0);
+        xmlFreeNode(root);
+        xmlFreeNode(text);
+    }
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void test_append_input(void) {
     static const char suffix[] = "&amp;\xc3\xa9";
     static const char expected[] = "old&amp;\xc3\xa9";
@@ -1539,6 +1637,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_set_input();
     test_append_input();
     test_string_list_input();
     test_container_input();
@@ -1585,6 +1684,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_set_input();
     test_append_input();
     test_string_list_input();
     test_container_input();

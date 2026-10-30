@@ -549,10 +549,11 @@
   },
   "function:tree.h:xmlNodeSetContent": {
     "implementation": "partial",
-    "scope": "SPARK-owned replacement of scalar, element, and attribute content; element/attribute values decode predefined and numeric references. Malformed or unknown references and invalid UTF-8/XML characters are rejected before mutation only for element/attribute inputs; scalar Text/CDATA/Comment/PI content remains raw, with validation deferred to serialization. Literal CR/LF/TAB are preserved; DTD/entity nodes are unsupported.",
+    "scope": "SPARK-owned replacement of scalar, element, and attribute content; element/attribute values decode predefined and numeric references. Malformed or unknown references and invalid UTF-8/XML characters are rejected before mutation only for element/attribute inputs; scalar Text/CDATA/Comment/PI content remains raw, with validation deferred to serialization. Literal CR/LF/TAB are preserved; DTD/entity nodes are unsupported. Registered-facade checks and bounded measurement precede native copies in SPARK; no C input String conversion. Scalars use native spans, only element/attribute decoding uses SPARK buffers. Aliased old content stays live until copying/decoding finishes; native extents/stability and complete API semantics remain trusted.",
     "tests": [
       "tests/content-edit-test.c",
-      "tests/oom-test.c"
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
     ],
     "proof": "not-proved"
   },
@@ -612,10 +613,11 @@
   },
   "function:tree.h:xmlNodeSetContentLen": {
     "implementation": "partial",
-    "scope": "Length-bounded C string conversion delegates to the existing SPARK content replacement. Nonnegative lengths read at most len bytes and stop at NUL; zero length never reads content, negative lengths use NUL termination. Scalar bytes hidden after NUL are not retained. Element/attribute reference decoding, scalar raw text, namespace lifetime and failure rollback follow xmlNodeSetContent; unsupported general entities remain rejected.",
+    "scope": "Native addresses and original lengths enter SPARK content replacement directly. Nonnegative lengths read at most len bytes and stop at NUL; zero length never reads content, negative lengths use NUL termination. Registered-facade validation and non-NULL input length limits precede reads; NULL input ignores length. Scalar bytes hidden after NUL are not retained. Element/attribute reference decoding, scalar native-span copies, alias lifetime, namespace lifetime and failure rollback follow xmlNodeSetContent; unsupported general entities remain rejected. No C-side intermediate String; native extents/stability and complete API semantics remain trusted.",
     "tests": [
       "tests/content-edit-test.c",
-      "tests/oom-test.c"
+      "tests/oom-test.c",
+      "tests/serialization-test.c"
     ],
     "proof": "not-proved"
   },
