@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,077 checks, 1,426 by flow analysis and 11,651
+It completed successfully: **13,095 checks, 1,430 by flow analysis and 11,665
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -567,6 +567,19 @@ in scope. It ignores `doc` and returns a caller-owned array of borrowed
 namespace pointers. The SPARK proof includes traversal, capacity, status and
 cleanup checks; native address allocation/writes, C array representation,
 pointer validity, and complete public semantics remain outside the proof.
+`xmlNewNs` forwards native href/prefix addresses through `Runtime.Create_Namespace`
+to the native overload of `Store.Create_Namespace`. Non-NULL elements are checked
+against the registration table and element kind before either input is read.
+`Measure` bounds each NUL-terminated input, then SPARK Strings feed the unchanged
+namespace constructor, duplicate-prefix checks, attachment and rollback path.
+NULL and empty href/prefix remain distinct. No intermediate C String is built.
+Tests cover both guarded inputs, NULL/empty combinations, copying from another
+namespace followed by its release, serialization/reparse/editing and invalid-node
+read avoidance. Native pointer validity/extents/stability, allocation/byte effects,
+ABI and complete public semantics remain trusted.
+GNATprove proves 14 checks for the native `Store.Create_Namespace` overload and
+0 for `Runtime.Create_Namespace` (the existing String overload proves 30).
+
 `xmlCopyNamespace` routes through `Runtime.Copy_Namespace` /
 `Store.Copy_Namespace`: the Store resolves a live managed namespace facade,
 copies stored href/prefix byte spans independently while preserving NULL versus
@@ -622,13 +635,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 371 |
-| Initialization | 866 |
-| Runtime checks | 5,578 |
+| Data dependencies | 372 |
+| Initialization | 869 |
+| Runtime checks | 5,585 |
 | Assertions | 1,667 |
-| Functional contracts | 4,332 |
+| Functional contracts | 4,339 |
 | Termination | 263 |
-| **Total** | **13,077** |
+| **Total** | **13,095** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1355,7 +1368,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-d5b62e673eb26a43ef321044efa3771791a8199a814aca68558c81adf6fe1a25  src/xml3_c.adb
+aa37a8f5cd5645b42316be5ac6d3c759aaeb8f7eecbf574d85b89fcadee403c2  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1378,8 +1391,8 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-e5f26a5a3a9a4fc5c4afa1f0880eadbaf4198f234a1eb6eba5ff7b2c133e9728  src/xml3_dom_runtime.adb
-821d80baea59934303b5663211ffd9ec76b1598e240c964042f30941227ea7dc  src/xml3_dom_runtime.ads
+cb8d354b63ddb45e18c8890ade84ab297a42ddbbe15821c9536e752dde6dd0e7  src/xml3_dom_runtime.adb
+c8a657e0ff0002bc0beea85c75dd6bc81bbe09192d1c0de1ec9d0a454dd03156  src/xml3_dom_runtime.ads
 18e18442a65357e6cea514f3e0473899e17f03f48b505bd8d18c56ad62556b68  src/xml3_dom_store-content.adb
 9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
@@ -1390,8 +1403,8 @@ f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_s
 f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
 34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
 af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
-d72c6bcf5a6e6493148df899737812258ab02d0e7abde2ee7ac41bd46238e5a2  src/xml3_dom_store.adb
-7b1d5816ca5323fbbc5e589f57ce64539b8976483cde809ecf730f1ce77ef556  src/xml3_dom_store.ads
+c81096a0b4cc8789e1247d08f414d5e90bbd69e805905a9bf628c97311d87204  src/xml3_dom_store.adb
+a6fce5e266f862563bdc60c908dd82d3b4b6e43e85a95fb569fa5d3f291ce8f5  src/xml3_dom_store.ads
 d6e1af24bbd85fb650716149f6a027e398b36daecba00be6179d6a910bcaf34d  src/xml3_encoding.adb
 9ceb46a1797cfb01ee7a6ecb3a73ad5901bd264edb9715929d6c5f5882e2683e  src/xml3_encoding.ads
 ebe2fb7188a68cf66761bc33a6667f1d2a51b6bedc5fa6ace8d746bd0ac33cca  src/xml3_encoding-buffers.adb

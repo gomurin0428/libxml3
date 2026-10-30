@@ -57,13 +57,12 @@ is
       end New_Document;
 
       procedure Create_Namespace
-        (Element : System.Address; Href, Prefix : String;
-         Has_Href, Has_Prefix : Boolean; Result : out System.Address;
+        (Element, Href, Prefix : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
          XML3_DOM_Store.Create_Namespace
-           (Current, Element, Href, Prefix, Has_Href, Has_Prefix, Result, Status);
+           (Current, Element, Href, Prefix, Result, Status);
       end Create_Namespace;
 
       procedure Copy_Namespace

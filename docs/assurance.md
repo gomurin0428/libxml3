@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,077 checks
-(1,426 flow and 11,651 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,095 checks
+(1,430 flow and 11,665 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 165 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1340,6 +1340,18 @@ public cap rejection, and OOM/free-count checks are libxml3-only.
 UTF-8 validity and complete API
 equivalence are not proved; native pointers, allocation, byte writes, and C
 conversion remain trusted boundaries.
+`xmlNewNs` now forwards native href/prefix addresses into the analyzed
+`Store.Create_Namespace` overload. It checks non-NULL element registration/kind
+before measuring either input, copies measured spans into SPARK Strings and
+reuses existing namespace allocation, duplicate-prefix, attachment and rollback
+logic. NULL and empty fields remain distinct, including detached construction.
+Guarded input, source protection, source-namespace release, serialization/reparse,
+invalid-node read avoidance and OOM tests are execution evidence; native pointer
+validity/extents/stability, byte effects, allocator/ABI and full API semantics
+are not proved.
+GNATprove proves 14 checks for the native Store overload and 0 for the
+`Runtime.Create_Namespace` passthrough (the existing String overload proves 30).
+
 `xmlCopyNamespace` resolves only managed live namespace facades, copies the
 stored href/prefix spans independently while preserving NULL versus empty
 fields, and omits source `next`, `context`, and `_private` links. Reservation

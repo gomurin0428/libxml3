@@ -32,6 +32,13 @@ package XML3_DOM_Store with SPARK_Mode is
        Post => (if Status /= XML3_DOM_Constructors.Created then
          Result = System.Null_Address);
 
+   procedure Create_Namespace
+     (S : in out Store; Element, Href, Prefix : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+     with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+       Post => (if Status /= XML3_DOM_Constructors.Created then
+         Result = System.Null_Address);
+
    procedure Copy_Namespace
      (S : in out Store; Source : System.Address;
       Result : out System.Address; Status : out Operation_Status)
