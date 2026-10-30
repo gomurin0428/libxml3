@@ -917,6 +917,36 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       end if;
    end Lookup_Namespace;
 
+   procedure Lookup_Namespace
+     (S : in out Store; Facade : System.Address; Mode : Namespace_Query_Kind;
+      Value : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      N : constant Node_Ref := Find_Registered_Node (S, Facade);
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if N = Null_Node then
+         return;
+      elsif Value = System.Null_Address then
+         Lookup_Namespace (S, Facade, Mode, False, "", Result, Status);
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Value, Length, Found);
+      if not Found then
+         return;
+      end if;
+      declare
+         Input_Length : constant XML3_Text.Byte_Count := Length;
+         Input : String (1 .. Input_Length);
+      begin
+         Native.Read_String (Value, Input);
+         Lookup_Namespace (S, Facade, Mode, True, Input, Result, Status);
+      end;
+   end Lookup_Namespace;
+
    procedure Next_Depth_First
      (S : Store; Root, Current : Node_Ref;
       Next : out Node_Ref; Valid : out Boolean)

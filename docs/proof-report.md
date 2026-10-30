@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,095 checks, 1,430 by flow analysis and 11,665
+It completed successfully: **13,112 checks, 1,436 by flow analysis and 11,676
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -558,6 +558,19 @@ the pure `Search_Namespace` query with lazy XML-binding creation for
 documentless managed nodes. The pure query remains the qualified-property
 rollback path. C adapters and libxml2 semantic equivalence, including
 append-versus-prepend declaration ordering, remain outside the proof.
+Both C adapters now forward native search values to the native
+`Lookup_Namespace` overload. Registration is checked before input measurement;
+`Measure` and `Read_String` create a SPARK-local input before invoking the
+existing String lookup. NULL values remain distinct from empty strings, and
+NULL nodes retain the C no-op diagnostic behavior. The ignored document argument,
+guarded search input, ancestor shadowing, implicit XML reuse, source protection,
+serialization/reparse/editing and aliased namespace-field queries are tested.
+Native readable extent/stability and byte effects remain trusted, not proved.
+Unregistered nodes now report code 115 instead of a silent NULL; failed input
+measurement retains code 115, while ordinary no-match leaves diagnostics unchanged.
+GNATprove proves 11 checks for the native `Store.Queries.Lookup_Namespace`
+overload (with 1 analyzer warning), 13 for its existing String overload, and 1
+for `Runtime.Search_Namespace`.
 Namespace-list collection through `xmlGetNsList` / `xmlGetNsListSafe` routes
 through `Runtime.Get_Namespace_List` / `Store.Queries.Get_Namespace_List` and
 `Collect_Namespaces`. Its bounded two-pass Store traversal selects explicit
@@ -601,8 +614,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 508 entity
-summaries report 0 flow errors, 162 warnings, and 0 `pragma Assume`
+The 511 entity
+summaries report 0 flow errors, 166 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -635,13 +648,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 372 |
-| Initialization | 869 |
-| Runtime checks | 5,585 |
+| Data dependencies | 373 |
+| Initialization | 874 |
+| Runtime checks | 5,590 |
 | Assertions | 1,667 |
-| Functional contracts | 4,339 |
+| Functional contracts | 4,345 |
 | Termination | 263 |
-| **Total** | **13,095** |
+| **Total** | **13,112** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1368,7 +1381,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-aa37a8f5cd5645b42316be5ac6d3c759aaeb8f7eecbf574d85b89fcadee403c2  src/xml3_c.adb
+d16822067db606cddae99f9450420f3e9759c3164ad008d694c5e17a38c4e717  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1391,16 +1404,16 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-cb8d354b63ddb45e18c8890ade84ab297a42ddbbe15821c9536e752dde6dd0e7  src/xml3_dom_runtime.adb
-c8a657e0ff0002bc0beea85c75dd6bc81bbe09192d1c0de1ec9d0a454dd03156  src/xml3_dom_runtime.ads
+e63d6ad99f529d2635c29c375b731e2731d2bf40921b9093e7b5562396ae5a23  src/xml3_dom_runtime.adb
+3802491192863a6a960c487ab1648e278c30f60c8bce202e543b1d568c0e9553  src/xml3_dom_runtime.ads
 18e18442a65357e6cea514f3e0473899e17f03f48b505bd8d18c56ad62556b68  src/xml3_dom_store-content.adb
 9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 b6b254d9836ed9f79e2616299fb97b6f2054076abaf1ee281f96769c061a5370  src/xml3_dom_store-properties.adb
 7ee760a81af12bbcfc1c81690a66acffe2c81fb7edba8040ce772dd90ba00d80  src/xml3_dom_store-properties.ads
-f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_store-queries.adb
-f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
+5428e782b090d305f4df545849f35da8a7a318977319c1c5b0d47e02f6fefe19  src/xml3_dom_store-queries.adb
+c566c8661d7e280e2901b0e7f1e7a2f9696f3f965bbf3389025dce50099f5802  src/xml3_dom_store-queries.ads
 34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
 af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
 c81096a0b4cc8789e1247d08f414d5e90bbd69e805905a9bf628c97311d87204  src/xml3_dom_store.adb

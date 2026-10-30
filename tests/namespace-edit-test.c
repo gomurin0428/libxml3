@@ -102,6 +102,99 @@ static void test_namespace_input(void) {
     assert(munmap(mapping, (size_t)page * 4) == 0);
 }
 
+static void test_namespace_search_input(void) {
+    static const char document[] =
+        "<r xmlns='urn:d' xmlns:p='urn:p'><c xmlns:p='urn:q' a='v'>kept</c></r>";
+    static const char xml_uri[] = "http://www.w3.org/XML/1998/namespace";
+    static const struct { int by_href; const char *query, *expected; } cases[] = {
+        {0, "p", "urn:q"}, {0, NULL, "urn:d"}, {0, "", NULL},
+        {0, "missing", NULL}, {0, "xml", xml_uri},
+        {1, "urn:q", "urn:q"}, {1, "urn:p", NULL}, {1, "urn:d", "urn:d"},
+        {1, NULL, NULL}, {1, "", NULL}, {1, xml_uri, xml_uri}
+    };
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 64);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    xmlDocPtr ignored_doc = (xmlDocPtr)(mapping + page);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        xmlNsPtr (*lookup)(xmlDocPtr, xmlNodePtr, const xmlChar *) =
+            cases[i].by_href ? xmlSearchNsByHref : xmlSearchNs;
+        char *input = NULL;
+        if (cases[i].query) {
+            size_t bytes = strlen(cases[i].query) + 1;
+            input = mapping + page - bytes;
+            memcpy(input, cases[i].query, bytes);
+        }
+        xmlDocPtr doc = xmlReadMemory(document, (int)strlen(document), NULL, NULL, 0);
+        assert(doc);
+        xmlNodePtr child = xmlDocGetRootElement(doc)->children;
+        assert(child && child->children);
+        xmlResetLastError();
+        xmlNsPtr found = lookup(ignored_doc, child->children, BAD_CAST input);
+        assert(xmlGetLastError() == NULL);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        assert((found != NULL) == (cases[i].expected != NULL));
+        if (found) {
+            namespace_field_is(found->href, cases[i].expected);
+            assert(lookup(ignored_doc, child->children,
+                          cases[i].by_href ? found->href : found->prefix) == found);
+            if (strcmp(cases[i].expected, xml_uri) != 0) xmlSetNs(child, found);
+        }
+        xmlChar *output = NULL;
+        int length = 0;
+        xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+        assert(output && length > 0);
+        xmlFreeDoc(doc);
+        doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+        assert(doc);
+        child = xmlDocGetRootElement(doc)->children;
+        if (cases[i].expected && strcmp(cases[i].expected, xml_uri) != 0) {
+            assert(child->ns);
+            namespace_field_is(child->ns->href, cases[i].expected);
+        }
+        assert(xmlNodeSetContent(child, BAD_CAST "edited") == 0);
+        xmlChar *value = xmlNodeGetContent(child);
+        assert(value && strcmp((const char *)value, "edited") == 0);
+        xmlFree(value);
+        xmlFree(output);
+        xmlFreeDoc(doc);
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+    for (int by_href = 0; by_href < 2; ++by_href) {
+        xmlNsPtr (*lookup)(xmlDocPtr, xmlNodePtr, const xmlChar *) =
+            by_href ? xmlSearchNsByHref : xmlSearchNs;
+        const char *query = by_href ? xml_uri : "xml";
+        size_t bytes = strlen(query) + 1;
+        char *input = mapping + page - bytes;
+        memcpy(input, query, bytes);
+        xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+        assert(root);
+        xmlNodePtr child = xmlNewTextChild(root, NULL, BAD_CAST "c", BAD_CAST "kept");
+        assert(child);
+        xmlNsPtr found = lookup(ignored_doc, child->children, BAD_CAST input);
+        assert(found);
+        assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+        namespace_field_is(found->href, xml_uri);
+        namespace_field_is(found->prefix, "xml");
+        assert(lookup(ignored_doc, child->children, BAD_CAST query) == found);
+        xmlFreeNode(root);
+#ifndef XML3_REFERENCE_TEST
+        const xmlChar *protected = (const xmlChar *)(mapping + page);
+        xmlResetLastError();
+        assert(lookup(ignored_doc, NULL, protected) == NULL);
+        assert(xmlGetLastError() == NULL);
+        assert(lookup(ignored_doc, (xmlNodePtr)protected, protected) == NULL);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        xmlResetLastError();
+#endif
+        assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+    }
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void value_is(xmlNodePtr node, const char *expected) {
     xmlChar *value = xmlNodeGetContent(node);
     assert(value != NULL && strcmp((const char *)value, expected) == 0);
@@ -612,6 +705,7 @@ static void test_namespace_lists(void) {
 }
 
 int main(void) {
+    test_namespace_search_input();
     test_namespace_input();
     test_namespace_copies();
     test_namespace_lists();
