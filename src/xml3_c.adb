@@ -1648,29 +1648,20 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
-         Href_Text : constant String := C_String_Value (Href);
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Get_Property
-              (Node, Name_Text, Filter, Href_Text, Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         Code := (case Status is
-                    when XML3_DOM_Constructors.Created =>
-                      (if Result = System.Null_Address then 1 else 0),
-                    when XML3_DOM_Constructors.Invalid_Argument => 1,
-                    when others => -1);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Get_Property
+           (Node, Name, Filter, Href, Result, Status);
       end;
+      Report_Operation_Status (Status, Validation_Error => False);
+      Code := (case Status is
+                 when XML3_DOM_Constructors.Created =>
+                   (if Result = System.Null_Address then 1 else 0),
+                 when XML3_DOM_Constructors.Invalid_Argument => 1,
+                 when others => -1);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Code := -1;
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Code := -1;
          Report_Dom_Error (1);
@@ -2088,23 +2079,16 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Find_Property
-              (Node, Name_Text, XML3_DOM_Store.Queries.Any_Namespace, "",
-               Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Find_Property
+           (Node, Name, XML3_DOM_Store.Queries.Any_Namespace, System.Null_Address,
+            Result, Status);
       end;
+      Report_Operation_Status (Status, Validation_Error => False);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;
@@ -2254,24 +2238,15 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       declare
-         Name_Text : constant String := C_String_Value (Name);
-         Href_Text : constant String :=
-           (if Href = System.Null_Address then "" else C_String_Value (Href));
+         Guard : XML3_DOM_Lock.Guard;
       begin
-         declare
-            Guard : XML3_DOM_Lock.Guard;
-         begin
-            XML3_DOM_Lock.Acquire (Guard);
-            XML3_DOM_Runtime.Find_Property
-              (Node, Name_Text, Filter, Href_Text, Result, Status);
-         end;
-         Report_Operation_Status (Status, Validation_Error => False);
-         return Result;
+         XML3_DOM_Lock.Acquire (Guard);
+         XML3_DOM_Runtime.Find_Property
+           (Node, Name, Filter, Href, Result, Status);
       end;
+      Report_Operation_Status (Status, Validation_Error => False);
+      return Result;
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return System.Null_Address;
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return System.Null_Address;

@@ -772,6 +772,49 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Status := Created;
    end Find_Property;
 
+   procedure Find_Property
+     (S : Store; Element, Name : System.Address;
+      Filter : Property_Filter; Href : System.Address;
+      Result : out System.Address; Status : out Operation_Status)
+   is
+      E : constant Node_Ref := Find_Registered_Node (S, Element);
+      Name_Length, Href_Length : XML3_Text.Byte_Count := 0;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Status := Invalid_Argument;
+      if E = Null_Node or else Node (S.Current.all, E).Kind /= Element_Node
+        or else Name = System.Null_Address
+      then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Status := Limit_Exceeded;
+         return;
+      end if;
+      if Filter = Exact_Namespace and then Href /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Href, Href_Length, Found);
+         if not Found then
+            Status := Limit_Exceeded;
+            return;
+         end if;
+      end if;
+      declare
+         Name_Size : constant XML3_Text.Byte_Count := Name_Length;
+         Href_Size : constant XML3_Text.Byte_Count := Href_Length;
+         Name_Text : String (1 .. Name_Size);
+         Href_Text : String (1 .. Href_Size) := (others => Character'Val (0));
+      begin
+         Native.Read_String (Name, Name_Text);
+         if Filter = Exact_Namespace and then Href /= System.Null_Address then
+            Native.Read_String (Href, Href_Text);
+         end if;
+         Find_Property
+           (S, Element, Name_Text, Filter, Href_Text, Result, Status);
+      end;
+   end Find_Property;
+
    procedure Search_Namespace
      (S : Store; Facade : System.Address; Mode : Namespace_Query_Kind;
       Has_Value : Boolean; Value : String;

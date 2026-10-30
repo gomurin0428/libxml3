@@ -381,6 +381,13 @@ NULL URI は「名前空間なし」で、`xmlGetProp` の「名前空間不問�
 固定版同様、NULL node/name/out や要素以外は `1`。未登録 facade も検索対象にしません。
 空の属性値は空文字列のコピーを返し、属性なしと区別します。返却値は `xmlFree` で解放します。
 DTD の既定値や未対応実体は対象外です。
+`xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` / `xmlNodeGetAttrValue` と
+`xmlHasProp` / `xmlHasNsProp` の入力は直接SPARKへ渡し、要素の登録・種類を確認後に
+名前/URIを計測・コピーします。無効な対象では入力を読まず、従来の未取得扱いを保ちます。
+名前空間不問・なし・URI一致の区別、空URI、空値の独立コピーと借用属性の区別も保ちます。
+走査上限超過は共通のリソース上限診断114へ統一します（従来の文字列変換エラー115とは
+異なります）。この場合 `xmlNodeGetAttrValue` は未取得の1ではなく -1 とNULLを返します。
+通常の未取得・NULL入力は診断を変更しません。DTD対応や名前の妥当性検証は追加しません。
 
 `xmlNodeAddContent` は raw UTF-8 C string を追加し、entity reference を展開しません。
 element/attribute の末尾に text child があればその content を置換して同じ facade を

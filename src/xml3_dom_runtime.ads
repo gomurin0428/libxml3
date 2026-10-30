@@ -201,16 +201,16 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Find_Property
-        (Element : System.Address; Name : String;
+        (Element, Name : System.Address;
          Filter : XML3_DOM_Store.Queries.Property_Filter;
-         Href : String; Result : out System.Address;
+         Href : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Get_Property
-        (Element : System.Address; Name : String;
+        (Element, Name : System.Address;
          Filter : XML3_DOM_Store.Queries.Property_Filter;
-         Href : String; Result : out System.Address;
+         Href : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 

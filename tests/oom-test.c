@@ -2002,6 +2002,9 @@ int main(int argc, char **argv) {
         xml3_oom_enable(0);
         result = xmlNodeGetAttrValue(root, BAD_CAST "missing", NULL, &value);
         assert(result == 1 && value == NULL);
+        assert(xmlHasProp(root, BAD_CAST "a") == root->properties);
+        assert(xmlHasNsProp(root, BAD_CAST "a", BAD_CAST "urn:p") == root->properties);
+        assert(xmlHasNsProp(root, BAD_CAST "a", NULL) == NULL);
         assert(!xml3_oom_was_injected() && xml3_oom_count() == 0);
         xml3_oom_disable();
         value = (xmlChar *)root;

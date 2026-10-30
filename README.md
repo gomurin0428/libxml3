@@ -127,6 +127,8 @@ HTML/entity expansion は未対応です。
 先に確認し、不正なら両入力を読みません。NULL/空の区別と既存の宣言・所有権処理を保ちます。
 `xmlSearchNs` / `xmlSearchNsByHref` の検索入力も登録確認後にSPARKで計測・コピーし、
 親走査・隠蔽判定と文書なしnodeの組み込みxml宣言の作成・再利用は既存処理を使います。
+属性の取得・存在確認も名前/URIをSPARK内で計測・コピーします。要素の登録・種類を
+先に確認し、借用属性と独立した属性値の所有権、namespaceフィルタは従来どおりです。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。
