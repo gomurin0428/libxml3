@@ -890,7 +890,7 @@
   },
   "function:tree.h:xmlSetProp": {
     "implementation": "partial",
-    "scope": "no-namespace property を従来どおり更新し、prefix を含む QName は SPARK で NCName 検証・scope 解決。unbound/malformed prefix は code 115。documentless `xml:lang`/`xml:space` は暗黙 XML namespace を作成する。",
+    "scope": "Native QName/value input through SPARK Set_Qualified_Property after registered-element/kind checks, with SPARK-local measurement/copy and no C intermediate String. Existing no-namespace updates, prefixed NCName validation/scope resolution, raw NULL/empty values and implicit XML namespace creation/rollback remain. Unbound/malformed prefix or invalid element reports115; invalid element does not read either input; scan exhaustion114 replaces former conversion115. Old field aliases are copied before retirement. Ready/Result contracts retained; native extents/stability, byte effects, allocator/ABI and full semantics remain trusted/unproved.",
     "tests": [
       "tests/attribute-test.c",
       "tests/namespace-edit-test.c",

@@ -186,8 +186,7 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Set_Qualified_Property
-        (Element : System.Address; QName, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, QName, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 

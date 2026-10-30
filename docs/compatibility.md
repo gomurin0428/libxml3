@@ -519,6 +519,12 @@ detached namespace を返します。source の `next`、`context`、`_private` 
 コピー、native pointer validity と ABI はこの実装の対象外で、完全な public semantics は
 証明していません。
 
+`xmlSetProp` のQName/値もnative addressでSPARKへ渡し、要素の登録・種類を確認して
+から計測・コピーします。無効な要素は115で入力を読まず拒否し、走査上限は従来の
+変換115から共通の上限114へ揃えます。非修飾名と修飾名の検証規則、prefix解決、
+NULL値と空値・raw値の扱いは変更せず、旧属性のfieldを入力に使う場合もコピーが
+終わるまで旧値を保持します。
+
 `xmlNewNsProp` は detached/attached attribute を作り、異なる namespace 内の同じ
 local name を許します。`xmlSetNsProp` と `xmlUnsetNsProp` は prefix/namespace pointer
 ではなく namespace URI と local name で属性を照合します。置換は既存 attribute の
