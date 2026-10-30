@@ -1,4 +1,28 @@
 package body XML3_Text with SPARK_Mode is
+   function Location_At
+     (Input : String; Byte_Position : Natural) return Text_Location
+   is
+      Count : constant Natural := Natural'Min
+        (Input'Length, (if Byte_Position = 0 then 0 else Byte_Position - 1));
+      Result : Text_Location;
+   begin
+      for Offset in 1 .. Count loop
+         pragma Loop_Invariant
+           (Result.Line <= Offset and then Result.Column <= Offset);
+         declare
+            Byte : constant Character := Input (Input'First + (Offset - 1));
+         begin
+            if Byte = Character'Val (10) then
+               Result.Line := Result.Line + 1;
+               Result.Column := 1;
+            elsif Character'Pos (Byte) not in 16#80# .. 16#BF# then
+               Result.Column := Result.Column + 1;
+            end if;
+         end;
+      end loop;
+      return Result;
+   end Location_At;
+
    function Find_Entity (Name : String) return Entity_Kind is
    begin
       for Kind in Predefined_Entity_Kind loop

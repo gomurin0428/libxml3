@@ -391,26 +391,10 @@ package body XML3_Errors is
       Input         : String;
       File          : System.Address)
    is
-      Limit : constant Natural :=
-        Natural'Min (Input'Length + 1, Byte_Position);
-      Line : Interfaces.C.int := 1;
-      Column : Interfaces.C.int := 1;
-      Byte : Character;
+      Location : constant XML3_Text.Text_Location :=
+        XML3_Text.Location_At (Input, Byte_Position);
       Message : System.Address;
    begin
-      if Limit > 1 then
-         for I in Input'First .. Limit - 1 loop
-            Byte := Input (I);
-            if Byte = Character'Val (10) then
-               Line := Line + 1;
-               Column := 1;
-            elsif Character'Pos (Byte) < 128
-              or else Character'Pos (Byte) not in 16#80# .. 16#BF#
-            then
-               Column := Column + 1;
-            end if;
-         end loop;
-      end if;
       if Code = 4 and then Input'Length /= 0 then
          Message := Message_Start'Address;
       else
@@ -420,7 +404,8 @@ package body XML3_Errors is
         (Interfaces.C.int (Domain),
          Interfaces.C.int (Code),
          Interfaces.C.int (Level),
-         Line, Interfaces.C.int (Int1), Column,
+         Interfaces.C.int (Location.Line), Interfaces.C.int (Int1),
+         Interfaces.C.int (Location.Column),
          Message, File,
          System.Null_Address, System.Null_Address, System.Null_Address);
    exception

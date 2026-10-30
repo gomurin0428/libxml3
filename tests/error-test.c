@@ -395,6 +395,24 @@ static void test_location_variants(void) {
                 XML_ERR_FATAL, 1, 12);
     assert(xmlGetLastError()->int1 == 1);
 
+    {
+        char input[] = "<r>\r\né😀\t<a></b></r>";
+        xmlError saved = {0};
+        xmlResetLastError();
+        assert(!xmlReadMemory(input, (int)sizeof(input) - 1, "location.xml", NULL, 0));
+        check_error(XML_ERR_TAG_NAME_MISMATCH, XML_FROM_PARSER, XML_ERR_FATAL, 2, 11);
+        assert(xmlGetLastError()->int1 == 2);
+        assert(xmlCopyError(xmlGetLastError(), &saved) == 0);
+        memset(input, '!', sizeof(input));
+        xmlResetLastError();
+        xmlDocPtr doc = xmlReadMemory("<r/>", 4, NULL, NULL, 0);
+        assert(doc && xmlGetLastError() == NULL);
+        xmlFreeDoc(doc);
+        assert(saved.line == 2 && saved.int1 == 2 && saved.int2 == 11);
+        assert(saved.code == XML_ERR_TAG_NAME_MISMATCH);
+        xmlResetError(&saved);
+    }
+
     xmlResetLastError();
     assert(xmlReadMemory(unicode, (int)sizeof(unicode) - 1,
                          NULL, NULL, 0) == NULL);
