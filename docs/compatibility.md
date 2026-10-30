@@ -953,7 +953,11 @@ node という総数上限はありません。C `int` の入力長が表現境�
 すべて解放して空に戻します。再確保前には空であることが前提です。scratchは空入力でも
 最低1byteを確保し、各領域のbyte上限を乗算前に検査します。サイズ拒否は従来の
 サイズ計算失敗と同じno-memoryへ写像します。初期容量・上限付き倍増もSPARKで計算し、
-C側はnode arena不足時に同じparserを再実行します。DOM blockは既存のSPARK経路で作成します。
+C側はnode arena不足時に同じparserを再実行します。再試行の継続・打ち切りと公開する診断の
+選択は`Parser.Outcomes`のSPARK政策が決めます。node上限まで拡張しても arena が不足し、
+parser診断がない場合は、従来の internal error (domain 1, code 1) ではなく共通の
+resource-limit 診断 (domain 1, code 114, "Resource limit exceeded") を報告します。
+返却ステータスは従来どおり limit-exceeded です。DOM blockは既存のSPARK経路で作成します。
 allocatorの実動作・freshness、native layout/byte effects、C側のarray overlay・再試行・lock・
 診断/例外変換と完全な所有権意味論はproof範囲外です。1 GB value profile の厳密な境界はその大きさで実 allocation
 test をしていません。

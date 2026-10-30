@@ -19,6 +19,7 @@ with XML3_Parser.Workspaces;
 with XML3_Error_Records;
 with XML3_Diagnostic_Messages;
 with XML3_Parser.Options;
+with XML3_Parser.Outcomes;
 with XML3_Encoding;
 
 procedure DOM_Bridge_Test is
@@ -1855,4 +1856,98 @@ begin
    end;
    Ada.Text_IO.Put_Line
      ("Diagnostic message selection regression passed");
+   declare
+      package Outcomes renames XML3_Parser.Outcomes;
+      package Documents renames XML3_DOM_Store.Documents;
+      package Workspaces renames XML3_Parser.Workspaces;
+      use type Outcomes.Attempt_Step;
+      use type Outcomes.Report_Kind;
+      use type Documents.Read_Status;
+
+      function Reference_Step
+        (Status : Documents.Read_Status; Capacity : Workspaces.Capacity)
+         return Outcomes.Attempt_Step
+      is
+      begin
+         if Status /= Documents.Arena_Exhausted then
+            return Outcomes.Finished;
+         elsif Capacity = XML3_Parser.Max_Nodes then
+            return Outcomes.Limit_Reached;
+         else
+            return Outcomes.Grow;
+         end if;
+      end Reference_Step;
+
+      --  Reproduces the adapter's former if-chain, including the
+      --  internal-error report for a node limit without a parser code.
+      function Reference_Report
+        (Status : Documents.Read_Status; Code : Natural)
+         return Outcomes.Report_Kind
+      is
+      begin
+         if Status = Documents.No_Memory then
+            return Outcomes.Report_No_Memory;
+         elsif Status = Documents.Internal_Error then
+            return Outcomes.Report_Internal;
+         elsif Status = Documents.Unsupported and then Code = 0 then
+            return Outcomes.Report_Unsupported_Feature;
+         elsif Status = Documents.Parsed then
+            return
+              (if Code /= 0 then Outcomes.Report_Diagnostic
+               else Outcomes.No_Report);
+         elsif Status /= Documents.Arena_Exhausted then
+            return
+              (if Code = 0 then Outcomes.Report_Internal
+               else Outcomes.Report_Diagnostic);
+         else
+            return Outcomes.No_Report;
+         end if;
+      end Reference_Report;
+
+      Capacities : constant array (1 .. 4) of Workspaces.Capacity :=
+        (Workspaces.Initial_Capacity (0), XML3_Parser.Max_Nodes / 2,
+         XML3_Parser.Max_Nodes - 1, XML3_Parser.Max_Nodes);
+      Codes : constant array (1 .. 5) of Natural := (0, 1, 4, 114, 115);
+      Steps : array (Outcomes.Attempt_Step) of Boolean := (others => False);
+      Kinds : array (Outcomes.Report_Kind) of Boolean := (others => False);
+   begin
+      for Status in Documents.Read_Status loop
+         for Index in Capacities'Range loop
+            declare
+               Step : constant Outcomes.Attempt_Step :=
+                 Outcomes.After_Attempt (Status, Capacities (Index));
+            begin
+               pragma Assert
+                 (Step = Reference_Step (Status, Capacities (Index)));
+               pragma Assert
+                 (if Step = Outcomes.Grow
+                  then Capacities (Index) < XML3_Parser.Max_Nodes);
+               Steps (Step) := True;
+            end;
+         end loop;
+         for Index in Codes'Range loop
+            declare
+               Kind : constant Outcomes.Report_Kind :=
+                 Outcomes.Report_For (Status, Codes (Index));
+            begin
+               if Status = Documents.Limit_Exceeded
+                 and then Codes (Index) = 0
+               then
+                  pragma Assert (Kind = Outcomes.Report_Limit_Exceeded);
+                  pragma Assert
+                    (Reference_Report (Status, Codes (Index))
+                     = Outcomes.Report_Internal);
+               else
+                  pragma Assert
+                    (Kind = Reference_Report (Status, Codes (Index)));
+               end if;
+               Kinds (Kind) := True;
+            end;
+         end loop;
+      end loop;
+      pragma Assert (for all Step in Outcomes.Attempt_Step => Steps (Step));
+      pragma Assert (for all Kind in Outcomes.Report_Kind => Kinds (Kind));
+   end;
+   Ada.Text_IO.Put_Line
+     ("Parse attempt and outcome report policy passed");
 end DOM_Bridge_Test;
