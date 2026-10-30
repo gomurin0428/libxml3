@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,056 checks
-(1,421 flow and 11,635 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 162 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,077 checks
+(1,426 flow and 11,651 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 165 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -537,6 +537,16 @@ NULL本文は長さによらずNULLとして扱い、それ以外の過大な長
 未登録nodeも本文を読まず拒否します。guard page、入力保護後の出力・再読み込み・編集、
 scalar自己aliasと退役する子の本文を使った置換を実行検査します。native pointerの可読性・
 extent/stability・実byte効果・allocator/ABI・完全な公開意味論は形式証明外です。
+
+`xmlNodeSetLang` / `xmlNodeSetSpacePreserve` は `Store.Properties.Set_XML_Property`
+で要素の登録・種類を確認します。languageだけを `Measure` で計測し、SPARK内の入力Stringに
+コピーして既存の `Set_Qualified_Property` へ渡します。NULL languageは空値の設定で、
+削除ではありません。space modeは入力文字列を扱わず0→default、非0→preserveです。
+既存のqualified-propertyの `Ready`・namespace保持・失敗時の巻き戻し経路を再利用します。
+入力保護後の継承取得・出力・再読み込み、旧属性本文を入力にした更新、kind/登録検査での
+読み取り回避は実行テストで確認し、native pointer/byte効果と完全な公開意味論は信頼境界です。
+GNATprove は `Store.Properties.Set_XML_Property` 16 checks、
+`Runtime.Set_XML_Property` 1 check を証明します。
 
 `xmlNodeAddContentLen` もSPARKのbounded計測を使います。Store が長さとNULL入力から
 空の入力を無操作として扱うか、空の text として扱うかを決めます。

@@ -43,6 +43,108 @@ static int set_input(int mode, xmlNodePtr node, const xmlChar *value, int length
         : xmlNodeSetContentLen(node, value, mode == 1 ? length : -7);
 }
 
+static void test_xml_property_input(void) {
+    static const char *values[] = {"", "ja&amp;\xc3\xa9"};
+    long page = sysconf(_SC_PAGESIZE);
+    assert(page > 32);
+    char *mapping = mmap(NULL, (size_t)page * 2, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    assert(mapping != MAP_FAILED);
+    assert(mprotect(mapping + page, (size_t)page, PROT_NONE) == 0);
+    for (int update = 0; update < 2; ++update) {
+        for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+            size_t bytes = strlen(values[i]) + 1;
+            char *input = mapping + page - bytes;
+            memcpy(input, values[i], bytes);
+            xmlDocPtr doc = xmlNewDoc(NULL);
+            xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+            assert(doc && root && xmlDocSetRootElement(doc, root) == NULL);
+            xmlNodePtr child = xmlNewTextChild(root, NULL, BAD_CAST "c", BAD_CAST "kept");
+            assert(child);
+            if (update) assert(xmlNodeSetLang(root, BAD_CAST "old") == 0);
+            assert(xmlNodeSetLang(root, BAD_CAST input) == 0);
+            assert(mprotect(mapping, (size_t)page, PROT_NONE) == 0);
+            assert(xmlNodeSetSpacePreserve(root, -7) == 0);
+            assert(xmlNodeGetSpacePreserve(child) == 1);
+            assert(xmlNodeSetSpacePreserve(child, 0) == 0);
+            assert(xmlNodeGetSpacePreserve(child) == 0);
+            xmlChar *language = xmlNodeGetLang(child->children);
+            assert(language && strcmp((const char *)language, values[i]) == 0);
+            xmlChar *output = NULL;
+            int length = 0;
+            xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+            assert(output && length > 0);
+            xmlFreeDoc(doc);
+            assert(strcmp((const char *)language, values[i]) == 0);
+            xmlFree(language);
+            doc = xmlReadMemory((const char *)output, length, NULL, NULL, 0);
+            assert(doc);
+            child = xmlDocGetRootElement(doc)->children;
+            assert(child && xmlNodeGetSpacePreserve(child) == 0);
+            language = xmlNodeGetLang(child);
+            assert(language && strcmp((const char *)language, values[i]) == 0);
+            xmlFree(language);
+            assert(xmlNodeSetLang(child, NULL) == 0);
+            language = xmlNodeGetLang(child->children);
+            assert(language && language[0] == 0);
+            xmlFree(language);
+            assert(xmlNodeSetLang(child, BAD_CAST "edited") == 0);
+            language = xmlNodeGetLang(child->children);
+            assert(language && strcmp((const char *)language, "edited") == 0);
+            xmlFree(language);
+            xmlFree(output);
+            xmlFreeDoc(doc);
+            assert(mprotect(mapping, (size_t)page, PROT_READ | PROT_WRITE) == 0);
+        }
+    }
+#ifndef XML3_REFERENCE_TEST
+    xmlDocPtr doc = xmlNewDoc(NULL);
+    xmlNodePtr root = xmlNewNode(NULL, BAD_CAST "r");
+    xmlNodePtr text = xmlNewText(BAD_CAST "kept");
+    assert(doc && root && text);
+    assert(xmlDocSetRootElement(doc, root) == NULL);
+    const xmlChar *protected = (const xmlChar *)(mapping + page);
+    xmlNodePtr invalid[] = {(xmlNodePtr)protected, (xmlNodePtr)doc, text};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        xmlResetLastError();
+        assert(xmlNodeSetLang(invalid[i], protected) == 1);
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        assert(xmlNodeSetSpacePreserve(invalid[i], 0) == 1);
+    }
+    assert(xmlNodeSetLang(root, BAD_CAST "prefix-ja") == 0);
+    xmlAttrPtr original = root->properties;
+    xmlNsPtr ns = original->ns;
+    assert(xmlNodeSetLang(root, original->children->content + 7) == 0);
+    assert(root->properties == original && original->ns == ns);
+    assert(strcmp((const char *)original->children->content, "ja") == 0);
+    mapping[page - 1] = 0;
+    const unsigned char bad[] = {0xff, 1};
+    for (size_t i = 0; i < sizeof(bad); ++i) {
+        mapping[page - 2] = (char)bad[i];
+        assert(xmlNodeSetLang(root, BAD_CAST (mapping + page - 2)) == 0);
+        assert(root->properties == original && original->ns == ns);
+        assert(original->children->content[0] == bad[i]);
+        assert(original->children->content[1] == 0);
+        xmlChar *output = NULL;
+        int length = 0;
+        xmlResetLastError();
+        xmlDocDumpMemoryEnc(doc, &output, &length, "UTF-8");
+        assert(output == NULL && length == 0 && xmlGetLastError());
+        assert(xmlNodeSetLang(root, BAD_CAST "ja") == 0);
+        assert(strcmp((const char *)original->children->content, "ja") == 0);
+    }
+    assert(xmlNodeSetLang(root, NULL) == 0);
+    assert(root->properties == original && original->ns == ns);
+    xmlChar *language = xmlNodeGetLang(root);
+    assert(language && language[0] == 0);
+    xmlFree(language);
+    xmlFreeNode(text);
+    xmlFreeDoc(doc);
+    xmlResetLastError();
+#endif
+    assert(munmap(mapping, (size_t)page * 2) == 0);
+}
+
 static void test_set_input(void) {
     static const char value[] = "v&amp;\xc3\xa9";
     long page = sysconf(_SC_PAGESIZE);
@@ -1637,6 +1739,7 @@ static void test_serialization_oom(void) {
 #endif
 
 int main(int argc, char **argv) {
+    test_xml_property_input();
     test_set_input();
     test_append_input();
     test_string_list_input();
@@ -1684,6 +1787,7 @@ int main(int argc, char **argv) {
 
 #else
 int main(void) {
+    test_xml_property_input();
     test_set_input();
     test_append_input();
     test_string_list_input();

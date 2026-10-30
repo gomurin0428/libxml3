@@ -84,6 +84,8 @@ C側の中間Stringなしで新しい所有領域へ直接コピーします。�
 `xmlNodeSetContent` / `xmlNodeSetContentLen` も登録照合・入力計測をSPARKで行い、
 scalar本文は直接コピーします。要素・属性だけはSPARK内のバッファで文字参照を復号し、
 新しい本文の準備・接続に成功してから旧子ノードを解放します。
+`xmlNodeSetLang` の入力もSPARKで要素登録・種類を確認してから計測/コピーし、
+既存のqualified-property編集へ渡します。C側で言語文字列を変換しません。
 `xmlGetNsList` / `xmlGetNsListSafe` は node と祖先要素の明示 `nsDef` を近い順・宣言順に
 列挙し、同じ prefix は最初の宣言だけを含めます。組み込み `xml` binding は追加せず、
 `doc` 引数は無視します。返却配列は `xmlFree` で解放し、各 namespace pointer は借用です。

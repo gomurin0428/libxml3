@@ -88,6 +88,11 @@ ancestor を検索し、見つからなければ -1 です。`xml:lang` は text
 不正引数 1、確保失敗 -1 です。NULL language は属性の削除でなく空値を設定し、
 space の 0 は `default`、その他の値は `preserve` です。QName の namespace 解決、
 親走査、値判定、所有権は SPARK Store/Runtime にあり、native pointer/ABI は信頼境界です。
+setterのC側ではlanguageをStringへ変換せず、SPARKで要素登録・種類を確認してから
+計測/コピーします。未登録nodeや要素以外ではlanguageを読みません。NULL/空値、非0のspace、
+旧属性の本文を使った更新、失敗時の旧値保持は従来どおりです。値はrawで、文字参照を復号せず、
+言語タグの構文検証も追加しません。不正UTF-8/XMLもrawのまま保持し、出力時に拒否する
+既存の属性編集の規則を保ちます。
 
 `libxml/tree.h` の `xmlIsXHTML` は固定版 `tree.c:8851` の identifier 判定を実装します。
 両方 NULL の場合のみ -1、それ以外は public ID

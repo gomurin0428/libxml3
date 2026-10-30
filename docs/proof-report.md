@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,056 checks, 1,421 by flow analysis and 11,635
+It completed successfully: **13,077 checks, 1,426 by flow analysis and 11,651
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -622,13 +622,13 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 370 |
-| Initialization | 862 |
-| Runtime checks | 5,570 |
+| Data dependencies | 371 |
+| Initialization | 866 |
+| Runtime checks | 5,578 |
 | Assertions | 1,667 |
-| Functional contracts | 4,324 |
+| Functional contracts | 4,332 |
 | Termination | 263 |
-| **Total** | **13,056** |
+| **Total** | **13,077** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -943,12 +943,24 @@ validity or full public C semantics.
 
 `xmlNodeGetLang` / `xmlNodeGetSpacePreserve` use
 `Runtime.Get_Inherited_XML_Property` / `Store.Queries.Get_Inherited_XML_Property`;
-setters reuse `Runtime.Set_XML_Property` and `Store.Properties.Set_Qualified_Property`.
+setters forward addresses through `Runtime.Set_XML_Property` to
+`Store.Properties.Set_XML_Property`, then reuse `Set_Qualified_Property`.
+The native entry validates the registered element and kind before measuring
+language input with `Measure` and copying it into a SPARK String. NULL language
+sets an empty value rather than deleting the attribute; space mode uses only
+constant values (zero→default, nonzero→preserve). The existing qualified-property
+Ready/ownership/namespace rollback paths are unchanged. No language String is
+constructed in C. Tests cover guard-page input, inherited lookup after source
+protection, serialization/free/reparse/editing, aliased old attribute content,
+invalid-facade/kind read avoidance and raw invalid UTF-8/XML storage followed by
+serialization rejection and repair.
 The Store owns the bounded parent walk, node-kind and exact XML-namespace checks,
 space-value comparison and temporary-buffer cleanup. The C adapters only
 convert inputs/outputs, lock and map status. Focused inherited-value, setter,
 reparenting, serialization, copy-lifetime and OOM rollback tests are runtime
 evidence, not complete semantic proof of the public APIs or native boundary.
+GNATprove proves 16 checks for `Store.Properties.Set_XML_Property` and 1 for
+`Runtime.Set_XML_Property`.
 
 `xmlTextConcat` reuses `Runtime.Add_Content` / `Store.Content.Append` with a
 scalar-only policy checked before input reads and the empty-input no-op. Existing
@@ -1343,7 +1355,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-bc9eb4ce13660a2928f8ae58c669b3c3c71c56f62a1d9902f9eee1db37f56b50  src/xml3_c.adb
+d5b62e673eb26a43ef321044efa3771791a8199a814aca68558c81adf6fe1a25  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1366,14 +1378,14 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-0382d38ef109c7b15e9e9536f4500d54aa1b97de24e31f0ea2be2cd7cd8e6d5d  src/xml3_dom_runtime.adb
-8860cb621c0ca497930daecbd7d07e97f3f765fe9ec4a88deca2959c7527ce46  src/xml3_dom_runtime.ads
+e5f26a5a3a9a4fc5c4afa1f0880eadbaf4198f234a1eb6eba5ff7b2c133e9728  src/xml3_dom_runtime.adb
+821d80baea59934303b5663211ffd9ec76b1598e240c964042f30941227ea7dc  src/xml3_dom_runtime.ads
 18e18442a65357e6cea514f3e0473899e17f03f48b505bd8d18c56ad62556b68  src/xml3_dom_store-content.adb
 9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
-2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
-75b21d6feaa1e9f26f08ece87e33f4b46f7f9b4c9311d60a130d03701a91aabb  src/xml3_dom_store-properties.ads
+b6b254d9836ed9f79e2616299fb97b6f2054076abaf1ee281f96769c061a5370  src/xml3_dom_store-properties.adb
+7ee760a81af12bbcfc1c81690a66acffe2c81fb7edba8040ce772dd90ba00d80  src/xml3_dom_store-properties.ads
 f949322c7f7db2f6988dc2beffe18707d30bfad6b768b6297658137d19d0c3b4  src/xml3_dom_store-queries.adb
 f9230db704d5565e713241caf4484175e366e599730c9930fb386e0468636f22  src/xml3_dom_store-queries.ads
 34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
@@ -1407,7 +1419,7 @@ dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 9caf83872228b36227ad3a6dcafb9fa1bf09b99d091e1f394d6cd20c79a414a8  Makefile
 f8684434c8ee371920786d1586adc38277fada588070746f48f22c626e5c21b8  tests/oom-test.c
-831259a7035006ea0f02955bfce4ce35cd57698c84ed48057fc18dc9872ba5e4  tests/serialization-test.c
+d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```
