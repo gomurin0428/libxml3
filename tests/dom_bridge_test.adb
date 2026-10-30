@@ -2230,4 +2230,114 @@ begin
            Codes.Parser_Internal_Error);
    end;
    Ada.Text_IO.Put_Line ("Adapter failure code selection passed");
+   declare
+      package Records renames XML3_Error_Records;
+      use type Records.Error_Record;
+      use type Records.Error_Slot;
+      use type Records.Copy_Decision;
+      use type Records.Last_Error_Source;
+      use type Interfaces.C.int;
+      Static_Message : aliased constant String :=
+        "out of memory" & Character'Val (0);
+      Data : aliased String := "ab" & Character'Val (0);
+      Original : constant Records.Error_Record :=
+        (Domain => 1, Code => 9, Level => 3, Line => 7, Int1 => 23, Int2 => 2,
+         Ctxt => Data'Address, Node => Data'Address, Message => Data'Address,
+         File => Data'Address, Str1 => Data'Address, Str2 => Data'Address,
+         Str3 => Data'Address);
+      Slot : Records.Error_Slot;
+      Replacement : Records.Error_Record;
+      Bare : Records.Error_Record;
+      Success : Boolean;
+
+      --  Reproduces the former adapter order of xmlCopyError.
+      function Reference_Copy
+        (From_Null, To_Null, Same, To_Emergency : Boolean)
+         return Records.Copy_Decision
+      is
+      begin
+         if From_Null or else To_Null then
+            return Records.Reject;
+         elsif Same then
+            return Records.Already_Copied;
+         elsif To_Emergency then
+            return Records.Reject;
+         end if;
+         return Records.Clone_Source;
+      end Reference_Copy;
+   begin
+      pragma Assert (Slot = Records.Empty_Slot);
+      Records.Clone (Original, Replacement, Success);
+      pragma Assert (Success);
+      Records.Install (Slot, Replacement);
+      pragma Assert
+        (Replacement = Records.Empty_Record and then not Slot.Emergency
+         and then Records.Same_Metadata (Original, Slot.Error)
+         and then Records.Same_String_Presence (Original, Slot.Error));
+      Records.Clear_Slot (Slot);
+      pragma Assert (Slot = Records.Empty_Slot);
+      --  Clearing an already empty slot must not release anything twice.
+      Records.Clear_Slot (Slot);
+      pragma Assert (Slot = Records.Empty_Slot);
+      --  The emergency message is borrowed from static storage, so clearing
+      --  an emergency slot only zeroes it and leaves the message intact.
+      Records.Install_Out_Of_Memory (Slot, Static_Message'Address);
+      pragma Assert
+        (Slot.Emergency
+         and then Slot.Error = Records.Out_Of_Memory (Static_Message'Address)
+         and then Slot.Error.Domain = 6 and then Slot.Error.Code = 2
+         and then Slot.Error.Level = 3
+         and then Slot.Error.Message = Static_Message'Address);
+      Records.Clear_Slot (Slot);
+      pragma Assert
+        (Slot = Records.Empty_Slot
+         and then Native.Byte_At (Static_Message'Address, 0) = 'o');
+      --  Installing an owning record over an emergency one keeps the static
+      --  message and takes sole ownership of the copies.
+      Records.Install_Out_Of_Memory (Slot, Static_Message'Address);
+      Records.Clone (Original, Replacement, Success);
+      pragma Assert (Success);
+      Records.Install (Slot, Replacement);
+      pragma Assert
+        (not Slot.Emergency and then Replacement = Records.Empty_Record
+         and then Native.Byte_At (Static_Message'Address, 0) = 'o'
+         and then Native.Byte_At (Slot.Error.Message, 0) = 'a');
+      --  An emergency record installed over an owning one releases the copies.
+      Records.Install_Out_Of_Memory (Slot, Static_Message'Address);
+      pragma Assert (Slot.Emergency);
+      Records.Clear_Slot (Slot);
+      Records.Fill_Out_Of_Memory (Bare, Static_Message'Address);
+      pragma Assert (Bare = Records.Out_Of_Memory (Static_Message'Address));
+      for From_Null in Boolean loop
+         for To_Null in Boolean loop
+            for Same in Boolean loop
+               for To_Emergency in Boolean loop
+                  pragma Assert
+                    (Records.Decide_Copy
+                       (From_Null, To_Null, Same, To_Emergency) =
+                     Reference_Copy (From_Null, To_Null, Same, To_Emergency));
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+      for Has_Slot in Boolean loop
+         for Active in Boolean loop
+            pragma Assert
+              (Records.Select_Last_Error (Has_Slot, 0, Active) =
+                 (if Active then Records.Emergency_Record
+                  else Records.No_Error));
+            pragma Assert
+              (Records.Select_Last_Error (Has_Slot, 2, Active) =
+                 (if Has_Slot then Records.Slot_Record
+                  elsif Active then Records.Emergency_Record
+                  else Records.No_Error));
+            pragma Assert
+              (Records.Select_Last_Error (Has_Slot, 115, Active) =
+                 (if Has_Slot then Records.Slot_Record
+                  elsif Active then Records.Emergency_Record
+                  else Records.No_Error));
+         end loop;
+      end loop;
+   end;
+   Ada.Text_IO.Put_Line ("Error slot ownership transitions passed");
 end DOM_Bridge_Test;

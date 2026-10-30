@@ -11,9 +11,8 @@ package body XML3_Errors is
    use type Interfaces.C.int;
    use type System.Address;
 
-   XML3_OOM : constant Interfaces.C.int := 2;
-   XML3_MEMORY : constant Interfaces.C.int := 6;
-   XML3_FATAL : constant Interfaces.C.int := 3;
+   XML3_OOM : constant Interfaces.C.int :=
+     XML3_Error_Records.Out_Of_Memory_Code;
 
    function TLS_Get return System.Address
      with Import, Convention => C, External_Name => "xml3ErrorsTLSGet";
@@ -25,12 +24,7 @@ package body XML3_Errors is
      with Import, Convention => C,
        External_Name => "xml3ErrorsEmergencyRecord";
 
-   type Error_State;
-
-   type Error_State is record
-      Error     : aliased Error_Record := (others => <>);
-      Emergency : Boolean := False;
-   end record;
+   subtype Error_State is XML3_Error_Records.Error_Slot;
 
    package Conversion is new System.Address_To_Access_Conversions
      (Error_State);
@@ -217,32 +211,19 @@ package body XML3_Errors is
 
    procedure Set_OOM is
       State : constant Error_State_Access := Current_State (False);
-      Item  : Error_Access;
    begin
       if State /= null then
-         if not State.Emergency then
-            Clear_Record (State.Error);
-         else
-            State.Error := (others => <>);
-         end if;
-         State.Emergency := True;
-         Item := State.Error'Access;
+         XML3_Error_Records.Install_Out_Of_Memory
+           (State.all, Emergency_Message'Address);
       else
-         Emergency_Error.all := (others => <>);
-         Item := Emergency_Error;
+         XML3_Error_Records.Fill_Out_Of_Memory
+           (Emergency_Error.all, Emergency_Message'Address);
          Emergency_Active := True;
       end if;
-      Item.all.Domain := XML3_MEMORY;
-      Item.all.Code := XML3_OOM;
-      Item.all.Level := XML3_FATAL;
-      Item.all.Message := Emergency_Message'Address;
    exception
       when others =>
-         Emergency_Error.all := (others => <>);
-         Emergency_Error.Domain := XML3_MEMORY;
-         Emergency_Error.Code := XML3_OOM;
-         Emergency_Error.Level := XML3_FATAL;
-         Emergency_Error.Message := Emergency_Message'Address;
+         XML3_Error_Records.Fill_Out_Of_Memory
+           (Emergency_Error.all, Emergency_Message'Address);
          Emergency_Active := True;
    end Set_OOM;
 
@@ -277,13 +258,7 @@ package body XML3_Errors is
          Set_OOM;
          return;
       end if;
-      if not State.Emergency then
-         Clear_Record (State.Error);
-      else
-         State.Error := (others => <>);
-      end if;
-      State.Emergency := False;
-      State.Error := Replacement;
+      XML3_Error_Records.Install (State.all, Replacement);
       Emergency_Active := False;
    exception
       when others =>
@@ -355,12 +330,18 @@ package body XML3_Errors is
    function Get_Last_Error return System.Address is
       State : constant Error_State_Access := Current_State (False);
    begin
-      if State /= null and then State.Error.Code /= 0 then
-         return State.Error'Address;
-      elsif Emergency_Active then
-         return Emergency_TLS_Address;
-      end if;
-      return System.Null_Address;
+      case XML3_Error_Records.Select_Last_Error
+             (Has_Slot => State /= null,
+              Code => (if State /= null then State.Error.Code else 0),
+              Emergency_Active => Emergency_Active)
+      is
+         when XML3_Error_Records.Slot_Record =>
+            return State.Error'Address;
+         when XML3_Error_Records.Emergency_Record =>
+            return Emergency_TLS_Address;
+         when XML3_Error_Records.No_Error =>
+            return System.Null_Address;
+      end case;
    exception
       when others =>
          return System.Null_Address;
@@ -370,12 +351,7 @@ package body XML3_Errors is
       State : constant Error_State_Access := Current_State (False);
    begin
       if State /= null then
-         if not State.Emergency then
-            Clear_Record (State.Error);
-         else
-            State.Error := (others => <>);
-         end if;
-         State.Emergency := False;
+         XML3_Error_Records.Clear_Slot (State.all);
       end if;
       Emergency_Error.all := (others => <>);
       Emergency_Active := False;
@@ -390,12 +366,7 @@ package body XML3_Errors is
       if Error = System.Null_Address then
          return;
       elsif State /= null then
-         if not State.Emergency then
-            Clear_Record (State.Error);
-         else
-            State.Error := (others => <>);
-         end if;
-         State.Emergency := False;
+         XML3_Error_Records.Clear_Slot (State.all);
       elsif Error = Emergency_TLS_Address then
          Emergency_Error.all := (others => <>);
          Emergency_Active := False;
@@ -415,13 +386,23 @@ package body XML3_Errors is
       Copy   : Error_Record := (others => <>);
       Success : Boolean;
    begin
-      if From = System.Null_Address or else To = System.Null_Address then
-         return -1;
-      elsif From = To then
-         return 0;
-      elsif To = Emergency_TLS_Address then
-         return -1;
-      end if;
+      case XML3_Error_Records.Decide_Copy
+             (From_Null => From = System.Null_Address,
+              To_Null => To = System.Null_Address,
+              Same => From = To,
+              To_Emergency =>
+                From /= System.Null_Address
+                  and then To /= System.Null_Address
+                  and then From /= To
+                  and then To = Emergency_TLS_Address)
+      is
+         when XML3_Error_Records.Reject =>
+            return -1;
+         when XML3_Error_Records.Already_Copied =>
+            return 0;
+         when XML3_Error_Records.Clone_Source =>
+            null;
+      end case;
       Source := Error_Conversion.To_Pointer (From).all;
       XML3_Error_Records.Clone (Source, Copy, Success);
       if not Success then
@@ -444,9 +425,7 @@ package body XML3_Errors is
       if Value = null then
          return;
       end if;
-      if not Value.Emergency then
-         Clear_Record (Value.Error);
-      end if;
+      XML3_Error_Records.Clear_Slot (Value.all);
       Free_State (Value);
    exception
       when others =>
