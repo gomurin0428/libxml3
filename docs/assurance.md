@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,112 checks
-(1,436 flow and 11,676 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 166 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,131 checks
+(1,441 flow and 11,690 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 168 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -766,9 +766,16 @@ full public equivalence remain trusted. XML-name/UTF-8 validation is not perform
 The comparison itself allocates nothing and performs no writes.
 
 `xmlNodeGetAttrValue` は既存 `Runtime.Get_Property` / `Store.Queries.Find_Property` /
-`Get_Content` を再利用します。C の共通入口は文字列変換・mutex・status 変換のみで、
-従来の `xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` も同じ入口を通ります。
-属性検索・内容のコピーはSPARK側のままで、新たな所有権モデルは追加していません。
+`Get_Content` を再利用します。`xmlGetProp` / `xmlGetNsProp` / `xmlGetNoNsProp` と
+`xmlHasProp` / `xmlHasNsProp` はnative `Find_Property` overloadを共用し、要素の登録・
+種類の確認後に名前/URIをSPARKで計測・コピーします。Cはアドレス転送・mutex・
+status/exception変換のみで、中間Stringを作りません。既存String検索、namespace
+フィルタ、借用属性と独立した値コピーの所有権は維持します。走査上限はLimit_Exceeded
+として診断114へ変換し、safe getterは -1/NULL を返します。通常の未取得・無効nodeは
+従来どおり無診断で1/NULLです。native可読性・extent/stability・byte効果は証明外です。
+GNATprove は native `Find_Property` overload で14 checks（2 warnings）、
+既存 String overload で16 checks、`Runtime.Find_Property` で1 check、
+`Runtime.Get_Property` で2 checksを証明します。
 戻り値と出力 pointer の C ABI 契約そのものは証明外で、固定版比較と確保失敗テストで検査します。
 
 公開 namespace 検索は `Store.Queries.Lookup_Namespace` を通ります。native overloadは

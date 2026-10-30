@@ -837,10 +837,22 @@
   },
   "function:tree.h:xmlGetProp": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "Native local-name input is measured/copied inside SPARK after registered-element/kind validation. Returns an independent xmlFree-compatible value from the first matching local name regardless of namespace, reusing Find_Property/Get_Content. Invalid/missing input returns NULL without changing diagnostics; scan-limit failures report114, allocation failures report OOM. No DTD defaults. Native pointer validity/extents/stability, byte effects, allocator/ABI and full semantics remain unproved.",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c", "tests/attribute-test.c", "tests/oom-test.c"
     ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlGetNsProp": {
+    "implementation": "partial",
+    "scope": "Native local-name/URI inputs enter SPARK after registered-element/kind validation. Reuses Find_Property/Get_Content for an independent xmlFree-compatible value. NULL URI selects no namespace, distinct from empty URI. Invalid/missing input returns NULL without diagnostics; scan-limit failures report114, allocation failures report OOM. No DTD defaults. Native extents/stability, byte effects, allocator/ABI and complete semantics remain unproved.",
+    "tests": ["tests/attribute-test.c", "tests/namespace-test.c", "tests/oom-test.c"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlGetNoNsProp": {
+    "implementation": "partial",
+    "scope": "Shares the native SPARK attribute-value lookup with xmlGetNsProp and a NULL URI filter. Registered-element/kind validation precedes name measurement/copy; returns an independent value only for unqualified attributes. Scan-limit failures report114; missing/invalid input returns NULL without diagnostics. DTD defaults and full native ABI/pointer/allocator/public semantics remain unproved.",
+    "tests": ["tests/attribute-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNodeSetName": {
@@ -855,10 +867,16 @@
   },
   "function:tree.h:xmlHasProp": {
     "implementation": "partial",
-    "scope": "現在のUTF-8/UTF-16・読み取り専用DOMサブセット内。全オプション・全ノード型の等価性は未確認。",
+    "scope": "Native name enters SPARK after registered-element/kind validation; returns the first matching borrowed managed attribute regardless of namespace, with no native allocation. Invalid/missing input returns NULL without diagnostics; scan-limit failure reports114. No DTD default declarations. Native extents/stability, byte effects, ABI and complete semantics remain unproved.",
     "tests": [
-      "tests/api-test.c"
+      "tests/api-test.c", "tests/attribute-test.c", "tests/oom-test.c"
     ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlHasNsProp": {
+    "implementation": "partial",
+    "scope": "Native name/URI enter SPARK after registered-element/kind validation; returns a borrowed matching managed attribute, without native allocation. NULL URI selects no namespace, distinct from empty URI. Invalid/missing input returns NULL without diagnostics; scan-limit failure reports114. No DTD default declarations. Native extents/stability, byte effects, ABI and complete semantics remain unproved.",
+    "tests": ["tests/attribute-test.c", "tests/namespace-test.c", "tests/oom-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNewProp": {
@@ -1003,7 +1021,7 @@
   },
   "function:tree.h:xmlNodeGetAttrValue": {
     "implementation": "partial",
-    "scope": "Namespace-aware attribute value lookup through existing SPARK Runtime.Get_Property / Store.Queries.Find_Property / Get_Content. Returns 0 plus an independent xmlFree-compatible copy, 1 plus NULL for missing/invalid node or name (NULL out also returns 1), and -1 plus NULL for allocation, limit, string-conversion, or internal failures. NULL URI means no namespace, not any namespace. C status/output-pointer mapping is shared with existing getters; DTD defaults remain unsupported. Native ABI/output pointer and full public semantics are not proved.",
+    "scope": "Namespace-aware attribute value lookup through SPARK Runtime.Get_Property / native Store.Queries.Find_Property / Get_Content. Registered-element/kind checks precede native name/URI measurement/copy; no C intermediate String. Returns 0 plus an independent xmlFree-compatible copy, 1 plus NULL for missing/invalid node or NULL name (NULL out also returns1), and -1 plus NULL for allocation, scan-limit or internal failures. Scan-limit errors now report114 rather than old conversion error115. NULL URI means no namespace, distinct from empty URI. C status/output mapping is shared with getters; DTD defaults unsupported. Native extents/stability, byte effects, allocator/ABI/output pointer and full semantics are unproved.",
     "tests": ["tests/attribute-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
