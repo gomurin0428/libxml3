@@ -20,6 +20,8 @@ with XML3_Error_Records;
 with XML3_Diagnostic_Messages;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
+with XML3_Parser.Requests;
+with XML3_Text;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
@@ -2082,4 +2084,100 @@ begin
       pragma Assert (Reported = 14);
    end;
    Ada.Text_IO.Put_Line ("Diagnostic code selection policy passed");
+   declare
+      package Requests renames XML3_Parser.Requests;
+      package Options renames XML3_Parser.Options;
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Interfaces.C.int;
+      use type XML3_Encoding.Encoding_Kind;
+      use type Options.Profile;
+      use type Requests.Admission_Kind;
+      use type Codes.Diagnostic_Code;
+
+      Limit : constant Interfaces.C.int :=
+        Interfaces.C.int (XML3_Text.Max_Bytes);
+      Sizes : constant array (1 .. 7) of Interfaces.C.int :=
+        (Interfaces.C.int'First, -1, 0, 1, Limit, Limit + 1,
+         Interfaces.C.int'Last);
+
+      --  Reproduces the order the adapter used before the policy moved
+      --  into SPARK: arguments, then encoding, then options.
+      function Reference_Admission
+        (Has_Buffer : Boolean; Size : Interfaces.C.int;
+         Requested : XML3_Encoding.Encoding_Kind;
+         Selected : Options.Profile) return Requests.Admission
+      is
+      begin
+         if not Has_Buffer or else Size < 0 or else Size > Limit then
+            return
+              (Kind => Requests.Invalid_Argument,
+               Requested => XML3_Encoding.Unspecified, Huge => False);
+         elsif Requested = XML3_Encoding.Unsupported then
+            return
+              (Kind => Requests.Unsupported_Encoding,
+               Requested => Requested, Huge => False);
+         elsif Selected = Options.Unsupported then
+            return
+              (Kind => Requests.Unsupported_Options,
+               Requested => Requested, Huge => False);
+         else
+            return
+              (Kind => Requests.Admitted, Requested => Requested,
+               Huge => Selected = Options.Huge);
+         end if;
+      end Reference_Admission;
+
+      Seen : array (Requests.Admission_Kind) of Boolean :=
+        (others => False);
+      Seen_Huge : Boolean := False;
+   begin
+      for Has_Buffer in Boolean loop
+         for Index in Sizes'Range loop
+            for Requested in XML3_Encoding.Encoding_Kind loop
+               for Selected in Options.Profile loop
+                  declare
+                     Size : constant Interfaces.C.int := Sizes (Index);
+                     Item : constant Requests.Admission :=
+                       Requests.Admit (Has_Buffer, Size, Requested, Selected);
+                     Expected : constant Requests.Admission :=
+                       Reference_Admission
+                         (Has_Buffer, Size, Requested, Selected);
+                  begin
+                     pragma Assert (Item.Kind = Expected.Kind);
+                     pragma Assert (Item.Requested = Expected.Requested);
+                     pragma Assert (Item.Huge = Expected.Huge);
+                     --  The staged functions the adapter calls must agree
+                     --  with the composed order.
+                     pragma Assert
+                       (Item.Kind =
+                          (if Requests.Check_Arguments (Has_Buffer, Size)
+                             /= Requests.Admitted
+                           then Requests.Invalid_Argument
+                           elsif Requests.After_Encoding (Requested)
+                             /= Requests.Admitted
+                           then Requests.After_Encoding (Requested)
+                           else Requests.After_Options (Selected)));
+                     pragma Assert
+                       (if Item.Kind = Requests.Admitted
+                        then Item.Huge = Requests.Huge_Requested (Selected));
+                     Seen (Item.Kind) := True;
+                     Seen_Huge := Seen_Huge or else Item.Huge;
+                  end;
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+      pragma Assert (for all Kind in Requests.Admission_Kind => Seen (Kind));
+      pragma Assert (Seen_Huge);
+      pragma Assert (not Codes.For_Admission (Requests.Admitted).Present);
+      pragma Assert
+        (not Codes.For_Admission (Requests.Invalid_Argument).Present);
+      pragma Assert
+        (Codes.For_Admission (Requests.Unsupported_Encoding) =
+           Codes.Unsupported_Encoding);
+      pragma Assert
+        (Codes.For_Admission (Requests.Unsupported_Options) =
+           Codes.Unsupported_Feature);
+   end;
+   Ada.Text_IO.Put_Line ("Parse request admission policy passed");
 end DOM_Bridge_Test;

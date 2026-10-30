@@ -2,6 +2,7 @@ with Interfaces.C;
 with XML3_DOM_Constructors;
 with XML3_Encoding.Buffers;
 with XML3_Parser.Outcomes;
+with XML3_Parser.Requests;
 
 package XML3_Diagnostic_Codes with SPARK_Mode is
 
@@ -72,6 +73,20 @@ package XML3_Diagnostic_Codes with SPARK_Mode is
         when XML3_Parser.Outcomes.Report_Unsupported_Feature =>
           Unsupported_Feature,
         when XML3_Parser.Outcomes.Report_Limit_Exceeded => Resource_Limit)
+   with Global => null;
+
+   --  Admitted and rejected arguments publish no diagnostic; the argument
+   --  rejection only sets the C status.
+   function For_Admission
+     (Kind : XML3_Parser.Requests.Admission_Kind) return Diagnostic_Code
+   is
+     (case Kind is
+        when XML3_Parser.Requests.Admitted
+           | XML3_Parser.Requests.Invalid_Argument => None,
+        when XML3_Parser.Requests.Unsupported_Encoding =>
+          Unsupported_Encoding,
+        when XML3_Parser.Requests.Unsupported_Options =>
+          Unsupported_Feature)
    with Global => null;
 
 end XML3_Diagnostic_Codes;
