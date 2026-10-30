@@ -162,9 +162,9 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,151 checks
-(1,446 flow and 11,705 prover), no unproved or justified conditions, 0
-`pragma Assume` statements, and 170 analyzer warnings. GNATprove failed to
+proved. The refreshed aggregate has 13,181 checks
+(1,451 flow and 11,730 prover), no unproved or justified conditions, 0
+`pragma Assume` statements, and 172 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
 detailed in the proof report.
@@ -764,6 +764,18 @@ scan cap は長い入力の一律拒否ではありません。Native
 byte reads、foreign pointer validity/bounds、actual contents、address arithmetic、C mapping、
 full public equivalence remain trusted. XML-name/UTF-8 validation is not performed.
 The comparison itself allocates nothing and performs no writes.
+
+`xmlNewNsProp` / `xmlSetNsProp` はnative `Properties.Edit_Namespace_Property` を
+共用します。要素とnamespaceは登録照合だけで確認し、公開facadeを直接参照せずに
+名前/値のSPARK計測・コピーへ進みます。String版の作成/置換、URI照合、namespace
+attachment保持とReady契約、確保失敗時の旧値・リンク・namespace保持を再利用します。
+旧属性の名前/本文からコピーしてから更新するため、自己参照入力も保持します。無効な
+要素/namespaceは115、走査上限は114です。Cは転送・mutex・status/exception変換のみで、
+native extent/stability・byte効果・allocator/ABI・public semanticsは証明外です。
+guarded入力、NULL/空値、同一URIのprefix付け替え、入力保護後の複製・元属性削除・
+出力・再読み込み・編集を固定版と比較します。危険なforeign pointerの検査はlibxml3のみです。
+GNATprove は `Edit_Namespace_Property` で25 checks（2 warnings）、
+`Runtime.Create_Namespace_Property` と `Runtime.Set_Namespace_Property` で各1 checkを証明します。
 
 `xmlNewProp` はnative `Properties.Create_Property` overloadを通り、非NULL elementの
 登録・種類を確認した後、名前/値をSPARK内で計測・コピーします。既存String overloadの

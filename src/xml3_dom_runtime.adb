@@ -260,23 +260,21 @@ is
       end Set_Property;
 
       procedure Create_Namespace_Property
-        (Element, Ns : System.Address; Name, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, Ns, Name, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
-         XML3_DOM_Store.Properties.Create_Namespace_Property
-           (Current, Element, Ns, Name, Value, Has_Value, Result, Status);
+         XML3_DOM_Store.Properties.Edit_Namespace_Property
+           (Current, Element, Ns, Name, Value, False, Result, Status);
       end Create_Namespace_Property;
 
       procedure Set_Namespace_Property
-        (Element, Ns : System.Address; Name, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, Ns, Name, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
       is
       begin
-         XML3_DOM_Store.Properties.Set_Namespace_Property
-           (Current, Element, Ns, Name, Value, Has_Value, Result, Status);
+         XML3_DOM_Store.Properties.Edit_Namespace_Property
+           (Current, Element, Ns, Name, Value, True, Result, Status);
       end Set_Namespace_Property;
 
       procedure Unset_Namespace_Property

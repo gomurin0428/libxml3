@@ -171,14 +171,12 @@ is
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Create_Namespace_Property
-        (Element, Ns : System.Address; Name, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, Ns, Name, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
       procedure Set_Namespace_Property
-        (Element, Ns : System.Address; Name, Value : String;
-         Has_Value : Boolean; Result : out System.Address;
+        (Element, Ns, Name, Value : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
