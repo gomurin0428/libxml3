@@ -1215,17 +1215,11 @@ package body XML3_C is
          return -1;
       end if;
       declare
-         Suffix : constant String :=
-           (if Bounded then C_String_Prefix (Content, int'Max (Length, 0))
-            else C_String_Value (Content));
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Add_Content
-           (Node, Suffix, Status,
-            Has_Input => Content /= System.Null_Address
-              and then (Text_Only or else (Bounded and then Length > 0)),
-            Text_Only => Text_Only);
+           (Node, Content, Integer (Length), Bounded, Status, Text_Only);
       end;
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
@@ -1235,9 +1229,6 @@ package body XML3_C is
                 then -1
               else 1);
    exception
-      when Invalid_C_String =>
-         Report_Dom_Error (115);
-         return (if Text_Only then -1 else 1);
       when XML3_DOM_Lock.Lock_Error =>
          Report_Dom_Error (1);
          return (if Text_Only then -1 else 1);

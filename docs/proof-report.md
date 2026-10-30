@@ -8,7 +8,7 @@ The full proof command for this source revision was:
 /home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,052 checks, 1,418 by flow analysis and 11,634
+It completed successfully: **13,053 checks, 1,419 by flow analysis and 11,634
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -623,12 +623,12 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Category | Checks |
 | --- | ---: |
 | Data dependencies | 370 |
-| Initialization | 859 |
-| Runtime checks | 5,572 |
+| Initialization | 860 |
+| Runtime checks | 5,570 |
 | Assertions | 1,667 |
-| Functional contracts | 4,321 |
+| Functional contracts | 4,323 |
 | Termination | 263 |
-| **Total** | **13,052** |
+| **Total** | **13,053** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -727,12 +727,12 @@ output therefore does not restore the parsed source encoding.
 
 `xmlNodeAddContent` and `xmlNodeAddContentLen` use the same
 `Runtime.Add_Content` and `XML3_DOM_Store.Content.Append` path, whose Store
-contract requires and restores `Ready (S)`. The length-bounded adapter performs
-a trusted `C_String_Prefix`/`Scan_Length` conversion and passes `Has_Input` only
-for positive-length non-NULL input. Store uses that flag to distinguish a
+contract requires and restores `Ready (S)`. C forwards addresses/length/mode;
+Store validates the registered facade before measuring native input via
+`Measure` or `Measure_Byte_Prefix`. Store derives `Has_Input` to distinguish a
 positive-length leading NUL, which materializes empty text/content when needed,
 from a zero/nonpositive-length or NULL-input no-op. Raw bytes are not decoded;
-bounded pointer scanning and foreign-pointer validity remain outside GNATprove.
+foreign-pointer readability/extents/stability and native byte effects remain outside GNATprove.
 Guard-page checks, empty-text allocation failure/retry, and UTF-8 split-append
 repair are runtime evidence, not additional formal claims.
 The private `Replace_Content` helper requires a non-pending projection and
@@ -741,6 +741,16 @@ complete and facades present. Its frame preserves node and namespace counts,
 unrelated live node views, and all target-node fields other than content
 address, length, and pin on success; a non-success status leaves the target
 node unchanged.
+It now accepts an optional native span, retaining the String path for setters.
+Append copies old content and the measured suffix into a fresh owned buffer
+before projection/pin updates, keeping aliased old content live until both
+copies finish. Creating a trailing text child reuses `Create_Node`'s native
+span path. There is no intermediate input String in either append path.
+Serialization tests cover guarded exact-count/terminated inputs, source
+protection before serialization/free/reparse/editing, native self-aliasing,
+invalid-facade/kind read avoidance and NULL/zero/nonpositive-length distinctions.
+GNATprove proves 36 checks for `Store.Content.Append`, 69 for private
+`Replace_Content`, and 1 for `Runtime.Add_Content`.
 `xmlNodeSetContent` routes through `Runtime.Set_Content` and
 `XML3_DOM_Store.Content.Set`. Element/Attribute input is decoded before
 mutation; the replacement text child is attached before old children are
@@ -932,10 +942,10 @@ reparenting, serialization, copy-lifetime and OOM rollback tests are runtime
 evidence, not complete semantic proof of the public APIs or native boundary.
 
 `xmlTextConcat` reuses `Runtime.Add_Content` / `Store.Content.Append` with a
-scalar-only policy checked before the empty-input no-op. Existing
+scalar-only policy checked before input reads and the empty-input no-op. Existing
 `Replace_Content` contracts preserve unrelated nodes and the target on failure,
 and restrict successful target changes to content, length and content pin.
-The C adapter shares bounded/unbounded conversion, locking and result mapping;
+The C adapter shares address/length/mode forwarding, locking and result mapping;
 it performs no DOM traversal. Scalar kinds, NULL/empty input, bounded and negative
 lengths, aliasing, guard pages, retained document lifetime, serialization/reparse
 and native OOM retry are runtime evidence, not a complete public semantic proof.
@@ -1324,7 +1334,7 @@ for the proof result above; feature behavior and trust boundaries are described
 in the preceding sections.
 
 ```text
-30cb8e4ce1751c6c01b55febd8da46b8507ee1f078c1b6e90f392d2d2504adc0  src/xml3_c.adb
+d8bed6e9e467632bc52a05b3d69f8d556057f87c76745b9c279ab0cc93eb31ad  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1347,10 +1357,10 @@ a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_b
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-00f84f35e9862a729063917645bd3e53c046840e06db9e04ffca457f3fd2d358  src/xml3_dom_runtime.adb
-0ae84b1e81b0b83ec6e37f7bac6ef49c8a450dc77a12b29b7a29cc089fdcccbe  src/xml3_dom_runtime.ads
-8d984c8415dbb2ff4d9c20ea8030f2dcecba01c0d501fa98097b2a4975256dcb  src/xml3_dom_store-content.adb
-9191ace04a4e464c655d3bad4b22862880380add112c7ad16c75b7f5f474fb65  src/xml3_dom_store-content.ads
+72edd372aa23df82992e6e9972e16cbd583ceb5ab380da538b87b36af52f49aa  src/xml3_dom_runtime.adb
+39e22969b381db70e9333cae0e2bf31e4d4246bb3e000745813be2c57e378d3f  src/xml3_dom_runtime.ads
+29f115400d8e384b2fefe574a0ec214a0e2f381440bc01847c8cd1186573c947  src/xml3_dom_store-content.adb
+5211eb2d1bf0b7fd6e4c3cce8970c1b8639b15831ca05d4228d182c29275c3f2  src/xml3_dom_store-content.ads
 7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 2e00b21bc02cd7487ec57928182f9937e446d2ee0c2446ab246ee817d60c0c43  src/xml3_dom_store-properties.adb
@@ -1388,7 +1398,7 @@ dcb0678d680679e8e777964ca8203cd3db64e22918bbff58960a3237f7fe51dd  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
 9caf83872228b36227ad3a6dcafb9fa1bf09b99d091e1f394d6cd20c79a414a8  Makefile
 f8684434c8ee371920786d1586adc38277fada588070746f48f22c626e5c21b8  tests/oom-test.c
-d9e2dbafecaf792d7cee70542a867c9d5a45c6ebbf3fd79077a00c9ea1f459e3  tests/serialization-test.c
+1d5ac3e9909853977aef29017de60400e47eed68a687b17b36a8c932e1436448  tests/serialization-test.c
 405a0e335bd66c3fb7d7de3c447d48413db64297adf1907dce00e93c66c39b15  tests/text_buffers_test.adb
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 ```

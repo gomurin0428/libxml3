@@ -159,13 +159,13 @@ is
       end New_Doc_Node;
 
       procedure Add_Content
-        (Facade : System.Address; Suffix : String;
+        (Facade, Suffix : System.Address; Length : Integer; Bounded : Boolean;
          Status : out XML3_DOM_Store.Operation_Status;
-         Has_Input : Boolean := False; Text_Only : Boolean := False)
+         Text_Only : Boolean := False)
       is
       begin
          XML3_DOM_Store.Content.Append
-           (Current, Facade, Suffix, Status, Has_Input, Text_Only);
+           (Current, Facade, Suffix, Length, Bounded, Status, Text_Only);
       end Add_Content;
 
       procedure Set_Name

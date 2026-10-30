@@ -543,11 +543,8 @@
   },
   "function:tree.h:xmlNodeAddContent": {
     "implementation": "partial",
-    "scope": "要素・属性は末尾Textを再利用し、なければText childを追加。Text/CDATA/comment/PIはraw UTF-8を連結し、entity展開はしない。NULL/emptyはno-op、文書等の他のlive kindもno-op。invalid facadeは拒否。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。",
-    "tests": [
-      "tests/content-edit-test.c",
-      "tests/oom-test.c"
-    ],
+    "scope": "要素・属性は末尾Textを再利用し、なければText childを追加。Text/CDATA/comment/PIはraw UTF-8を連結し、entity展開はしない。NULL/emptyはno-op、文書等の他のlive kindもno-op。invalid facadeは拒否。DOMの所有権・寿命判断はSPARK Store/Runtime、native pointer・ABI・allocatorは信頼境界。 Native input enters SPARK directly: registered facade/scalar-kind checks precede bounded measurement, and raw suffix spans are copied into owned storage without intermediate Strings. Old content remains live until copies finish, including self-aliasing. Existing NULL/empty/nonpositive/negative-length distinctions and rollback remain.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNodeSetContent": {
@@ -609,11 +606,8 @@
   },
   "function:tree.h:xmlNodeAddContentLen": {
     "implementation": "partial",
-    "scope": "Bounded raw-text append through SPARK Store/Runtime. Nonpositive length or NULL content is a no-op; positive length stops at NUL or len bytes. SPARK handles empty-text materialization when a positive-length input starts with NUL, text coalescing and failure rollback. Invisible bytes after NUL are not retained. Raw UTF-8 chunks can be appended and are validated at serialization.",
-    "tests": [
-      "tests/content-edit-test.c",
-      "tests/oom-test.c"
-    ],
+    "scope": "Bounded raw-text append through SPARK Store/Runtime. Nonpositive length or NULL content is a no-op; positive length stops at NUL or len bytes. SPARK handles empty-text materialization when a positive-length input starts with NUL, text coalescing and failure rollback. Invisible bytes after NUL are not retained. Raw UTF-8 chunks can be appended and are validated at serialization. Native input enters SPARK directly: registered facade/scalar-kind checks precede bounded measurement, and raw suffix spans are copied into owned storage without intermediate Strings. Old content remains live until copies finish, including self-aliasing. Existing NULL/empty/nonpositive/negative-length distinctions and rollback remain.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlNodeSetContentLen": {
@@ -962,8 +956,8 @@
   },
   "function:tree.h:xmlTextConcat": {
     "implementation": "partial",
-    "scope": "SPARK scalar-only append to managed text, CDATA, comment and PI nodes; content ownership/rollback reuse Store.Content.Replace_Content. Nonnegative length is bounded, zero reads no bytes, negative length consumes a NUL-terminated string. NULL content is a no-op after kind validation; non-NULL empty input materializes empty content. Returns 0 or -1. Stops at first NUL instead of retaining/reading trailing bytes. Native boundary and full public semantics not proved.",
-    "tests": ["tests/content-edit-test.c", "tests/oom-test.c"],
+    "scope": "SPARK scalar-only append to managed text, CDATA, comment and PI nodes; content ownership/rollback reuse Store.Content.Replace_Content. Nonnegative length is bounded, zero reads no bytes, negative length consumes a NUL-terminated string. NULL content is a no-op after kind validation; non-NULL empty input materializes empty content. Returns 0 or -1. Stops at first NUL instead of retaining/reading trailing bytes. Native boundary and full public semantics not proved. Native input enters SPARK directly: registered facade/scalar-kind checks precede bounded measurement, and raw suffix spans are copied into owned storage without intermediate Strings. Old content remains live until copies finish, including self-aliasing. Existing NULL/empty/nonpositive/negative-length distinctions and rollback remain.",
+    "tests": ["tests/content-edit-test.c", "tests/oom-test.c", "tests/serialization-test.c"],
     "proof": "not-proved"
   },
   "function:tree.h:xmlTextMerge": {
