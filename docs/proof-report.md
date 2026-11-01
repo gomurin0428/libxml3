@@ -192,6 +192,8 @@ postcondition states that a document is discarded only for a successful
 parse that ends as `No_Memory`, that the settled status is `OK` exactly when
 the parse succeeded and the document is kept, and that nothing changes when
 no out-of-memory error is recorded. `After_Exception` never selects `OK`.
+Each of the six functions proves 1 check (its postcondition) and the package
+proves 0, with no warnings.
 The adapter reads `Last_Error_Is_OOM` once after the diagnostic is published,
 frees the document when told to, and converts the result to the C status
 values through one total `Status_Code`. Tests compare every read status,
@@ -235,13 +237,27 @@ the parser's `Line_At` wrapper proves 4 checks while reusing that helper.
 These establish the written bounds and scan safety, not complete diagnostic
 or Unicode correctness.
 
-The full proof command for this source revision was:
+The proof switches for this source revision were:
 
 ```sh
-/home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
+/root/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-It completed successfully: **13,379 checks, 1,557 by flow analysis and 11,822
+The analysis was run one compilation unit at a time (`-u <unit>.ads
+<unit>.adb`) from a clean object directory, so that each run fits the
+execution time limit of the environment; GNATprove analyzes units
+modularly, so the union of the per-unit runs covers the same verification
+conditions as a single run, and the recorded summary is the one GNATprove
+aggregates over all 32 units. Two units needed more: `XML3_DOM` was proved one
+subprogram at a time (`--limit-subp`) and then consolidated with `--replay`,
+which re-runs the recorded prover on every goal; and in `XML3_DOM.Import` the
+assertion at `xml3_dom-import.adb:1382` is not proved within 120 s / 4096 MB
+on this machine (also on the previous revision), so that unit was run with
+`--timeout=600 --memlimit=8192`. Every entity other than the new
+`XML3_Parser.Statuses` reports the same check and warning counts as the
+previous aggregate.
+
+It completed successfully: **13,397 checks, 1,569 by flow analysis and 11,828
 by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -909,7 +925,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 566 entity
+The 573 entity
 summaries report 0 flow errors, 181 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -945,14 +961,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 417 |
+| Data dependencies | 423 |
 | Initialization | 924 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,647 |
 | Assertions | 1,674 |
-| Functional contracts | 4,426 |
-| Termination | 290 |
-| **Total** | **13,379** |
+| Functional contracts | 4,432 |
+| Termination | 296 |
+| **Total** | **13,397** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1675,14 +1691,8 @@ and 22 checks, respectively.
 ## Source identity (SHA-256)
 
 The following 87 hashes identify the source files and build/test configuration
-of this revision; feature behavior and trust boundaries are described in the
-preceding sections. The aggregate above was recorded for the previous revision.
-This revision adds only `src/xml3_parser-statuses.ads` to the proof project and
-changes no previously proved source. That unit was proved on its own with the
-same switches (`-u xml3_parser-statuses.ads`): 7 entities, 6 prover checks (1
-for each function postcondition), 0 flow errors, 0 warnings, 0 unproved, 0
-justified and 0 `pragma Assume`. The full aggregate has not been re-recorded
-for this revision.
+for the proof result above; feature behavior and trust boundaries are
+described in the preceding sections.
 
 ```text
 4354981d3349f15b8eedb94c4787f5f032017dd50bf2806316f7f08931e81ce0  src/xml3_c.adb
