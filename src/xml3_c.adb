@@ -19,6 +19,7 @@ with XML3_Parser.Attempts;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
 with XML3_Parser.Requests;
+with XML3_Parser.Statuses;
 with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
@@ -54,12 +55,12 @@ package body XML3_C is
       Result : out System.Address;
       Status : out XML3_DOM_Store.Documents.Read_Status;
       Diagnostic : out XML3_Parser.Diagnostic_Info);
-   function Status_For
-     (Status : XML3_DOM_Store.Documents.Read_Status) return int;
+   function Status_Code
+     (Status : XML3_Parser.Statuses.Public_Status) return int;
    function Parse_Buffer
      (Buffer : System.Address; Size : Interfaces.C.int;
       URL, Encoding : System.Address; Options : Interfaces.C.int;
-      Status : out int) return System.Address;
+      Status : out XML3_Parser.Statuses.Public_Status) return System.Address;
 
    procedure Set_Status (Target : System.Address; Value : int) is
    begin
@@ -114,26 +115,19 @@ package body XML3_C is
         (XML3_Diagnostic_Codes.For_Operation (Status, Validation_Error));
    end Report_Operation_Status;
 
-   function Status_For
-     (Status : XML3_DOM_Store.Documents.Read_Status) return int
+   --  C ABI encoding of the status SPARK selected; no decision is made here.
+   function Status_Code
+     (Status : XML3_Parser.Statuses.Public_Status) return int
    is
      (case Status is
-        when XML3_DOM_Store.Documents.Parsed => Status_OK,
-        when XML3_DOM_Store.Documents.Malformed => Status_Malformed,
-        when XML3_DOM_Store.Documents.Unsupported => Status_Unsupported,
-        when XML3_DOM_Store.Documents.Limit_Exceeded => Status_Limit_Exceeded,
-        when XML3_DOM_Store.Documents.Arena_Exhausted => Status_Internal_Error,
-        when XML3_DOM_Store.Documents.No_Memory => Status_No_Memory,
-        when XML3_DOM_Store.Documents.Internal_Error => Status_Internal_Error);
-
-   function Status_For_Admission
-     (Kind : XML3_Parser.Requests.Admission_Kind) return int
-   is
-     (case Kind is
-        when XML3_Parser.Requests.Admitted => Status_OK,
-        when XML3_Parser.Requests.Invalid_Argument => Status_Invalid_Argument,
-        when XML3_Parser.Requests.Unsupported_Encoding
-           | XML3_Parser.Requests.Unsupported_Options => Status_Unsupported);
+        when XML3_Parser.Statuses.OK => Status_OK,
+        when XML3_Parser.Statuses.Malformed => Status_Malformed,
+        when XML3_Parser.Statuses.Unsupported => Status_Unsupported,
+        when XML3_Parser.Statuses.Limit_Exceeded => Status_Limit_Exceeded,
+        when XML3_Parser.Statuses.Invalid_Argument =>
+          Status_Invalid_Argument,
+        when XML3_Parser.Statuses.No_Memory => Status_No_Memory,
+        when XML3_Parser.Statuses.Internal_Error => Status_Internal_Error);
 
    procedure Build_Arena
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
@@ -215,13 +209,14 @@ package body XML3_C is
    function Parse_Buffer
      (Buffer : System.Address; Size : Interfaces.C.int;
       URL, Encoding : System.Address; Options : Interfaces.C.int;
-      Status : out int) return System.Address
+      Status : out XML3_Parser.Statuses.Public_Status) return System.Address
    is
       Result : System.Address := System.Null_Address;
       Huge : Boolean := False;
       Diagnostic : XML3_Parser.Diagnostic_Info;
       Prepared : XML3_Encoding.Buffers.Input_View;
       package Requests renames XML3_Parser.Requests;
+      package Statuses renames XML3_Parser.Statuses;
       use type XML3_Parser.Requests.Admission_Kind;
 
       procedure Parse_And_Report
@@ -231,9 +226,9 @@ package body XML3_C is
          use type XML3_Parser.Outcomes.Report_Kind;
          Outcome : XML3_DOM_Store.Documents.Read_Status;
          Report : XML3_Parser.Outcomes.Report_Kind;
+         Settlement : Statuses.Parse_Settlement;
       begin
          Build (Input, Huge, Encoding_Info, Result, Outcome, Diagnostic);
-         Status := Status_For (Outcome);
          Report := Outcomes.Report_For (Outcome, Diagnostic.Code);
          if Report = Outcomes.Report_Diagnostic then
             XML3_Errors.Report
@@ -242,48 +237,48 @@ package body XML3_C is
          else
             Report_Code (XML3_Diagnostic_Codes.For_Report (Report), URL);
          end if;
-         if Status = Status_OK and then Report = Outcomes.Report_Diagnostic
-           and then XML3_Errors.Last_Error_Is_OOM
+         Settlement :=
+           Statuses.Settle_Parse
+             (Statuses.For_Read (Outcome), Report,
+              XML3_Errors.Last_Error_Is_OOM);
+         if Settlement.Discard_Document
+           and then Result /= System.Null_Address
          then
-            if Result /= System.Null_Address then
-               Free_Doc (Result);
-               Result := System.Null_Address;
-            end if;
-            Status := Status_No_Memory;
+            Free_Doc (Result);
+            Result := System.Null_Address;
          end if;
-         if Status /= Status_OK and then XML3_Errors.Last_Error_Is_OOM then
-            Status := Status_No_Memory;
-         end if;
+         Status := Settlement.Status;
       end Parse_And_Report;
 
       procedure Report_Conversion_Error
-        (Item : XML3_Diagnostic_Codes.Diagnostic_Code; Error_Status : int)
+        (Prepare_Status : XML3_Encoding.Buffers.Conversion_Result)
       is
+         Item : constant XML3_Diagnostic_Codes.Diagnostic_Code :=
+           XML3_Diagnostic_Codes.For_Preparation (Prepare_Status);
       begin
-         Status := Error_Status;
          XML3_Errors.Report
            (Natural (Item.Domain), Natural (Item.Code), 3, 1, 0, "", URL);
-         if XML3_Errors.Last_Error_Is_OOM then
-            Status := Status_No_Memory;
-         end if;
+         Status :=
+           Statuses.After_Report
+             (Statuses.For_Preparation (Prepare_Status),
+              XML3_Errors.Last_Error_Is_OOM);
       end Report_Conversion_Error;
 
       procedure Reject (Kind : Requests.Admission_Kind) is
       begin
-         Status := Status_For_Admission (Kind);
          Report_Code (XML3_Diagnostic_Codes.For_Admission (Kind), URL);
-         if XML3_Errors.Last_Error_Is_OOM then
-            Status := Status_No_Memory;
-         end if;
+         Status :=
+           Statuses.After_Report
+             (Statuses.For_Admission (Kind), XML3_Errors.Last_Error_Is_OOM);
       end Reject;
    begin
-      Status := Status_Internal_Error;
+      Status := Statuses.Internal_Error;
       declare
          Arguments : constant Requests.Admission_Kind :=
            Requests.Check_Arguments (Buffer /= System.Null_Address, Size);
       begin
          if Arguments /= Requests.Admitted then
-            Status := Status_For_Admission (Arguments);
+            Status := Statuses.For_Admission (Arguments);
             return System.Null_Address;
          end if;
       end;
@@ -315,16 +310,11 @@ package body XML3_C is
             XML3_Encoding.Buffers.Prepare_Input
               (Buffer, Natural (Size), Requested, Prepared, Prepare_Status);
             case Prepare_Status is
-               when XML3_Encoding.Buffers.Invalid_UTF16 =>
-                  Report_Conversion_Error
-                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
-                     Status_Malformed);
-               when XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
-                  Report_Conversion_Error
-                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
-                     Status_Limit_Exceeded);
+               when XML3_Encoding.Buffers.Invalid_UTF16
+                  | XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
+                  Report_Conversion_Error (Prepare_Status);
                when XML3_Encoding.Buffers.Conversion_No_Memory =>
-                  Status := Status_No_Memory;
+                  Status := Statuses.For_Preparation (Prepare_Status);
                   Report_Code
                     (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
                      URL);
@@ -346,7 +336,7 @@ package body XML3_C is
             Free_Doc (Result);
          end if;
          XML3_Encoding.Buffers.Release_Input (Prepared);
-         Status := Status_No_Memory;
+         Status := Statuses.No_Memory;
          Report_Failure (Allocation_Failure, URL);
          return System.Null_Address;
       when others =>
@@ -356,8 +346,8 @@ package body XML3_C is
          XML3_Encoding.Buffers.Release_Input (Prepared);
          Report_Failure (Parser_Exception, URL);
          Status :=
-           (if XML3_Errors.Last_Error_Is_OOM
-            then Status_No_Memory else Status_Internal_Error);
+           XML3_Parser.Statuses.After_Exception
+             (XML3_Errors.Last_Error_Is_OOM);
          return System.Null_Address;
    end Parse_Buffer;
 
@@ -375,24 +365,26 @@ package body XML3_C is
      (Buffer : System.Address; Size : Interfaces.C.int;
       Status : System.Address) return System.Address
    is
-      Code : int := Status_Internal_Error;
+      Code : XML3_Parser.Statuses.Public_Status :=
+        XML3_Parser.Statuses.Internal_Error;
       Result : System.Address;
    begin
       Result := Parse_Buffer
         (Buffer, Size, System.Null_Address, System.Null_Address, 0, Code);
-      Set_Status (Status, Code);
+      Set_Status (Status, Status_Code (Code));
       return Result;
    exception
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         Set_Status (Status, Status_No_Memory);
+         Set_Status (Status, Status_Code (XML3_Parser.Statuses.No_Memory));
          return System.Null_Address;
       when others =>
          Report_Failure (Parser_Exception);
          Set_Status
            (Status,
-            (if XML3_Errors.Last_Error_Is_OOM
-             then Status_No_Memory else Status_Internal_Error));
+            Status_Code
+              (XML3_Parser.Statuses.After_Exception
+                 (XML3_Errors.Last_Error_Is_OOM)));
          return System.Null_Address;
    end Read_Memory_Status;
 
@@ -401,7 +393,8 @@ package body XML3_C is
       URL, Encoding : System.Address; Options : Interfaces.C.int)
       return System.Address
    is
-      Code : int := Status_Internal_Error;
+      Code : XML3_Parser.Statuses.Public_Status :=
+        XML3_Parser.Statuses.Internal_Error;
    begin
       return Parse_Buffer (Buffer, Size, URL, Encoding, Options, Code);
    exception
@@ -416,7 +409,8 @@ package body XML3_C is
    function Parse_Memory
      (Buffer : System.Address; Size : Interfaces.C.int) return System.Address
    is
-      Code : int := Status_Internal_Error;
+      Code : XML3_Parser.Statuses.Public_Status :=
+        XML3_Parser.Statuses.Internal_Error;
    begin
       return Parse_Buffer
         (Buffer, Size, System.Null_Address, System.Null_Address, 0, Code);
@@ -433,7 +427,8 @@ package body XML3_C is
      (Cur : System.Address; URL, Encoding : System.Address;
       Options : Interfaces.C.int) return System.Address
    is
-      Code : int := Status_Internal_Error;
+      Code : XML3_Parser.Statuses.Public_Status :=
+        XML3_Parser.Statuses.Internal_Error;
       Length : XML3_Text.Byte_Count;
       Found : Boolean;
    begin

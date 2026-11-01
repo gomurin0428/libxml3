@@ -1040,6 +1040,26 @@ functions and prove 0 checks. Tests cover every buffer presence, boundary
 size, requested encoding and option profile against the former order, and a
 C test uses an unreadable encoding pointer with a rejected buffer argument.
 
+`Parser.Statuses` holds the status a parse entry point publishes and the
+out-of-memory fixups the adapter used to apply inline. `For_Read`,
+`For_Admission` and `For_Preparation` map the read status, the admission
+stage and the input preparation result onto `Public_Status`, whose literals
+follow the C status values 0 .. 6. `After_Report` turns a failure into
+`No_Memory` when the published diagnostic left an out-of-memory error in the
+thread-local slot and never changes a successful status; `Settle_Parse`
+additionally decides that a successful parse which published a warning
+diagnostic and then found out-of-memory recorded discards its document and
+reports `No_Memory`; `After_Exception` selects the status of the exception
+handlers. The contracts state that only a successful parse can discard its
+document, that the result is unchanged when no out-of-memory error is
+recorded, and that every changed status is `No_Memory`. Reading the
+thread-local error, freeing the discarded document, publishing the
+diagnostic and the conversion to the C ABI values remain trusted adapter
+behavior. The decisions reproduce the previous adapter logic exactly; tests
+compare every read status, report kind and out-of-memory flag, every
+admission kind and every preparation result with a test-local copy of the
+former adapter code, and the frozen error oracle and OOM walks are unchanged.
+
 `Diagnostic_Codes.Adapter_Failure` names the causes the adapter reports from
 its own exception handlers and argument guards, and `For_Failure` maps each
 cause to the published pair: lock failures and unexpected exceptions to

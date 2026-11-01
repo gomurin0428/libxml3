@@ -180,6 +180,25 @@ the staged functions agree with the composition and that every admission
 kind occurs; a C test parses with an unreadable (`PROT_NONE`) encoding
 pointer and a rejected buffer argument to show the name is not read.
 
+The published status of a parse entry point is selected in
+`XML3_Parser.Statuses`. `For_Read`, `For_Admission` and `For_Preparation`
+map the read status, the admission stage and the input preparation result
+onto `Public_Status`; each postcondition states that `OK` is selected exactly
+for a parsed document, an admitted request and a converted input.
+`After_Report` applies the thread-local out-of-memory fixup and is proved to
+leave `OK` unchanged and to change any other status only to `No_Memory`.
+`Settle_Parse` combines both fixups of the former `Parse_And_Report`; its
+postcondition states that a document is discarded only for a successful
+parse that ends as `No_Memory`, that the settled status is `OK` exactly when
+the parse succeeded and the document is kept, and that nothing changes when
+no out-of-memory error is recorded. `After_Exception` never selects `OK`.
+The adapter reads `Last_Error_Is_OOM` once after the diagnostic is published,
+frees the document when told to, and converts the result to the C status
+values through one total `Status_Code`. Tests compare every read status,
+report kind and out-of-memory flag, every admission kind and every
+preparation result with a test-local copy of the former adapter code, and
+assert the C value of each literal.
+
 The adapter's own failure causes are named in
 `Diagnostic_Codes.Adapter_Failure` and mapped by `For_Failure`. The eight
 causes are `Lock_Failure` and `Unexpected_Exception` (domain 2, code 1),
@@ -1655,12 +1674,18 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 86 hashes identify the source files and build/test configuration
-for the proof result above; feature behavior and trust boundaries are described
-in the preceding sections.
+The following 87 hashes identify the source files and build/test configuration
+of this revision; feature behavior and trust boundaries are described in the
+preceding sections. The aggregate above was recorded for the previous revision.
+This revision adds only `src/xml3_parser-statuses.ads` to the proof project and
+changes no previously proved source. That unit was proved on its own with the
+same switches (`-u xml3_parser-statuses.ads`): 7 entities, 6 prover checks (1
+for each function postcondition), 0 flow errors, 0 warnings, 0 unproved, 0
+justified and 0 `pragma Assume`. The full aggregate has not been re-recorded
+for this revision.
 
 ```text
-fa588853ec06b649f7f5a43a3d63541e6d8e498223db45751dd51d85dbbf07d5  src/xml3_c.adb
+4354981d3349f15b8eedb94c4787f5f032017dd50bf2806316f7f08931e81ce0  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1720,6 +1745,7 @@ b65a6b5269e0a457b0362da1986fb73db64415f9ac5588b5cd1d475dbdc3a9cb  src/xml3_parse
 dd8bc8decd0750060ca05fecd2522078d80a198292f76f0e7396e1ef07796fe5  src/xml3_parser-options.ads
 c2b4a1f34d55437337a9934733cd5123dc326b5e83c965df1c53947e76c9fb7f  src/xml3_parser-outcomes.ads
 53dc47e2a48012d545f0e6ca3483932a246faa9226f99c5a1cb7a630628b41cc  src/xml3_parser-requests.ads
+da673923726ce62aae4fd2fe7d37da57cc84e10778724bd4c61c3d1f7450d2a0  src/xml3_parser-statuses.ads
 4b43adf88af05f6c81c8c1e33f58ecb427de967c49869d5236f007628c49848b  src/xml3_parser-options.adb
 ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
 614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
@@ -1731,9 +1757,9 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-93eca57c4739970f1534919bf4209098459257230e8b8e5a9bbdc3f9a596f16d  proof.gpr
+45b9c21f76255ba0d0fc0d905fe4788acd1460b5f63ed1c028d978109364309f  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-d6dacc4570ade0179c1d9147f4ef8ce470e62c472bd575236b2143b4961d6e5d  Makefile
+f56d62ddf7fa9e23a85595b64c0e694c247277690d92e255bf0b9f338b19a285  Makefile
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
@@ -1743,8 +1769,8 @@ b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buf
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 4e35496028bcf7a470a78d6e8426f07769a48b1f3f2fb1b85bf062db997e6320  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
-f7c2df0af313282d4975cce0d109c91895668c968a6080282008b72d05424a4e  tests/dom_bridge_test.adb
-a90864dcfe37beaba4a24eccc10c54289917196ebb1e6b83327f9d0d0bd23b25  tests/dom_bridge_test.gpr
+6d07019464b9a95738194f2d52c395e6494e6485febec9710e8f25dc84a02be6  tests/dom_bridge_test.adb
+2d5b0f7c042d5b49ccd95e7a9eba507b2f3adadc141af18e2f43170b16495ee3  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```
 
