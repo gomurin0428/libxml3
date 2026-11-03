@@ -243,22 +243,49 @@ The proof switches for this source revision were:
 /root/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
 ```
 
-The analysis was run one compilation unit at a time (`-u <unit>.ads
-<unit>.adb`) from a clean object directory, so that each run fits the
-execution time limit of the environment; GNATprove analyzes units
-modularly, so the union of the per-unit runs covers the same verification
-conditions as a single run, and the recorded summary is the one GNATprove
-aggregates over all 32 units. Two units needed more: `XML3_DOM` was proved one
-subprogram at a time (`--limit-subp`) and then consolidated with `--replay`,
-which re-runs the recorded prover on every goal; and in `XML3_DOM.Import` the
-assertion at `xml3_dom-import.adb:1382` is not proved within 120 s / 4096 MB
-on this machine (also on the previous revision), so that unit was run with
-`--timeout=600 --memlimit=8192`. Every entity other than the new
-`XML3_Parser.Statuses` reports the same check and warning counts as the
-previous aggregate.
+`make prove-units` (`eng/prove_units.py`) runs GNATprove with these switches
+one compilation unit at a time (`-u <unit>.ads <unit>.adb`) from a clean
+object directory. GNATprove analyzes units modularly, so the union of the
+per-unit runs covers the same verification conditions as a single
+whole-project run, while each run stays short and `make prove-units-resume`
+can continue an interrupted run. A unit fails on its own unproved or error
+messages. After the last unit, the script requires the summary GNATprove
+aggregates over the object directory to list all 32 units, with no
+justified or unproved check and no entity reported as not proved.
 
-It completed successfully: **13,397 checks, 1,569 by flow analysis and 11,828
-by provers; 0 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
+The `Effects_Valid` assertion at the end of `XML3_DOM.Import.Adopt`
+(`xml3_dom-import.adb`) did not prove within 120 s / 4096 MB on the machine
+used for this record; the previous revision needed `--timeout=600
+--memlimit=8192` for that unit. `Adopt` now states, through a loop invariant
+over the destination owners, that an owner in the `Releasing` state was kept
+from the destination before the import (the adopted slot is `Live`) and
+therefore has no references or reservations. With that, the whole unit
+proves with the switches above. On the same machine and switches, the
+previous body still leaves that assertion unproved.
+
+This revision changes only `XML3_DOM.Import` among the proved sources. The
+record combines two runs:
+
+* 31 units, everything except `XML3_DOM`, were re-proved with
+  `eng/prove_units.py` and the switches above: 7,420 checks (1,323 flow,
+  6,097 prover), 0 unproved, 0 justified, 0 `pragma Assume`, 433 entities,
+  172 warnings. `docs/proof-summary.txt` is GNATprove's raw summary of this
+  run. Apart from `XML3_DOM.Import.Adopt` (230 checks before, 248 now: +12
+  run-time checks and +6 assertions), every entity reports the same check
+  and warning counts as the previous record.
+* `XML3_DOM` (`xml3_dom.ads`/`.adb`) is unchanged since the previous record
+  and its result is carried over: 140 entities, 5,995 checks (246 flow, 5,749
+  prover), 9 warnings, all proved. Its entity lines are in
+  `docs/proof-summary.txt` at commit `d8d7c3d`. On the machine used here a
+  whole-unit `XML3_DOM` run exceeds the two-hour limit of a single
+  invocation. Proving it one subprogram at a time and consolidating with
+  `--replay` was tried and rejected for the record: `--limit-subp` does not
+  analyze the package and type entities, and replaying the heaviest goals is
+  not deterministic. Its contribution per category is the previous total
+  minus this machine's 31-unit total with the previous `Adopt` body.
+
+Combined: **13,415 checks, 1,569 by flow analysis and 11,846 by provers; 0
+unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
 `xmlNodeSetContent`, `xmlTextMerge`, `xmlTextConcat`, `xmlNodeIsText`,
@@ -953,7 +980,8 @@ The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
 Runtime wrapper, unused helper outputs, and trusted native-call termination
 warnings. They do not represent unproved checks.
 
-The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
+The unedited analyzer summary of the 31 re-proved units is in
+[proof-summary.txt](proof-summary.txt); `XML3_DOM` is carried over as described above.
 This is a proof of the selected SPARK units and their written contracts, not
 of the entire C ABI, native memory layout, synchronization implementation, or
 full XML conformance. Public DOM APIs now delegate to the SPARK Store/Runtime;
@@ -964,11 +992,11 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 | Data dependencies | 423 |
 | Initialization | 924 |
 | Non-aliasing | 1 |
-| Runtime checks | 5,647 |
-| Assertions | 1,674 |
+| Runtime checks | 5,659 |
+| Assertions | 1,680 |
 | Functional contracts | 4,432 |
 | Termination | 296 |
-| **Total** | **13,397** |
+| **Total** | **13,415** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -978,16 +1006,21 @@ Termination is not a wall-clock or resource bound.
 
 ## Reproduction
 
-Verified on Ubuntu 22.04.5 x86_64 (glibc 2.35), with Alire packages
+The current record was produced on Ubuntu 24.04.5 x86_64 (glibc 2.39); earlier
+records were verified on Ubuntu 22.04.5 x86_64 (glibc 2.35). Both use the Alire packages
 `gnat_native=14.2.1`, `gprbuild=26.0.1`, and `gnatprove=14.1.1`.
 The compiler banner is 14.2.0; the analyzer reports `0.0w`, while 14.1.1
 identifies its pinned package. Bundled Why3 is 1.6.0+git, cvc5 is 1.1.2,
-and Z3 is 4.13.0. The recorded full proof used this increased-time command,
-not the default `make prove` target:
+and Z3 is 4.13.0. The recorded full proof uses these increased-time switches
+through `make prove-units`, not the default `make prove` target:
 
 ```sh
-/home/ubuntu/.local/share/ada/candidate-14/bin/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4
+make prove-units          # clean start, one unit at a time
+make prove-units-resume   # continue an interrupted run
 ```
+
+Each unit is analyzed with
+`gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=120 --memlimit=4096 -j4 -u <unit>.ads <unit>.adb`.
 
 `proof.gpr` sets `--level=2 --report=all --checks-as-errors=on` and enables
 assertions independently of the production profile. Unproved checks must
@@ -1690,7 +1723,7 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 87 hashes identify the source files and build/test configuration
+The following 88 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
@@ -1703,7 +1736,7 @@ c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
 e8286ea54caf89b1bf0d7501530fb072eebfde5d16e24107096b0935748fbc6c  include/libxml/uri.h
 c688643449bc09c9977197b5b78325eaced0b8852e6bf0dd3497952bb081a5c6  include/libxml/valid.h
-c627882f6a5e1fbaa14e99ac93231980994a550c2b25439581417c0c4fd40dc8  src/xml3_dom-import.adb
+6c0361c1444457c482a6d969f7b88b824c2c33accea3265466129d75b19893a5  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 af96365a55310b08822701ae7765f861d6009b5369cdc9d972b4bc52654fea35  src/xml3_dom-materialize.adb
 11b0272dbbf8cf7988fb7c96ef8f104f22db1a1390e2c3f5df0bd6d3f6ef60c1  src/xml3_dom-materialize.ads
@@ -1769,7 +1802,8 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 45b9c21f76255ba0d0fc0d905fe4788acd1460b5f63ed1c028d978109364309f  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-f56d62ddf7fa9e23a85595b64c0e694c247277690d92e255bf0b9f338b19a285  Makefile
+6169427ce10aab045c8a56e1cc88c825a397ac48f9158d59de8c6bc87819843a  Makefile
+0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c

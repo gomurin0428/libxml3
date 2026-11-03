@@ -38,6 +38,10 @@ Ada の範囲チェックと整数オーバーフロー検査は維持します�
 開発用では全体整合性の再計算が非常に重く、深いツリーの性能測定には適しません。
 `make prove` と Ada のコア／接続層テストは引き続き全アサーションを有効にし、
 通常実行用プロファイルによって証明条件を省略しません。
+記録済みの証明結果（[docs/proof-report.md](docs/proof-report.md)）は `make prove-units` で再現します。
+記録と同じ設定（timeout 120秒、memlimit 4096MB）でユニットごとに GNATprove を実行し、最後に
+全ユニットの集計に未証明・justified が無いことを確認します。中断した場合は
+`make prove-units-resume` で続きから再開できます。
 
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
 `src/xml3_namespaces.*`、`src/xml3_encoding.*`）と、DOM 状態・反映・Store・
