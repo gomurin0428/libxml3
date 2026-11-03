@@ -22,6 +22,7 @@ with XML3_Diagnostic_Messages;
 with XML3_Parser.Options;
 with XML3_Parser.Outcomes;
 with XML3_Parser.Requests;
+with XML3_Parser.Statuses;
 with XML3_Text;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
@@ -2181,6 +2182,163 @@ begin
            Codes.Unsupported_Feature);
    end;
    Ada.Text_IO.Put_Line ("Parse request admission policy passed");
+   declare
+      package Statuses renames XML3_Parser.Statuses;
+      package Documents renames XML3_DOM_Store.Documents;
+      package Outcomes renames XML3_Parser.Outcomes;
+      package Requests renames XML3_Parser.Requests;
+      package Buffers renames XML3_Encoding.Buffers;
+      use type Statuses.Public_Status;
+      use type Statuses.Parse_Settlement;
+      use type Outcomes.Report_Kind;
+      use type Requests.Admission_Kind;
+      use type Buffers.Conversion_Result;
+
+      --  C status values the adapter assigned before the decisions moved
+      --  into SPARK (xml3_c.ads).
+      OK_Code : constant := 0;
+      Malformed_Code : constant := 1;
+      Unsupported_Code : constant := 2;
+      Limit_Code : constant := 3;
+      Invalid_Code : constant := 4;
+      No_Memory_Code : constant := 5;
+      Internal_Code : constant := 6;
+
+      function Code (Status : Statuses.Public_Status) return Natural is
+        (Statuses.Public_Status'Pos (Status));
+
+      function Reference_Read (Status : Documents.Read_Status) return Natural
+      is
+      begin
+         case Status is
+            when Documents.Parsed => return OK_Code;
+            when Documents.Malformed => return Malformed_Code;
+            when Documents.Unsupported => return Unsupported_Code;
+            when Documents.Limit_Exceeded => return Limit_Code;
+            when Documents.Arena_Exhausted => return Internal_Code;
+            when Documents.No_Memory => return No_Memory_Code;
+            when Documents.Internal_Error => return Internal_Code;
+         end case;
+      end Reference_Read;
+
+      function Reference_Admission
+        (Kind : Requests.Admission_Kind) return Natural
+      is
+      begin
+         case Kind is
+            when Requests.Admitted => return OK_Code;
+            when Requests.Invalid_Argument => return Invalid_Code;
+            when Requests.Unsupported_Encoding
+               | Requests.Unsupported_Options => return Unsupported_Code;
+         end case;
+      end Reference_Admission;
+
+      --  Invalid_UTF16 and the conversion limit passed these statuses to
+      --  Report_Conversion_Error; Conversion_No_Memory set No_Memory.
+      function Reference_Preparation
+        (Status : Buffers.Conversion_Result) return Natural
+      is
+      begin
+         case Status is
+            when Buffers.Converted => return OK_Code;
+            when Buffers.Invalid_UTF16 => return Malformed_Code;
+            when Buffers.Conversion_Limit_Exceeded => return Limit_Code;
+            when Buffers.Conversion_No_Memory => return No_Memory_Code;
+         end case;
+      end Reference_Preparation;
+
+      --  The two OOM fixups of the former Parse_And_Report, in order.
+      procedure Reference_Settle
+        (Read : Documents.Read_Status; Report : Outcomes.Report_Kind;
+         OOM : Boolean; Status : out Natural; Discarded : out Boolean)
+      is
+      begin
+         Status := Reference_Read (Read);
+         Discarded := False;
+         if Status = OK_Code and then Report = Outcomes.Report_Diagnostic
+           and then OOM
+         then
+            Discarded := True;
+            Status := No_Memory_Code;
+         end if;
+         if Status /= OK_Code and then OOM then
+            Status := No_Memory_Code;
+         end if;
+      end Reference_Settle;
+
+      Seen_Discard : Boolean := False;
+      Seen : array (Statuses.Public_Status) of Boolean := (others => False);
+   begin
+      pragma Assert (Code (Statuses.OK) = OK_Code);
+      pragma Assert (Code (Statuses.Malformed) = Malformed_Code);
+      pragma Assert (Code (Statuses.Unsupported) = Unsupported_Code);
+      pragma Assert (Code (Statuses.Limit_Exceeded) = Limit_Code);
+      pragma Assert (Code (Statuses.Invalid_Argument) = Invalid_Code);
+      pragma Assert (Code (Statuses.No_Memory) = No_Memory_Code);
+      pragma Assert (Code (Statuses.Internal_Error) = Internal_Code);
+      for Read in Documents.Read_Status loop
+         pragma Assert (Code (Statuses.For_Read (Read)) = Reference_Read (Read));
+         for Report in Outcomes.Report_Kind loop
+            for OOM in Boolean loop
+               declare
+                  Expected_Status : Natural;
+                  Expected_Discard : Boolean;
+                  Item : constant Statuses.Parse_Settlement :=
+                    Statuses.Settle_Parse
+                      (Statuses.For_Read (Read), Report, OOM);
+               begin
+                  Reference_Settle
+                    (Read, Report, OOM, Expected_Status, Expected_Discard);
+                  pragma Assert (Code (Item.Status) = Expected_Status);
+                  pragma Assert (Item.Discard_Document = Expected_Discard);
+                  Seen (Item.Status) := True;
+                  Seen_Discard := Seen_Discard or else Item.Discard_Document;
+               end;
+            end loop;
+         end loop;
+      end loop;
+      for Kind in Requests.Admission_Kind loop
+         pragma Assert
+           (Code (Statuses.For_Admission (Kind)) = Reference_Admission (Kind));
+         for OOM in Boolean loop
+            --  Reject: the admission status, then No_Memory if the report
+            --  recorded out-of-memory.  The argument check never reports and
+            --  applies no fixup.
+            pragma Assert
+              (Code (Statuses.After_Report (Statuses.For_Admission (Kind), OOM))
+                 = (if Kind /= Requests.Admitted and then OOM
+                    then No_Memory_Code else Reference_Admission (Kind)));
+         end loop;
+      end loop;
+      for Prepared in Buffers.Conversion_Result loop
+         pragma Assert
+           (Code (Statuses.For_Preparation (Prepared)) =
+              Reference_Preparation (Prepared));
+         for OOM in Boolean loop
+            pragma Assert
+              (Code
+                 (Statuses.After_Report
+                    (Statuses.For_Preparation (Prepared), OOM))
+                 = (if Prepared /= Buffers.Converted and then OOM
+                    then No_Memory_Code
+                    else Reference_Preparation (Prepared)));
+         end loop;
+      end loop;
+      for Status in Statuses.Public_Status loop
+         pragma Assert (Statuses.After_Report (Status, False) = Status);
+         pragma Assert
+           (Statuses.After_Report (Status, True) =
+              (if Status = Statuses.OK then Statuses.OK
+               else Statuses.No_Memory));
+      end loop;
+      pragma Assert (Code (Statuses.After_Exception (True)) = No_Memory_Code);
+      pragma Assert (Code (Statuses.After_Exception (False)) = Internal_Code);
+      pragma Assert (Seen_Discard);
+      pragma Assert
+        (for all Status in Statuses.Public_Status =>
+           Seen (Status) = (Status /= Statuses.Invalid_Argument));
+   end;
+   Ada.Text_IO.Put_Line ("Parse status settlement policy passed");
    declare
       package Codes renames XML3_Diagnostic_Codes;
       use type Codes.Diagnostic_Code;

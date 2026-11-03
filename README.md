@@ -658,6 +658,13 @@ encoding・option拒否の定数を一か所で扱い、報告しない場合も
 parse要求の受理順序はSPARKの`XML3_Parser.Requests`にあります。引数検査、encoding、
 optionの順を段階ごとの関数で表し、引数が不正な場合にencoding名を読まないことを
 明示します。
+parse入口が公開するstatusの決定はSPARKの`XML3_Parser.Statuses`にあります。
+読み取り結果・受理段階・入力変換の結果を`Public_Status`へ写像し、診断の公開後に
+threadの最新errorがOOMならNo_Memoryへ置き換える判定（`After_Report`）、警告付きで成功した
+parseがOOMを記録した場合に文書を破棄してNo_Memoryにする判定（`Settle_Parse`）、
+例外時のstatus（`After_Exception`）も同じunitで扱います。成功statusが置き換えで
+変わらないこと、文書の破棄は成功parseに限ることを契約で示します。TLSのOOM判定の読み取り、
+文書の解放、C ABIのstatus値への変換は引き続きadapterに残ります。
 adapter自身の失敗原因は`XML3_Diagnostic_Codes.Adapter_Failure`で名前を付け、
 `For_Failure`が(domain, code)へ写像します。lock失敗・想定外例外は(2,1)、引数不正・
 未対応text・namespaceの想定外例外は(2,115)、不正文字は(2,9)、確保失敗は(6,2)、
