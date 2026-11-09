@@ -42,6 +42,10 @@ Ada の範囲チェックと整数オーバーフロー検査は維持します�
 記録と同じ設定（timeout 120秒、memlimit 4096MB）でユニットごとに GNATprove を実行し、最後に
 全ユニットの集計に未証明・justified が無いことを確認します。中断した場合は
 `make prove-units-resume` で続きから再開できます。
+DOM コアは、どのユニットも1回の実行で証明が終わるように、親の `XML3_DOM`（モデル・述語・小さな操作）と子ユニットに分けています。
+子ユニットは次の7つです。
+- 非公開: `Graph_Lemmas`、`Links`、`Projection`、`Marking`、`Freeing`
+- 公開: `Releases`（`Take_Release` / `Acknowledge_Release`）、`Retirement`（部分木の解放と子の退役）
 
 `make prove` は固定境界コア（`src/xml3_text.*`、`src/xml3_parser.*`、
 `src/xml3_namespaces.*`、`src/xml3_encoding.*`）と、DOM 状態・反映・Store・

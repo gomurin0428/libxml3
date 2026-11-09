@@ -250,7 +250,7 @@ per-unit runs covers the same verification conditions as a single
 whole-project run, while each run stays short and `make prove-units-resume`
 can continue an interrupted run. A unit fails on its own unproved or error
 messages. After the last unit, the script requires the summary GNATprove
-aggregates over the object directory to list all 32 units, with no
+aggregates over the object directory to list all 39 units, with no
 justified or unproved check and no entity reported as not proved.
 
 The `Effects_Valid` assertion at the end of `XML3_DOM.Import.Adopt`
@@ -263,28 +263,66 @@ therefore has no references or reservations. With that, the whole unit
 proves with the switches above. On the same machine and switches, the
 previous body still leaves that assertion unproved.
 
-This revision changes only `XML3_DOM.Import` among the proved sources. The
-record combines two runs:
+`XML3_DOM` is split into child units so that every unit proves within one
+run. On the machine used for this record the former single unit needed more
+than two hours. The parent keeps the model (types, views, the validity
+predicates and accessors) and the small operations. Body-only helpers move to
+private children:
 
-* 31 units, everything except `XML3_DOM`, were re-proved with
-  `eng/prove_units.py` and the switches above: 7,420 checks (1,323 flow,
-  6,097 prover), 0 unproved, 0 justified, 0 `pragma Assume`, 433 entities,
-  172 warnings. `docs/proof-summary.txt` is GNATprove's raw summary of this
-  run. Apart from `XML3_DOM.Import.Adopt` (230 checks before, 248 now: +12
-  run-time checks and +6 assertions), every entity reports the same check
-  and warning counts as the previous record.
-* `XML3_DOM` (`xml3_dom.ads`/`.adb`) is unchanged since the previous record
-  and its result is carried over: 140 entities, 5,995 checks (246 flow, 5,749
-  prover), 9 warnings, all proved. Its entity lines are in
-  `docs/proof-summary.txt` at commit `d8d7c3d`. On the machine used here a
-  whole-unit `XML3_DOM` run exceeds the two-hour limit of a single
-  invocation. Proving it one subprogram at a time and consolidating with
-  `--replay` was tried and rejected for the record: `--limit-subp` does not
-  analyze the package and type entities, and replaying the heaviest goals is
-  not deterministic. Its contribution per category is the previous total
-  minus this machine's 31-unit total with the previous `Adopt` body.
+* `XML3_DOM.Graph_Lemmas`: pin, holder-count and namespace-link lemmas and
+  the new frame lemmas.
+* `XML3_DOM.Links`: unlink, append, replace and sibling-placement lemmas and
+  link updates.
+* `XML3_DOM.Projection`: `Set_Node_Projection_Internal`, formerly in the
+  private part of the parent.
+* `XML3_DOM.Marking`: subtree marking, relinking and attachment checks.
+* `XML3_DOM.Freeing`: node retirement and marked-subtree freeing.
 
-Combined: **13,415 checks, 1,569 by flow analysis and 11,846 by provers; 0
+Two groups of public operations move to public children:
+
+* `XML3_DOM.Releases`: `Take_Release` and `Acknowledge_Release`.
+* `XML3_DOM.Retirement`: `Free_Subtree`, `Free_Subtree_With_Namespaces`,
+  `Empty_Attribute_Content_Lemma`, `Retire_Attribute_Children` and
+  `Retire_Element_Children`.
+
+Their contracts are unchanged. Callers add the matching `with` and `use`
+clauses.
+
+Moving code across units changes the context the SMT solvers see, and
+several hard goals that proved inside the single unit failed in the
+children. The failures were not timeouts: the solvers gave up quickly, and
+small unrelated edits moved which goal failed. One cause is that `=` on
+arrays and records is element-wise in SPARK. Facts stated as
+`After.Graph = Before.Graph` therefore do not transfer to applications such
+as `Holder_Count (Snapshot_Nodes (After), ...)`. The affected procedures now
+call small ghost lemmas, each proved on its own, in place of large quantifier
+instantiations:
+
+* `Owner_Step_Effects`: one owner-count step keeps `Effects_Valid`.
+* `Facades_Frame` and `Facades_Same_Graph`: facades survive slot resets and
+  unchanged graphs.
+* `Tree_Links_Frame` and `Same_Tree_Links`: sibling and child validity
+  depend only on tree links.
+* `Held_Pins_Live`: per-pin liveness from "every held owner is live".
+* `Namespace_Owners_Live` and `Namespace_Links_Frame`: element-wise
+  preconditions for `Preserve_Namespace_Links`.
+* `Unlinked_Fields`, `Unlink_Fields_Raw` and `Replaced_Namespace_Fields`:
+  the fields kept by unlinking and by child replacement.
+* `Node_Links_Of` and `Ranges_From_Links`: per-node validity and the range
+  properties of a valid state.
+
+`Unlink`'s postcondition additionally states that slot states and tree
+ranks are kept and only the unlinked node's parent changes.
+
+The whole record was produced in one clean `make prove-units` run, resumed
+with `make prove-units-resume` across the environment's two-hour invocation
+limit. All 39 units prove with the switches above. The longest units take
+47 min (`XML3_DOM.Releases`), 41 min (`XML3_DOM.Marking`), 40 min
+(`XML3_DOM.Links`) and 29 min (`XML3_DOM`). The eight `XML3_DOM` units hold
+6,316 prover checks, against 5,749 for the former single unit; the
+difference is the new lemmas and hint assertions.
+
+Result: **13,998 checks, 1,585 by flow analysis and 12,413 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -952,8 +990,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 573 entity
-summaries report 0 flow errors, 181 warnings, and 0 `pragma Assume`
+The 593 entity
+summaries report 0 flow errors, 185 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -980,8 +1018,7 @@ The `Get_Path` entities contribute 11 warnings: one input-mode warning on the
 Runtime wrapper, unused helper outputs, and trusted native-call termination
 warnings. They do not represent unproved checks.
 
-The unedited analyzer summary of the 31 re-proved units is in
-[proof-summary.txt](proof-summary.txt); `XML3_DOM` is carried over as described above.
+The unedited analyzer summary is in [proof-summary.txt](proof-summary.txt).
 This is a proof of the selected SPARK units and their written contracts, not
 of the entire C ABI, native memory layout, synchronization implementation, or
 full XML conformance. Public DOM APIs now delegate to the SPARK Store/Runtime;
@@ -989,14 +1026,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 423 |
-| Initialization | 924 |
+| Data dependencies | 436 |
+| Initialization | 926 |
 | Non-aliasing | 1 |
-| Runtime checks | 5,659 |
-| Assertions | 1,680 |
-| Functional contracts | 4,432 |
-| Termination | 296 |
-| **Total** | **13,415** |
+| Runtime checks | 5,959 |
+| Assertions | 1,762 |
+| Functional contracts | 4,617 |
+| Termination | 297 |
+| **Total** | **13,998** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1723,7 +1760,7 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 88 hashes identify the source files and build/test configuration
+The following 102 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
@@ -1740,30 +1777,44 @@ c688643449bc09c9977197b5b78325eaced0b8852e6bf0dd3497952bb081a5c6  include/libxml
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
 af96365a55310b08822701ae7765f861d6009b5369cdc9d972b4bc52654fea35  src/xml3_dom-materialize.adb
 11b0272dbbf8cf7988fb7c96ef8f104f22db1a1390e2c3f5df0bd6d3f6ef60c1  src/xml3_dom-materialize.ads
-1ff1a09e0f8a5350705afe444d03c212f7007c97fe490eaf8a11d30ac4e2ab1c  src/xml3_dom.adb
-2d3f9d24f1bb5cad35eb8a7da5095f0c92e4c80393b68f2ee22522f1d821675a  src/xml3_dom.ads
+0cbbd78bc6aebb168b14c51672a158d02f48e8deb65129f62a24f6c6d89f294e  src/xml3_dom.adb
+1d21f5aa8d046b01223c79968469165fdec025ab552a5e61e1f3e33d785d7337  src/xml3_dom-graph_lemmas.ads
+f3055b8a3f4a31dae5082f40d0e2d3c06b0741e48614068c4fe06f79e3f00a9a  src/xml3_dom-graph_lemmas.adb
+8dfb6cbc413d6336688c577114c428df1788e873cde1bc5003671d5516fd2c2d  src/xml3_dom-links.ads
+631c8eb994586ca94c1999fb0ef772bfd5a47fee2b02945fc02e6e1ae4b16a20  src/xml3_dom-links.adb
+f8c1654a156442676fffed41640fefa0f01c2651a080db9cae04cb4e50ad01a5  src/xml3_dom-projection.ads
+d7d7ca6095ccbf6a226fbafdda2ced49caa1e0e254632e465fae9f468004cf5c  src/xml3_dom-projection.adb
+12d6df733990913a81d0521a01c7a662512e16985dd3c3287e311dde56c52d48  src/xml3_dom-marking.ads
+8de5c461b7d5ef9deeb95213ada3ec29efdbe24d69ba0d04b95c062dbc8915a7  src/xml3_dom-marking.adb
+3363247b3c4f54ecaa8a609c816715e5f3353fde53fbe36b364f1c94633cfdfa  src/xml3_dom-freeing.ads
+48ac11b56a65dda9d47a047be12c1c823a51244c3b391453d07474d7345fa4b7  src/xml3_dom-freeing.adb
+8bd7f8aefdde8cb8966c66340dc6d12671973a7ac50bb2e19be10b932596cf57  src/xml3_dom-releases.ads
+f4228210e38aef044d6946f0534ce75dd694d2013a432f7c87adf4bbd9d8ad53  src/xml3_dom-releases.adb
+619497e8aeea7da0826c033eaf04b66f15d9c81998953b138fbaca484b0b57c2  src/xml3_dom-retirement.ads
+a58b9d174bd5a233d1fd868ea670b4ff3a3c099c321cf2bc806348b00ee5c417  src/xml3_dom-retirement.adb
+3db488d5b5453f4638293e2b3c8bc0ec5df56900707f08f88ef249176500ce9e  src/xml3_dom.ads
 1b0b582fc5ab3c34e5d96d5fce20b536426df9f68fbe4b4e99423785eb978002  src/xml3_dom_allocation.adb
 38c4ff80e2a8bafa63579a0cb03026926cb4ad4ee44d2324d86842e119ac1c05  src/xml3_dom_allocation.ads
-c25f8e859f3b568737e637ba9e1c8eb0238fcb83aa8de34a09cea35ab1b345aa  src/xml3_dom_bridge.adb
+17de99a6befdb1eab490fd275377a956401e58e2a48de0c9cecada643064bbb3  src/xml3_dom_bridge.adb
 a62a5e86be7f9e74c7618d38a3210b4e31842d1cba5304ad3cf4efd7d32987b8  src/xml3_dom_bridge.ads
-16e82429e74dcdbaa3b1fec8da28538b01232e21ff2ac7c24b8bc7cde56c3343  src/xml3_dom_constructors.adb
+b16ad801efff504362bd0b8be9601be333ef99c2345cd37cf8985f6c627ef53b  src/xml3_dom_constructors.adb
 8bb87036e5063a4d4e5ae33a1e03a2fe460e6f75966f4c4f39b409f8dd9141e8  src/xml3_dom_constructors.ads
 46fd9519a39976fcfbd0c9d8602b8e4f969e16547203f1022eb19718a862a2f8  src/xml3_dom_lock.adb
 3010f199780bd3bc276580641cd87e54520e4bbaa1893c40b3b079b8e0439535  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
 ddb569185cc4ccc7c2e0fd72817ad274428545e73c2aa4eb81ccbe0859853369  src/xml3_dom_runtime.adb
 497b988a320f1cede04b36afedc52955facae6dbb35d3f1e7233d1c0b61210c5  src/xml3_dom_runtime.ads
-18e18442a65357e6cea514f3e0473899e17f03f48b505bd8d18c56ad62556b68  src/xml3_dom_store-content.adb
+48971614e213e183e073609c06983881fe1c6727bfec0476b5b198f87588e470  src/xml3_dom_store-content.adb
 9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
-7049538ece6d409cc138892870026f1216109b19baca4afe45a605160b9100e5  src/xml3_dom_store-documents.adb
+339c4be671e09933bce76f0a2bee178907eaf295e429b47fbf66868c93a698a7  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
-02201d26602eaa29acd760940c37b6d241202d97457e3e1d8b035aefbc3dd42c  src/xml3_dom_store-properties.adb
+39b9ab4d1ec8b4f8f54ff0cfd13c890de61997e56544cfb740f0b099a585bbd8  src/xml3_dom_store-properties.adb
 335071995c50a800cf07f0f479c2712878b49edac9940cf3aca32322f306abbf  src/xml3_dom_store-properties.ads
 264cc8a1b8b7867cd61b0ffba47719c4b9bee3238b5777483377933ff7ab19b0  src/xml3_dom_store-queries.adb
 d53d133bd34b92601a890f9a18201edf0326034012df801e5394d3c3e38dc904  src/xml3_dom_store-queries.ads
 34aeae7dcdb99a887cf2413143eadd3d29a4d1b961f30c8ea6b21978bb95f9a3  src/xml3_dom_store-serialization.adb
 af548cf41f7c38481f33c60efb9ab775a6fdcc04378f1a4ebd428c62a11b7d56  src/xml3_dom_store-serialization.ads
-c81096a0b4cc8789e1247d08f414d5e90bbd69e805905a9bf628c97311d87204  src/xml3_dom_store.adb
+3d63803caff59bd5791c849800084f16a55c0eefc0d4adab82a7b1f2380bc2a2  src/xml3_dom_store.adb
 a6fce5e266f862563bdc60c908dd82d3b4b6e43e85a95fb569fa5d3f291ce8f5  src/xml3_dom_store.ads
 4cd0836509d8859bd5ec708a51dea1282b7e5af903611211bb2f745750938a43  src/xml3_encoding.adb
 a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encoding.ads
@@ -1800,9 +1851,9 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-45b9c21f76255ba0d0fc0d905fe4788acd1460b5f63ed1c028d978109364309f  proof.gpr
+70eed9509179f6c1c986a2cd39f2b7c3f396d184686d74e589d062ff2c781fe6  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-6169427ce10aab045c8a56e1cc88c825a397ac48f9158d59de8c6bc87819843a  Makefile
+19fad4485229a673a885649e8006fdc67bf0c8bd413ba769b486338212c4bd57  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
@@ -1813,8 +1864,8 @@ b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buf
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 4e35496028bcf7a470a78d6e8426f07769a48b1f3f2fb1b85bf062db997e6320  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
-6d07019464b9a95738194f2d52c395e6494e6485febec9710e8f25dc84a02be6  tests/dom_bridge_test.adb
-2d5b0f7c042d5b49ccd95e7a9eba507b2f3adadc141af18e2f43170b16495ee3  tests/dom_bridge_test.gpr
+00a5d1fd51e071f525f1411aeecf0a4081e9d5459353937e09e69107ca3d0047  tests/dom_bridge_test.adb
+9819832b0215f1cb12f0dfa0698d6c4877099cd2f60ff2b4fec95be6df673d0b  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```
 

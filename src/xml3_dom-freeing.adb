@@ -81,6 +81,9 @@ package body XML3_DOM.Freeing with SPARK_Mode is
               (for all B in Owner_Ref range 1 .. K =>
                 (if Holds (S.Graph.Nodes (I), B) then Live_Owner (S.Graph, B)));
          end loop;
+         if S.Graph.Nodes (I).State = Live then
+            Held_Pins_Live (S.Graph, I);
+         end if;
          pragma Assert (Node_Pins_Valid (S.Graph, I));
          pragma Loop_Invariant
            (for all J in 1 .. I => Node_Pins_Valid (S.Graph, J));
