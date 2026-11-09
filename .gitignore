@@ -61,3 +61,6 @@ tests/differential-system
 tests/differential-reference
 __pycache__/
 tests/*.out
+tests/content-edit-test
+tests/content-edit-test-reference
+tests/content-edit-test-development
