@@ -7,6 +7,7 @@ with XML3_Namespaces;
 with XML3_Native_Memory;
 with XML3_Text;
 with XML3_Text.Buffers;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 package body XML3_DOM_Store.Properties with SPARK_Mode is
    use XML3_DOM;

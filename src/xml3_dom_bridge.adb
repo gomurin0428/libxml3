@@ -1,4 +1,5 @@
 with Interfaces.C;
+with XML3_DOM.Releases; use XML3_DOM.Releases;
 
 package body XML3_DOM_Bridge with SPARK_Mode is
    package Native renames XML3_Native_Memory;

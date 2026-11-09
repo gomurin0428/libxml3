@@ -4,6 +4,8 @@ with System;
 with System.Storage_Elements;
 with XML3_DOM; use XML3_DOM;
 with XML3_DOM_Allocation;
+with XML3_DOM.Releases; use XML3_DOM.Releases;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 procedure DOM_Core_Test is
    use type System.Address;

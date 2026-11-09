@@ -4,6 +4,7 @@ export PATH := $(ADA_BIN):$(PATH)
 CC ?= cc
 CXX ?= c++
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Iinclude
+DOM_CHILD_SOURCES := src/xml3_dom-graph_lemmas.ads src/xml3_dom-graph_lemmas.adb src/xml3_dom-links.ads src/xml3_dom-links.adb src/xml3_dom-projection.ads src/xml3_dom-projection.adb src/xml3_dom-marking.ads src/xml3_dom-marking.adb src/xml3_dom-freeing.ads src/xml3_dom-freeing.adb src/xml3_dom-releases.ads src/xml3_dom-releases.adb src/xml3_dom-retirement.ads src/xml3_dom-retirement.adb
 PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
@@ -30,7 +31,7 @@ test-development: build-development tests/runtime-test tests/string-exception-te
 	LD_LIBRARY_PATH=lib/development ./tests/content-edit-test-development
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
-		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
+		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
 	$(ADA_BIN)/gprbuild -p -P tests/dom_core_test.gpr -o dom-core-test
 
 test-dom-core: tests/dom-core-test
@@ -62,7 +63,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
 		src/xml3_dom_store-documents.ads src/xml3_dom_store-documents.adb \
 		src/xml3_dom-materialize.ads src/xml3_dom-materialize.adb \
 		src/xml3_dom-import.ads src/xml3_dom-import.adb \
-		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
+		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
 		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
 		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
 		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \

@@ -1,6 +1,7 @@
 with XML3_DOM.Materialize;
 with XML3_DOM_Allocation;
 with XML3_DOM_Bridge;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 package body XML3_DOM_Store.Documents with SPARK_Mode is
    use XML3_DOM;
