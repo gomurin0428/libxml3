@@ -225,8 +225,8 @@ Its postcondition states that it never selects success, that it selects
 `Diagnostic_Codes.For_Operation` does for that status. `Status_Of`,
 `Removal`, `Update` and `Lookup` each prove 1 check (the postcondition);
 the package, `Space_Code` and `Truth` prove 0. The adapter keeps the
-exception handlers, the argument guards, the lock, the native calls and the
-publication of diagnostics. Tests compare every status and flag with a
+exception handlers, the lock, the native calls and the publication of
+diagnostics. Tests compare every status and flag with a
 test-local copy of the former inline expressions and assert the value each
 former handler and guard returned.
 
@@ -243,6 +243,25 @@ success publishes nothing, that every failure other than an unusable
 argument is published, and that an unusable argument is published exactly
 for the reporting classes. Tests compare all twelve classes and every status
 with the Boolean flag each call site used to pass.
+
+The argument checks the C entry points make before they take the DOM lock
+are selected in `XML3_Entry_Guards`. Entry points are grouped by the check
+they share. For each group, the constant `Rules` table states which of up to
+two pointer arguments must be present, whether the two must differ
+(`xmlReplaceNode`), and whether a refusal publishes the invalid-argument
+diagnostic. Six groups publish: the `xmlDocDumpMemory` family,
+`xmlNewChild`/`xmlNewTextChild`, `xmlNodeSetLang`/`xmlNodeSetSpacePreserve`,
+`xmlNewProp`/`xmlNewNsProp`, the set and unset property calls, and
+`xmlRemoveProp`. The other groups return silently, as libxml2 does for
+them. `Admit` decides a call; its postcondition (1 check) states that an
+admitted call has every required argument, that a call with all arguments
+present and distinct is admitted, and that a refusal is reported exactly
+for the reporting groups. `Diagnostic_For` (1 check) selects
+`DOM_Invalid_Argument` for a reported refusal and nothing otherwise. The
+adapter computes which pointers are NULL through one `Refused` helper,
+publishes the selected diagnostic and returns each entry point's refusal
+value. Tests compare every group and all eight presence combinations with a
+test-local copy of the former inline conditions.
 
 The string entry points select their diagnostics and `int` results in
 `XML3_Text_Results`.
@@ -318,7 +337,7 @@ per-unit runs covers the same verification conditions as a single
 whole-project run, while each run stays short and `make prove-units-resume`
 can continue an interrupted run. A unit fails on its own unproved or error
 messages. After the last unit, the script requires the summary GNATprove
-aggregates over the object directory to list all 41 units, with no
+aggregates over the object directory to list all 42 units, with no
 justified or unproved check and no entity reported as not proved.
 
 The `Effects_Valid` assertion at the end of `XML3_DOM.Import.Adopt`
@@ -382,20 +401,20 @@ instantiations:
 `Unlink`'s postcondition additionally states that slot states and tree
 ranks are kept and only the unlinked node's parent changes.
 
-The 39 units of the previous revision were proved in one clean
+The 39 units of an earlier revision were proved in one clean
 `make prove-units` run, resumed with `make prove-units-resume` across the
-environment's two-hour invocation limit. This revision adds two units,
-`XML3_DOM_Results` and `XML3_Text_Results`, and changes no source of those
-39 units, so `make prove-units-resume` proved the new units in the same
-object directory and GNATprove aggregated all 41. All 41 units prove with
-the switches above.
+environment's two-hour invocation limit. Later revisions add three units,
+`XML3_DOM_Results`, `XML3_Text_Results` and `XML3_Entry_Guards`, and change
+no source of those 39 units, so `eng/prove_units.py` proved each new unit in
+the same object directory and GNATprove aggregated all 42. All 42 units
+prove with the switches above.
 The longest units take
 47 min (`XML3_DOM.Releases`), 41 min (`XML3_DOM.Marking`), 40 min
 (`XML3_DOM.Links`) and 29 min (`XML3_DOM`). The eight `XML3_DOM` units hold
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **14,071 checks, 1,647 by flow analysis and 12,424 by provers; 0
+Result: **14,077 checks, 1,651 by flow analysis and 12,426 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1063,7 +1082,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 626 entity
+The 629 entity
 summaries report 0 flow errors, 185 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1099,14 +1118,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 467 |
+| Data dependencies | 469 |
 | Initialization | 926 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,959 |
 | Assertions | 1,762 |
-| Functional contracts | 4,628 |
-| Termination | 328 |
-| **Total** | **14,071** |
+| Functional contracts | 4,630 |
+| Termination | 330 |
+| **Total** | **14,077** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1833,12 +1852,12 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 104 hashes identify the source files and build/test configuration
+The following 105 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-d527d4478aff6b52d3560d53ca8a6cb512a0990fde739c3a6bc278b1b896ce84  src/xml3_c.adb
+c5d0cfb04a8fa9497e89a7db9d550c4ba8d460bcd764f230fc04e07d9f7c7a1c  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1915,6 +1934,7 @@ c2b4a1f34d55437337a9934733cd5123dc326b5e83c965df1c53947e76c9fb7f  src/xml3_parse
 da673923726ce62aae4fd2fe7d37da57cc84e10778724bd4c61c3d1f7450d2a0  src/xml3_parser-statuses.ads
 699ab8008da5ae36dbe098ea2968cc1338873a0fdc958a0a01a56fd05d5c8a47  src/xml3_dom_results.ads
 70811a782487da090c7f51455548bf53a2178bb4aea0f348aef605025c5875cd  src/xml3_text_results.ads
+c94782b1271fddaa18a192d9ab16db7d8a2b3f29b23c0afbfed803363cd3d3e5  src/xml3_entry_guards.ads
 4b43adf88af05f6c81c8c1e33f58ecb427de967c49869d5236f007628c49848b  src/xml3_parser-options.adb
 ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
 614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
@@ -1926,9 +1946,9 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 4505b7c86e532182feeb995fe815c5b2e8ff1f2408310ca80e9153b73f3df01a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-75d9d7539f980ffba7594f95363c085bc308ae625befd0935af5f9b76cfeef55  proof.gpr
+0222b06b01b35cd5272682189719acabd14024d64e9307e496645f099837e4df  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-400c0d8eb95589af52b8e3f6372a5ae1300c19dabeb38982b1efd091de86e1c5  Makefile
+ad937b4f5dc32babe55400bc50cfdd149a7b0876a39508d6acde7e5b08fa589a  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
@@ -1939,8 +1959,8 @@ b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buf
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 4e35496028bcf7a470a78d6e8426f07769a48b1f3f2fb1b85bf062db997e6320  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
-a23d599e39c55e2c29f73980d1b74c26cfafd5dbaea18f079c5ec17c99b8715c  tests/dom_bridge_test.adb
-f2d473f9cd6d412268cecd034ba253b5c7d99a4cea33f7a0885da90995a51468  tests/dom_bridge_test.gpr
+93869e7f55e7ba7beb686968973394373a03b6d17d96126666bbadf84e41554d  tests/dom_bridge_test.adb
+0a6d4abeab3d664ef1079d74a125226a05d018473e503e329bcf0d0b9256a90b  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```
 

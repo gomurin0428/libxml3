@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,071 checks
-(1,647 flow and 12,424 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,077 checks
+(1,651 flow and 12,426 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1067,9 +1067,9 @@ found something. `Status_Of` maps the adapter's own failure causes onto the
 equivalent status, so guards and exception handlers return through the same
 functions. The contracts state when each convention answers 0, that an
 out-of-memory status answers -1, and that a DOM failure cause publishes the
-diagnostic of its equivalent status. Catching exceptions, checking NULL
-arguments, taking the lock, the native calls and publishing the diagnostic
-remain trusted adapter behavior. The results reproduce the previous adapter
+diagnostic of its equivalent status. Catching exceptions, taking the
+lock, the native calls and publishing the diagnostic remain trusted adapter
+behavior. The results reproduce the previous adapter
 expressions exactly; tests compare every input with a test-local copy of
 them, and the OOM walks and reference comparisons are unchanged.
 
@@ -1078,6 +1078,20 @@ Each adapter call site names an `Operation_Class`; `Reports_Invalid_Argument`
 and `Diagnostic_For` decide whether that class publishes a diagnostic, so
 the choice between a reported and a silent NULL or mismatched argument is
 no longer a Boolean literal in the adapter.
+
+`Entry_Guards` holds the argument checks the C entry points make before
+they take the DOM lock. Entry points are grouped by the check they share,
+and the `Rules` table states, for each group, which pointer arguments must
+be present, whether two arguments must differ (`xmlReplaceNode`), and
+whether a refused call publishes the invalid-argument diagnostic or
+returns silently as libxml2 does. `Admit` decides a call and
+`Diagnostic_For` selects what a refusal publishes. Their postconditions
+state that an admitted call has every required argument, that a call with
+all arguments present is admitted, and that only the reporting groups
+publish. The adapter still computes which pointers are NULL, publishes the
+diagnostic and returns each entry point's refusal value. Tests compare
+every group and every presence combination with a test-local copy of the
+former inline conditions.
 
 `Text_Results` selects the diagnostics and `int` results of the string
 entry points from the statuses of the SPARK string operations: a length

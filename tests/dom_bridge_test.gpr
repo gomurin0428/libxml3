@@ -34,6 +34,7 @@ project DOM_Bridge_Test is
       "xml3_parser-statuses.ads",
       "xml3_dom_results.ads",
       "xml3_text_results.ads",
+      "xml3_entry_guards.ads",
       "xml3_parser-workspaces.ads", "xml3_parser-workspaces.adb",
       "xml3_encoding.ads", "xml3_encoding.adb",
       "xml3_encoding-buffers.ads", "xml3_encoding-buffers.adb",

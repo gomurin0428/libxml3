@@ -679,10 +679,15 @@ DOM操作の入口が返す`int`の決め方はSPARKの`XML3_DOM_Results`にあ�
 - `Lookup`: 検索（`xmlNodeGetAttrValue`、`xmlGetNsListSafe`）。値があれば0、無ければ1、その他の失敗は-1です。
 - `Space_Code`と`Truth`: `xmlNodeGetSpacePreserve`と`xmlNodeIsText`などの値です。
 adapter自身が検出した失敗（引数検査と例外ハンドラ）は`Status_Of`で同等のstatusに直し、同じ関数で戻り値を決めます。
-例外の捕捉、NULL検査、lock、native呼び出し、診断の公開は引き続きadapterに残ります。
+例外の捕捉、lock、native呼び出し、診断の公開は引き続きadapterに残ります。
 使えない引数を診断として公開するかどうかも`XML3_DOM_Results`で決めます。各呼び出し箇所は操作の種類（`Operation_Class`）を名乗ります。
 - 公開する: 編集・生成・検索、`xmlDocGetRootElement`、`xmlGetNodePath`、node listの文字列取得、`xmlEncodeEntitiesReentrant`
 - 公開しない: nodeの判定、要素の移動、子要素数、`xmlNodeGetContent`、継承する`xml:lang`/`xml:space`、属性の検索、namespace一覧
+C入口がlockを取る前に行う引数検査はSPARKの`XML3_Entry_Guards`にあります。
+入口は共通の検査ごとにまとめ、`Rules`の表で、どのpointer引数が必須か、2つの引数が別物である必要があるか（`xmlReplaceNode`）、
+拒否したときに引数不正の診断を公開するか、libxml2と同じく黙って返すかを決めます。
+診断を公開するのは`xmlDocDumpMemory`系、`xmlNewChild`系、`xmlNodeSetLang`系、`xmlNewProp`系、`xmlSetProp`・`xmlUnsetProp`系、`xmlRemoveProp`です。
+adapterはどのpointerがNULLかを調べ、拒否時の戻り値を返すだけです。
 文字列系の入口の診断と`int`の戻り値はSPARKの`XML3_Text_Results`で決めます。
 対応する長さを超えた文字列は未対応text、確保の失敗はメモリ不足として公開します。不正な文字列や存在しない文字列は通常の答えなので、
 `xmlEncodeSpecialChars`を除いて何も公開しません。戻り値は`Validity`（`xmlCheckUTF8`）、`Measure`（`xmlUTF8Strlen`、`xmlStrlen`など）、

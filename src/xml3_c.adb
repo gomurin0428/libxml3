@@ -13,6 +13,7 @@ with XML3_DOM_Store.Queries;
 with XML3_Diagnostic_Codes;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
+with XML3_Entry_Guards;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
@@ -39,6 +40,7 @@ package body XML3_C is
 
    package Results renames XML3_DOM_Results;
    package Text_Results renames XML3_Text_Results;
+   package Guards renames XML3_Entry_Guards;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -62,6 +64,10 @@ package body XML3_C is
       Diagnostic : out XML3_Parser.Diagnostic_Info);
    function Status_Code
      (Status : XML3_Parser.Statuses.Public_Status) return int;
+   function Refused
+     (Group : Guards.Entry_Group; First_Present : Boolean;
+      Second_Present : Boolean := True; Distinct : Boolean := True)
+      return Boolean;
    function Parse_Buffer
      (Buffer : System.Address; Size : Interfaces.C.int;
       URL, Encoding : System.Address; Options : Interfaces.C.int;
@@ -118,6 +124,22 @@ package body XML3_C is
    begin
       Report_Code (Results.Diagnostic_For (Class, Status));
    end Report_Operation_Status;
+
+   --  Applies the argument check SPARK selected for an entry point group:
+   --  publishes the diagnostic of a reported refusal and answers whether
+   --  the call must return its refusal value at once.
+   function Refused
+     (Group : Guards.Entry_Group; First_Present : Boolean;
+      Second_Present : Boolean := True; Distinct : Boolean := True)
+      return Boolean
+   is
+      use type Guards.Admission;
+      Decision : constant Guards.Admission :=
+        Guards.Admit (Group, First_Present, Second_Present, Distinct);
+   begin
+      Report_Code (Guards.Diagnostic_For (Decision));
+      return Decision /= Guards.Admitted;
+   end Refused;
 
    --  C ABI encoding of the status SPARK selected; no decision is made here.
    function Status_Code
@@ -436,7 +458,7 @@ package body XML3_C is
       Length : XML3_Text.Byte_Count;
       Found : Boolean;
    begin
-      if Cur = System.Null_Address then
+      if Refused (Guards.Document_Read, Cur /= System.Null_Address) then
          return System.Null_Address;
       end if;
       XML3_Text.Buffers.Measure (Cur, Length, Found);
@@ -507,7 +529,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Facade = System.Null_Address then
+      if Refused (Guards.Element_Query, Facade /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -595,10 +617,10 @@ package body XML3_C is
    begin
       Set_Address (Memory, System.Null_Address);
       Set_Status (Size, 0);
-      if Document = System.Null_Address
-        or else Memory = System.Null_Address
+      if Refused
+           (Guards.Document_Dump, Document /= System.Null_Address,
+            Memory /= System.Null_Address)
       then
-         Report_Failure (Invalid_Argument);
          return;
       end if;
       declare
@@ -645,8 +667,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused (Guards.Child_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -680,7 +701,7 @@ package body XML3_C is
      (Doc, Name, Value : System.Address) return System.Address
    is
    begin
-      if Name = System.Null_Address then
+      if Refused (Guards.Node_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       return New_Container_Node
@@ -692,7 +713,7 @@ package body XML3_C is
      (Doc, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      if Name = System.Null_Address then
+      if Refused (Guards.Node_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       return New_Container_Node
@@ -703,7 +724,7 @@ package body XML3_C is
      (Doc, Ns, Name, Content : System.Address) return System.Address
    is
    begin
-      if Name = System.Null_Address then
+      if Refused (Guards.Node_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       return New_Container_Node
@@ -772,7 +793,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Value = System.Null_Address then
+      if Refused (Guards.Node_List_Parse, Value /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -861,7 +882,7 @@ package body XML3_C is
      (Doc, Name, Content : System.Address) return System.Address
    is
    begin
-      if Name = System.Null_Address then
+      if Refused (Guards.PI_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       return New_Content_Node
@@ -876,7 +897,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Doc = System.Null_Address or else Root = System.Null_Address then
+      if Refused
+           (Guards.Root_Replacement, Doc /= System.Null_Address,
+            Root /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -910,7 +934,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Target = System.Null_Address or else Child = System.Null_Address then
+      if Refused
+           (Guards.Node_Insertion, Target /= System.Null_Address,
+            Child /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -967,7 +994,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Old = Cur or else Old = System.Null_Address then
+      if Refused
+           (Guards.Node_Replacement, Old /= System.Null_Address,
+            Distinct => Old /= Cur)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -1019,12 +1049,14 @@ package body XML3_C is
 
    function Node_Append_Content
      (Node, Content : System.Address; Length : Interfaces.C.int;
-      Bounded : Boolean; Text_Only : Boolean := False) return Interfaces.C.int
+      Bounded : Boolean; Text_Only : Boolean := False;
+      Group : Guards.Entry_Group := Guards.Content_Addition)
+      return Interfaces.C.int
    is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Text_Only and then Node = System.Null_Address then
+      if Refused (Group, Node /= System.Null_Address) then
          return Results.Update
            (Results.Status_Of (Invalid_Argument), Text_Only);
       end if;
@@ -1059,7 +1091,8 @@ package body XML3_C is
      return Interfaces.C.int
    is
    begin
-      return Node_Append_Content (Node, Content, Length, Length >= 0, True);
+      return Node_Append_Content
+        (Node, Content, Length, Length >= 0, True, Guards.Text_Concatenation);
    end Text_Concat;
 
    function Node_Add_Content
@@ -1081,7 +1114,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
+      if Refused
+           (Guards.Node_Renaming, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return;
       end if;
       declare
@@ -1142,7 +1178,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Node_Unlinking, Node /= System.Null_Address) then
          return;
       end if;
       declare
@@ -1168,7 +1204,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Node_Release, Node /= System.Null_Address) then
          return;
       end if;
       declare
@@ -1205,7 +1241,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Doc = System.Null_Address then
+      if Refused (Guards.Document_Release, Doc /= System.Null_Address) then
          return;
       end if;
       declare
@@ -1232,7 +1268,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Node_Text, Node /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1273,7 +1309,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if List = System.Null_Address then
+      if Refused (Guards.Node_List_Text, List /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1322,7 +1358,7 @@ package body XML3_C is
    function Node_Get_Line_No (Node : System.Address) return Interfaces.C.long is
       Result : Integer := -1;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Line_Number, Node /= System.Null_Address) then
          return -1;
       end if;
       declare
@@ -1355,7 +1391,7 @@ package body XML3_C is
    begin
       Result := System.Null_Address;
       Space := XML3_DOM_Store.Queries.Unspecified;
-      if Node = System.Null_Address then
+      if Refused (Guards.Inherited_Property, Node /= System.Null_Address) then
          return;
       end if;
       declare
@@ -1409,8 +1445,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Element = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused (Guards.Property_Update, Element /= System.Null_Address) then
          return Results.Update
            (Results.Status_Of (Invalid_Argument));
       end if;
@@ -1465,7 +1500,10 @@ package body XML3_C is
    begin
       Code :=
         Results.Lookup (Results.Status_Of (Invalid_Argument), Found => False);
-      if Node = System.Null_Address or else Name = System.Null_Address then
+      if Refused
+           (Guards.Property_Lookup, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -1542,7 +1580,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Source = System.Null_Address then
+      if Refused (Guards.Namespace_Copy, Source /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1566,7 +1604,9 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused
+           (Guards.Namespace_Assignment, Node /= System.Null_Address)
+      then
          return;
       end if;
       declare
@@ -1587,7 +1627,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Ns = System.Null_Address then
+      if Refused (Guards.Namespace_Release, Ns /= System.Null_Address) then
          return;
       end if;
       declare
@@ -1611,8 +1651,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused (Guards.Attribute_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1643,8 +1682,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused
+           (Guards.Attribute_Update, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -1675,8 +1716,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused
+           (Guards.Attribute_Update, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return Results.Removal
            (Results.Status_Of (Invalid_Argument));
       end if;
@@ -1709,8 +1752,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused (Guards.Attribute_Creation, Name /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1740,8 +1782,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused
+           (Guards.Attribute_Update, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -1771,8 +1815,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused
+           (Guards.Attribute_Update, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return Results.Removal
            (Results.Status_Of (Invalid_Argument));
       end if;
@@ -1801,8 +1847,9 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Attribute = System.Null_Address then
-         Report_Failure (Invalid_Argument);
+      if Refused
+           (Guards.Attribute_Removal, Attribute /= System.Null_Address)
+      then
          return Results.Removal
            (Results.Status_Of (Invalid_Argument));
       end if;
@@ -1845,7 +1892,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
+      if Refused
+           (Guards.Property_Lookup, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -1878,7 +1928,7 @@ package body XML3_C is
    begin
       Code :=
         Results.Lookup (Results.Status_Of (Invalid_Argument), Found => False);
-      if Node = System.Null_Address then
+      if Refused (Guards.Namespace_Query, Node /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1919,7 +1969,7 @@ package body XML3_C is
       Code : int;
    begin
       Set_Address (Output, System.Null_Address);
-      if Output = System.Null_Address then
+      if Refused (Guards.Lookup_Output, Output /= System.Null_Address) then
          return Results.Lookup
            (Results.Status_Of (Invalid_Argument), Found => False);
       end if;
@@ -1941,7 +1991,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Namespace_Query, Node /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -1973,7 +2023,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address then
+      if Refused (Guards.Namespace_Query, Node /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -2008,7 +2058,10 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Node = System.Null_Address or else Name = System.Null_Address then
+      if Refused
+           (Guards.Property_Lookup, Node /= System.Null_Address,
+            Name /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       declare
@@ -2062,7 +2115,7 @@ package body XML3_C is
          else XML3_DOM_Store.Queries.Exact_Namespace);
    begin
       Set_Address (Output, System.Null_Address);
-      if Output = System.Null_Address then
+      if Refused (Guards.Lookup_Output, Output /= System.Null_Address) then
          return Results.Lookup
            (Results.Status_Of (Invalid_Argument), Found => False);
       end if;
@@ -2119,7 +2172,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Parent = System.Null_Address then
+      if Refused (Guards.Element_Query, Parent /= System.Null_Address) then
          return 0;
       end if;
       declare
@@ -2378,10 +2431,11 @@ package body XML3_C is
       Code : Integer;
       Width : Natural;
    begin
-      if Length = System.Null_Address then
-         return -1;
-      end if;
-      if Item = System.Null_Address then
+      if Refused
+           (Guards.Character_Decoding, Item /= System.Null_Address,
+            Length /= System.Null_Address)
+      then
+         --  Set_Status writes nothing when the length slot is missing.
          Set_Status (Length, 0);
          return -1;
       end if;
@@ -2596,7 +2650,7 @@ package body XML3_C is
       Result : System.Address;
       Status : XML3_Text.Buffers.Escape_Status;
    begin
-      if Input = System.Null_Address then
+      if Refused (Guards.Entity_Encoding, Input /= System.Null_Address) then
          return System.Null_Address;
       end if;
       XML3_Text.Buffers.Escape_Special_Bytes (Input, Result, Status);
@@ -2618,7 +2672,7 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      if Input = System.Null_Address then
+      if Refused (Guards.Entity_Encoding, Input /= System.Null_Address) then
          return System.Null_Address;
       end if;
       declare
@@ -2767,7 +2821,10 @@ package body XML3_C is
       Status : XML3_Text.QNames.Split_Status;
    begin
       Set_Address (Prefix, System.Null_Address);
-      if Name = System.Null_Address or else Prefix = System.Null_Address then
+      if Refused
+           (Guards.QName_Split, Name /= System.Null_Address,
+            Prefix /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       XML3_Text.QNames.Split (Name, Prefix_Value, Local, Status);
@@ -2789,7 +2846,10 @@ package body XML3_C is
       Status : XML3_Text.QNames.Prefix_Status;
       use type XML3_Text.QNames.Prefix_Status;
    begin
-      if Name = System.Null_Address or else Length = System.Null_Address then
+      if Refused
+           (Guards.QName_Split, Name /= System.Null_Address,
+            Length /= System.Null_Address)
+      then
          return System.Null_Address;
       end if;
       XML3_Text.QNames.Locate_Prefix (Name, Count, Local, Status);

@@ -29,6 +29,7 @@ with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
 with XML3_DOM_Results;
 with XML3_Text_Results;
+with XML3_Entry_Guards;
 with XML3_Text.Buffers;
 with XML3_Text.QNames;
 with XML3_DOM.Retirement; use XML3_DOM.Retirement;
@@ -2676,6 +2677,95 @@ begin
       pragma Assert (Text.Equality (QNames.Different) = 0);
    end;
    Ada.Text_IO.Put_Line ("Text result and report policy passed");
+   declare
+      package Guards renames XML3_Entry_Guards;
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Guards.Admission;
+      use type Codes.Diagnostic_Code;
+
+      --  The argument checks each entry point made before they moved into
+      --  SPARK: Refuse when the call returned at once, Report when it also
+      --  published Report_Failure (Invalid_Argument).
+      type Reference_Guard is record
+         Refuse : Boolean;
+         Report : Boolean;
+      end record;
+
+      function Reference
+        (Group : Guards.Entry_Group; First, Second, Distinct : Boolean)
+         return Reference_Guard
+      is
+      begin
+         case Group is
+            when Guards.Document_Read | Guards.Element_Query
+               | Guards.Node_Creation | Guards.PI_Creation
+               | Guards.Node_List_Parse | Guards.Text_Concatenation
+               | Guards.Node_Unlinking | Guards.Node_Release
+               | Guards.Document_Release | Guards.Node_Text
+               | Guards.Node_List_Text | Guards.Line_Number
+               | Guards.Inherited_Property | Guards.Lookup_Output
+               | Guards.Namespace_Copy | Guards.Namespace_Assignment
+               | Guards.Namespace_Release | Guards.Namespace_Query
+               | Guards.Entity_Encoding =>
+               return (Refuse => not First, Report => False);
+            when Guards.Root_Replacement | Guards.Node_Insertion
+               | Guards.Node_Renaming | Guards.Property_Lookup
+               | Guards.Character_Decoding | Guards.QName_Split =>
+               return (Refuse => not First or else not Second,
+                       Report => False);
+            when Guards.Child_Creation | Guards.Property_Update
+               | Guards.Attribute_Creation | Guards.Attribute_Removal =>
+               return (Refuse => not First, Report => not First);
+            when Guards.Document_Dump | Guards.Attribute_Update =>
+               return (Refuse => not First or else not Second,
+                       Report => not First or else not Second);
+            when Guards.Node_Replacement =>
+               return (Refuse => not Distinct or else not First,
+                       Report => False);
+            when Guards.Content_Addition =>
+               return (Refuse => False, Report => False);
+         end case;
+      end Reference;
+
+      Decision : Guards.Admission;
+      Expected : Reference_Guard;
+      Reported_Groups : Natural := 0;
+   begin
+      for Group in Guards.Entry_Group loop
+         for First in Boolean loop
+            for Second in Boolean loop
+               for Distinct in Boolean loop
+                  Decision := Guards.Admit (Group, First, Second, Distinct);
+                  Expected := Reference (Group, First, Second, Distinct);
+                  pragma Assert
+                    ((Decision /= Guards.Admitted) = Expected.Refuse);
+                  pragma Assert
+                    ((Decision = Guards.Refused_And_Reported) =
+                       Expected.Report);
+                  pragma Assert
+                    (Guards.Diagnostic_For (Decision) =
+                       (if Expected.Report
+                        then Codes.For_Failure (Codes.Invalid_Argument)
+                        else Codes.None));
+               end loop;
+            end loop;
+         end loop;
+         if Guards.Rules (Group).Reported then
+            Reported_Groups := Reported_Groups + 1;
+         end if;
+      end loop;
+      pragma Assert (Reported_Groups = 6);
+
+      --  Defaults: a one-argument group ignores Second and Distinct.
+      pragma Assert
+        (Guards.Admit (Guards.Node_Text, True) = Guards.Admitted);
+      pragma Assert
+        (Guards.Admit (Guards.Node_Text, False) = Guards.Refused);
+      pragma Assert
+        (Guards.Admit (Guards.Attribute_Creation, False) =
+           Guards.Refused_And_Reported);
+   end;
+   Ada.Text_IO.Put_Line ("Entry argument guard policy passed");
    declare
       package Codes renames XML3_Diagnostic_Codes;
       use type Codes.Diagnostic_Code;
