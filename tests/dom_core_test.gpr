@@ -2,6 +2,13 @@ project DOM_Core_Test is
    for Source_Dirs use ("../src", ".");
    for Source_Files use
       ("xml3_dom.ads", "xml3_dom.adb",
+        "xml3_dom-graph_lemmas.ads", "xml3_dom-graph_lemmas.adb",
+        "xml3_dom-links.ads", "xml3_dom-links.adb",
+        "xml3_dom-projection.ads", "xml3_dom-projection.adb",
+        "xml3_dom-marking.ads", "xml3_dom-marking.adb",
+        "xml3_dom-freeing.ads", "xml3_dom-freeing.adb",
+        "xml3_dom-releases.ads", "xml3_dom-releases.adb",
+        "xml3_dom-retirement.ads", "xml3_dom-retirement.adb",
        "xml3_dom_allocation.ads", "xml3_dom_allocation.adb",
        "dom_core_test.adb");
    for Main use ("dom_core_test.adb");

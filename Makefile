@@ -4,11 +4,12 @@ export PATH := $(ADA_BIN):$(PATH)
 CC ?= cc
 CXX ?= c++
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Iinclude
+DOM_CHILD_SOURCES := src/xml3_dom-graph_lemmas.ads src/xml3_dom-graph_lemmas.adb src/xml3_dom-links.ads src/xml3_dom-links.adb src/xml3_dom-projection.ads src/xml3_dom-projection.adb src/xml3_dom-marking.ads src/xml3_dom-marking.adb src/xml3_dom-freeing.ads src/xml3_dom-freeing.adb src/xml3_dom-releases.ads src/xml3_dom-releases.adb src/xml3_dom-retirement.ads src/xml3_dom-retirement.adb
 PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit compare compare-system check prove install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -30,7 +31,7 @@ test-development: build-development tests/runtime-test tests/string-exception-te
 	LD_LIBRARY_PATH=lib/development ./tests/content-edit-test-development
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
-		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
+		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
 	$(ADA_BIN)/gprbuild -p -P tests/dom_core_test.gpr -o dom-core-test
 
 test-dom-core: tests/dom-core-test
@@ -62,7 +63,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
 		src/xml3_dom_store-documents.ads src/xml3_dom_store-documents.adb \
 		src/xml3_dom-materialize.ads src/xml3_dom-materialize.adb \
 		src/xml3_dom-import.ads src/xml3_dom-import.adb \
-		src/xml3_dom.ads src/xml3_dom.adb src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
+		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb \
 		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
 		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
 		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \
@@ -437,6 +438,15 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 
 prove:
 	$(ADA_BIN)/gnatprove -P proof.gpr --mode=all --prover=cvc5,z3 --timeout=10 -j4
+
+# Recorded proof switches, one compilation unit at a time (see
+# docs/proof-report.md).  prove-units starts from a clean object directory;
+# prove-units-resume continues an interrupted run.
+prove-units:
+	/usr/bin/python3 eng/prove_units.py --clean --gnatprove $(ADA_BIN)/gnatprove
+
+prove-units-resume:
+	/usr/bin/python3 eng/prove_units.py --gnatprove $(ADA_BIN)/gnatprove
 
 install: build
 	install -d $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include/libxml \

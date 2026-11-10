@@ -1376,8 +1376,25 @@ package body XML3_DOM.Import with SPARK_Mode is
         (Destination_Before, Destination, Source.all, Maps.all, Owner_Ref (Owner_Slot));
       for B in 1 .. Owner_Count (Destination) loop
          pragma Assert (not Destination.Graph.Owners (B).Release_Emitted);
+         --  Only owners kept from Destination_Before can be releasing: the
+         --  adopted slot is Live.  Their counts therefore come from the
+         --  precondition's Effects_Valid (Destination_Before).
+         if Destination.Graph.Owners (B).State = Releasing then
+            pragma Assert (Owner_Ref (B) /= Owner_Ref (Owner_Slot));
+            pragma Assert (B <= Owner_Count (Destination_Before));
+            pragma Assert
+              (Destination.Graph.Owners (B) = Destination_Before.Graph.Owners (B));
+            pragma Assert
+              (Destination_Before.Graph.Owners (B).References = 0
+               and then Destination_Before.Graph.Owners (B).Reservations = 0);
+         end if;
          pragma Loop_Invariant
            (for all K in 1 .. B => not Destination.Graph.Owners (K).Release_Emitted);
+         pragma Loop_Invariant
+           (for all K in 1 .. B =>
+              (if Destination.Graph.Owners (K).State = Releasing then
+                 Destination.Graph.Owners (K).References = 0
+                 and then Destination.Graph.Owners (K).Reservations = 0));
       end loop;
       pragma Assert (Effects_Valid (Destination));
       pragma Assert (Pins_In_Range (Destination));

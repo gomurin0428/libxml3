@@ -27,6 +27,7 @@ with XML3_Text;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 procedure DOM_Bridge_Test is
    package Native renames XML3_Native_Memory;

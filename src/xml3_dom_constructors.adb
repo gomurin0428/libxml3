@@ -1,6 +1,7 @@
 with System;
 with XML3_DOM_Bridge;
 with XML3_Namespaces;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 package body XML3_DOM_Constructors with SPARK_Mode is
    package Native renames XML3_Native_Memory;

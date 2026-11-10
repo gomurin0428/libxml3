@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,397 checks
-(1,569 flow and 11,828 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 13,998 checks
+(1,585 flow and 12,413 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1059,6 +1059,24 @@ behavior. The decisions reproduce the previous adapter logic exactly; tests
 compare every read status, report kind and out-of-memory flag, every
 admission kind and every preparation result with a test-local copy of the
 former adapter code, and the frozen error oracle and OOM walks are unchanged.
+
+`XML3_DOM` is split into child units so that each compilation unit proves
+in one run.
+
+* **Private children**: `Graph_Lemmas`, `Links`, `Projection`, `Marking`
+  and `Freeing` hold the former body-only helpers and
+  `Set_Node_Projection_Internal`.
+* **Public children**: `Releases` (`Take_Release`, `Acknowledge_Release`)
+  and `Retirement` (the subtree-freeing and child-retirement operations)
+  hold public operations with unchanged contracts.
+
+The trust boundary is unchanged: the children are SPARK and proved, and the
+native allocator and adapters are outside them as before. Proofs of the
+moved procedures now go through small ghost lemmas for frame conditions,
+facade and link preservation, and range properties.
+
+`Unlink`'s postcondition is strengthened: it also states that slot states
+and tree ranks are kept and that only the unlinked node's parent changes.
 
 `Diagnostic_Codes.Adapter_Failure` names the causes the adapter reports from
 its own exception handlers and argument guards, and `For_Failure` maps each

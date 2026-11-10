@@ -4,6 +4,7 @@ with XML3_DOM_Constructors;
 with XML3_DOM_Store.Queries;
 with XML3_Text;
 with XML3_Text.Buffers;
+with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 package body XML3_DOM_Store.Content with SPARK_Mode is
    use XML3_DOM;
@@ -754,7 +755,7 @@ package body XML3_DOM_Store.Content with SPARK_Mode is
                if Node (S.Current.all, N).Kind = Attribute_Node then
                   Retire_Attribute_Children (S.Current.all, N, New_Node);
                else
-                  XML3_DOM.Retire_Element_Children
+                  XML3_DOM.Retirement.Retire_Element_Children
                     (S.Current.all, N, New_Node);
                end if;
                XML3_DOM_Bridge.Synchronize (S.Current.all);
