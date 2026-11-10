@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,014 checks
-(1,597 flow and 12,417 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,071 checks
+(1,647 flow and 12,424 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1072,6 +1072,21 @@ arguments, taking the lock, the native calls and publishing the diagnostic
 remain trusted adapter behavior. The results reproduce the previous adapter
 expressions exactly; tests compare every input with a test-local copy of
 them, and the OOM walks and reference comparisons are unchanged.
+
+`DOM_Results` also holds the policy for publishing an unusable argument.
+Each adapter call site names an `Operation_Class`; `Reports_Invalid_Argument`
+and `Diagnostic_For` decide whether that class publishes a diagnostic, so
+the choice between a reported and a silent NULL or mismatched argument is
+no longer a Boolean literal in the adapter.
+
+`Text_Results` selects the diagnostics and `int` results of the string
+entry points from the statuses of the SPARK string operations: a length
+beyond the supported limit is reported as unsupported text, a failed
+allocation as out of memory, and an invalid or absent string publishes
+nothing (except in `xmlEncodeSpecialChars`). The native reads and writes,
+pointer results, allocation and exception handling remain trusted adapter
+behavior, and the proof covers the mapping only, not the string operations'
+agreement with libxml2.
 
 `XML3_DOM` is split into child units so that each compilation unit proves
 in one run.

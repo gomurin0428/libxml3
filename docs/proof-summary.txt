@@ -4,23 +4,23 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               442           442                                       .           .          .
+Data Dependencies               467           467                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  926           926                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
 Run-time Checks                5959             .     5959 (CVC5 28%, Trivial 0%, Z3 72%)           .          .
 Assertions                     1762             .    1762 (CVC5 18%, Trivial 11%, Z3 71%)           .          .
-Functional Contracts           4621             .     4621 (CVC5 21%, Trivial 3%, Z3 76%)           .          .
+Functional Contracts           4628             .     4628 (CVC5 21%, Trivial 3%, Z3 76%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     303           228                   75 (CVC5 24%, Z3 76%)           .          .
+Termination                     328           253                   75 (CVC5 24%, Z3 76%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         14014    1597 (11%)                             12417 (89%)           .          .
+Total                         14071    1647 (12%)                             12424 (88%)           .          .
 
 
 max steps used for successful proof: 787963
 
-Analyzed 40 units
+Analyzed 41 units
 in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -269,14 +269,16 @@ in unit xml3_dom_constructors, 8 subprograms and packages out of 8 analyzed
   XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (462 checks)
   XML3_DOM_Constructors.Prepare_Node_Capacity at xml3_dom_constructors.adb:320 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (81 checks)
   XML3_DOM_Constructors.Retire_Registered at xml3_dom_constructors.adb:36 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (121 checks)
-in unit xml3_dom_results, 7 subprograms and packages out of 7 analyzed
+in unit xml3_dom_results, 9 subprograms and packages out of 9 analyzed
   XML3_DOM_Results at xml3_dom_results.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Results.Lookup at xml3_dom_results.ads:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Results.Removal at xml3_dom_results.ads:48 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Results.Space_Code at xml3_dom_results.ads:97 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Diagnostic_For at xml3_dom_results.ads:70 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Lookup at xml3_dom_results.ads:123 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Removal at xml3_dom_results.ads:91 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Reports_Invalid_Argument at xml3_dom_results.ads:63 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Space_Code at xml3_dom_results.ads:140 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Results.Status_Of at xml3_dom_results.ads:22 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_DOM_Results.Truth at xml3_dom_results.ads:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_DOM_Results.Update at xml3_dom_results.ads:62 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Truth at xml3_dom_results.ads:150 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Update at xml3_dom_results.ads:105 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_dom_runtime, 46 subprograms and packages out of 46 analyzed
   XML3_DOM_Runtime at xml3_dom_runtime.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Child at xml3_dom_runtime.ads:69 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -685,3 +687,28 @@ in unit xml3_text-qnames, 7 subprograms and packages out of 7 analyzed
   XML3_Text.QNames.Overlaps at xml3_text-qnames.adb:89 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Text.QNames.Prefix_Length at xml3_text-qnames.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
   XML3_Text.QNames.Split at xml3_text-qnames.ads:46 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (6 checks)
+in unit xml3_text_results, 24 subprograms and packages out of 24 analyzed
+  XML3_Text_Results at xml3_text_results.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Equality at xml3_text_results.ads:181 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Equality at xml3_text_results.ads:187 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Append at xml3_text_results.ads:81 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Build at xml3_text_results.ads:114 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Comparison at xml3_text_results.ads:109 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Concatenate at xml3_text_results.ads:91 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Limit at xml3_text_results.ads:32 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.For_Malformed at xml3_text_results.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.For_Path at xml3_text_results.ads:54 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Prefix at xml3_text_results.ads:132 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Search at xml3_text_results.ads:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Slice at xml3_text_results.ads:100 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_Special_Escape at xml3_text_results.ads:70 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.For_Split at xml3_text_results.ads:123 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_URI_Escape at xml3_text_results.ads:60 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.For_UTF8 at xml3_text_results.ads:45 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Location at xml3_text_results.ads:167 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.Measure at xml3_text_results.ads:149 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.Measure at xml3_text_results.ads:158 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Text_Results.No_Memory at xml3_text_results.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Path_Code at xml3_text_results.ads:176 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Unsupported at xml3_text_results.ads:23 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Text_Results.Validity at xml3_text_results.ads:144 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

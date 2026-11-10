@@ -42,6 +42,49 @@ package XML3_DOM_Results with SPARK_Mode is
                         (Status_Of'Result, Validation_Error => True) =
                       XML3_Diagnostic_Codes.For_Failure (Cause));
 
+   --  What an entry point does, as far as reporting is concerned.  An
+   --  operation that edits or builds something, or whose answer the caller
+   --  cannot tell from a failure, publishes a diagnostic for an unusable
+   --  argument.  A query that simply answers "nothing" for one stays silent.
+   type Operation_Class is
+     (Edit,                 --  creation, linking, edits, release, searches
+      Document_Root,        --  xmlDocGetRootElement
+      Node_Path,            --  xmlGetNodePath
+      Node_List_Text,       --  xmlNodeListGetString, xmlNodeListGetRawString
+      Entity_Encoding,      --  xmlEncodeEntitiesReentrant
+      Node_Test,            --  xmlNodeIsText, xmlIsBlankNode
+      Element_Navigation,   --  xmlFirstElementChild and its siblings
+      Child_Count,          --  xmlChildElementCount
+      Node_Content,         --  xmlNodeGetContent
+      Inherited_Property,   --  xmlNodeGetLang, xmlNodeGetSpacePreserve
+      Property_Lookup,      --  xmlGetProp, xmlHasProp and their Ns variants
+      Namespace_List);      --  xmlGetNsList, xmlGetNsListSafe
+
+   function Reports_Invalid_Argument (Class : Operation_Class) return Boolean
+   is (Class in Edit .. Entity_Encoding)
+   with Global => null;
+
+   --  The diagnostic an operation of this class publishes for a status.
+   --  Success publishes nothing and every failure other than an unusable
+   --  argument is always published.
+   function Diagnostic_For
+     (Class : Operation_Class; Outcome : Status)
+      return XML3_Diagnostic_Codes.Diagnostic_Code
+   is
+     (XML3_Diagnostic_Codes.For_Operation
+        (Outcome, Validation_Error => Reports_Invalid_Argument (Class)))
+   with Global => null,
+     Post =>
+       (if Outcome = XML3_DOM_Constructors.Created
+        then not Diagnostic_For'Result.Present)
+       and then (if Outcome = XML3_DOM_Constructors.Invalid_Argument
+                 then Diagnostic_For'Result.Present =
+                        Reports_Invalid_Argument (Class))
+       and then (if Outcome in XML3_DOM_Constructors.No_Memory
+                             | XML3_DOM_Constructors.Limit_Exceeded
+                             | XML3_DOM_Constructors.Internal_Error
+                 then Diagnostic_For'Result.Present);
+
    --  xmlUnsetProp, xmlUnsetNsProp and xmlRemoveProp: 0 when the attribute
    --  was removed, -1 otherwise.  An operation that succeeds without
    --  removing anything (no such attribute) is a failure for the caller.

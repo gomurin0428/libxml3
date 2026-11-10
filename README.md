@@ -680,6 +680,13 @@ DOM操作の入口が返す`int`の決め方はSPARKの`XML3_DOM_Results`にあ�
 - `Space_Code`と`Truth`: `xmlNodeGetSpacePreserve`と`xmlNodeIsText`などの値です。
 adapter自身が検出した失敗（引数検査と例外ハンドラ）は`Status_Of`で同等のstatusに直し、同じ関数で戻り値を決めます。
 例外の捕捉、NULL検査、lock、native呼び出し、診断の公開は引き続きadapterに残ります。
+使えない引数を診断として公開するかどうかも`XML3_DOM_Results`で決めます。各呼び出し箇所は操作の種類（`Operation_Class`）を名乗ります。
+- 公開する: 編集・生成・検索、`xmlDocGetRootElement`、`xmlGetNodePath`、node listの文字列取得、`xmlEncodeEntitiesReentrant`
+- 公開しない: nodeの判定、要素の移動、子要素数、`xmlNodeGetContent`、継承する`xml:lang`/`xml:space`、属性の検索、namespace一覧
+文字列系の入口の診断と`int`の戻り値はSPARKの`XML3_Text_Results`で決めます。
+対応する長さを超えた文字列は未対応text、確保の失敗はメモリ不足として公開します。不正な文字列や存在しない文字列は通常の答えなので、
+`xmlEncodeSpecialChars`を除いて何も公開しません。戻り値は`Validity`（`xmlCheckUTF8`）、`Measure`（`xmlUTF8Strlen`、`xmlStrlen`など）、
+`Location`（`xmlUTF8Strloc`）、`Path_Code`（`xmlNormalizeURIPath`）、`Equality`（`xmlStrQEqual`、`xmlStrEqual`）で決めます。
 adapter自身の失敗原因は`XML3_Diagnostic_Codes.Adapter_Failure`で名前を付け、
 `For_Failure`が(domain, code)へ写像します。lock失敗・想定外例外は(2,1)、引数不正・
 未対応text・namespaceの想定外例外は(2,115)、不正文字は(2,9)、確保失敗は(6,2)、

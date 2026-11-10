@@ -28,6 +28,9 @@ with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
 with XML3_DOM_Results;
+with XML3_Text_Results;
+with XML3_Text.Buffers;
+with XML3_Text.QNames;
 with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 procedure DOM_Bridge_Test is
@@ -2469,6 +2472,210 @@ begin
       pragma Assert (Results.Truth (False) = 0);
    end;
    Ada.Text_IO.Put_Line ("DOM result convention policy passed");
+   declare
+      package Results renames XML3_DOM_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Codes.Diagnostic_Code;
+      use type XML3_DOM_Constructors.Construction_Status;
+
+      --  The Validation_Error flag each call site passed before the classes
+      --  moved into SPARK.
+      function Reference_Flag (Class : Results.Operation_Class) return Boolean
+      is
+      begin
+         case Class is
+            when Results.Edit | Results.Document_Root | Results.Node_Path
+               | Results.Node_List_Text | Results.Entity_Encoding =>
+               return True;
+            when Results.Node_Test | Results.Element_Navigation
+               | Results.Child_Count | Results.Node_Content
+               | Results.Inherited_Property | Results.Property_Lookup
+               | Results.Namespace_List =>
+               return False;
+         end case;
+      end Reference_Flag;
+
+      Silent, Reported : Natural := 0;
+   begin
+      for Class in Results.Operation_Class loop
+         pragma Assert
+           (Results.Reports_Invalid_Argument (Class) = Reference_Flag (Class));
+         for Outcome in XML3_DOM_Constructors.Construction_Status loop
+            pragma Assert
+              (Results.Diagnostic_For (Class, Outcome) =
+                 Codes.For_Operation (Outcome, Reference_Flag (Class)));
+         end loop;
+         if Results.Diagnostic_For
+              (Class, XML3_DOM_Constructors.Invalid_Argument).Present
+         then
+            Reported := Reported + 1;
+         else
+            Silent := Silent + 1;
+         end if;
+      end loop;
+      pragma Assert (Reported = 5 and then Silent = 7);
+   end;
+   Ada.Text_IO.Put_Line ("DOM operation class policy passed");
+   declare
+      package Text renames XML3_Text_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      package Buffers renames XML3_Text.Buffers;
+      package QNames renames XML3_Text.QNames;
+      use type Codes.Diagnostic_Code;
+      use type Interfaces.C.int;
+      use type Buffers.UTF8_Status;
+      use type Buffers.Search_Status;
+      use type Buffers.Path_Status;
+      use type Buffers.Escape_Status;
+      use type Buffers.Append_Status;
+      use type Buffers.Concatenate_Status;
+      use type Buffers.Slice_Status;
+      use type QNames.Comparison_Status;
+      use type QNames.Build_Status;
+      use type QNames.Split_Status;
+      use type QNames.Prefix_Status;
+
+      --  The literals the adapter reported before the selection moved into
+      --  SPARK: unsupported text (2,115), allocation (6,2), character (2,9).
+      Unsupported : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 2, Code => 115);
+      No_Memory : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 6, Code => 2);
+      Bad_Character : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 2, Code => 9);
+      Lengths : constant array (1 .. 3) of XML3_Text.Byte_Count :=
+        (0, 7, XML3_Text.Max_Bytes);
+   begin
+      pragma Assert (Text.Unsupported = Unsupported);
+      pragma Assert (Text.No_Memory = No_Memory);
+      pragma Assert (Text.For_Limit (True) = Unsupported);
+      pragma Assert (Text.For_Limit (False) = Codes.None);
+      pragma Assert (Text.For_Malformed (True) = Bad_Character);
+      pragma Assert (Text.For_Malformed (False) = Codes.None);
+
+      for Status in Buffers.UTF8_Status loop
+         pragma Assert
+           (Text.For_UTF8 (Status) =
+              (if Status = Buffers.UTF8_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Validity (Status) =
+              (if Status = Buffers.UTF8_Valid then 1 else 0));
+         for Length of Lengths loop
+            pragma Assert
+              (Text.Measure (Length, Status) =
+                 (if Status = Buffers.UTF8_Valid
+                  then Interfaces.C.int (Length) else -1));
+         end loop;
+      end loop;
+      for Length of Lengths loop
+         pragma Assert
+           (Text.Measure (Length, Measured => True) = Interfaces.C.int (Length));
+         pragma Assert (Text.Measure (Length, Measured => False) = -1);
+      end loop;
+      for Status in Buffers.Search_Status loop
+         pragma Assert
+           (Text.For_Search (Status) =
+              (if Status = Buffers.Search_Limit_Exceeded then Unsupported
+               else Codes.None));
+         for Index of Lengths loop
+            pragma Assert
+              (Text.Location (Index, Status) =
+                 (if Status = Buffers.Matched
+                  then Interfaces.C.int (Index) else -1));
+         end loop;
+      end loop;
+      for Status in Buffers.Path_Status loop
+         pragma Assert
+           (Text.For_Path (Status) =
+              (if Status = Buffers.Path_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Path_Code (Status) =
+              (if Status = Buffers.Normalized then 0 else -1));
+      end loop;
+      for Status in Buffers.Escape_Status loop
+         pragma Assert
+           (Text.For_URI_Escape (Status) =
+              (case Status is
+                 when Buffers.Escaped | Buffers.Invalid_Text => Codes.None,
+                 when Buffers.Escape_No_Memory => No_Memory,
+                 when Buffers.Escape_Limit_Exceeded => Unsupported));
+         pragma Assert
+           (Text.For_Special_Escape (Status) =
+              (case Status is
+                 when Buffers.Escaped => Codes.None,
+                 when Buffers.Escape_No_Memory => No_Memory,
+                 when Buffers.Invalid_Text | Buffers.Escape_Limit_Exceeded =>
+                   Unsupported));
+      end loop;
+      for Status in Buffers.Append_Status loop
+         pragma Assert
+           (Text.For_Append (Status) =
+              (case Status is
+                 when Buffers.Append_No_Memory => No_Memory,
+                 when Buffers.Append_Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in Buffers.Concatenate_Status loop
+         pragma Assert
+           (Text.For_Concatenate (Status) =
+              (case Status is
+                 when Buffers.Copied | Buffers.No_Input => Codes.None,
+                 when Buffers.No_Memory => No_Memory,
+                 when Buffers.Limit_Exceeded => Unsupported));
+      end loop;
+      for Status in Buffers.Slice_Status loop
+         pragma Assert
+           (Text.For_Slice (Status) =
+              (case Status is
+                 when Buffers.No_Memory => No_Memory,
+                 when Buffers.Slice_Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in QNames.Comparison_Status loop
+         pragma Assert
+           (Text.For_Comparison (Status) =
+              (if Status = QNames.Comparison_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Equality (Status) = (if Status = QNames.Same then 1 else 0));
+      end loop;
+      for Status in QNames.Build_Status loop
+         pragma Assert
+           (Text.For_Build (Status) =
+              (case Status is
+                 when QNames.No_Memory => No_Memory,
+                 when QNames.Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in QNames.Split_Status loop
+         pragma Assert
+           (Text.For_Split (Status) =
+              (if Status = QNames.No_Memory then No_Memory
+               elsif Status = QNames.Split_Limit_Exceeded then Unsupported
+               else Codes.None));
+      end loop;
+      for Status in QNames.Prefix_Status loop
+         pragma Assert
+           (Text.For_Prefix (Status) =
+              (if Status = QNames.Prefix_Limit_Exceeded then Unsupported
+               else Codes.None));
+      end loop;
+      for Comparison in Interfaces.C.int range -2 .. 2 loop
+         pragma Assert
+           (Text.Equality (Comparison) = (if Comparison = 0 then 1 else 0));
+      end loop;
+
+      --  What the exception handlers returned.
+      pragma Assert (Text.Validity (Buffers.UTF8_Invalid) = 0);
+      pragma Assert (Text.Measure (0, Buffers.UTF8_Invalid) = -1);
+      pragma Assert (Text.Measure (0, Measured => False) = -1);
+      pragma Assert (Text.Location (0, Buffers.No_Match) = -1);
+      pragma Assert (Text.Path_Code (Buffers.Invalid_Path) = -1);
+      pragma Assert (Text.Equality (QNames.Different) = 0);
+   end;
+   Ada.Text_IO.Put_Line ("Text result and report policy passed");
    declare
       package Codes renames XML3_Diagnostic_Codes;
       use type Codes.Diagnostic_Code;

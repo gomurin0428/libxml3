@@ -25,6 +25,7 @@ with XML3_Parser.Workspaces;
 with XML3_Text;
 with XML3_Text.Buffers;
 with XML3_Text.QNames;
+with XML3_Text_Results;
 
 package body XML3_C is
    use type System.Address;
@@ -37,6 +38,7 @@ package body XML3_C is
    use all type XML3_Diagnostic_Codes.Adapter_Failure;
 
    package Results renames XML3_DOM_Results;
+   package Text_Results renames XML3_Text_Results;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -52,7 +54,7 @@ package body XML3_C is
       File : System.Address := System.Null_Address);
    procedure Report_Operation_Status
      (Status : XML3_DOM_Store.Operation_Status;
-      Validation_Error : Boolean := True);
+      Class : Results.Operation_Class := Results.Edit);
    procedure Build
      (Input : String; Huge : Boolean; Encoding : XML3_Encoding.Encoding_Info;
       Result : out System.Address;
@@ -111,11 +113,10 @@ package body XML3_C is
 
    procedure Report_Operation_Status
      (Status : XML3_DOM_Store.Operation_Status;
-      Validation_Error : Boolean := True)
+      Class : Results.Operation_Class := Results.Edit)
    is
    begin
-      Report_Code
-        (XML3_Diagnostic_Codes.For_Operation (Status, Validation_Error));
+      Report_Code (Results.Diagnostic_For (Class, Status));
    end Report_Operation_Status;
 
    --  C ABI encoding of the status SPARK selected; no decision is made here.
@@ -472,7 +473,7 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Test_Node (Node, Mode, Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Node_Test);
       return Results.Truth (Result);
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -498,7 +499,8 @@ package body XML3_C is
 
    function Select_Element_Node
      (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Element_Query_Kind;
-      Validation_Error : Boolean := False) return System.Address
+      Class : Results.Operation_Class := Results.Element_Navigation)
+      return System.Address
    is
       Result : System.Address := System.Null_Address;
       Count : Natural := 0;
@@ -515,7 +517,7 @@ package body XML3_C is
          XML3_DOM_Runtime.Select_Element
            (Facade, Mode, Result, Count, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => Validation_Error);
+      Report_Operation_Status (Status, Class);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -533,7 +535,7 @@ package body XML3_C is
    is
    begin
       return Select_Element_Node
-        (Doc, XML3_DOM_Store.Queries.Document_Root, Validation_Error => True);
+        (Doc, XML3_DOM_Store.Queries.Document_Root, Results.Document_Root);
    end Doc_Get_Root_Element;
 
    function New_Doc (Version : System.Address) return System.Address is
@@ -1088,7 +1090,7 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Set_Name (Node, Name, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => True);
+      Report_Operation_Status (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
@@ -1243,7 +1245,8 @@ package body XML3_C is
             XML3_DOM_Runtime.Get_Content (Node, Result, Status);
          end if;
       end;
-      Report_Operation_Status (Status, Validation_Error => Path);
+      Report_Operation_Status
+        (Status, (if Path then Results.Node_Path else Results.Node_Content));
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -1281,7 +1284,7 @@ package body XML3_C is
            (List, Inline_Value = 0, Result, Status,
             Doc => Doc, Default_Entities => not Raw);
       end;
-      Report_Operation_Status (Status, Validation_Error => True);
+      Report_Operation_Status (Status, Results.Node_List_Text);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -1362,7 +1365,7 @@ package body XML3_C is
          XML3_DOM_Runtime.Get_Inherited_XML_Property
            (Node, Mode, Result, Space, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Inherited_Property);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
@@ -1472,7 +1475,7 @@ package body XML3_C is
          XML3_DOM_Runtime.Get_Property
            (Node, Name, Filter, Href, Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Property_Lookup);
       Code :=
         Results.Lookup (Status, Found => Result /= System.Null_Address);
       return Result;
@@ -1853,7 +1856,7 @@ package body XML3_C is
            (Node, Name, XML3_DOM_Store.Queries.Any_Namespace, System.Null_Address,
             Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Property_Lookup);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -1884,7 +1887,7 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Get_Namespace_List (Node, Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Namespace_List);
       Code :=
         Results.Lookup (Status, Found => Result /= System.Null_Address);
       return Result;
@@ -2015,7 +2018,7 @@ package body XML3_C is
          XML3_DOM_Runtime.Find_Property
            (Node, Name, Filter, Href, Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Property_Lookup);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -2127,7 +2130,7 @@ package body XML3_C is
            (Parent, XML3_DOM_Store.Queries.Element_Count,
             Result, Count, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => False);
+      Report_Operation_Status (Status, Results.Child_Count);
       return unsigned_long (Count);
    exception
       when XML3_DOM_Lock.Lock_Error =>
@@ -2143,29 +2146,23 @@ package body XML3_C is
 
    function Check_UTF8 (Item : System.Address) return Interfaces.C.int is
       Status : XML3_Text.Buffers.UTF8_Status;
-      use type XML3_Text.Buffers.UTF8_Status;
    begin
       XML3_Text.Buffers.Check_UTF8 (Item, Status);
-      if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
-      return (if Status = XML3_Text.Buffers.UTF8_Valid then 1 else 0);
+      Report_Code (Text_Results.For_UTF8 (Status));
+      return Text_Results.Validity (Status);
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return 0;
+         return Text_Results.Validity (XML3_Text.Buffers.UTF8_Invalid);
    end Check_UTF8;
 
    function UTF8_Length_Result
      (Length : XML3_Text.Byte_Count; Status : XML3_Text.Buffers.UTF8_Status)
       return Interfaces.C.int
    is
-      use type XML3_Text.Buffers.UTF8_Status;
    begin
-      if Status = XML3_Text.Buffers.UTF8_Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
-      return (if Status = XML3_Text.Buffers.UTF8_Valid then int (Length) else -1);
+      Report_Code (Text_Results.For_UTF8 (Status));
+      return Text_Results.Measure (Length, Status);
    end UTF8_Length_Result;
 
    function UTF8_Str_Length (Item : System.Address) return Interfaces.C.int is
@@ -2177,7 +2174,7 @@ package body XML3_C is
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Text_Results.Measure (0, XML3_Text.Buffers.UTF8_Invalid);
    end UTF8_Str_Length;
 
    function UTF8_Str_Size
@@ -2191,7 +2188,7 @@ package body XML3_C is
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Text_Results.Measure (0, XML3_Text.Buffers.UTF8_Invalid);
    end UTF8_Str_Size;
 
    function UTF8_Size (Item : System.Address) return Interfaces.C.int is
@@ -2207,17 +2204,12 @@ package body XML3_C is
       Status : XML3_Text.Buffers.Path_Status;
    begin
       XML3_Text.Buffers.Normalize_URI_Path (Path, Status);
-      case Status is
-         when XML3_Text.Buffers.Normalized => return 0;
-         when XML3_Text.Buffers.Invalid_Path => null;
-         when XML3_Text.Buffers.Path_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-      end case;
-      return -1;
+      Report_Code (Text_Results.For_Path (Status));
+      return Text_Results.Path_Code (Status);
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Text_Results.Path_Code (XML3_Text.Buffers.Invalid_Path);
    end Normalize_URI_Path;
 
    function URI_Unescape_String
@@ -2228,13 +2220,7 @@ package body XML3_C is
       Status : XML3_Text.Buffers.Escape_Status;
    begin
       XML3_Text.Buffers.Unescape_URI (Input, Integer (Length), Target, Result, Status);
-      case Status is
-         when XML3_Text.Buffers.Escaped | XML3_Text.Buffers.Invalid_Text => null;
-         when XML3_Text.Buffers.Escape_No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Escape_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-      end case;
+      Report_Code (Text_Results.For_URI_Escape (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2251,13 +2237,7 @@ package body XML3_C is
       Status : XML3_Text.Buffers.Escape_Status;
    begin
       XML3_Text.Buffers.Escape_URI (Input, Exceptions, Result, Status);
-      case Status is
-         when XML3_Text.Buffers.Escaped | XML3_Text.Buffers.Invalid_Text => null;
-         when XML3_Text.Buffers.Escape_No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Escape_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-      end case;
+      Report_Code (Text_Results.For_URI_Escape (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2371,9 +2351,7 @@ package body XML3_C is
       Invalid : Boolean;
    begin
       XML3_Text.Buffers.Compare_UTF8_Character (Left, Right, Result, Invalid);
-      if Invalid then
-         Report_Failure (Invalid_Character);
-      end if;
+      Report_Code (Text_Results.For_Malformed (Invalid));
       return int (Result);
    exception
       when others =>
@@ -2382,19 +2360,16 @@ package body XML3_C is
    end UTF8_Char_Compare;
 
    function UTF8_Str_Location (Item, Pattern : System.Address) return Interfaces.C.int is
-      use type XML3_Text.Buffers.Search_Status;
       Index : XML3_Text.Byte_Count;
       Status : XML3_Text.Buffers.Search_Status;
    begin
       XML3_Text.Buffers.Find_UTF8_Character (Item, Pattern, Index, Status);
-      if Status = XML3_Text.Buffers.Search_Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
-      return (if Status = XML3_Text.Buffers.Matched then int (Index) else -1);
+      Report_Code (Text_Results.For_Search (Status));
+      return Text_Results.Location (Index, Status);
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Text_Results.Location (0, XML3_Text.Buffers.No_Match);
    end UTF8_Str_Location;
 
    function Get_UTF8_Char
@@ -2433,13 +2408,7 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Append
         (Item, Addition, Integer (Length), Terminated, Result, Status);
-      case Status is
-         when XML3_Text.Buffers.Append_No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Append_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-         when others => null;
-      end case;
+      Report_Code (Text_Results.For_Append (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2465,9 +2434,7 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Compare_Terminated
         (Left, Right, Ignore_Case, Result, Limit_Exceeded);
-      if Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
+      Report_Code (Text_Results.For_Limit (Limit_Exceeded));
       return Interfaces.C.int (Result);
    exception
       when others =>
@@ -2485,7 +2452,7 @@ package body XML3_C is
 
    function Str_Equal
      (Left, Right : System.Address) return Interfaces.C.int
-   is (if Compare_Strings (Left, Right, False) = 0 then 1 else 0);
+   is (Text_Results.Equality (Compare_Strings (Left, Right, False)));
 
    function Str_Q_Equal
      (Prefix, Name, Value : System.Address) return Interfaces.C.int
@@ -2493,19 +2460,12 @@ package body XML3_C is
       Status : XML3_Text.QNames.Comparison_Status;
    begin
       XML3_Text.QNames.Compare (Prefix, Name, Value, Status);
-      case Status is
-         when XML3_Text.QNames.Same =>
-            return 1;
-         when XML3_Text.QNames.Different =>
-            return 0;
-         when XML3_Text.QNames.Comparison_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-            return 0;
-      end case;
+      Report_Code (Text_Results.For_Comparison (Status));
+      return Text_Results.Equality (Status);
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return 0;
+         return Text_Results.Equality (XML3_Text.QNames.Different);
    end Str_Q_Equal;
 
    function Search_Result
@@ -2514,13 +2474,12 @@ package body XML3_C is
       return System.Address
    is
    begin
+      Report_Code (Text_Results.For_Search (Status));
       case Status is
          when XML3_Text.Buffers.Matched =>
             return Item + Storage_Offset (Position);
-         when XML3_Text.Buffers.No_Match =>
-            return System.Null_Address;
-         when XML3_Text.Buffers.Search_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
+         when XML3_Text.Buffers.No_Match
+            | XML3_Text.Buffers.Search_Limit_Exceeded =>
             return System.Null_Address;
       end case;
    end Search_Result;
@@ -2619,13 +2578,7 @@ package body XML3_C is
    begin
       XML3_Text.Buffers.Concatenate_Bytes
         (Left, Right, Integer (Length), Result, Status);
-      case Status is
-         when XML3_Text.Buffers.Copied | XML3_Text.Buffers.No_Input => null;
-         when XML3_Text.Buffers.No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-      end case;
+      Report_Code (Text_Results.For_Concatenate (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2647,14 +2600,7 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       XML3_Text.Buffers.Escape_Special_Bytes (Input, Result, Status);
-      case Status is
-         when XML3_Text.Buffers.Escaped => null;
-         when XML3_Text.Buffers.Escape_No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Invalid_Text |
-              XML3_Text.Buffers.Escape_Limit_Exceeded =>
-                 Report_Failure (Unsupported_Text);
-      end case;
+      Report_Code (Text_Results.For_Special_Escape (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2682,7 +2628,7 @@ package body XML3_C is
          XML3_DOM_Runtime.Encode_Entities
            (Document, Input, Result, Status);
       end;
-      Report_Operation_Status (Status, Validation_Error => True);
+      Report_Operation_Status (Status, Results.Entity_Encoding);
       return Result;
    exception
       when Storage_Error =>
@@ -2698,13 +2644,7 @@ package body XML3_C is
       return System.Address
    is
    begin
-      case Status is
-         when XML3_Text.Buffers.No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.Buffers.Slice_Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-         when others => null;
-      end case;
+      Report_Code (Text_Results.For_Slice (Status));
       return Result;
    end Slice_Result;
 
@@ -2794,15 +2734,12 @@ package body XML3_C is
       Success : Boolean;
    begin
       XML3_Text.Buffers.Measure (Item, Length, Success);
-      if not Success then
-         Report_Failure (Unsupported_Text);
-         return -1;
-      end if;
-      return int (Length);
+      Report_Code (Text_Results.For_Limit (not Success));
+      return Text_Results.Measure (Length, Measured => Success);
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Text_Results.Measure (0, Measured => False);
    end Str_Length;
 
    function Build_QName
@@ -2814,13 +2751,7 @@ package body XML3_C is
    begin
       XML3_Text.QNames.Build
         (Name, Prefix, Memory, Integer (Length), Result, Status);
-      case Status is
-         when XML3_Text.QNames.No_Memory =>
-            Report_Failure (Allocation_Failure);
-         when XML3_Text.QNames.Limit_Exceeded =>
-            Report_Failure (Unsupported_Text);
-         when others => null;
-      end case;
+      Report_Code (Text_Results.For_Build (Status));
       return Result;
    exception
       when Storage_Error =>
@@ -2834,18 +2765,13 @@ package body XML3_C is
    function Split_QName2 (Name, Prefix : System.Address) return System.Address is
       Prefix_Value, Local : System.Address;
       Status : XML3_Text.QNames.Split_Status;
-      use type XML3_Text.QNames.Split_Status;
    begin
       Set_Address (Prefix, System.Null_Address);
       if Name = System.Null_Address or else Prefix = System.Null_Address then
          return System.Null_Address;
       end if;
       XML3_Text.QNames.Split (Name, Prefix_Value, Local, Status);
-      if Status = XML3_Text.QNames.No_Memory then
-         Report_Failure (Allocation_Failure);
-      elsif Status = XML3_Text.QNames.Split_Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
+      Report_Code (Text_Results.For_Split (Status));
       Set_Address (Prefix, Prefix_Value);
       return Local;
    exception
@@ -2867,9 +2793,7 @@ package body XML3_C is
          return System.Null_Address;
       end if;
       XML3_Text.QNames.Locate_Prefix (Name, Count, Local, Status);
-      if Status = XML3_Text.QNames.Prefix_Limit_Exceeded then
-         Report_Failure (Unsupported_Text);
-      end if;
+      Report_Code (Text_Results.For_Prefix (Status));
       if Status /= XML3_Text.QNames.Prefix_Found then
          return System.Null_Address;
       end if;

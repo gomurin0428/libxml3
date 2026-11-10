@@ -56,7 +56,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
         src/xml3_parser-outcomes.ads \
         src/xml3_parser-requests.ads \
         src/xml3_parser-statuses.ads \
-        src/xml3_dom_results.ads \
+        src/xml3_dom_results.ads src/xml3_text_results.ads \
         src/xml3_parser-native_sizes.ads src/xml3_parser-workspaces.ads src/xml3_parser-workspaces.adb \
 		src/xml3_dom_store.ads src/xml3_dom_store.adb \
 		src/xml3_dom_store-queries.ads src/xml3_dom_store-queries.adb \
@@ -68,6 +68,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
 		src/xml3_native_memory.ads src/xml3_native_memory.adb src/xml3_dom_bridge.ads src/xml3_dom_bridge.adb \
 		src/xml3_dom_constructors.ads src/xml3_dom_constructors.adb src/xml3_namespaces.ads src/xml3_namespaces.adb \
 		src/xml3_text.ads src/xml3_text.adb src/xml3_text-buffers.ads src/xml3_text-buffers.adb \
+		src/xml3_text-qnames.ads src/xml3_text-qnames.adb \
 		src/xml3_parser.ads src/xml3_parser.adb \
 		src/xml3_parser-native_sizes.ads \
 		src/xml3_encoding.ads src/xml3_encoding.adb
