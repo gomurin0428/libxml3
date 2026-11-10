@@ -5,6 +5,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 with XML3_DOM;
 with XML3_DOM_Constructors;
 with XML3_DOM_Lock;
+with XML3_DOM_Results;
 with XML3_DOM_Runtime;
 with XML3_DOM_Store;
 with XML3_DOM_Store.Documents;
@@ -34,6 +35,8 @@ package body XML3_C is
    use type XML3_DOM_Store.Queries.XML_Property_Kind;
    use type XML3_DOM_Store.Queries.Space_Policy;
    use all type XML3_Diagnostic_Codes.Adapter_Failure;
+
+   package Results renames XML3_DOM_Results;
 
    procedure C_Free (Item : System.Address)
      with Import, Convention => C, External_Name => "free";
@@ -470,17 +473,17 @@ package body XML3_C is
          XML3_DOM_Runtime.Test_Node (Node, Mode, Result, Status);
       end;
       Report_Operation_Status (Status, Validation_Error => False);
-      return (if Result then 1 else 0);
+      return Results.Truth (Result);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return 0;
+         return Results.Truth (False);
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return 0;
+         return Results.Truth (False);
       when others =>
          Report_Failure (Unexpected_Exception);
-         return 0;
+         return Results.Truth (False);
    end Test_Node;
 
    function Node_Is_Text (Node : System.Address) return Interfaces.C.int is
@@ -1020,7 +1023,8 @@ package body XML3_C is
         XML3_DOM_Constructors.Internal_Error;
    begin
       if Text_Only and then Node = System.Null_Address then
-         return -1;
+         return Results.Update
+           (Results.Status_Of (Invalid_Argument), Text_Only);
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -1032,20 +1036,20 @@ package body XML3_C is
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
       end if;
-      return (if Status = XML3_DOM_Constructors.Created then 0
-              elsif Text_Only or else Status = XML3_DOM_Constructors.No_Memory
-                then -1
-              else 1);
+      return Results.Update (Status, Text_Only);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return (if Text_Only then -1 else 1);
+         return Results.Update
+           (Results.Status_Of (Lock_Failure), Text_Only);
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Update
+           (Results.Status_Of (Allocation_Failure), Text_Only);
       when others =>
          Report_Failure (Unexpected_Exception);
-         return (if Text_Only then -1 else 1);
+         return Results.Update
+           (Results.Status_Of (Unexpected_Exception), Text_Only);
    end Node_Append_Content;
 
    function Text_Concat
@@ -1111,19 +1115,18 @@ package body XML3_C is
       if Status /= XML3_DOM_Constructors.Created then
          Report_Operation_Status (Status);
       end if;
-      return (if Status = XML3_DOM_Constructors.Created then 0
-              elsif Status = XML3_DOM_Constructors.No_Memory then -1
-              else 1);
+      return Results.Update (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return 1;
+         return Results.Update (Results.Status_Of (Lock_Failure));
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Update (Results.Status_Of (Allocation_Failure));
       when others =>
          Report_Failure (Unexpected_Exception);
-         return 1;
+         return Results.Update
+           (Results.Status_Of (Unexpected_Exception));
    end Node_Set_Content_Len;
 
    function Node_Set_Content
@@ -1392,14 +1395,7 @@ package body XML3_C is
    begin
       Get_Inherited_XML_Property
         (Node, XML3_DOM_Store.Queries.Space_Property, Result, Space);
-      case Space is
-         when XML3_DOM_Store.Queries.Unspecified =>
-            return -1;
-         when XML3_DOM_Store.Queries.Default_Space =>
-            return 0;
-         when XML3_DOM_Store.Queries.Preserve_Space =>
-            return 1;
-      end case;
+      return Results.Space_Code (Space);
    end Node_Get_Space_Preserve;
 
    function Set_XML_Property
@@ -1412,7 +1408,8 @@ package body XML3_C is
    begin
       if Element = System.Null_Address then
          Report_Failure (Invalid_Argument);
-         return 1;
+         return Results.Update
+           (Results.Status_Of (Invalid_Argument));
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -1422,23 +1419,18 @@ package body XML3_C is
            (Element, Mode, Value, Integer (Space_Value), Status);
       end;
       Report_Operation_Status (Status);
-      if Status = XML3_DOM_Constructors.Created then
-         return 0;
-      elsif Status = XML3_DOM_Constructors.No_Memory then
-         return -1;
-      else
-         return 1;
-      end if;
+      return Results.Update (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return 1;
+         return Results.Update (Results.Status_Of (Lock_Failure));
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Update (Results.Status_Of (Allocation_Failure));
       when others =>
          Report_Failure (Unexpected_Exception);
-         return 1;
+         return Results.Update
+           (Results.Status_Of (Unexpected_Exception));
    end Set_XML_Property;
 
    function Node_Set_Lang
@@ -1468,7 +1460,8 @@ package body XML3_C is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
    begin
-      Code := 1;
+      Code :=
+        Results.Lookup (Results.Status_Of (Invalid_Argument), Found => False);
       if Node = System.Null_Address or else Name = System.Null_Address then
          return System.Null_Address;
       end if;
@@ -1480,23 +1473,25 @@ package body XML3_C is
            (Node, Name, Filter, Href, Result, Status);
       end;
       Report_Operation_Status (Status, Validation_Error => False);
-      Code := (case Status is
-                 when XML3_DOM_Constructors.Created =>
-                   (if Result = System.Null_Address then 1 else 0),
-                 when XML3_DOM_Constructors.Invalid_Argument => 1,
-                 when others => -1);
+      Code :=
+        Results.Lookup (Status, Found => Result /= System.Null_Address);
       return Result;
    exception
       when XML3_DOM_Lock.Lock_Error =>
-         Code := -1;
+         Code :=
+           Results.Lookup (Results.Status_Of (Lock_Failure), Found => False);
          Report_Failure (Lock_Failure);
          return System.Null_Address;
       when Storage_Error =>
-         Code := -1;
+         Code :=
+           Results.Lookup
+             (Results.Status_Of (Allocation_Failure), Found => False);
          Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Code := -1;
+         Code :=
+           Results.Lookup
+             (Results.Status_Of (Unexpected_Exception), Found => False);
          Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Get_Property_Value;
@@ -1679,7 +1674,8 @@ package body XML3_C is
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
          Report_Failure (Invalid_Argument);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Invalid_Argument));
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -1688,21 +1684,19 @@ package body XML3_C is
          XML3_DOM_Runtime.Unset_Namespace_Property
            (Node, Ns, Name, Removed, Status);
       end;
-      if Status = XML3_DOM_Constructors.Created and then Removed then
-         return 0;
-      end if;
       Report_Operation_Status (Status);
-      return -1;
+      return Results.Removal (Status, Removed);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Lock_Failure));
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Allocation_Failure));
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Unexpected_Exception));
    end Unset_Ns_Prop;
 
    function New_Prop
@@ -1776,7 +1770,8 @@ package body XML3_C is
    begin
       if Node = System.Null_Address or else Name = System.Null_Address then
          Report_Failure (Invalid_Argument);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Invalid_Argument));
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -1784,21 +1779,19 @@ package body XML3_C is
          XML3_DOM_Lock.Acquire (Guard);
          XML3_DOM_Runtime.Unset_Property (Node, Name, Removed, Status);
       end;
-      if Status = XML3_DOM_Constructors.Created and then Removed then
-         return 0;
-      end if;
       Report_Operation_Status (Status);
-      return -1;
+      return Results.Removal (Status, Removed);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Lock_Failure));
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Allocation_Failure));
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Unexpected_Exception));
    end Unset_Prop;
 
    function Remove_Prop (Attribute : System.Address) return Interfaces.C.int is
@@ -1807,7 +1800,8 @@ package body XML3_C is
    begin
       if Attribute = System.Null_Address then
          Report_Failure (Invalid_Argument);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Invalid_Argument));
       end if;
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -1816,21 +1810,19 @@ package body XML3_C is
          XML3_DOM_Runtime.Release
            (Attribute, XML3_DOM_Store.Namespaced_Attribute, True, Status);
       end;
-      if Status = XML3_DOM_Constructors.Created then
-         return 0;
-      end if;
       Report_Operation_Status (Status);
-      return -1;
+      return Results.Removal (Status);
    exception
       when XML3_DOM_Lock.Lock_Error =>
          Report_Failure (Lock_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Lock_Failure));
       when Storage_Error =>
          Report_Failure (Allocation_Failure);
-         return -1;
+         return Results.Removal (Results.Status_Of (Allocation_Failure));
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Results.Removal
+           (Results.Status_Of (Unexpected_Exception));
    end Remove_Prop;
 
    procedure Free_Prop (Attribute : System.Address) is
@@ -1881,7 +1873,8 @@ package body XML3_C is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status;
    begin
-      Code := 1;
+      Code :=
+        Results.Lookup (Results.Status_Of (Invalid_Argument), Found => False);
       if Node = System.Null_Address then
          return System.Null_Address;
       end if;
@@ -1892,19 +1885,20 @@ package body XML3_C is
          XML3_DOM_Runtime.Get_Namespace_List (Node, Result, Status);
       end;
       Report_Operation_Status (Status, Validation_Error => False);
-      Code := (case Status is
-                 when XML3_DOM_Constructors.Created =>
-                   (if Result = System.Null_Address then 1 else 0),
-                 when XML3_DOM_Constructors.Invalid_Argument => 1,
-                 when others => -1);
+      Code :=
+        Results.Lookup (Status, Found => Result /= System.Null_Address);
       return Result;
    exception
       when Storage_Error =>
-         Code := -1;
+         Code :=
+           Results.Lookup
+             (Results.Status_Of (Allocation_Failure), Found => False);
          Report_Failure (Allocation_Failure);
          return System.Null_Address;
       when others =>
-         Code := -1;
+         Code :=
+           Results.Lookup
+             (Results.Status_Of (Unexpected_Exception), Found => False);
          Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Namespace_List_Value;
@@ -1923,7 +1917,8 @@ package body XML3_C is
    begin
       Set_Address (Output, System.Null_Address);
       if Output = System.Null_Address then
-         return 1;
+         return Results.Lookup
+           (Results.Status_Of (Invalid_Argument), Found => False);
       end if;
       Result := Namespace_List_Value (Node, Code);
       Set_Address (Output, Result);
@@ -1931,7 +1926,8 @@ package body XML3_C is
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Results.Lookup
+           (Results.Status_Of (Unexpected_Exception), Found => False);
    end Get_Ns_List_Safe;
 
    function Search_Ns
@@ -2064,7 +2060,8 @@ package body XML3_C is
    begin
       Set_Address (Output, System.Null_Address);
       if Output = System.Null_Address then
-         return 1;
+         return Results.Lookup
+           (Results.Status_Of (Invalid_Argument), Found => False);
       end if;
       Result := Get_Property_Value (Node, Name, Href, Filter, Code);
       Set_Address (Output, Result);
@@ -2072,7 +2069,8 @@ package body XML3_C is
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
-         return -1;
+         return Results.Lookup
+           (Results.Status_Of (Unexpected_Exception), Found => False);
    end Node_Get_Attr_Value;
 
    function First_Element_Child (Parent : System.Address) return System.Address

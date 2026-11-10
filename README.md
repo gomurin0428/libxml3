@@ -673,6 +673,13 @@ parseがOOMを記録した場合に文書を破棄してNo_Memoryにする判定
 例外時のstatus（`After_Exception`）も同じunitで扱います。成功statusが置き換えで
 変わらないこと、文書の破棄は成功parseに限ることを契約で示します。TLSのOOM判定の読み取り、
 文書の解放、C ABIのstatus値への変換は引き続きadapterに残ります。
+DOM操作の入口が返す`int`の決め方はSPARKの`XML3_DOM_Results`にあります。
+- `Removal`: 属性の削除（`xmlUnsetProp`など）。削除できたときだけ0、それ以外は-1です。
+- `Update`: 内容の更新（`xmlNodeSetContent`など）。成功は0、メモリ不足は-1、その他の失敗は1です。
+- `Lookup`: 検索（`xmlNodeGetAttrValue`、`xmlGetNsListSafe`）。値があれば0、無ければ1、その他の失敗は-1です。
+- `Space_Code`と`Truth`: `xmlNodeGetSpacePreserve`と`xmlNodeIsText`などの値です。
+adapter自身が検出した失敗（引数検査と例外ハンドラ）は`Status_Of`で同等のstatusに直し、同じ関数で戻り値を決めます。
+例外の捕捉、NULL検査、lock、native呼び出し、診断の公開は引き続きadapterに残ります。
 adapter自身の失敗原因は`XML3_Diagnostic_Codes.Adapter_Failure`で名前を付け、
 `For_Failure`が(domain, code)へ写像します。lock失敗・想定外例外は(2,1)、引数不正・
 未対応text・namespaceの想定外例外は(2,115)、不正文字は(2,9)、確保失敗は(6,2)、

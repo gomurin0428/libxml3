@@ -4,23 +4,23 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               436           436                                       .           .          .
+Data Dependencies               442           442                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                  926           926                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
 Run-time Checks                5959             .     5959 (CVC5 28%, Trivial 0%, Z3 72%)           .          .
 Assertions                     1762             .    1762 (CVC5 18%, Trivial 11%, Z3 71%)           .          .
-Functional Contracts           4617             .     4617 (CVC5 21%, Trivial 3%, Z3 77%)           .          .
+Functional Contracts           4621             .     4621 (CVC5 21%, Trivial 3%, Z3 76%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     297           222                   75 (CVC5 24%, Z3 76%)           .          .
+Termination                     303           228                   75 (CVC5 24%, Z3 76%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         13998    1585 (11%)                             12413 (89%)           .          .
+Total                         14014    1597 (11%)                             12417 (89%)           .          .
 
 
 max steps used for successful proof: 787963
 
-Analyzed 39 units
+Analyzed 40 units
 in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -269,6 +269,14 @@ in unit xml3_dom_constructors, 8 subprograms and packages out of 8 analyzed
   XML3_DOM_Constructors.Create_Node at xml3_dom_constructors.ads:14 flow analyzed (0 errors, 0 checks, 9 warnings and 0 pragma Assume statements) and proved (462 checks)
   XML3_DOM_Constructors.Prepare_Node_Capacity at xml3_dom_constructors.adb:320 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (81 checks)
   XML3_DOM_Constructors.Retire_Registered at xml3_dom_constructors.adb:36 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (121 checks)
+in unit xml3_dom_results, 7 subprograms and packages out of 7 analyzed
+  XML3_DOM_Results at xml3_dom_results.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Lookup at xml3_dom_results.ads:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Removal at xml3_dom_results.ads:48 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Space_Code at xml3_dom_results.ads:97 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Status_Of at xml3_dom_results.ads:22 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_DOM_Results.Truth at xml3_dom_results.ads:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_DOM_Results.Update at xml3_dom_results.ads:62 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_dom_runtime, 46 subprograms and packages out of 46 analyzed
   XML3_DOM_Runtime at xml3_dom_runtime.ads:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_DOM_Runtime.Add_Child at xml3_dom_runtime.ads:69 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

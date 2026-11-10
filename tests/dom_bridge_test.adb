@@ -27,6 +27,7 @@ with XML3_Text;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
+with XML3_DOM_Results;
 with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 procedure DOM_Bridge_Test is
@@ -2340,6 +2341,134 @@ begin
            Seen (Status) = (Status /= Statuses.Invalid_Argument));
    end;
    Ada.Text_IO.Put_Line ("Parse status settlement policy passed");
+   declare
+      package Results renames XML3_DOM_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      package Queries renames XML3_DOM_Store.Queries;
+      use type Interfaces.C.int;
+      use type XML3_DOM_Constructors.Construction_Status;
+      use type Codes.Adapter_Failure;
+      use type Codes.Diagnostic_Code;
+      subtype Status is XML3_DOM_Constructors.Construction_Status;
+
+      --  The results the adapter computed inline before the conventions
+      --  moved into SPARK.
+      function Reference_Removal
+        (Outcome : Status; Removed : Boolean) return Interfaces.C.int is
+      begin
+         if Outcome = XML3_DOM_Constructors.Created and then Removed then
+            return 0;
+         end if;
+         return -1;
+      end Reference_Removal;
+
+      function Reference_Update
+        (Outcome : Status; Text_Only : Boolean) return Interfaces.C.int is
+      begin
+         return
+           (if Outcome = XML3_DOM_Constructors.Created then 0
+            elsif Text_Only or else Outcome = XML3_DOM_Constructors.No_Memory
+            then -1
+            else 1);
+      end Reference_Update;
+
+      function Reference_Lookup
+        (Outcome : Status; Found : Boolean) return Interfaces.C.int is
+      begin
+         return
+           (case Outcome is
+              when XML3_DOM_Constructors.Created => (if Found then 0 else 1),
+              when XML3_DOM_Constructors.Invalid_Argument => 1,
+              when others => -1);
+      end Reference_Lookup;
+
+      --  What each exception handler and argument guard returned.
+      Seen_Update : array (Interfaces.C.int range -1 .. 1) of Boolean :=
+        (others => False);
+      Seen_Lookup : array (Interfaces.C.int range -1 .. 1) of Boolean :=
+        (others => False);
+   begin
+      for Outcome in Status loop
+         for Flag in Boolean loop
+            pragma Assert
+              (Results.Removal (Outcome, Flag) =
+                 Reference_Removal (Outcome, Flag));
+            pragma Assert
+              (Results.Update (Outcome, Flag) =
+                 Reference_Update (Outcome, Flag));
+            pragma Assert
+              (Results.Lookup (Outcome, Flag) =
+                 Reference_Lookup (Outcome, Flag));
+            Seen_Update (Results.Update (Outcome, Flag)) := True;
+            Seen_Lookup (Results.Lookup (Outcome, Flag)) := True;
+         end loop;
+         pragma Assert
+           (Results.Removal (Outcome) = Reference_Removal (Outcome, True));
+         pragma Assert
+           (Results.Update (Outcome) = Reference_Update (Outcome, False));
+      end loop;
+      pragma Assert (for all Value in Seen_Update'Range => Seen_Update (Value));
+      pragma Assert (for all Value in Seen_Lookup'Range => Seen_Lookup (Value));
+
+      --  Exception handlers: lock failure, allocation failure, anything else.
+      --  xmlUnsetProp, xmlUnsetNsProp and xmlRemoveProp returned -1 for all.
+      for Cause in Codes.Adapter_Failure loop
+         pragma Assert (Results.Removal (Results.Status_Of (Cause)) = -1);
+         pragma Assert
+           (Results.Status_Of (Cause) /= XML3_DOM_Constructors.Created);
+      end loop;
+      --  xmlNodeSetContent(Len), xmlNodeAddContent(Len), xmlNodeSetLang and
+      --  xmlNodeSetSpacePreserve returned 1, -1, 1; xmlTextConcat -1 for all.
+      pragma Assert (Results.Update (Results.Status_Of (Codes.Lock_Failure)) = 1);
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Allocation_Failure)) = -1);
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Unexpected_Exception)) = 1);
+      for Cause in Codes.Adapter_Failure loop
+         pragma Assert
+           (Results.Update (Results.Status_Of (Cause), Text_Only => True) = -1);
+      end loop;
+      --  Lookups returned -1 from every handler.
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Lock_Failure), False) = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Allocation_Failure), False)
+           = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Unexpected_Exception), False)
+           = -1);
+
+      --  Argument guards: a NULL element was 1 for updates, NULL arguments
+      --  -1 for removals, and a NULL node, name or output 1 for lookups.
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Invalid_Argument)) = 1);
+      pragma Assert
+        (Results.Update
+           (Results.Status_Of (Codes.Invalid_Argument), Text_Only => True)
+           = -1);
+      pragma Assert
+        (Results.Removal (Results.Status_Of (Codes.Invalid_Argument)) = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Invalid_Argument), False)
+           = 1);
+
+      --  A DOM cause publishes the diagnostic of its equivalent status.
+      for Cause in Codes.Adapter_Failure loop
+         if Cause not in Codes.Invalid_Character | Codes.Parser_Exception then
+            pragma Assert
+              (Codes.For_Operation
+                 (Results.Status_Of (Cause), Validation_Error => True) =
+               Codes.For_Failure (Cause));
+         end if;
+      end loop;
+
+      pragma Assert (Results.Space_Code (Queries.Unspecified) = -1);
+      pragma Assert (Results.Space_Code (Queries.Default_Space) = 0);
+      pragma Assert (Results.Space_Code (Queries.Preserve_Space) = 1);
+      pragma Assert (Results.Truth (True) = 1);
+      pragma Assert (Results.Truth (False) = 0);
+   end;
+   Ada.Text_IO.Put_Line ("DOM result convention policy passed");
    declare
       package Codes renames XML3_Diagnostic_Codes;
       use type Codes.Diagnostic_Code;

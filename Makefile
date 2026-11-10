@@ -56,6 +56,7 @@ tests/dom-bridge-test: tests/dom_bridge_test.adb tests/dom_bridge_test.gpr tests
         src/xml3_parser-outcomes.ads \
         src/xml3_parser-requests.ads \
         src/xml3_parser-statuses.ads \
+        src/xml3_dom_results.ads \
         src/xml3_parser-native_sizes.ads src/xml3_parser-workspaces.ads src/xml3_parser-workspaces.adb \
 		src/xml3_dom_store.ads src/xml3_dom_store.adb \
 		src/xml3_dom_store-queries.ads src/xml3_dom_store-queries.adb \

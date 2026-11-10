@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 13,998 checks
-(1,585 flow and 12,413 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,014 checks
+(1,597 flow and 12,417 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1059,6 +1059,19 @@ behavior. The decisions reproduce the previous adapter logic exactly; tests
 compare every read status, report kind and out-of-memory flag, every
 admission kind and every preparation result with a test-local copy of the
 former adapter code, and the frozen error oracle and OOM walks are unchanged.
+
+`DOM_Results` holds the `int` result conventions of the DOM entry points:
+`Removal`, `Update`, `Lookup`, `Space_Code` and `Truth`, each a total
+function of the operation status and of whether the operation removed or
+found something. `Status_Of` maps the adapter's own failure causes onto the
+equivalent status, so guards and exception handlers return through the same
+functions. The contracts state when each convention answers 0, that an
+out-of-memory status answers -1, and that a DOM failure cause publishes the
+diagnostic of its equivalent status. Catching exceptions, checking NULL
+arguments, taking the lock, the native calls and publishing the diagnostic
+remain trusted adapter behavior. The results reproduce the previous adapter
+expressions exactly; tests compare every input with a test-local copy of
+them, and the OOM walks and reference comparisons are unchanged.
 
 `XML3_DOM` is split into child units so that each compilation unit proves
 in one run.
