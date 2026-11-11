@@ -6,16 +6,16 @@ SPARK Analysis results        Total          Flow                               
 ----------------------------------------------------------------------------------------------------------------
 Data Dependencies               521           521                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                 1029          1029                                       .           .          .
+Initialization                 1030          1030                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                6136             .     6136 (CVC5 34%, Trivial 0%, Z3 66%)           .          .
+Run-time Checks                6135             .     6135 (CVC5 34%, Trivial 0%, Z3 65%)           .          .
 Assertions                     1802             .    1802 (CVC5 20%, Trivial 11%, Z3 69%)           .          .
-Functional Contracts           4867             .     4867 (CVC5 28%, Trivial 3%, Z3 69%)           .          .
+Functional Contracts           4869             .     4869 (CVC5 29%, Trivial 3%, Z3 69%)           .          .
 LSP Verification                  .             .                                       .           .          .
 Termination                     351           276                   75 (CVC5 35%, Z3 65%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         14707    1827 (12%)                             12880 (88%)           .          .
+Total                         14709    1828 (12%)                             12881 (88%)           .          .
 
 
 max steps used for successful proof: 787963
@@ -25,11 +25,11 @@ in unit xml3_byte_buffers, 19 subprograms and packages out of 19 analyzed
   XML3_Byte_Buffers at xml3_byte_buffers.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Add at xml3_byte_buffers.ads:54 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
   XML3_Byte_Buffers.Add_Code at xml3_byte_buffers.ads:109 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Byte_Buffers.Add_Head at xml3_byte_buffers.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (20 checks)
+  XML3_Byte_Buffers.Add_Head at xml3_byte_buffers.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_Byte_Buffers.Add_Head_Code at xml3_byte_buffers.ads:113 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Add_Quoted at xml3_byte_buffers.ads:94 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
-  XML3_Byte_Buffers.Add_Quoted.Add_Segment at xml3_byte_buffers.adb:269 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Byte_Buffers.Add_Quoted.Add_Text at xml3_byte_buffers.adb:246 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
+  XML3_Byte_Buffers.Add_Quoted.Add_Segment at xml3_byte_buffers.adb:280 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Byte_Buffers.Add_Quoted.Add_Text at xml3_byte_buffers.adb:257 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
   XML3_Byte_Buffers.Content at xml3_byte_buffers.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Create at xml3_byte_buffers.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
   XML3_Byte_Buffers.Detach at xml3_byte_buffers.ads:85 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)

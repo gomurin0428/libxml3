@@ -157,7 +157,8 @@ package body XML3_Byte_Buffers with SPARK_Mode is
       Status : out Add_Status)
    is
       Start : constant Natural := B.Offset;
-      Result : Integer;
+      New_Base : System.Address;
+      New_Size : Positive;
    begin
       Status := Added;
       if Length = 0 then
@@ -180,17 +181,27 @@ package body XML3_Byte_Buffers with SPARK_Mode is
          B.Size := B.Size + Start;
          return;
       end if;
-      Grow (B, Length, Result);
-      if Result < 0
-        or else B.Base = System.Null_Address
-        or else Length >= B.Size - B.Used
-      then
+      --  Grows as xmlBufferGrow does, but reads Source into the new block
+      --  before releasing the old one, so that bytes taken from the
+      --  buffer itself stay valid (libxml2 reads them after the release).
+      if Length >= Max_Size - B.Used then
          Status := No_Memory;
          return;
       end if;
-      Move_Bytes (B.Base, B.Offset, B.Base, B.Offset + Length, B.Used + 1);
-      Move_Bytes (Source, 0, B.Base, B.Offset, Length);
-      B.Used := B.Used + Length;
+      New_Size := Grown_Size (B, Length);
+      Native.Allocate (Native.Byte_Count (New_Size), New_Base);
+      if New_Base = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Move_Bytes (Source, 0, New_Base, 0, Length);
+      if B.Base /= System.Null_Address then
+         Move_Bytes (B.Base, B.Offset, New_Base, Length, B.Used);
+         Native.Free (B.Base);
+      end if;
+      Native.Write_Byte (New_Base, Length + B.Used, Character'Val (0));
+      B := (Base => New_Base, Offset => 0, Used => B.Used + Length,
+            Size => New_Size);
    end Add_Head;
 
    procedure Shrink (B : in out Buffer; Length : Natural; Result : out Integer)

@@ -498,6 +498,7 @@ package body XML3_C is
 
    function File_Read_Path
      (Path : System.Address; Standard_Input : Interfaces.C.int;
+      Limit : Interfaces.C.size_t;
       Data : access System.Address; Length : access Interfaces.C.size_t;
       Read_Stage : access Interfaces.C.int) return Interfaces.C.int
      with Import, Convention => C, External_Name => "xml3FileReadPath";
@@ -585,12 +586,17 @@ package body XML3_C is
       Code := File_Read_Path
         ((if Path /= System.Null_Address then Path else Name),
          (if Standard_Input then 1 else 0),
+         Interfaces.C.size_t (XML3_Text.Max_Bytes),
          Data'Access, Length'Access, Stage'Access);
       if Path /= System.Null_Address then
          XML3_Native_Memory.Free (Path);
       end if;
       if Code = -1 then
          Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      elsif Code = -2 then
+         --  Larger than the parser accepts: stopped before reading on.
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, Name);
          return System.Null_Address;
       elsif Code /= 0 then
          declare
@@ -1389,7 +1395,9 @@ package body XML3_C is
          end;
       end if;
       XML3_Native_Memory.Free (Bytes);
-      return (if Written < 0 then -1 else Interfaces.C.int (Written));
+      --  An open failure is -1, a write failure the negated XML_IO_* code,
+      --  as libxml2 returns them; neither publishes a diagnostic.
+      return Interfaces.C.int (Written);
    exception
       when others =>
          if Bytes /= System.Null_Address then

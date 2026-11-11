@@ -98,6 +98,19 @@ static void test_buffers(void) {
     sized = xmlBufferCreateSize(10);
     put_buffer("size 10", sized);
     xmlBufferFree(sized);
+#ifndef XML3_REFERENCE_TEST
+    /* Prepending a buffer's own content while it grows reads the bytes
+     * before the old block is released (libxml2 reads them after). */
+    sized = xmlBufferCreateSize(10);
+    assert(xmlBufferAdd(sized, BAD_CAST "0123456789", 10) == 0);
+    assert(xmlBufferAddHead(sized, xmlBufferContent(sized), 10) == 0);
+    assert(strcmp((const char *)xmlBufferContent(sized),
+                  "01234567890123456789") == 0);
+    assert(xmlBufferAdd(sized, xmlBufferContent(sized), 20) == 0);
+    assert(xmlBufferLength(sized) == 40);
+    assert(memcmp(xmlBufferContent(sized), "0123456789", 10) == 0);
+    xmlBufferFree(sized);
+#endif
     sized = xmlBufferCreateStatic((void *)"static text", 6);
     put_buffer("static", sized);
     xmlBufferFree(sized);
@@ -200,6 +213,13 @@ static void test_streams_and_files(void) {
     printf("xmlDocFormatDump=%d\n", result);
     fclose(file);
     put_file("stream", path);
+    /* A write failure answers the negated XML_IO_* code. */
+    file = fopen("/dev/full", "wb");
+    if (file != NULL) {
+        printf("full device stream=%d\n", xmlDocDump(file, doc));
+        fclose(file);
+        printf("full device file=%d\n", xmlSaveFile("/dev/full", doc));
+    }
     printf("null stream: %d %d\n", xmlDocDump(NULL, doc),
            xmlDocFormatDump(NULL, doc, 1));
     xmlElemDump(NULL, doc, x);

@@ -16,6 +16,10 @@
 #define XML3_INTERNAL
 #endif
 
+static int io_code(int err);
+
+/* A failed write or close answers the negated XML_IO_* code of errno, as
+ * xmlOutputBufferClose does. */
 static long write_all(int fd, const char *data, size_t length) {
     size_t done = 0;
 
@@ -25,7 +29,7 @@ static long write_all(int fd, const char *data, size_t length) {
         if (written < 0) {
             if (errno == EINTR)
                 continue;
-            return -1;
+            return -io_code(errno);
         }
         done += (size_t)written;
     }
@@ -33,8 +37,9 @@ static long write_all(int fd, const char *data, size_t length) {
 }
 
 /* Writes length bytes to path, or to standard output when standard_output
- * is nonzero.  Returns the byte count, or -1 when the file cannot be
- * opened, written or closed. */
+ * is nonzero.  Returns the byte count, -1 when the file cannot be opened
+ * (libxml2 creates no output buffer then), or the negated XML_IO_* code
+ * when writing or closing fails. */
 XML3_INTERNAL long xml3FileWritePath(const char *path, int standard_output,
                                      const void *data, size_t length) {
     int fd;
@@ -49,13 +54,14 @@ XML3_INTERNAL long xml3FileWritePath(const char *path, int standard_output,
     if (fd < 0)
         return -1;
     result = write_all(fd, (const char *)data, length);
-    if (close(fd) < 0)
-        result = -1;
+    if (close(fd) < 0 && result >= 0)
+        result = -io_code(errno);
     return result;
 }
 
 /* Writes length bytes to a caller's FILE and flushes it.  Returns the byte
- * count, or -1 for a NULL stream or a write error. */
+ * count, -1 for a NULL stream, or the negated XML_IO_* code of a write or
+ * flush error. */
 XML3_INTERNAL long xml3FileWriteStream(void *stream, const void *data,
                                        size_t length) {
     FILE *file = (FILE *)stream;
@@ -63,9 +69,9 @@ XML3_INTERNAL long xml3FileWriteStream(void *stream, const void *data,
     if (file == NULL)
         return -1;
     if (length > 0 && fwrite(data, 1, length, file) != length)
-        return -1;
+        return -io_code(errno);
     if (fflush(file) != 0)
-        return -1;
+        return -io_code(errno);
     return length > (size_t)0x7fffffff ? 0x7fffffff : (long)length;
 }
 
@@ -137,10 +143,11 @@ static int io_code(int err) {
  * libxml2's default input callback does.  Returns 0 with the bytes in
  * *data (to be freed by the caller) and their count in *length; -1 when an
  * allocation fails; otherwise the XML_IO_* code, with *read_stage set to
- * 0 when opening failed and 1 when reading failed.  Opening reports ENOENT
+ * 0 when opening failed and 1 when reading failed; -2 as soon as the
+ * input exceeds limit bytes, before reading further.  Opening reports ENOENT
  * and EINVAL as XML_IO_ENOENT, as xmlFdOpen does. */
 XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
-                                   void **data, size_t *length,
+                                   size_t limit, void **data, size_t *length,
                                    int *read_stage) {
     int fd;
     size_t size = 0, capacity = 4096;
@@ -197,6 +204,11 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
         if (count == 0)
             break;
         size += (size_t)count;
+        if (size > limit) {
+            free(buffer);
+            close(fd);
+            return -2;
+        }
     }
     close(fd);
     *data = buffer;
