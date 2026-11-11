@@ -609,6 +609,33 @@ int main(int argc, char **argv) {
         xmlBufferFree(buf);
         xmlFreeDoc(doc);
         doc = NULL;
+    } else if (strcmp(operation, "read-file") == 0) {
+        /* A file: URI path, the file contents and the parse each
+         * allocate; every failure returns NULL with the out-of-memory
+         * error. */
+        char path[] = "/tmp/xml3-oom-read-XXXXXX";
+        char uri[64];
+        int fd = mkstemp(path);
+        static const char text[] = "<r a='1'><c>t</c></r>";
+
+        assert(fd >= 0);
+        assert(write(fd, text, sizeof(text) - 1) == (ssize_t)(sizeof(text) - 1));
+        close(fd);
+        snprintf(uri, sizeof(uri), "file://%s", path);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadFile(uri, NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        unlink(path);
+        if (injected) {
+            assert(!doc);
+            require_oom_error();
+        } else {
+            assert(doc && xmlDocGetRootElement(doc));
+            xmlFreeDoc(doc);
+        }
+        doc = NULL;
     } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);

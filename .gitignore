@@ -76,3 +76,9 @@ tests/output-test-development
 tests/output-test-sanitize
 tests/output-test.out
 tests/output-test-reference.out
+tests/input-test
+tests/input-test-reference
+tests/input-test-development
+tests/input-test-sanitize
+tests/input-test.out
+tests/input-test-reference.out

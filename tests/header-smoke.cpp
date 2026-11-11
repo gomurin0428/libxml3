@@ -145,6 +145,10 @@ int main() {
     (void)doc_format_dump;
     (void)elem_dump;
     (void)save_format_file_enc;
+    xmlDoc *(*read_file)(const char *, const char *, int) = xmlReadFile;
+    xmlDoc *(*parse_file)(const char *) = xmlParseFile;
+    (void)read_file;
+    (void)parse_file;
     xmlChar *(*build_qname)(const xmlChar *, const xmlChar *, xmlChar *, int) = xmlBuildQName;
     (void)build_qname;
     xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;

@@ -1719,5 +1719,17 @@
     "scope": "Serializes a managed document (UTF-8 encodings only, as xmlDocDumpFormatMemoryEnc) and writes it to a file created with O_CREAT|O_TRUNC, mode 0666, or to standard output for \"-\". The SPARK XML3_File_Paths planner follows libxml2: a name without a URI scheme is URI-unescaped, a file: URI is unescaped after its file://localhost, file:// or file: prefix, other schemes are used literally. Unlike libxml2, the name is unescaped even when it is not a valid URI reference, and the file is not created when the serialization fails. Returns the bytes written or -1 without a diagnostic for an open or write failure. Compression is not supported. Native file I/O and ABI remain outside proof.",
     "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadFile": {
+    "implementation": "partial",
+    "scope": "Reads a file, or standard input for \"-\", and parses it with the given encoding and options. NULL returns NULL without a diagnostic. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping) and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlParseFile": {
+    "implementation": "partial",
+    "scope": "xmlReadFile without an encoding or options. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping) and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

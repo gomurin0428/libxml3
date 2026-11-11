@@ -67,6 +67,21 @@ package body XML3_File_Paths with SPARK_Mode is
       end if;
    end Plan;
 
+   procedure Plan_Input
+     (Name : System.Address; Length : Natural; Result : out Path_Plan)
+   is
+   begin
+      if Starts_With (Name, Length, "file://localhost/") then
+         Result := (Unescape => True, Skip => 16, May_Be_Standard => False);
+      elsif Starts_With (Name, Length, "file:///") then
+         Result := (Unescape => True, Skip => 7, May_Be_Standard => False);
+      elsif Starts_With (Name, Length, "file:/") then
+         Result := (Unescape => True, Skip => 5, May_Be_Standard => False);
+      else
+         Result := (Unescape => False, Skip => 0, May_Be_Standard => False);
+      end if;
+   end Plan_Input;
+
    function Is_Standard (Path : System.Address; Length : Natural)
      return Boolean
    is (Length = 1 and then Native.Byte_At (Path, 0) = '-');

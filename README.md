@@ -163,6 +163,16 @@ libxml2との差は次のとおりです。
   `xmlCopyPropList` は未対応です。namespace宣言（`xmlNs`）を `xmlCopyNode` でコピーすることも
   できません。DTDとIDは対象外です。
 
+`xmlReadFile` と `xmlParseFile` はファイル（`-` なら標準入力）を読み、`xmlReadMemory` と同じ解析を
+ファイル名をURLとして行うので、解析エラーはファイル名を持ちます。ファイル名は libxml2 の `xmlFdOpen` と同じく、
+`file:` URI だけを接頭辞の後でアンエスケープし、それ以外はそのまま使います（SPARKの `XML3_File_Paths`）。
+開けない場合は libxml2 の `xmlCtxtErrIO` と同じ `XML_FROM_IO` のエラーを記録します（`failed to load "名前": 理由`、
+str1にファイル名、見つからない場合は警告、それ以外は致命的）。読めない場合（ディレクトリなど）は
+ファイル名付きで1行1列目の致命的エラーです。コードと文言はSPARKの `XML3_IO_Errors` の表で決め、
+読み込み自体は小さなCヘルパーで行います。固定版2.15.4と同じ結果になることを `make test-input` で比較しています。
+公開 `xmlDoc` に `URL` フィールドがないこと、圧縮入力とネットワークURL、`xmlReadMemory` が受け付けない解析オプションは
+対象外です。解析コンテキストのAPI（`xmlNewParserCtxt`、`xmlCtxtReadMemory` など）は未対応です。
+
 `xmlBuffer` 系（`xmlBufferCreate`、`xmlBufferCreateSize`、`xmlBufferCreateStatic`、`xmlBufferFree`、
 `xmlBufferEmpty`、`xmlBufferShrink`、`xmlBufferGrow`、`xmlBufferResize`、`xmlBufferAdd`、`xmlBufferAddHead`、
 `xmlBufferCat`、`xmlBufferCCat`、`xmlBufferWriteCHAR`、`xmlBufferWriteChar`、`xmlBufferWriteQuotedString`、

@@ -26,6 +26,15 @@ package XML3_File_Paths with SPARK_Mode is
      Pre => Name /= System.Null_Address,
      Post => Result.Skip <= Length;
 
+   --  The path of an input file (xmlReadFile, xmlParseFile): only a
+   --  "file:" URI is unescaped after its prefix, as xmlFdOpen does; any
+   --  other name is used literally.  "-" is handled by the caller.
+   procedure Plan_Input
+     (Name : System.Address; Length : Natural; Result : out Path_Plan)
+   with Global => (Input => XML3_Native_Memory.Foreign_Memory),
+     Pre => Name /= System.Null_Address,
+     Post => Result.Skip <= Length and then not Result.May_Be_Standard;
+
    --  Whether the NUL-terminated Path, Length bytes long, is "-".
    function Is_Standard (Path : System.Address; Length : Natural)
      return Boolean

@@ -16,6 +16,7 @@ with XML3_Encoding.Buffers;
 with XML3_Byte_Buffers;
 with XML3_Entry_Guards;
 with XML3_File_Paths;
+with XML3_IO_Errors;
 with XML3_Native_Memory;
 with XML3_Errors;
 with XML3_Namespaces;
@@ -488,6 +489,149 @@ package body XML3_C is
          Report_Failure (Parser_Exception, URL);
          return System.Null_Address;
    end Read_Doc;
+
+   ------------------------------------------------------------------
+   --  File input.  The path and the diagnostics are decided in SPARK
+   --  (XML3_File_Paths, XML3_IO_Errors); the system calls are in the C
+   --  helper, the parse is the memory parse with the file name as URL.
+   ------------------------------------------------------------------
+
+   function File_Read_Path
+     (Path : System.Address; Standard_Input : Interfaces.C.int;
+      Data : access System.Address; Length : access Interfaces.C.size_t;
+      Read_Stage : access Interfaces.C.int) return Interfaces.C.int
+     with Import, Convention => C, External_Name => "xml3FileReadPath";
+
+   --  Publishes the I/O failure of an input, as xmlCtxtErrIO does: a
+   --  failure to open names the file in the message and in str1; a
+   --  failure to read is reported at line 1, column 1 of the file.
+   procedure Report_Input_Failure
+     (Name : String; Name_Address : System.Address;
+      Code : Interfaces.C.int; While_Reading : Boolean)
+   is
+      Text : constant String :=
+        (if While_Reading then XML3_IO_Errors.Text (Code)
+         else XML3_IO_Errors.Open_Message (Name, Code))
+        & Character'Val (10);
+      Message : System.Address;
+   begin
+      --  The record copies the message; this NUL-terminated buffer is
+      --  released afterwards.
+      XML3_Native_Memory.Allocate (Text'Length + 1, Message);
+      if Message = System.Null_Address then
+         Report_Failure (Allocation_Failure);
+         return;
+      end if;
+      XML3_Native_Memory.Write_String (Message, 0, Text);
+      XML3_Native_Memory.Write_Byte (Message, Text'Length, Character'Val (0));
+      if While_Reading then
+         XML3_Errors.Set_Error
+           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Fatal_Level,
+            1, 0, 1, Message, Name_Address,
+            System.Null_Address, System.Null_Address, System.Null_Address);
+      else
+         XML3_Errors.Set_Error
+           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Level_For (Code),
+            0, 0, 0, Message, System.Null_Address,
+            Name_Address, System.Null_Address, System.Null_Address);
+      end if;
+      XML3_Native_Memory.Free (Message);
+   end Report_Input_Failure;
+
+   function Read_File_Input
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+   is
+      Name_Length, Path_Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+      Plan : XML3_File_Paths.Path_Plan;
+      Path : System.Address := System.Null_Address;
+      Unescape_Status : XML3_Text.Buffers.Escape_Status;
+      Data : aliased System.Address := System.Null_Address;
+      Length : aliased Interfaces.C.size_t := 0;
+      Stage : aliased Interfaces.C.int := 0;
+      Code : Interfaces.C.int;
+      Standard_Input : Boolean;
+      Status : XML3_Parser.Statuses.Public_Status;
+      Result : System.Address;
+      use type XML3_Text.Buffers.Escape_Status;
+   begin
+      if Refused (Guards.File_Read, Name /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Report_Failure (Unsupported_Text);
+         return System.Null_Address;
+      end if;
+      --  xmlReadFile keeps "-" for standard input.
+      Standard_Input :=
+        XML3_File_Paths.Is_Standard (Name, Natural (Name_Length));
+      if not Standard_Input then
+         XML3_File_Paths.Plan_Input (Name, Natural (Name_Length), Plan);
+         if Plan.Unescape then
+            XML3_Text.Buffers.Unescape_URI
+              (XML3_Native_Memory.Offset
+                 (Name, XML3_Native_Memory.Byte_Count (Plan.Skip)),
+               Integer (Name_Length) - Plan.Skip, System.Null_Address,
+               Path, Unescape_Status);
+            if Unescape_Status /= XML3_Text.Buffers.Escaped then
+               Report_Failure (Allocation_Failure);
+               return System.Null_Address;
+            end if;
+            XML3_Text.Buffers.Measure (Path, Path_Length, Found);
+         end if;
+      end if;
+      Code := File_Read_Path
+        ((if Path /= System.Null_Address then Path else Name),
+         (if Standard_Input then 1 else 0),
+         Data'Access, Length'Access, Stage'Access);
+      if Path /= System.Null_Address then
+         XML3_Native_Memory.Free (Path);
+      end if;
+      if Code = -1 then
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      elsif Code /= 0 then
+         declare
+            Text : String (1 .. Natural (Name_Length))
+              with Import, Address => Name;
+         begin
+            Report_Input_Failure (Text, Name, Code, Stage /= 0);
+         end;
+         return System.Null_Address;
+      end if;
+      if Length > Interfaces.C.size_t (Interfaces.C.int'Last) then
+         XML3_Native_Memory.Free (Data);
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, Name);
+         return System.Null_Address;
+      end if;
+      Result := Parse_Buffer
+        (Data, Interfaces.C.int (Length), Name, Encoding, Options, Status);
+      XML3_Native_Memory.Free (Data);
+      return Result;
+   exception
+      when Storage_Error =>
+         if Data /= System.Null_Address then
+            XML3_Native_Memory.Free (Data);
+         end if;
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      when others =>
+         if Data /= System.Null_Address then
+            XML3_Native_Memory.Free (Data);
+         end if;
+         Report_Failure (Parser_Exception);
+         return System.Null_Address;
+   end Read_File_Input;
+
+   function Read_File
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address is
+     (Read_File_Input (Name, Encoding, Options));
+
+   function Parse_File (Name : System.Address) return System.Address is
+     (Read_File_Input (Name, System.Null_Address, 0));
 
    function Parse_Doc (Cur : System.Address) return System.Address is
    begin

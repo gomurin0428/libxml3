@@ -2744,6 +2744,8 @@ begin
             --  New with the buffer and output entry points.
             when Guards.Buffer_Use =>
                return (Refuse => not First, Report => False);
+            when Guards.File_Read =>
+               return (Refuse => not First, Report => False);
             when Guards.Buffer_Append | Guards.Node_Dump
                | Guards.Stream_Dump | Guards.File_Save =>
                return (Refuse => not First or else not Second,

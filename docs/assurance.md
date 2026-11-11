@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,690 checks
-(1,819 flow and 12,871 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,707 checks
+(1,827 flow and 12,880 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1121,6 +1121,14 @@ whether a file name is URI-unescaped, which `file:` prefix is skipped and
 when `-` means standard output; the system calls are in a small trusted C
 helper. `make test-output` compares buffers, dumps and written files with
 the pinned libxml2.
+
+`xmlReadFile` and `xmlParseFile` read the file through a small trusted C
+helper and parse it as `xmlReadMemory` does, with the file name as URL.
+`File_Paths.Plan_Input` unescapes only `file:` URIs, as `xmlFdOpen` does,
+and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
+the record published when the file cannot be opened or read. `make
+test-input` compares the documents and error records with the pinned
+libxml2.
 
 `Text_Results` selects the diagnostics and `int` results of the string
 entry points from the statuses of the SPARK string operations: a length

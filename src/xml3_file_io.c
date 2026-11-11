@@ -73,3 +73,133 @@ XML3_INTERNAL long xml3FileWriteStream(void *stream, const void *data,
 XML3_INTERNAL void *xml3FileStandardOutput(void) {
     return stdout;
 }
+
+#include <stdlib.h>
+#include <string.h>
+
+/* xmlIOErr: the XML_IO_* code of libxml2 2.15.4 for an errno value. */
+static int io_code(int err) {
+    switch (err) {
+    case EACCES: return 1501;
+    case EAGAIN: return 1502;
+    case EBADF: return 1503;
+    case EBADMSG: return 1504;
+    case EBUSY: return 1505;
+    case ECANCELED: return 1506;
+    case ECHILD: return 1507;
+    case EDEADLK: return 1508;
+    case EDOM: return 1509;
+    case EEXIST: return 1510;
+    case EFAULT: return 1511;
+    case EFBIG: return 1512;
+    case EINPROGRESS: return 1513;
+    case EINTR: return 1514;
+    case EINVAL: return 1515;
+    case EIO: return 1516;
+    case EISDIR: return 1517;
+    case EMFILE: return 1518;
+    case EMLINK: return 1519;
+    case EMSGSIZE: return 1520;
+    case ENAMETOOLONG: return 1521;
+    case ENFILE: return 1522;
+    case ENODEV: return 1523;
+    case ENOENT: return 1524;
+    case ENOEXEC: return 1525;
+    case ENOLCK: return 1526;
+    case ENOMEM: return 1527;
+    case ENOSPC: return 1528;
+    case ENOSYS: return 1529;
+    case ENOTDIR: return 1530;
+    case ENOTEMPTY: return 1531;
+    case ENOTSUP: return 1532;
+    case ENOTTY: return 1533;
+    case ENXIO: return 1534;
+    case EPERM: return 1535;
+    case EPIPE: return 1536;
+    case ERANGE: return 1537;
+    case EROFS: return 1538;
+    case ESPIPE: return 1539;
+    case ESRCH: return 1540;
+    case ETIMEDOUT: return 1541;
+    case EXDEV: return 1542;
+    case ENOTSOCK: return 1550;
+    case EISCONN: return 1551;
+    case ECONNREFUSED: return 1552;
+    case ENETUNREACH: return 1553;
+    case EADDRINUSE: return 1554;
+    case EALREADY: return 1555;
+    case EAFNOSUPPORT: return 1556;
+    default: return 1500;
+    }
+}
+
+/* Reads a whole file (or standard input) into a new allocation, as
+ * libxml2's default input callback does.  Returns 0 with the bytes in
+ * *data (to be freed by the caller) and their count in *length; -1 when an
+ * allocation fails; otherwise the XML_IO_* code, with *read_stage set to
+ * 0 when opening failed and 1 when reading failed.  Opening reports ENOENT
+ * and EINVAL as XML_IO_ENOENT, as xmlFdOpen does. */
+XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
+                                   void **data, size_t *length,
+                                   int *read_stage) {
+    int fd;
+    size_t size = 0, capacity = 4096;
+    char *buffer;
+
+    *data = NULL;
+    *length = 0;
+    *read_stage = 0;
+    if (standard_input)
+        fd = dup(STDIN_FILENO);
+    else
+        fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        int err = errno;
+        if (!standard_input && (err == ENOENT || err == EINVAL))
+            return 1524;
+        return io_code(err);
+    }
+    *read_stage = 1;
+    buffer = malloc(capacity);
+    if (buffer == NULL) {
+        close(fd);
+        return -1;
+    }
+    for (;;) {
+        ssize_t count;
+
+        if (size == capacity) {
+            char *grown;
+
+            if (capacity > ((size_t)-1) / 2) {
+                free(buffer);
+                close(fd);
+                return -1;
+            }
+            grown = realloc(buffer, capacity * 2);
+            if (grown == NULL) {
+                free(buffer);
+                close(fd);
+                return -1;
+            }
+            buffer = grown;
+            capacity *= 2;
+        }
+        count = read(fd, buffer + size, capacity - size);
+        if (count < 0) {
+            int err = errno;
+            if (err == EINTR)
+                continue;
+            free(buffer);
+            close(fd);
+            return io_code(err);
+        }
+        if (count == 0)
+            break;
+        size += (size_t)count;
+    }
+    close(fd);
+    *data = buffer;
+    *length = size;
+    return 0;
+}

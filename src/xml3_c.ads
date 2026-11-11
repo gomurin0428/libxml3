@@ -39,6 +39,14 @@ package XML3_C is
       Size   : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlParseMemory";
 
+   function Read_File
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlReadFile";
+
+   function Parse_File (Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlParseFile";
+
    function Read_Doc
      (Cur      : System.Address;
       URL      : System.Address;
