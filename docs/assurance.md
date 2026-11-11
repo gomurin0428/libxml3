@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,077 checks
-(1,651 flow and 12,426 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,080 checks
+(1,653 flow and 12,427 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1050,7 +1050,9 @@ thread-local slot and never changes a successful status; `Settle_Parse`
 additionally decides that a successful parse which published a warning
 diagnostic and then found out-of-memory recorded discards its document and
 reports `No_Memory`; `After_Exception` selects the status of the exception
-handlers. The contracts state that only a successful parse can discard its
+handlers; `Report_For_Preparation` selects whether a failed input
+preparation is reported at the start of the input or, when out of memory,
+without a position. The contracts state that only a successful parse can discard its
 document, that the result is unchanged when no out-of-memory error is
 recorded, and that every changed status is `No_Memory`. Reading the
 thread-local error, freeing the discarded document, publishing the

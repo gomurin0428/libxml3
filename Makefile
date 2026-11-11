@@ -419,7 +419,9 @@ compare: build tests/differential-libxml3 tests/differential-reference
 compare-system: build tests/differential-libxml3 tests/differential-system
 	LD_LIBRARY_PATH=lib ./tests/differential-libxml3 > tests/differential-libxml3.out
 	./tests/differential-system > tests/differential-system.out
-	diff -u tests/differential-system.out tests/differential-libxml3.out
+	python3 eng/compare_system.py \
+		--system-version "$$(pkg-config --modversion libxml-2.0)" \
+		tests/differential-system.out tests/differential-libxml3.out
 
 check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime test-dom-projection test-text-buffers
 	@for symbol in xmlValidateNameValue xmlValidateNamesValue xmlValidateNmtokenValue xmlValidateNmtokensValue xmlGetDocEntity xmlGetPredefinedEntity xmlNormalizeURIPath xmlURIUnescapeString xmlURIEscapeStr xmlCopyChar xmlCopyCharMultiByte xmlCharInRange xmlInitParser xmlCleanupParser xmlReadMemory xmlParseMemory \

@@ -192,8 +192,15 @@ postcondition states that a document is discarded only for a successful
 parse that ends as `No_Memory`, that the settled status is `OK` exactly when
 the parse succeeded and the document is kept, and that nothing changes when
 no out-of-memory error is recorded. `After_Exception` never selects `OK`.
-Each of the six functions proves 1 check (its postcondition) and the package
-proves 0, with no warnings.
+`Report_For_Preparation` selects how a failed input preparation is
+published: malformed UTF-16 and the conversion limit are reported at the
+start of the input (line 1, column 1), and running out of memory without a
+position. Its postcondition states that a converted input publishes nothing
+and that the unpositioned report is used only where `For_Preparation`
+already selects `No_Memory`, so the adapter can apply `After_Report` to
+every failed preparation without changing the former result.
+Each of the seven functions proves 1 check (its postcondition) and the
+package proves 0, with no warnings.
 The adapter reads `Last_Error_Is_OOM` once after the diagnostic is published,
 frees the document when told to, and converts the result to the C status
 values through one total `Status_Code`. Tests compare every read status,
@@ -405,16 +412,17 @@ The 39 units of an earlier revision were proved in one clean
 `make prove-units` run, resumed with `make prove-units-resume` across the
 environment's two-hour invocation limit. Later revisions add three units,
 `XML3_DOM_Results`, `XML3_Text_Results` and `XML3_Entry_Guards`, and change
-no source of those 39 units, so `eng/prove_units.py` proved each new unit in
-the same object directory and GNATprove aggregated all 42. All 42 units
-prove with the switches above.
+one of those 39 units, `XML3_Parser.Statuses`. `eng/prove_units.py` proved
+each new or changed unit again in the same object directory, and GNATprove
+aggregated all 42. The sources of the other 38 units are unchanged (see the
+source identities below). All 42 units prove with the switches above.
 The longest units take
 47 min (`XML3_DOM.Releases`), 41 min (`XML3_DOM.Marking`), 40 min
 (`XML3_DOM.Links`) and 29 min (`XML3_DOM`). The eight `XML3_DOM` units hold
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **14,077 checks, 1,651 by flow analysis and 12,426 by provers; 0
+Result: **14,080 checks, 1,653 by flow analysis and 12,427 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1082,7 +1090,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 629 entity
+The 630 entity
 summaries report 0 flow errors, 185 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1118,14 +1126,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 469 |
+| Data dependencies | 470 |
 | Initialization | 926 |
 | Non-aliasing | 1 |
 | Runtime checks | 5,959 |
 | Assertions | 1,762 |
-| Functional contracts | 4,630 |
-| Termination | 330 |
-| **Total** | **14,077** |
+| Functional contracts | 4,631 |
+| Termination | 331 |
+| **Total** | **14,080** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1857,7 +1865,7 @@ for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-c5d0cfb04a8fa9497e89a7db9d550c4ba8d460bcd764f230fc04e07d9f7c7a1c  src/xml3_c.adb
+095420cb0ad1082ce3b064fd89d7888d46cfc7aad0fbdff78f1559c271eadad4  src/xml3_c.adb
 d913764c5546900095c87b49f394b39fa764e6f9c8b0ed9ce23db0bf887a5ac5  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1931,7 +1939,7 @@ b65a6b5269e0a457b0362da1986fb73db64415f9ac5588b5cd1d475dbdc3a9cb  src/xml3_parse
 dd8bc8decd0750060ca05fecd2522078d80a198292f76f0e7396e1ef07796fe5  src/xml3_parser-options.ads
 c2b4a1f34d55437337a9934733cd5123dc326b5e83c965df1c53947e76c9fb7f  src/xml3_parser-outcomes.ads
 53dc47e2a48012d545f0e6ca3483932a246faa9226f99c5a1cb7a630628b41cc  src/xml3_parser-requests.ads
-da673923726ce62aae4fd2fe7d37da57cc84e10778724bd4c61c3d1f7450d2a0  src/xml3_parser-statuses.ads
+44ae59e8a3376cb11dbe157f1af3e0df276d5e5d913beaf87bb4cb793fed8cc6  src/xml3_parser-statuses.ads
 699ab8008da5ae36dbe098ea2968cc1338873a0fdc958a0a01a56fd05d5c8a47  src/xml3_dom_results.ads
 70811a782487da090c7f51455548bf53a2178bb4aea0f348aef605025c5875cd  src/xml3_text_results.ads
 c94782b1271fddaa18a192d9ab16db7d8a2b3f29b23c0afbfed803363cd3d3e5  src/xml3_entry_guards.ads
@@ -1948,7 +1956,7 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 0222b06b01b35cd5272682189719acabd14024d64e9307e496645f099837e4df  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-ad937b4f5dc32babe55400bc50cfdd149a7b0876a39508d6acde7e5b08fa589a  Makefile
+8c679a33a7113ba25d85a010b6ac4358ae2a66f699103ebf965be04335af7d24  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 d71cfc5eb4bdbe45435347abec4e59b135daf650c551cf804d489c9b15a79252  tests/oom-test.c
@@ -1959,7 +1967,7 @@ b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buf
 c5269fafd0c1bab521ca0e18f279ed6c5dc7ef0b10151bb4c3618381984005b7  .github/workflows/manual.yml
 4e35496028bcf7a470a78d6e8426f07769a48b1f3f2fb1b85bf062db997e6320  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
-93869e7f55e7ba7beb686968973394373a03b6d17d96126666bbadf84e41554d  tests/dom_bridge_test.adb
+77d6a2012274c35768dc82222de8b0058a653ef69445b67c91029d8741b5f4b4  tests/dom_bridge_test.adb
 0a6d4abeab3d664ef1079d74a125226a05d018473e503e329bcf0d0b9256a90b  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 ```

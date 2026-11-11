@@ -1009,8 +1009,15 @@ Unicode 正規化や大文字小文字変換をせず、元のバイト列を保
 namespace-aware getter/query API を使用してください。
 名前空間 URI の entity 参照には libxml2 版による差があります。固定ターゲットの
 libxml2 2.15.4 と libxml3 は `urn:&amp;one` を `urn:&one` として扱いますが、
-OS の libxml2 2.9.13 は同じ値を `urn:&#38;one` として返します。OS 版との補助比較は
-この fixture で差分を報告します。合否判定には固定版 2.15.4 を使用してください。
+2.13.0 より前の libxml2（OS 付属の 2.9 系など）は同じ値を `urn:&#38;one` として
+返します。entity を置換しない解析で、属性値中の `&` を `&#38;` のまま残し、
+名前空間宣言だけがその文字列を名前空間名に使っていたためです。Namespaces in XML
+では名前空間名は正規化後の属性値なので、2.15.4 の扱いが正しい挙動です。上流では
+libxslt の issue #106 として報告済みで、コミット `f506ec66`（parser: Always decode
+entities in namespace URIs、2.13.0）が回帰テスト `test/entity-in-ns-uri.xml` 付きで
+直しています。`make compare-system` はOS版が2.13.0より前のときだけ、名前空間名の
+`&#38;` を `&` に読み替えてから比較します（`eng/compare_system.py`）。合否判定には
+固定版 2.15.4 との `make compare` を使用してください。
 固定版との比較を `make compare` に統合する変更は独立した
 [PR #2](https://github.com/gomurin0428/libxml3/pull/2) に含まれます。
 任意の C API sanitizer 実行では C 側の検査を有効にできますが、Ada allocator
