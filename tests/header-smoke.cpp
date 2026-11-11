@@ -130,6 +130,21 @@ int main() {
     (void)doc_copy_node;
     (void)copy_prop;
     (void)copy_doc;
+    xmlBuffer *(*buffer_create)(void) = xmlBufferCreate;
+    int (*buffer_add)(xmlBuffer *, const xmlChar *, int) = xmlBufferAdd;
+    const xmlChar *(*buffer_content)(const xmlBuffer *) = xmlBufferContent;
+    int (*node_dump)(xmlBuffer *, xmlDoc *, xmlNode *, int, int) = xmlNodeDump;
+    int (*doc_format_dump)(FILE *, xmlDoc *, int) = xmlDocFormatDump;
+    void (*elem_dump)(FILE *, xmlDoc *, xmlNode *) = xmlElemDump;
+    int (*save_format_file_enc)(const char *, xmlDoc *, const char *, int) =
+        xmlSaveFormatFileEnc;
+    (void)buffer_create;
+    (void)buffer_add;
+    (void)buffer_content;
+    (void)node_dump;
+    (void)doc_format_dump;
+    (void)elem_dump;
+    (void)save_format_file_enc;
     xmlChar *(*build_qname)(const xmlChar *, const xmlChar *, xmlChar *, int) = xmlBuildQName;
     (void)build_qname;
     xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;

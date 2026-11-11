@@ -96,7 +96,8 @@ package body XML3_Serialization with SPARK_Mode is
       Encoding : String; Result : out System.Address;
       Length : out Natural;
       Status : out XML3_DOM_Constructors.Construction_Status;
-      Default_Encoding, Formatted : Boolean := False)
+      Default_Encoding, Formatted : Boolean := False;
+      Level : Natural := 0)
    is
       Cursor : Natural := 0;
       Capacity : Natural := Max_Output_Bytes;
@@ -693,10 +694,60 @@ package body XML3_Serialization with SPARK_Mode is
          end if;
       end Put_Namespaces;
 
+      --  One attribute with its leading space, as xmlAttrDumpOutput writes
+      --  it: name, then the escaped text of its children.
+      procedure Put_Attribute (P : Node_Ref) is
+         Item, Child : Node_View;
+         Child_Ref, Child_Previous : Node_Ref := Null_Node;
+      begin
+         if not Node_Is_Live (P) then
+            Good := False;
+            return;
+         end if;
+         Item := Node (Tree, P);
+         if Item.Kind /= Attribute_Node
+           or else Item.Name = System.Null_Address
+           or else not Valid_Name (Item.Name, Item.Name_Length, False)
+           or else not Name_Namespace_Valid (P, True)
+         then
+            Good := False;
+            return;
+         end if;
+         Put (" ");
+         Put_Name (P, True);
+         Put ("=""");
+         Child_Ref := Item.First_Child;
+         for Child_Step in 1 .. Node_Count (Tree) loop
+            exit when Child_Ref = Null_Node;
+            if not Node_Is_Live (Child_Ref) then
+               Good := False;
+               return;
+            end if;
+            Child := Node (Tree, Child_Ref);
+            if Child.Parent /= P or else Child.Previous /= Child_Previous
+              or else Child.Kind not in Text_Node | CData_Node
+            then
+               Good := False;
+               return;
+            end if;
+            Emit_Text
+              (Child.Content, Child.Content_Length, True, False, True);
+            Child_Previous := Child_Ref;
+            Child_Ref := Child.Next;
+         end loop;
+         if Child_Ref /= Null_Node
+           or else Item.Last_Child /= Child_Previous
+         then
+            Good := False;
+            return;
+         end if;
+         Put ("""");
+      end Put_Attribute;
+
       procedure Put_Properties (N : Node_Ref) is
          P : Node_Ref;
-         Item, Child, Other_Item : Node_View;
-         Previous, Child_Ref, Child_Previous, Other : Node_Ref := Null_Node;
+         Item, Other_Item : Node_View;
+         Previous, Other : Node_Ref := Null_Node;
       begin
          if not Node_Is_Live (N) then
             Good := False;
@@ -755,36 +806,10 @@ package body XML3_Serialization with SPARK_Mode is
                Good := False;
                return;
             end if;
-            Put (" ");
-            Put_Name (P, True);
-            Put ("=""");
-            Child_Ref := Item.First_Child;
-            Child_Previous := Null_Node;
-            for Child_Step in 1 .. Node_Count (Tree) loop
-               exit when Child_Ref = Null_Node;
-               if not Node_Is_Live (Child_Ref) then
-                  Good := False;
-                  return;
-               end if;
-               Child := Node (Tree, Child_Ref);
-               if Child.Parent /= P or else Child.Previous /= Child_Previous
-                 or else Child.Kind not in Text_Node | CData_Node
-               then
-                  Good := False;
-                  return;
-               end if;
-               Emit_Text
-                 (Child.Content, Child.Content_Length, True, False, True);
-               Child_Previous := Child_Ref;
-               Child_Ref := Child.Next;
-            end loop;
-            if Child_Ref /= Null_Node
-              or else Item.Last_Child /= Child_Previous
-            then
-               Good := False;
+            Put_Attribute (P);
+            if not Good then
                return;
             end if;
-            Put ("""");
             Previous := P;
             P := Item.Next;
          end loop;
@@ -909,10 +934,14 @@ package body XML3_Serialization with SPARK_Mode is
          Child : Node_Ref;
          Unformatted : Node_Ref := Null_Node;
          Depth : Natural := 0;
+         --  Open elements below the start node; Depth adds Level to it.
+         Nesting : Natural := 0;
          Visited : Natural := 0;
          Ascents : Natural := 0;
          D : Node_View;
          Root_Seen : Boolean := False;
+         --  A whole document, or the subtree of Document alone (node mode).
+         Whole : Boolean;
 
          procedure Put_Indent is
             --  The pinned serializer caps its default indent at 60 bytes.
@@ -928,18 +957,29 @@ package body XML3_Serialization with SPARK_Mode is
             return;
          end if;
          D := Node (Tree, Document);
-         Current := D.First_Child;
-         Put ("<?xml version=""");
-         Emit_Text (D.Content, D.Content_Length, True, False, False);
-         if not Default_Encoding then
-            Put (""" encoding=""");
-            Put (Encoding);
-         end if;
-         Put ("""?>");
-         Put_Byte (Character'Val (10));
-         if (D.First_Child = Null_Node) /= (D.Last_Child = Null_Node) then
-            Good := False;
+         Whole := D.Kind = Document_Node;
+         if Whole then
+            Current := D.First_Child;
+            Put ("<?xml version=""");
+            Emit_Text (D.Content, D.Content_Length, True, False, False);
+            if not Default_Encoding then
+               Put (""" encoding=""");
+               Put (Encoding);
+            end if;
+            Put ("""?>");
+            Put_Byte (Character'Val (10));
+            if (D.First_Child = Null_Node) /= (D.Last_Child = Null_Node) then
+               Good := False;
+               return;
+            end if;
+         elsif D.Kind = Attribute_Node then
+            Put_Attribute (Document);
             return;
+         else
+            --  xmlNodeDump: the node itself is not indented, its
+            --  descendants are indented from Level.
+            Current := Document;
+            Depth := Level;
          end if;
          while Good and then Current /= Null_Node
            and then Visited < Node_Count (Tree)
@@ -949,13 +989,14 @@ package body XML3_Serialization with SPARK_Mode is
                return;
             end if;
             Parent := Node (Tree, Current).Parent;
-            if not Node_Is_Live (Parent)
-              or else not Child_Link_Valid (Parent, Current)
+            if (Whole or else Current /= Document)
+              and then (not Node_Is_Live (Parent)
+                        or else not Child_Link_Valid (Parent, Current))
             then
                Good := False;
                return;
             end if;
-            if Parent = Document then
+            if Whole and then Parent = Document then
                if Node (Tree, Current).Kind = Element_Node then
                   if Root_Seen then
                      Good := False;
@@ -976,7 +1017,9 @@ package body XML3_Serialization with SPARK_Mode is
                return;
             end if;
             Visited := Visited + 1;
-            if Formatted and then Unformatted = Null_Node then
+            if Formatted and then Unformatted = Null_Node
+              and then (Whole or else Current /= Document)
+            then
                Put_Indent;
             end if;
             Put_Node (Current);
@@ -1015,12 +1058,16 @@ package body XML3_Serialization with SPARK_Mode is
                      Put_Byte (Character'Val (10));
                   end if;
                end if;
-               if Depth >= Node_Count (Tree) then
+               if Nesting >= Node_Count (Tree) or else Depth = Natural'Last then
                   Good := False;
                   return;
                end if;
                Depth := Depth + 1;
+               Nesting := Nesting + 1;
                Current := Next;
+            elsif not Whole and then Current = Document then
+               --  A node without children: nothing follows it.
+               Current := Null_Node;
             else
                loop
                   pragma Loop_Invariant (Node_Is_Live (Current));
@@ -1039,7 +1086,7 @@ package body XML3_Serialization with SPARK_Mode is
                      return;
                   end if;
                   Next := Node (Tree, Current).Next;
-                  if Parent = Document
+                  if (Whole and then Parent = Document)
                     or else (Formatted and then Unformatted = Null_Node)
                   then
                      Put_Byte (Character'Val (10));
@@ -1051,15 +1098,16 @@ package body XML3_Serialization with SPARK_Mode is
                      end if;
                      Current := Next;
                      exit;
-                  elsif Parent = Document then
+                  elsif Whole and then Parent = Document then
                      Current := Null_Node;
                      exit;
                   end if;
-                  if Depth = 0 then
+                  if Nesting = 0 or else Depth = 0 then
                      Good := False;
                      return;
                   end if;
                   Depth := Depth - 1;
+                  Nesting := Nesting - 1;
                   if Node (Tree, Parent).Kind = Element_Node
                     and then Node (Tree, Parent).First_Child /= Null_Node
                   then
@@ -1074,6 +1122,10 @@ package body XML3_Serialization with SPARK_Mode is
                      end if;
                   end if;
                   Current := Parent;
+                  if not Whole and then Current = Document then
+                     Current := Null_Node;
+                     exit;
+                  end if;
                   if Ascents >= Node_Count (Tree) then
                      Good := False;
                      return;
@@ -1095,12 +1147,12 @@ package body XML3_Serialization with SPARK_Mode is
         or else Document > Node_Ref (Capacity_Of (Tree))
         or else Document > Node_Ref (Node_Count (Tree))
         or else Node (Tree, Document).State /= Live
-        or else Node (Tree, Document).Kind /= Document_Node
-        or else Node (Tree, Document).Content = System.Null_Address
-        or else Node (Tree, Document).Content_Length /= 3
-        or else not Equal_Bytes
-          (Node (Tree, Document).Content,
-           Node (Tree, Document).Content_Length, "1.0")
+        or else (Node (Tree, Document).Kind = Document_Node
+          and then (Node (Tree, Document).Content = System.Null_Address
+            or else Node (Tree, Document).Content_Length /= 3
+            or else not Equal_Bytes
+              (Node (Tree, Document).Content,
+               Node (Tree, Document).Content_Length, "1.0")))
       then
          return;
       end if;

@@ -70,3 +70,9 @@ tests/copy-test-development
 tests/copy-test-sanitize
 tests/copy-test.out
 tests/copy-test-reference.out
+tests/output-test
+tests/output-test-reference
+tests/output-test-development
+tests/output-test-sanitize
+tests/output-test.out
+tests/output-test-reference.out

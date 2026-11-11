@@ -2741,6 +2741,13 @@ begin
                return (Refuse => not First, Report => False);
             when Guards.Property_Copy =>
                return (Refuse => not Second, Report => False);
+            --  New with the buffer and output entry points.
+            when Guards.Buffer_Use =>
+               return (Refuse => not First, Report => False);
+            when Guards.Buffer_Append | Guards.Node_Dump
+               | Guards.Stream_Dump | Guards.File_Save =>
+               return (Refuse => not First or else not Second,
+                       Report => False);
             when Guards.Root_Replacement | Guards.Node_Insertion
                | Guards.Node_Renaming | Guards.Property_Lookup
                | Guards.Character_Decoding | Guards.QName_Split =>

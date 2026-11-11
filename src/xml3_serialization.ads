@@ -16,12 +16,17 @@ package XML3_Serialization with SPARK_Mode is
      (Input : System.Address; Name : out UTF8_Name; Valid : out Boolean)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
 
+   --  Serializes the document Document, as xmlDocDumpMemory does, or the
+   --  subtree of any other node, as xmlNodeDump does: the node itself
+   --  without an XML declaration, with its descendants indented from Level
+   --  when Formatted.  Encoding and Default_Encoding apply to documents.
    procedure Render
      (Tree : XML3_DOM.State; Document : XML3_DOM.Node_Ref;
       Encoding : String; Result : out System.Address;
       Length : out Natural;
       Status : out XML3_DOM_Constructors.Construction_Status;
-      Default_Encoding, Formatted : Boolean := False)
+      Default_Encoding, Formatted : Boolean := False;
+      Level : Natural := 0)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => XML3_DOM.Valid (Tree)
          and then Document in

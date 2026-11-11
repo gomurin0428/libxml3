@@ -469,6 +469,16 @@ is
          XML3_DOM_Store.Queries.Get_Line_Number (Current, Facade, Result);
       end Get_Line_Number;
 
+      procedure Dump_Node
+        (Node : System.Address; Level : Integer; Formatted : Boolean;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Serialization.Dump_Node
+           (Current, Node, Level, Formatted, Result, Length, Status);
+      end Dump_Node;
+
       procedure Dump_Memory_Encoding
         (Document, Encoding : System.Address;
          Result : out System.Address; Length : out Natural;
