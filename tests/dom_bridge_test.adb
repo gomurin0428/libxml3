@@ -27,6 +27,11 @@ with XML3_Text;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
 with XML3_Diagnostic_Codes;
+with XML3_DOM_Results;
+with XML3_Text_Results;
+with XML3_Entry_Guards;
+with XML3_Text.Buffers;
+with XML3_Text.QNames;
 with XML3_DOM.Retirement; use XML3_DOM.Retirement;
 
 procedure DOM_Bridge_Test is
@@ -2340,6 +2345,427 @@ begin
            Seen (Status) = (Status /= Statuses.Invalid_Argument));
    end;
    Ada.Text_IO.Put_Line ("Parse status settlement policy passed");
+   declare
+      package Results renames XML3_DOM_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      package Queries renames XML3_DOM_Store.Queries;
+      use type Interfaces.C.int;
+      use type XML3_DOM_Constructors.Construction_Status;
+      use type Codes.Adapter_Failure;
+      use type Codes.Diagnostic_Code;
+      subtype Status is XML3_DOM_Constructors.Construction_Status;
+
+      --  The results the adapter computed inline before the conventions
+      --  moved into SPARK.
+      function Reference_Removal
+        (Outcome : Status; Removed : Boolean) return Interfaces.C.int is
+      begin
+         if Outcome = XML3_DOM_Constructors.Created and then Removed then
+            return 0;
+         end if;
+         return -1;
+      end Reference_Removal;
+
+      function Reference_Update
+        (Outcome : Status; Text_Only : Boolean) return Interfaces.C.int is
+      begin
+         return
+           (if Outcome = XML3_DOM_Constructors.Created then 0
+            elsif Text_Only or else Outcome = XML3_DOM_Constructors.No_Memory
+            then -1
+            else 1);
+      end Reference_Update;
+
+      function Reference_Lookup
+        (Outcome : Status; Found : Boolean) return Interfaces.C.int is
+      begin
+         return
+           (case Outcome is
+              when XML3_DOM_Constructors.Created => (if Found then 0 else 1),
+              when XML3_DOM_Constructors.Invalid_Argument => 1,
+              when others => -1);
+      end Reference_Lookup;
+
+      --  What each exception handler and argument guard returned.
+      Seen_Update : array (Interfaces.C.int range -1 .. 1) of Boolean :=
+        (others => False);
+      Seen_Lookup : array (Interfaces.C.int range -1 .. 1) of Boolean :=
+        (others => False);
+   begin
+      for Outcome in Status loop
+         for Flag in Boolean loop
+            pragma Assert
+              (Results.Removal (Outcome, Flag) =
+                 Reference_Removal (Outcome, Flag));
+            pragma Assert
+              (Results.Update (Outcome, Flag) =
+                 Reference_Update (Outcome, Flag));
+            pragma Assert
+              (Results.Lookup (Outcome, Flag) =
+                 Reference_Lookup (Outcome, Flag));
+            Seen_Update (Results.Update (Outcome, Flag)) := True;
+            Seen_Lookup (Results.Lookup (Outcome, Flag)) := True;
+         end loop;
+         pragma Assert
+           (Results.Removal (Outcome) = Reference_Removal (Outcome, True));
+         pragma Assert
+           (Results.Update (Outcome) = Reference_Update (Outcome, False));
+      end loop;
+      pragma Assert (for all Value in Seen_Update'Range => Seen_Update (Value));
+      pragma Assert (for all Value in Seen_Lookup'Range => Seen_Lookup (Value));
+
+      --  Exception handlers: lock failure, allocation failure, anything else.
+      --  xmlUnsetProp, xmlUnsetNsProp and xmlRemoveProp returned -1 for all.
+      for Cause in Codes.Adapter_Failure loop
+         pragma Assert (Results.Removal (Results.Status_Of (Cause)) = -1);
+         pragma Assert
+           (Results.Status_Of (Cause) /= XML3_DOM_Constructors.Created);
+      end loop;
+      --  xmlNodeSetContent(Len), xmlNodeAddContent(Len), xmlNodeSetLang and
+      --  xmlNodeSetSpacePreserve returned 1, -1, 1; xmlTextConcat -1 for all.
+      pragma Assert (Results.Update (Results.Status_Of (Codes.Lock_Failure)) = 1);
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Allocation_Failure)) = -1);
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Unexpected_Exception)) = 1);
+      for Cause in Codes.Adapter_Failure loop
+         pragma Assert
+           (Results.Update (Results.Status_Of (Cause), Text_Only => True) = -1);
+      end loop;
+      --  Lookups returned -1 from every handler.
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Lock_Failure), False) = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Allocation_Failure), False)
+           = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Unexpected_Exception), False)
+           = -1);
+
+      --  Argument guards: a NULL element was 1 for updates, NULL arguments
+      --  -1 for removals, and a NULL node, name or output 1 for lookups.
+      pragma Assert
+        (Results.Update (Results.Status_Of (Codes.Invalid_Argument)) = 1);
+      pragma Assert
+        (Results.Update
+           (Results.Status_Of (Codes.Invalid_Argument), Text_Only => True)
+           = -1);
+      pragma Assert
+        (Results.Removal (Results.Status_Of (Codes.Invalid_Argument)) = -1);
+      pragma Assert
+        (Results.Lookup (Results.Status_Of (Codes.Invalid_Argument), False)
+           = 1);
+
+      --  A DOM cause publishes the diagnostic of its equivalent status.
+      for Cause in Codes.Adapter_Failure loop
+         if Cause not in Codes.Invalid_Character | Codes.Parser_Exception then
+            pragma Assert
+              (Codes.For_Operation
+                 (Results.Status_Of (Cause), Validation_Error => True) =
+               Codes.For_Failure (Cause));
+         end if;
+      end loop;
+
+      pragma Assert (Results.Space_Code (Queries.Unspecified) = -1);
+      pragma Assert (Results.Space_Code (Queries.Default_Space) = 0);
+      pragma Assert (Results.Space_Code (Queries.Preserve_Space) = 1);
+      pragma Assert (Results.Truth (True) = 1);
+      pragma Assert (Results.Truth (False) = 0);
+   end;
+   Ada.Text_IO.Put_Line ("DOM result convention policy passed");
+   declare
+      package Results renames XML3_DOM_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Codes.Diagnostic_Code;
+      use type XML3_DOM_Constructors.Construction_Status;
+
+      --  The Validation_Error flag each call site passed before the classes
+      --  moved into SPARK.
+      function Reference_Flag (Class : Results.Operation_Class) return Boolean
+      is
+      begin
+         case Class is
+            when Results.Edit | Results.Document_Root | Results.Node_Path
+               | Results.Node_List_Text | Results.Entity_Encoding =>
+               return True;
+            when Results.Node_Test | Results.Element_Navigation
+               | Results.Child_Count | Results.Node_Content
+               | Results.Inherited_Property | Results.Property_Lookup
+               | Results.Namespace_List =>
+               return False;
+         end case;
+      end Reference_Flag;
+
+      Silent, Reported : Natural := 0;
+   begin
+      for Class in Results.Operation_Class loop
+         pragma Assert
+           (Results.Reports_Invalid_Argument (Class) = Reference_Flag (Class));
+         for Outcome in XML3_DOM_Constructors.Construction_Status loop
+            pragma Assert
+              (Results.Diagnostic_For (Class, Outcome) =
+                 Codes.For_Operation (Outcome, Reference_Flag (Class)));
+         end loop;
+         if Results.Diagnostic_For
+              (Class, XML3_DOM_Constructors.Invalid_Argument).Present
+         then
+            Reported := Reported + 1;
+         else
+            Silent := Silent + 1;
+         end if;
+      end loop;
+      pragma Assert (Reported = 5 and then Silent = 7);
+   end;
+   Ada.Text_IO.Put_Line ("DOM operation class policy passed");
+   declare
+      package Text renames XML3_Text_Results;
+      package Codes renames XML3_Diagnostic_Codes;
+      package Buffers renames XML3_Text.Buffers;
+      package QNames renames XML3_Text.QNames;
+      use type Codes.Diagnostic_Code;
+      use type Interfaces.C.int;
+      use type Buffers.UTF8_Status;
+      use type Buffers.Search_Status;
+      use type Buffers.Path_Status;
+      use type Buffers.Escape_Status;
+      use type Buffers.Append_Status;
+      use type Buffers.Concatenate_Status;
+      use type Buffers.Slice_Status;
+      use type QNames.Comparison_Status;
+      use type QNames.Build_Status;
+      use type QNames.Split_Status;
+      use type QNames.Prefix_Status;
+
+      --  The literals the adapter reported before the selection moved into
+      --  SPARK: unsupported text (2,115), allocation (6,2), character (2,9).
+      Unsupported : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 2, Code => 115);
+      No_Memory : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 6, Code => 2);
+      Bad_Character : constant Codes.Diagnostic_Code :=
+        (Present => True, Domain => 2, Code => 9);
+      Lengths : constant array (1 .. 3) of XML3_Text.Byte_Count :=
+        (0, 7, XML3_Text.Max_Bytes);
+   begin
+      pragma Assert (Text.Unsupported = Unsupported);
+      pragma Assert (Text.No_Memory = No_Memory);
+      pragma Assert (Text.For_Limit (True) = Unsupported);
+      pragma Assert (Text.For_Limit (False) = Codes.None);
+      pragma Assert (Text.For_Malformed (True) = Bad_Character);
+      pragma Assert (Text.For_Malformed (False) = Codes.None);
+
+      for Status in Buffers.UTF8_Status loop
+         pragma Assert
+           (Text.For_UTF8 (Status) =
+              (if Status = Buffers.UTF8_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Validity (Status) =
+              (if Status = Buffers.UTF8_Valid then 1 else 0));
+         for Length of Lengths loop
+            pragma Assert
+              (Text.Measure (Length, Status) =
+                 (if Status = Buffers.UTF8_Valid
+                  then Interfaces.C.int (Length) else -1));
+         end loop;
+      end loop;
+      for Length of Lengths loop
+         pragma Assert
+           (Text.Measure (Length, Measured => True) = Interfaces.C.int (Length));
+         pragma Assert (Text.Measure (Length, Measured => False) = -1);
+      end loop;
+      for Status in Buffers.Search_Status loop
+         pragma Assert
+           (Text.For_Search (Status) =
+              (if Status = Buffers.Search_Limit_Exceeded then Unsupported
+               else Codes.None));
+         for Index of Lengths loop
+            pragma Assert
+              (Text.Location (Index, Status) =
+                 (if Status = Buffers.Matched
+                  then Interfaces.C.int (Index) else -1));
+         end loop;
+      end loop;
+      for Status in Buffers.Path_Status loop
+         pragma Assert
+           (Text.For_Path (Status) =
+              (if Status = Buffers.Path_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Path_Code (Status) =
+              (if Status = Buffers.Normalized then 0 else -1));
+      end loop;
+      for Status in Buffers.Escape_Status loop
+         pragma Assert
+           (Text.For_URI_Escape (Status) =
+              (case Status is
+                 when Buffers.Escaped | Buffers.Invalid_Text => Codes.None,
+                 when Buffers.Escape_No_Memory => No_Memory,
+                 when Buffers.Escape_Limit_Exceeded => Unsupported));
+         pragma Assert
+           (Text.For_Special_Escape (Status) =
+              (case Status is
+                 when Buffers.Escaped => Codes.None,
+                 when Buffers.Escape_No_Memory => No_Memory,
+                 when Buffers.Invalid_Text | Buffers.Escape_Limit_Exceeded =>
+                   Unsupported));
+      end loop;
+      for Status in Buffers.Append_Status loop
+         pragma Assert
+           (Text.For_Append (Status) =
+              (case Status is
+                 when Buffers.Append_No_Memory => No_Memory,
+                 when Buffers.Append_Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in Buffers.Concatenate_Status loop
+         pragma Assert
+           (Text.For_Concatenate (Status) =
+              (case Status is
+                 when Buffers.Copied | Buffers.No_Input => Codes.None,
+                 when Buffers.No_Memory => No_Memory,
+                 when Buffers.Limit_Exceeded => Unsupported));
+      end loop;
+      for Status in Buffers.Slice_Status loop
+         pragma Assert
+           (Text.For_Slice (Status) =
+              (case Status is
+                 when Buffers.No_Memory => No_Memory,
+                 when Buffers.Slice_Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in QNames.Comparison_Status loop
+         pragma Assert
+           (Text.For_Comparison (Status) =
+              (if Status = QNames.Comparison_Limit_Exceeded then Unsupported
+               else Codes.None));
+         pragma Assert
+           (Text.Equality (Status) = (if Status = QNames.Same then 1 else 0));
+      end loop;
+      for Status in QNames.Build_Status loop
+         pragma Assert
+           (Text.For_Build (Status) =
+              (case Status is
+                 when QNames.No_Memory => No_Memory,
+                 when QNames.Limit_Exceeded => Unsupported,
+                 when others => Codes.None));
+      end loop;
+      for Status in QNames.Split_Status loop
+         pragma Assert
+           (Text.For_Split (Status) =
+              (if Status = QNames.No_Memory then No_Memory
+               elsif Status = QNames.Split_Limit_Exceeded then Unsupported
+               else Codes.None));
+      end loop;
+      for Status in QNames.Prefix_Status loop
+         pragma Assert
+           (Text.For_Prefix (Status) =
+              (if Status = QNames.Prefix_Limit_Exceeded then Unsupported
+               else Codes.None));
+      end loop;
+      for Comparison in Interfaces.C.int range -2 .. 2 loop
+         pragma Assert
+           (Text.Equality (Comparison) = (if Comparison = 0 then 1 else 0));
+      end loop;
+
+      --  What the exception handlers returned.
+      pragma Assert (Text.Validity (Buffers.UTF8_Invalid) = 0);
+      pragma Assert (Text.Measure (0, Buffers.UTF8_Invalid) = -1);
+      pragma Assert (Text.Measure (0, Measured => False) = -1);
+      pragma Assert (Text.Location (0, Buffers.No_Match) = -1);
+      pragma Assert (Text.Path_Code (Buffers.Invalid_Path) = -1);
+      pragma Assert (Text.Equality (QNames.Different) = 0);
+   end;
+   Ada.Text_IO.Put_Line ("Text result and report policy passed");
+   declare
+      package Guards renames XML3_Entry_Guards;
+      package Codes renames XML3_Diagnostic_Codes;
+      use type Guards.Admission;
+      use type Codes.Diagnostic_Code;
+
+      --  The argument checks each entry point made before they moved into
+      --  SPARK: Refuse when the call returned at once, Report when it also
+      --  published Report_Failure (Invalid_Argument).
+      type Reference_Guard is record
+         Refuse : Boolean;
+         Report : Boolean;
+      end record;
+
+      function Reference
+        (Group : Guards.Entry_Group; First, Second, Distinct : Boolean)
+         return Reference_Guard
+      is
+      begin
+         case Group is
+            when Guards.Document_Read | Guards.Element_Query
+               | Guards.Node_Creation | Guards.PI_Creation
+               | Guards.Node_List_Parse | Guards.Text_Concatenation
+               | Guards.Node_Unlinking | Guards.Node_Release
+               | Guards.Document_Release | Guards.Node_Text
+               | Guards.Node_List_Text | Guards.Line_Number
+               | Guards.Inherited_Property | Guards.Lookup_Output
+               | Guards.Namespace_Copy | Guards.Namespace_Assignment
+               | Guards.Namespace_Release | Guards.Namespace_Query
+               | Guards.Entity_Encoding =>
+               return (Refuse => not First, Report => False);
+            when Guards.Root_Replacement | Guards.Node_Insertion
+               | Guards.Node_Renaming | Guards.Property_Lookup
+               | Guards.Character_Decoding | Guards.QName_Split =>
+               return (Refuse => not First or else not Second,
+                       Report => False);
+            when Guards.Child_Creation | Guards.Property_Update
+               | Guards.Attribute_Creation | Guards.Attribute_Removal =>
+               return (Refuse => not First, Report => not First);
+            when Guards.Document_Dump | Guards.Attribute_Update =>
+               return (Refuse => not First or else not Second,
+                       Report => not First or else not Second);
+            when Guards.Node_Replacement =>
+               return (Refuse => not Distinct or else not First,
+                       Report => False);
+            when Guards.Content_Addition =>
+               return (Refuse => False, Report => False);
+         end case;
+      end Reference;
+
+      Decision : Guards.Admission;
+      Expected : Reference_Guard;
+      Reported_Groups : Natural := 0;
+   begin
+      for Group in Guards.Entry_Group loop
+         for First in Boolean loop
+            for Second in Boolean loop
+               for Distinct in Boolean loop
+                  Decision := Guards.Admit (Group, First, Second, Distinct);
+                  Expected := Reference (Group, First, Second, Distinct);
+                  pragma Assert
+                    ((Decision /= Guards.Admitted) = Expected.Refuse);
+                  pragma Assert
+                    ((Decision = Guards.Refused_And_Reported) =
+                       Expected.Report);
+                  pragma Assert
+                    (Guards.Diagnostic_For (Decision) =
+                       (if Expected.Report
+                        then Codes.For_Failure (Codes.Invalid_Argument)
+                        else Codes.None));
+               end loop;
+            end loop;
+         end loop;
+         if Guards.Rules (Group).Reported then
+            Reported_Groups := Reported_Groups + 1;
+         end if;
+      end loop;
+      pragma Assert (Reported_Groups = 6);
+
+      --  Defaults: a one-argument group ignores Second and Distinct.
+      pragma Assert
+        (Guards.Admit (Guards.Node_Text, True) = Guards.Admitted);
+      pragma Assert
+        (Guards.Admit (Guards.Node_Text, False) = Guards.Refused);
+      pragma Assert
+        (Guards.Admit (Guards.Attribute_Creation, False) =
+           Guards.Refused_And_Reported);
+   end;
+   Ada.Text_IO.Put_Line ("Entry argument guard policy passed");
    declare
       package Codes renames XML3_Diagnostic_Codes;
       use type Codes.Diagnostic_Code;
