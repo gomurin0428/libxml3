@@ -27,7 +27,8 @@ make check
 互換性の主基準は **libxml2 2.15.4** です。固定ソースから作る比較先と
 公開宣言台帳・段階別の完了条件は [互換性基準](docs/compatibility-baseline.md)、
 現在の評価範囲は [API台帳](docs/api-coverage.md) を参照してください。
-`make compare-system` はOS付属版での補助比較です。
+`make compare-system` はOS付属版での補助比較です。OS付属版が古い場合、基準版で直っている既知の差
+（`eng/compare_system.py` の `KNOWN_DIFFERENCES`。該当する版を明記）だけを正規化してから比較し、それ以外の差は失敗にします。
 
 `make build` は通常実行用の `lib/libxml3.so` を生成します。証明用の
 アサーション・事前／事後条件・ghost 処理は実行時に評価せず、入力検査、
@@ -670,7 +671,7 @@ parse入口が公開するstatusの決定はSPARKの`XML3_Parser.Statuses`にあ
 読み取り結果・受理段階・入力変換の結果を`Public_Status`へ写像し、診断の公開後に
 threadの最新errorがOOMならNo_Memoryへ置き換える判定（`After_Report`）、警告付きで成功した
 parseがOOMを記録した場合に文書を破棄してNo_Memoryにする判定（`Settle_Parse`）、
-例外時のstatus（`After_Exception`）も同じunitで扱います。成功statusが置き換えで
+例外時のstatus（`After_Exception`）、入力変換の失敗を入力の先頭位置付きで報告するか、メモリ不足として位置なしで報告するか（`Report_For_Preparation`）も同じunitで扱います。成功statusが置き換えで
 変わらないこと、文書の破棄は成功parseに限ることを契約で示します。TLSのOOM判定の読み取り、
 文書の解放、C ABIのstatus値への変換は引き続きadapterに残ります。
 DOM操作の入口が返す`int`の決め方はSPARKの`XML3_DOM_Results`にあります。

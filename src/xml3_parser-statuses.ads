@@ -63,6 +63,29 @@ package XML3_Parser.Statuses with SPARK_Mode is
        (For_Preparation'Result = OK) =
          (Status = XML3_Encoding.Buffers.Converted);
 
+   --  How a failed input preparation is published.  A failure of the
+   --  input itself (malformed UTF-16, the conversion limit) is reported at
+   --  the start of the input, line 1 and column 1, as the parser reports
+   --  input errors.  Running out of memory carries no position.
+   type Preparation_Report is (No_Report, At_Input_Start, Without_Position);
+
+   function Report_For_Preparation
+     (Status : XML3_Encoding.Buffers.Conversion_Result)
+      return Preparation_Report
+   is
+     (case Status is
+        when XML3_Encoding.Buffers.Converted => No_Report,
+        when XML3_Encoding.Buffers.Invalid_UTF16
+           | XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
+          At_Input_Start,
+        when XML3_Encoding.Buffers.Conversion_No_Memory => Without_Position)
+   with Global => null,
+     Post =>
+       (Report_For_Preparation'Result = No_Report) =
+         (Status = XML3_Encoding.Buffers.Converted)
+       and then (if Report_For_Preparation'Result = Without_Position
+                 then For_Preparation (Status) = No_Memory);
+
    --  Applied once a failure has been published.  When publishing the
    --  diagnostic itself ran out of memory, the thread-local error records
    --  an out-of-memory error instead, and the caller must see No_Memory.

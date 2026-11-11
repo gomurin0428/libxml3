@@ -6,7 +6,8 @@
 `96498992efa48d52b0e8b83058bd88dbdaf153c1` です。
 [上流ソース](https://github.com/GNOME/libxml2/tree/v2.15.4) の公開Cヘッダーを
 対象とし、既存Cソースの再コンパイルを許容します。ABI互換は対象外です。
-OS付属の2.9.13は補助的な回帰比較先であり、主基準として取り違えません。
+OS付属のlibxml2（Ubuntuでは2.9系）は補助的な回帰比較先であり、主基準として取り違えません。
+基準版で直っている古い版の既知の差は `eng/compare_system.py` に版の範囲付きで記録します。
 
 `compat/baseline.json` がタグ・コミット・ビルドオプションの唯一の設定元です。
 Linux x86_64 / Clang 14 / C11で、CMake既定の機能に加えてlegacy、HTTP互換stub、

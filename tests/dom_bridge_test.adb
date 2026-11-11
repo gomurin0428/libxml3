@@ -2196,6 +2196,7 @@ begin
       package Buffers renames XML3_Encoding.Buffers;
       use type Statuses.Public_Status;
       use type Statuses.Parse_Settlement;
+      use type Statuses.Preparation_Report;
       use type Outcomes.Report_Kind;
       use type Requests.Admission_Kind;
       use type Buffers.Conversion_Result;
@@ -2329,6 +2330,29 @@ begin
                     then No_Memory_Code
                     else Reference_Preparation (Prepared)));
          end loop;
+         --  The former case statement: Invalid_UTF16 and the conversion
+         --  limit went to the positioned Report_Conversion_Error, and
+         --  Conversion_No_Memory to Report_Code without the OOM fixup.  The
+         --  fixup now applied to it cannot change No_Memory.
+         pragma Assert
+           (Statuses.Report_For_Preparation (Prepared) =
+              (case Prepared is
+                 when Buffers.Converted => Statuses.No_Report,
+                 when Buffers.Invalid_UTF16
+                    | Buffers.Conversion_Limit_Exceeded =>
+                   Statuses.At_Input_Start,
+                 when Buffers.Conversion_No_Memory =>
+                   Statuses.Without_Position));
+         if Statuses.Report_For_Preparation (Prepared) =
+              Statuses.Without_Position
+         then
+            for OOM in Boolean loop
+               pragma Assert
+                 (Statuses.After_Report
+                    (Statuses.For_Preparation (Prepared), OOM) =
+                    Statuses.For_Preparation (Prepared));
+            end loop;
+         end if;
       end loop;
       for Status in Statuses.Public_Status loop
          pragma Assert (Statuses.After_Report (Status, False) = Status);

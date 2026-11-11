@@ -276,19 +276,30 @@ package body XML3_C is
          Status := Settlement.Status;
       end Parse_And_Report;
 
-      procedure Report_Conversion_Error
-        (Prepare_Status : XML3_Encoding.Buffers.Conversion_Result)
+      --  Publishes a failed preparation in the shape SPARK selected, then
+      --  applies the out-of-memory fixup.
+      procedure Report_Preparation_Failure
+        (Prepare_Status : XML3_Encoding.Buffers.Conversion_Result;
+         Shape : Statuses.Preparation_Report)
       is
          Item : constant XML3_Diagnostic_Codes.Diagnostic_Code :=
            XML3_Diagnostic_Codes.For_Preparation (Prepare_Status);
       begin
-         XML3_Errors.Report
-           (Natural (Item.Domain), Natural (Item.Code), 3, 1, 0, "", URL);
+         case Shape is
+            when Statuses.At_Input_Start =>
+               XML3_Errors.Report
+                 (Natural (Item.Domain), Natural (Item.Code), 3, 1, 0, "",
+                  URL);
+            when Statuses.Without_Position =>
+               Report_Code (Item, URL);
+            when Statuses.No_Report =>
+               null;
+         end case;
          Status :=
            Statuses.After_Report
              (Statuses.For_Preparation (Prepare_Status),
               XML3_Errors.Last_Error_Is_OOM);
-      end Report_Conversion_Error;
+      end Report_Preparation_Failure;
 
       procedure Reject (Kind : Requests.Admission_Kind) is
       begin
@@ -335,23 +346,22 @@ package body XML3_C is
          begin
             XML3_Encoding.Buffers.Prepare_Input
               (Buffer, Natural (Size), Requested, Prepared, Prepare_Status);
-            case Prepare_Status is
-               when XML3_Encoding.Buffers.Invalid_UTF16
-                  | XML3_Encoding.Buffers.Conversion_Limit_Exceeded =>
-                  Report_Conversion_Error (Prepare_Status);
-               when XML3_Encoding.Buffers.Conversion_No_Memory =>
-                  Status := Statuses.For_Preparation (Prepare_Status);
-                  Report_Code
-                    (XML3_Diagnostic_Codes.For_Preparation (Prepare_Status),
-                     URL);
-               when XML3_Encoding.Buffers.Converted =>
+            declare
+               Shape : constant Statuses.Preparation_Report :=
+                 Statuses.Report_For_Preparation (Prepare_Status);
+               use type Statuses.Preparation_Report;
+            begin
+               if Shape = Statuses.No_Report then
                   declare
                      Input : String (1 .. Prepared.Length)
                        with Import, Address => Prepared.Data;
                   begin
                      Parse_And_Report (Input, Prepared.Info);
                   end;
-            end case;
+               else
+                  Report_Preparation_Failure (Prepare_Status, Shape);
+               end if;
+            end;
          end;
       end;
       XML3_Encoding.Buffers.Release_Input (Prepared);
