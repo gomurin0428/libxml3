@@ -462,6 +462,73 @@ int main(int argc, char **argv) {
         copy = bounded ? xmlStrndup(source, sizeof(source)) : xmlStrdup(source);
         assert(copy && memcmp(copy, source, length) == 0 && copy[length] == 0);
         xmlFree(copy);
+    } else if (strcmp(operation, "node-copy") == 0 ||
+               strcmp(operation, "node-copy-doc") == 0 ||
+               strcmp(operation, "prop-copy") == 0 ||
+               strcmp(operation, "doc-copy") == 0) {
+        static const char text[] =
+            "<r xmlns:a='urn:a'><a:c a:k='v' b='w'>t<d xmlns='urn:d'>u</d>"
+            "<!--c--></a:c></r>";
+        xmlChar *before = NULL, *after = NULL;
+        int before_size = 0, after_size = 0;
+        xmlDocPtr target = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr root, source, other;
+        xmlNodePtr copy = NULL;
+
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        assert(doc && target);
+        root = xmlDocGetRootElement(doc);
+        source = root->children;
+        /* The property copy target binds the prefix to another name, so
+         * the copy needs a reconciled declaration. */
+        other = xmlNewDocNode(target, NULL, BAD_CAST "o", NULL);
+        assert(other && xmlNewNs(other, BAD_CAST "urn:other", BAD_CAST "a"));
+        xmlDocSetRootElement(target, other);
+        xmlDocDumpMemory(doc, &before, &before_size);
+        assert(before);
+        xml3_oom_enable(fail_index);
+        if (strcmp(operation, "node-copy") == 0)
+            copy = xmlCopyNode(source, 1);
+        else if (strcmp(operation, "node-copy-doc") == 0)
+            copy = xmlDocCopyNode(source, target, 1);
+        else if (strcmp(operation, "prop-copy") == 0)
+            copy = (xmlNodePtr)xmlCopyProp(other, source->properties);
+        else
+            copy = (xmlNodePtr)xmlCopyDoc(doc, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy);
+            if (strcmp(operation, "prop-copy") == 0) {
+                assert(copy->type == XML_ATTRIBUTE_NODE && copy->ns &&
+                       xmlStrEqual(copy->ns->href, BAD_CAST "urn:a"));
+                xmlFreeProp((xmlAttrPtr)copy);
+            } else if (strcmp(operation, "doc-copy") == 0) {
+                xmlDocDumpMemory((xmlDocPtr)copy, &after, &after_size);
+                assert(after && after_size == before_size &&
+                       memcmp(after, before, (size_t)before_size) == 0);
+                xmlFree(after);
+                after = NULL;
+                xmlFreeDoc((xmlDocPtr)copy);
+            } else {
+                assert(copy->type == XML_ELEMENT_NODE && copy->parent == NULL &&
+                       copy->ns && xmlStrEqual(copy->ns->href, BAD_CAST "urn:a"));
+                xmlFreeNode(copy);
+            }
+        }
+        /* A failed or successful copy leaves the source unchanged. */
+        xmlDocDumpMemory(doc, &after, &after_size);
+        assert(after && after_size == before_size &&
+               memcmp(after, before, (size_t)before_size) == 0);
+        xmlFree(after);
+        xmlFree(before);
+        xmlFreeDoc(target);
+        xmlFreeDoc(doc);
+        doc = NULL;
     } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);

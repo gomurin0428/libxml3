@@ -9,7 +9,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -21,7 +21,8 @@ build-development:
 
 test-development: build-development tests/runtime-test tests/string-exception-test \
 		tests/namespace-test tests/attribute-test tests/namespace-edit-test \
-		tests/serialization-test-development tests/content-edit-test-development
+		tests/serialization-test-development tests/content-edit-test-development \
+		tests/copy-test-development
 	LD_LIBRARY_PATH=lib/development ./tests/runtime-test
 	LD_LIBRARY_PATH=lib/development ./tests/string-exception-test
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-test
@@ -29,6 +30,7 @@ test-development: build-development tests/runtime-test tests/string-exception-te
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-edit-test
 	LD_LIBRARY_PATH=lib/development ./tests/serialization-test-development
 	LD_LIBRARY_PATH=lib/development ./tests/content-edit-test-development
+	LD_LIBRARY_PATH=lib/development ./tests/copy-test-development > /dev/null
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
 		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
@@ -134,6 +136,28 @@ tests/content-edit-test-development: tests/content-edit-test.c \
 
 tests/content-edit-test-sanitize: tests/content-edit-test.c $(PUBLIC_HEADERS) | build
 	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+tests/copy-test: tests/copy-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/copy-test-reference: tests/copy-test.c compat/baseline.json \
+		build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/copy-test-development: tests/copy-test.c $(PUBLIC_HEADERS) Makefile | build-development
+	$(CC) $(CFLAGS) -Werror $< -Llib/development \
+		-Wl,-rpath,'$$ORIGIN/../lib/development' -lxml3 -o $@
+
+tests/copy-test-sanitize: tests/copy-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+# The copy test prints what each copy looks like; both outputs must match.
+test-copy: tests/copy-test tests/copy-test-reference
+	LD_LIBRARY_PATH=lib ./tests/copy-test > tests/copy-test.out
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/copy-test-reference > tests/copy-test-reference.out
+	diff -u tests/copy-test-reference.out tests/copy-test.out
 
 test-content-edit: tests/content-edit-test tests/content-edit-test-reference
 	LD_LIBRARY_PATH=lib ./tests/content-edit-test
@@ -335,7 +359,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test document-entity 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test name-values 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test uri-unescape-inplace 0
-	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success arena-growth parsed-pi option-rejection malformed utf16 utf16-empty warning copy copy-empty replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
+	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success arena-growth parsed-pi option-rejection malformed utf16 utf16-empty warning copy copy-empty replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy node-copy node-copy-doc prop-copy doc-copy ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -430,6 +454,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 		xmlNodeAddContent xmlNodeAddContentLen xmlNodeSetName xmlNodeSetContent xmlNodeSetContentLen xmlNewChild xmlNewTextChild xmlNewDocNode xmlNewDocRawNode xmlTextMerge xmlTextConcat xmlNodeIsText xmlIsBlankNode xmlIsXHTML xmlIsChar xmlIsBlank xmlIsBaseChar xmlIsCombining xmlIsDigit xmlIsExtender xmlIsIdeographic xmlIsPubidChar xmlReplaceNode xmlNodeGetLang xmlNodeGetSpacePreserve xmlNodeSetLang xmlNodeSetSpacePreserve \
 	xmlNewProp xmlSetProp xmlUnsetProp xmlRemoveProp xmlFreeProp xmlFreePropList \
 	xmlNewNs xmlSetNs xmlFreeNs xmlCopyNamespace xmlNewNsProp xmlSetNsProp xmlUnsetNsProp \
+	xmlCopyNode xmlDocCopyNode xmlCopyProp xmlCopyDoc \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsList xmlGetNsListSafe \
 	xmlGetNsProp xmlGetNoNsProp xmlNodeGetAttrValue xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \
@@ -471,7 +496,8 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 		tests/error-test-sanitize tests/fuzz-test-sanitize tests/dom-test-sanitize \
 		tests/namespace-edit-test-sanitize \
 		tests/attribute-test-sanitize tests/runtime-test-sanitize \
-		tests/serialization-test-sanitize tests/content-edit-test-sanitize
+		tests/serialization-test-sanitize tests/content-edit-test-sanitize \
+		tests/copy-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
@@ -488,6 +514,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/runtime-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/serialization-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/content-edit-test-sanitize
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/copy-test-sanitize > /dev/null
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
@@ -511,6 +538,8 @@ clean:
 		tests/serialization-test-development tests/serialization-test-sanitize \
 		tests/content-edit-test tests/content-edit-test-reference \
 		tests/content-edit-test-development tests/content-edit-test-sanitize \
+		tests/copy-test tests/copy-test-reference tests/copy-test-development \
+		tests/copy-test-sanitize tests/copy-test.out tests/copy-test-reference.out \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out

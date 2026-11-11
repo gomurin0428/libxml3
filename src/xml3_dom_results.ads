@@ -58,7 +58,9 @@ package XML3_DOM_Results with SPARK_Mode is
       Node_Content,         --  xmlNodeGetContent
       Inherited_Property,   --  xmlNodeGetLang, xmlNodeGetSpacePreserve
       Property_Lookup,      --  xmlGetProp, xmlHasProp and their Ns variants
-      Namespace_List);      --  xmlGetNsList, xmlGetNsListSafe
+      Namespace_List,       --  xmlGetNsList, xmlGetNsListSafe
+      Node_Copy);           --  xmlCopyNode, xmlDocCopyNode, xmlCopyProp,
+                            --  xmlCopyDoc
 
    function Reports_Invalid_Argument (Class : Operation_Class) return Boolean
    is (Class in Edit .. Entity_Encoding)

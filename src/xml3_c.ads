@@ -233,6 +233,24 @@ package XML3_C is
    function Copy_Ns (Source : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCopyNamespace";
 
+   function Copy_Node
+     (Node : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyNode";
+
+   function Doc_Copy_Node
+     (Node, Doc : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlDocCopyNode";
+
+   function Copy_Prop (Target, Cur : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyProp";
+
+   function Copy_Doc
+     (Doc : System.Address; Recursive : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyDoc";
+
    procedure Free_Ns (Ns : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeNs";
 

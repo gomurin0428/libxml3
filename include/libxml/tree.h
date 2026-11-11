@@ -144,6 +144,10 @@ xmlNsPtr xmlNewNs(xmlNodePtr node, const xmlChar *href, const xmlChar *prefix);
 void xmlSetNs(xmlNodePtr node, xmlNsPtr ns);
 void xmlFreeNs(xmlNsPtr cur);
 xmlNsPtr xmlCopyNamespace(xmlNsPtr cur);
+xmlNodePtr xmlCopyNode(xmlNodePtr node, int extended);
+xmlNodePtr xmlDocCopyNode(xmlNodePtr node, xmlDocPtr doc, int extended);
+xmlAttrPtr xmlCopyProp(xmlNodePtr target, xmlAttrPtr cur);
+xmlDocPtr xmlCopyDoc(xmlDocPtr doc, int recursive);
 xmlAttrPtr xmlNewProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewDocProp(xmlDocPtr doc, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewNsProp(xmlNodePtr node, xmlNsPtr ns,

@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,080 checks
-(1,653 flow and 12,427 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,491 checks
+(1,755 flow and 12,736 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1094,6 +1094,18 @@ publish. The adapter still computes which pointers are NULL, publishes the
 diagnostic and returns each entry point's refusal value. Tests compare
 every group and every presence combination with a test-local copy of the
 former inline conditions.
+
+`Store.Copies` copies nodes, properties and documents (`xmlCopyNode`,
+`xmlDocCopyNode`, `xmlCopyProp`, `xmlCopyDoc`) by composing the Store's
+existing construction, attachment, namespace and release operations, so
+every node and namespace it creates goes through the proved constructors
+and keeps the Store invariant. A failed copy releases what it created. The
+proof covers absence of runtime errors, termination, the invariant and the
+status/result contract, not the equality of the copy with its source,
+which `make test-copy` compares with the pinned libxml2; the OOM walks
+check that a failed copy leaves the source unchanged. Element line numbers
+are not copied, and `xmlCopyProp` returns its copy without a parent where
+libxml2 points the parent at the target without linking it.
 
 `Text_Results` selects the diagnostics and `int` results of the string
 entry points from the statuses of the SPARK string operations: a length

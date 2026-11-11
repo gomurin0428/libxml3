@@ -1527,5 +1527,29 @@
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyNode": {
+    "implementation": "partial",
+    "scope": "Copies managed element, text, CDATA, comment and processing-instruction nodes, attributes (as xmlCopyProp without a target, keeping the source document and dropping the namespace, as libxml2 does) and documents (as xmlCopyDoc) through the SPARK XML3_DOM_Store.Copies composition of construction, attachment, namespace lookup/creation and release. extended 0 copies the node, 2 adds element properties and namespace declarations, any other value copies the subtree; namespaces are resolved as xmlStaticCopyNode does (in-scope prefix, redeclaration at the copy root, or xmlNewReconciledNs-style prefixes). The copy has no document. Element line numbers are not copied, namespace declarations (xmlNs pointers) cannot be copied through this entry point, and IDs are not registered. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocCopyNode": {
+    "implementation": "partial",
+    "scope": "As xmlCopyNode, with the copy (and its properties and descendants) belonging to the given document; a NULL doc gives a document-less copy. The doc argument must be a managed document. Element line numbers are not copied and IDs are not registered. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyProp": {
+    "implementation": "partial",
+    "scope": "Copies a managed attribute with its text children for an optional element target, resolving the namespace as xmlCopyPropInternal does: the in-scope declaration with the same prefix and name, a reconciled declaration on the target when the prefix is bound to another name, a redeclaration at the top of the target tree when only the source scope declares it, or no namespace. Differs from libxml2 in that the copy is returned with a NULL parent (libxml2 points parent at target without linking it); attach it with xmlAddChild or free it with xmlFreeProp. A non-element target returns NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyDoc": {
+    "implementation": "partial",
+    "scope": "Copies a managed document's version and, when recursive is nonzero, its children (elements, comments, processing instructions) deeply into a new document. The public xmlDoc has no other copied fields; DTDs and entities are not supported. A failed copy releases the new document. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

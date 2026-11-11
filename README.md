@@ -86,7 +86,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlAddSibling`、`xmlAddPrevSibling`、`xmlAddNextSibling`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
-`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
+`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp`、`xmlCopyNode`、`xmlDocCopyNode`、
+`xmlCopyProp`、`xmlCopyDoc` をサポートします。
 `xmlNodeAddContent` / `xmlNodeAddContentLen` / `xmlTextConcat` の本文はSPARKで計測し、
 C側の中間Stringなしで新しい所有領域へ直接コピーします。未登録nodeとscalar限定APIの
 不適切なkindは入力読み取り前に拒否し、既存本文を入力として使う場合もコピー完了まで旧領域を保持します。
@@ -146,6 +147,21 @@ HTML/entity expansion は未対応です。
 prefix解決、非修飾属性の更新、暗黙XML namespaceの作成・失敗時の巻き戻しを再利用します。
 `xmlUnsetProp` / `xmlUnsetNsProp` は共通SPARK経路で登録確認・名前の計測/コピー・
 削除を行い、非修飾/URI照合を区別します。C側の汎用文字列走査・変換ヘルパーは不要になりました。
+
+`xmlCopyNode`、`xmlDocCopyNode`、`xmlCopyProp`、`xmlCopyDoc` は、SPARKの
+`XML3_DOM_Store.Copies` が既存のノード作成・接続・namespace検索/作成・解放を組み合わせて
+コピーします。`extended` は0がノードだけ、2が要素の属性とnamespace宣言まで、それ以外が
+子孫を含む全体です。コピーしたノードのnamespaceは libxml2 の `xmlStaticCopyNode` と同じ順で、
+コピー側で見える同じprefixの宣言、元の木の宣言をコピーの最上位に宣言し直したもの、
+重複しないprefix（`a1` など）の新しい宣言の順に決めます。途中で失敗した場合は作成済みの
+コピーを解放します。固定版2.15.4と同じ出力になることを `make test-copy` で比較しています。
+libxml2との差は次のとおりです。
+- `xmlCopyProp` のコピーは親がNULLのまま返します。libxml2は親を `target` に向けますが
+  リストにはつなぎません。`xmlAddChild` で付けるか `xmlFreeProp` で解放してください。
+- 要素の行番号（`xmlGetLineNo`）はコピーしません。
+- 親のない兄弟リストを表せないため、`xmlCopyNodeList`、`xmlDocCopyNodeList`、
+  `xmlCopyPropList` は未対応です。namespace宣言（`xmlNs`）を `xmlCopyNode` でコピーすることも
+  できません。DTDとIDは対象外です。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

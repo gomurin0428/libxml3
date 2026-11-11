@@ -122,6 +122,14 @@ int main() {
     (void)str_n_duplicate;
     xmlNs *(*copy_namespace)(xmlNs *) = xmlCopyNamespace;
     (void)copy_namespace;
+    xmlNode *(*copy_node)(xmlNode *, int) = xmlCopyNode;
+    xmlNode *(*doc_copy_node)(xmlNode *, xmlDoc *, int) = xmlDocCopyNode;
+    xmlAttr *(*copy_prop)(xmlNode *, xmlAttr *) = xmlCopyProp;
+    xmlDoc *(*copy_doc)(xmlDoc *, int) = xmlCopyDoc;
+    (void)copy_node;
+    (void)doc_copy_node;
+    (void)copy_prop;
+    (void)copy_doc;
     xmlChar *(*build_qname)(const xmlChar *, const xmlChar *, xmlChar *, int) = xmlBuildQName;
     (void)build_qname;
     xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;

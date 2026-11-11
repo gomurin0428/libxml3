@@ -62,6 +62,11 @@ package XML3_Entry_Guards with SPARK_Mode is
       --  xmlNodeGetAttrValue, xmlGetNsListSafe: the output slot
       Namespace_Copy,
       --  xmlCopyNamespace: the namespace
+      Node_Copy,
+      --  xmlCopyNode, xmlDocCopyNode, xmlCopyDoc: the node or document
+      Property_Copy,
+      --  xmlCopyProp: the attribute (its second argument); the target is
+      --  optional
       Namespace_Assignment,
       --  xmlSetNs: node
       Namespace_Release,
@@ -137,6 +142,10 @@ package XML3_Entry_Guards with SPARK_Mode is
       Property_Lookup => Silent_Two,
       Lookup_Output => Silent_One,
       Namespace_Copy => Silent_One,
+      Node_Copy => Silent_One,
+      Property_Copy =>
+        (First_Required => False, Second_Required => True,
+         Distinct_Required => False, Reported => False),
       Namespace_Assignment => Silent_One,
       Namespace_Release => Silent_One,
       Namespace_Query => Silent_One,

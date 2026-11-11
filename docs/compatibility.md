@@ -144,7 +144,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
   `xmlUnlinkNode`、`xmlFreeNode`、
   `xmlNewNs`、`xmlSetNs`、`xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、
-  `xmlUnsetNsProp`、
+  `xmlUnsetNsProp`、`xmlCopyNode`、`xmlDocCopyNode`、`xmlCopyProp`、`xmlCopyDoc`、
   `xmlNodeGetContent`、`xmlGetNodePath`、`xmlGetLineNo`、`xmlGetProp`、`xmlHasProp`、`xmlSearchNs`、
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
@@ -510,6 +510,23 @@ element/attribute の namespace 参照のみを変更し、NULL で解除しま�
 の手動解放は拒否します。namespace が node から借用中であれば、その参照がなくなる
 まで native storage は保持されます。subtree 解放では宣言 chain を unlink してから
 element arena を解放し、独立作成宣言の reservation を一度だけ解放します。
+
+### ノード・属性・文書のコピー
+
+`xmlCopyNode`、`xmlDocCopyNode`、`xmlCopyProp`、`xmlCopyDoc` は、SPARKの
+`XML3_DOM_Store.Copies` が既存のノード作成・接続・namespace検索/作成・解放を組み合わせて
+コピーします。`extended` は0がノードだけ、2が要素の属性とnamespace宣言まで、それ以外が
+子孫を含む全体です。コピーしたノードのnamespaceは libxml2 の `xmlStaticCopyNode` と同じ順で、
+コピー側で見える同じprefixの宣言、元の木の宣言をコピーの最上位に宣言し直したもの、
+重複しないprefix（`a1` など）の新しい宣言の順に決めます。途中で失敗した場合は作成済みの
+コピーを解放します。固定版2.15.4と同じ出力になることを `make test-copy` で比較しています。
+libxml2との差は次のとおりです。
+- `xmlCopyProp` のコピーは親がNULLのまま返します。libxml2は親を `target` に向けますが
+  リストにはつなぎません。`xmlAddChild` で付けるか `xmlFreeProp` で解放してください。
+- 要素の行番号（`xmlGetLineNo`）はコピーしません。
+- 親のない兄弟リストを表せないため、`xmlCopyNodeList`、`xmlDocCopyNodeList`、
+  `xmlCopyPropList` は未対応です。namespace宣言（`xmlNs`）を `xmlCopyNode` でコピーすることも
+  できません。DTDとIDは対象外です。
 
 `xmlCopyNamespace` は管理中の live namespace facade だけを source として受け付け、
 href/prefix の byte 列を独立してコピーし、NULL と empty string の有無を保持した

@@ -64,3 +64,9 @@ tests/*.out
 tests/content-edit-test
 tests/content-edit-test-reference
 tests/content-edit-test-development
+tests/copy-test
+tests/copy-test-reference
+tests/copy-test-development
+tests/copy-test-sanitize
+tests/copy-test.out
+tests/copy-test-reference.out

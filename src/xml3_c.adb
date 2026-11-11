@@ -1610,6 +1610,91 @@ package body XML3_C is
          return System.Null_Address;
    end Copy_Ns;
 
+   --  The four copy entry points share the lock, the status report and
+   --  the exception mapping; Operation selects the Runtime call.
+   type Copy_Operation is (Node_Copy, Property_Copy, Document_Copy);
+
+   function Copy_Any
+     (Operation : Copy_Operation; Node, Other : System.Address;
+      Value : Interfaces.C.int) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         case Operation is
+            when Node_Copy =>
+               XML3_DOM_Runtime.Copy_Node
+                 (Node, Other, Integer (Value), Result, Status);
+            when Property_Copy =>
+               XML3_DOM_Runtime.Copy_Property (Other, Node, Result, Status);
+            when Document_Copy =>
+               XML3_DOM_Runtime.Copy_Document
+                 (Node, Value /= 0, Result, Status);
+         end case;
+      end;
+      Report_Operation_Status (Status, Results.Node_Copy);
+      return Result;
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Failure (Lock_Failure);
+         return System.Null_Address;
+      when Storage_Error =>
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Copy_Any;
+
+   function Copy_Node
+     (Node : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Node /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Node_Copy, Node, System.Null_Address, Extended);
+   end Copy_Node;
+
+   function Doc_Copy_Node
+     (Node, Doc : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Node /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Node_Copy, Node, Doc, Extended);
+   end Doc_Copy_Node;
+
+   function Copy_Prop (Target, Cur : System.Address) return System.Address is
+   begin
+      if Refused
+           (Guards.Property_Copy, Target /= System.Null_Address,
+            Cur /= System.Null_Address)
+      then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Property_Copy, Cur, Target, 0);
+   end Copy_Prop;
+
+   function Copy_Doc
+     (Doc : System.Address; Recursive : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Doc /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Document_Copy, Doc, System.Null_Address, Recursive);
+   end Copy_Doc;
+
    procedure Set_Ns (Node, Ns : System.Address) is
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
