@@ -110,6 +110,27 @@ static void test_buffers(void) {
     assert(xmlBufferLength(sized) == 40);
     assert(memcmp(xmlBufferContent(sized), "0123456789", 10) == 0);
     xmlBufferFree(sized);
+    /* Prepending part of the content in place (libxml2 overwrites it
+     * before reading it), and quoting the content while the quotes make
+     * the buffer grow. */
+    sized = xmlBufferCreateSize(20);
+    assert(xmlBufferAdd(sized, BAD_CAST "abcdef", -1) == 0);
+    assert(xmlBufferShrink(sized, 1) == 1);
+    assert(xmlBufferAddHead(sized, xmlBufferContent(sized) + 1, 3) == 0);
+    assert(strcmp((const char *)xmlBufferContent(sized), "cdebcdef") == 0);
+    xmlBufferFree(sized);
+    sized = xmlBufferCreateSize(10);
+    assert(xmlBufferAdd(sized, BAD_CAST "0123456789", 10) == 0);
+    xmlBufferWriteQuotedString(sized, xmlBufferContent(sized));
+    assert(strcmp((const char *)xmlBufferContent(sized),
+                  "0123456789\"0123456789\"") == 0);
+    xmlBufferFree(sized);
+    sized = xmlBufferCreateSize(10);
+    assert(xmlBufferAdd(sized, BAD_CAST "a\"b'c", -1) == 0);
+    xmlBufferWriteQuotedString(sized, xmlBufferContent(sized));
+    assert(strcmp((const char *)xmlBufferContent(sized),
+                  "a\"b'c\"a&quot;b'c\"") == 0);
+    xmlBufferFree(sized);
 #endif
     sized = xmlBufferCreateStatic((void *)"static text", 6);
     put_buffer("static", sized);

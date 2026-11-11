@@ -297,9 +297,12 @@ and the size. `Well_Formed` (the used bytes stay below the size, the block
 stays within `INT_MAX`, an empty view has no block) is a precondition and
 postcondition of every operation; `Grown_Size` is proved to leave room for
 the requested bytes. Byte moves go through `Move_Bytes`, which takes base
-and index so that the native offsets need no non-null contract. `Add` and
-`Add_Head` read their source before releasing the old block, so bytes taken
-from the buffer itself stay valid. `XML3_Serialization.Render` now also serializes a
+and index so that the native offsets need no non-null contract. Text taken
+from the buffer itself stays valid: `Add` reads it before releasing the old
+block, and `Add_Head` and `Add_Quoted` work on a copy of text that lies in
+the block (`Inside`), since moving the content or appending a quote could
+overwrite or release it first. libxml2 reads such text after the move or
+the release. `XML3_Serialization.Render` now also serializes a
 single node (`xmlNodeDump`): the node itself without a declaration, an
 attribute with its leading space, or a whole document; a separate
 `Nesting` counter bounds the descent while `Depth` adds the starting
@@ -474,7 +477,7 @@ The longest units take
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **14,709 checks, 1,828 by flow analysis and 12,881 by provers; 0
+Result: **14,732 checks, 1,837 by flow analysis and 12,895 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1142,7 +1145,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 691 entity
+The 695 entity
 summaries report 0 flow errors, 188 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1178,14 +1181,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 521 |
-| Initialization | 1,030 |
+| Data dependencies | 525 |
+| Initialization | 1,034 |
 | Non-aliasing | 1 |
-| Runtime checks | 6,135 |
+| Runtime checks | 6,137 |
 | Assertions | 1,802 |
-| Functional contracts | 4,869 |
-| Termination | 351 |
-| **Total** | **14,709** |
+| Functional contracts | 4,881 |
+| Termination | 352 |
+| **Total** | **14,732** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1998,7 +2001,7 @@ b7d46e18cc71379fa2a02e5c5dec758b2d66bb6e21d31694a586f05b93a1619c  src/xml3_entry
 9098d98c40c85a401839f9e09fd3dab870757985bda1d9dc5a54212edb6175de  src/xml3_dom_store-copies.ads
 588c73ceb48578ab1fef8c169f6d75123067b14edc35702b37ec48e255d5f695  src/xml3_dom_store-copies.adb
 dd41f27dfdb4ef878b8b14feae082a3e1ef1667bfc7df8e2404c53fef9d425cc  src/xml3_byte_buffers.ads
-de6eac716e98756cafdadc47bc74f48b6c3b6b96ef19983e9c0cfb40e5152ef1  src/xml3_byte_buffers.adb
+bed43f0bc00aded8b9f87d3391965411d53ed729ce6d1aea404064e949760b1b  src/xml3_byte_buffers.adb
 7d2f71bd3d7fec7e838ce6c27113b7249e6d9343c79e02ff4d4575ac1c84ed7b  src/xml3_file_paths.ads
 b9b9d84b59941b17c1c0bd670c7e262669ad00a2296631e73d2e26d0ed19d578  src/xml3_file_paths.adb
 f0841ece62ede37ac2aeafb0e605bea88bfb2484781797b10a990baca9b02c6e  src/xml3_io_errors.ads
@@ -2030,7 +2033,7 @@ ab0d3e69d2e51852e016d58237947b8b03d373d8e64283e3f0967b2016de4e38  tests/dom_brid
 0a6d4abeab3d664ef1079d74a125226a05d018473e503e329bcf0d0b9256a90b  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 de39b5a991725333eb8fe1ac485e641d5ad8ab58ecae6788f838c0268a25079e  tests/copy-test.c
-ab0fb3faea2061fe5165da9140969caa8f7d5c481d31804000dda317a0811b65  tests/output-test.c
+26ff0356fc451da66f239d1f987360af45ff5ffde7cf478279e25af283e766eb  tests/output-test.c
 ffd91cf400eeec27207cf0a919a36cd615bbb3c10d5213b6d82516110992cc90  tests/input-test.c
 ```
 

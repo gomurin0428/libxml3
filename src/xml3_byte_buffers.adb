@@ -1,6 +1,9 @@
+with System.Storage_Elements;
+
 package body XML3_Byte_Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
    use type Native.Byte_Count;
+   use type System.Storage_Elements.Integer_Address;
 
    Default_Size : constant := 256;
 
@@ -152,9 +155,12 @@ package body XML3_Byte_Buffers with SPARK_Mode is
             Size => New_Size);
    end Add;
 
-   procedure Add_Head
+   procedure Add_Head_Unaliased
      (B : in out Buffer; Source : System.Address; Length : Natural;
       Status : out Add_Status)
+   with Global => (In_Out => Native.Foreign_Memory),
+     Pre => Well_Formed (B) and then Source /= System.Null_Address,
+     Post => Well_Formed (B)
    is
       Start : constant Natural := B.Offset;
       New_Base : System.Address;
@@ -202,7 +208,7 @@ package body XML3_Byte_Buffers with SPARK_Mode is
       Native.Write_Byte (New_Base, Length + B.Used, Character'Val (0));
       B := (Base => New_Base, Offset => 0, Used => B.Used + Length,
             Size => New_Size);
-   end Add_Head;
+   end Add_Head_Unaliased;
 
    procedure Shrink (B : in out Buffer; Length : Natural; Result : out Integer)
    is
@@ -244,8 +250,12 @@ package body XML3_Byte_Buffers with SPARK_Mode is
       B := (others => <>);
    end Detach;
 
-   procedure Add_Quoted
+   procedure Add_Quoted_Unaliased
      (B : in out Buffer; Source : System.Address; Length : Natural)
+   with Global => (In_Out => Native.Foreign_Memory),
+     Pre => Well_Formed (B)
+       and then (Length = 0 or else Source /= System.Null_Address),
+     Post => Well_Formed (B)
    is
       Double_Quote : constant Character := '"';
       Single_Quote : constant Character := Character'Val (39);
@@ -318,6 +328,68 @@ package body XML3_Byte_Buffers with SPARK_Mode is
             Add (B, Source, Length, Ignored);
          end if;
          Add_Text (B, (1 => (if Has_Double then Single_Quote else Double_Quote)));
+      end if;
+   end Add_Quoted_Unaliased;
+
+   --  Whether Source lies in the block of B.  An operation that moves the
+   --  content or replaces the block before it has read Source works on a
+   --  copy of such text instead: libxml2 reads it after the move or after
+   --  the release.
+   function Inside (B : Buffer; Source : System.Address) return Boolean is
+     (B.Base /= System.Null_Address
+      and then Native.Address_Value (Source) >=
+                 Native.Address_Value (B.Base)
+      and then Native.Address_Value (Source) - Native.Address_Value (B.Base)
+               < System.Storage_Elements.Integer_Address (B.Offset + B.Size))
+   with Global => null,
+     Pre => Well_Formed (B);
+
+   --  A copy of Length bytes at Source in a new block; null when the
+   --  allocation fails.
+   procedure Snapshot
+     (Source : System.Address; Length : Natural; Copy : out System.Address)
+   with Global => (In_Out => Native.Foreign_Memory),
+     Pre => Source /= System.Null_Address and then Length > 0
+   is
+   begin
+      Native.Allocate (Native.Byte_Count (Length), Copy);
+      if Copy /= System.Null_Address then
+         Move_Bytes (Source, 0, Copy, 0, Length);
+      end if;
+   end Snapshot;
+
+   procedure Add_Head
+     (B : in out Buffer; Source : System.Address; Length : Natural;
+      Status : out Add_Status)
+   is
+      Copy : System.Address;
+   begin
+      if Length = 0 or else not Inside (B, Source) then
+         Add_Head_Unaliased (B, Source, Length, Status);
+         return;
+      end if;
+      Snapshot (Source, Length, Copy);
+      if Copy = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Add_Head_Unaliased (B, Copy, Length, Status);
+      Native.Free (Copy);
+   end Add_Head;
+
+   procedure Add_Quoted
+     (B : in out Buffer; Source : System.Address; Length : Natural)
+   is
+      Copy : System.Address;
+   begin
+      if Length = 0 or else not Inside (B, Source) then
+         Add_Quoted_Unaliased (B, Source, Length);
+         return;
+      end if;
+      Snapshot (Source, Length, Copy);
+      if Copy /= System.Null_Address then
+         Add_Quoted_Unaliased (B, Copy, Length);
+         Native.Free (Copy);
       end if;
    end Add_Quoted;
 

@@ -1608,7 +1608,7 @@
   },
   "function:tree.h:xmlBufferAddHead": {
     "implementation": "partial",
-    "scope": "Prepends len bytes using shrunk room when possible; XML_ERR_ARGUMENT for NULL arguments and -1 when growth fails. Bytes taken from the buffer itself are copied before the old block is released (libxml2 reads them after). Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "scope": "Prepends len bytes using shrunk room when possible; XML_ERR_ARGUMENT for NULL arguments and -1 when growth fails. Text taken from the buffer itself is copied first, so the in-place shift and the growth cannot overwrite or release it before it is read (libxml2 reads it afterwards). Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
@@ -1638,7 +1638,7 @@
   },
   "function:tree.h:xmlBufferWriteQuotedString": {
     "implementation": "partial",
-    "scope": "Writes the string in double quotes, in single quotes when it contains a double quote, or in double quotes with &quot; when it contains both. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "scope": "Writes the string in double quotes, in single quotes when it contains a double quote, or in double quotes with &quot; when it contains both. A string taken from the buffer itself is copied first, so growth for the quotes cannot release it. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
