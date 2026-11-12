@@ -113,6 +113,20 @@ static void oom_context_handler(void *data, const xmlError *error) {
     }
 }
 
+/* A thread handler that allocates while it handles a warning. */
+static int warning_handler_failed;
+
+static void allocating_handler(void *data, const xmlError *error) {
+    xmlChar *copy;
+
+    (void)data;
+    (void)error;
+    copy = xmlStrdup(BAD_CAST "handled");
+    if (copy == NULL)
+        warning_handler_failed = 1;
+    xmlFree(copy);
+}
+
 static const xmlError *require_oom_error(void) {
     const xmlError *error = xmlGetLastError();
     assert(error != NULL);
@@ -728,6 +742,28 @@ int main(int argc, char **argv) {
         xmlFreeParserCtxt(ctxt);
         xmlFreeParserCtxt(nested_ctxt);
         nested_ctxt = NULL;
+    } else if (strcmp(operation, "handler-warning") == 0) {
+        /* A failed allocation inside the handler of a warning does not
+         * change the result of the read that published it. */
+        static const unsigned char input[] = {
+            0xef, 0xbb, 0xbf, '<', '?', 'x', 'm', 'l', ' ',
+            'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '\'', '1', '.', '0',
+            '\'', ' ', 'e', 'n', 'c', 'o', 'd', 'i', 'n', 'g', '=', '\'',
+            'U', 'T', 'F', '-', '1', '6', '\'', '?', '>', '<', 'r', '/', '>'
+        };
+
+        warning_handler_failed = 0;
+        xmlSetStructuredErrorFunc(NULL, allocating_handler);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory((const char *)input, sizeof(input), NULL, NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        xmlSetStructuredErrorFunc(NULL, NULL);
+        if (!injected || warning_handler_failed)
+            assert(doc != NULL);
+        xmlFreeDoc(doc);
+        doc = NULL;
     } else if (strcmp(operation, "context-new") == 0) {
         xmlParserCtxtPtr ctxt;
 

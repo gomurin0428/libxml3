@@ -268,6 +268,10 @@ package body XML3_Errors is
    --  must not copy again).
    Copying : Boolean := False
      with Thread_Local_Storage;
+   --  The latest publication ended in an out-of-memory record; a handler's
+   --  own activity does not change it (Last_Error_Is_OOM).
+   Published_OOM : Boolean := False
+     with Thread_Local_Storage;
 
    function Reading return Saved_Read is
      ((Read =>
@@ -386,6 +390,7 @@ package body XML3_Errors is
    is
       Saved : constant Saved_Read := Reading;
       Saved_Copying : constant Boolean := Copying;
+      Saved_OOM : constant Boolean := Published_OOM;
    begin
       --  The handler's own reads are independent of a copy in progress.
       Set_Reading (No_Read);
@@ -393,11 +398,13 @@ package body XML3_Errors is
       Handler (Data, Error);
       Set_Reading (Saved);
       Copying := Saved_Copying;
+      Published_OOM := Saved_OOM;
    exception
       when others =>
          Set_Reading (Saved);
          Copying := Saved_Copying;
-      end Call_Handler;
+         Published_OOM := Saved_OOM;
+   end Call_Handler;
 
    --  Errors published while the thread held the DOM lock, with the
    --  handler chosen for each, in publication order.
@@ -513,6 +520,7 @@ package body XML3_Errors is
       State : constant Error_State_Access := Current_State (False);
    begin
       Note (XML3_Error_Records.Fatal_Level, XML3_OOM);
+      Published_OOM := True;
       if State /= null then
          XML3_Error_Records.Install_Out_Of_Memory
            (State.all, Emergency_Message'Address);
@@ -567,6 +575,7 @@ package body XML3_Errors is
       end if;
       XML3_Error_Records.Install (State.all, Replacement);
       Emergency_Active := False;
+      Published_OOM := Code = XML3_OOM;
       Note_Context (Level, Code);
       Dispatch (Level);
    exception
@@ -622,19 +631,9 @@ package body XML3_Errors is
          Set_OOM;
    end Report_Simple;
 
-   function Last_Error_Is_OOM return Boolean is
-      State : constant Error_State_Access := Current_State (False);
-   begin
-      if State /= null then
-         return State.Error.Code = XML3_OOM;
-      elsif Emergency_Active then
-         return Emergency_Error.Code = XML3_OOM;
-      end if;
-      return False;
-   exception
-      when others =>
-         return False;
-   end Last_Error_Is_OOM;
+   --  Whether the latest publication ended in an out-of-memory record,
+   --  whatever handlers called for it did afterwards.
+   function Last_Error_Is_OOM return Boolean is (Published_OOM);
 
    function Get_Last_Error return System.Address is
       State : constant Error_State_Access := Current_State (False);
@@ -659,6 +658,7 @@ package body XML3_Errors is
    procedure Reset_Last_Error is
       State : constant Error_State_Access := Current_State (False);
    begin
+      Published_OOM := False;
       if State /= null then
          XML3_Error_Records.Clear_Slot (State.all);
       end if;
