@@ -59,6 +59,44 @@ XML3_INTERNAL long xml3FileWritePath(const char *path, int standard_output,
     return result;
 }
 
+/* Opens the output of a save context, as xmlSaveToFilename does: the file
+ * created or truncated with mode 0666, or a dup of standard output.
+ * Returns the descriptor, or -1 when it cannot be opened (libxml2 creates
+ * no context then and reports nothing). */
+XML3_INTERNAL int xml3FileOpenWrite(const char *path, int standard_output) {
+    if (standard_output)
+        return dup(STDOUT_FILENO);
+    if (path == NULL)
+        return -1;
+    return open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+}
+
+/* xmlFdWrite: writes all length bytes; returns length or the negated
+ * XML_IO_* code of the first failure. */
+XML3_INTERNAL int xml3FdWrite(int fd, const void *data, int length) {
+    const char *at = (const char *)data;
+    int done = 0;
+
+    while (done < length) {
+        ssize_t written = write(fd, at + done, (size_t)(length - done));
+
+        if (written < 0) {
+            if (errno == EINTR)
+                continue;
+            return -io_code(errno);
+        }
+        done += (int)written;
+    }
+    return done;
+}
+
+/* xmlFdClose: 0, or the XML_IO_* code of a failed close. */
+XML3_INTERNAL int xml3FdClose(int fd) {
+    if (close(fd) < 0)
+        return io_code(errno);
+    return 0;
+}
+
 /* Writes length bytes to a caller's FILE and flushes it.  Returns the byte
  * count, -1 for a NULL stream, or the negated XML_IO_* code of a write or
  * flush error. */

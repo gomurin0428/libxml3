@@ -755,4 +755,53 @@ package XML3_C is
    procedure Free (Item : System.Address)
      with Export, Convention => C, External_Name => "xmlFree";
 
+   --  The output callbacks of xmlSaveToIO.
+   type Output_Write_Callback is access function
+     (Context, Data : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int
+     with Convention => C;
+   type Output_Close_Callback is access function
+     (Context : System.Address) return Interfaces.C.int
+     with Convention => C;
+
+   function Save_To_Buffer
+     (Buffer, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlSaveToBuffer";
+
+   function Save_To_Fd
+     (Fd : Interfaces.C.int; Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlSaveToFd";
+
+   function Save_To_Filename
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlSaveToFilename";
+
+   function Save_To_IO
+     (Write : Output_Write_Callback; Close : Output_Close_Callback;
+      Context, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlSaveToIO";
+
+   function Save_Doc (Ctxt, Doc : System.Address) return Interfaces.C.long
+     with Export, Convention => C, External_Name => "xmlSaveDoc";
+
+   function Save_Tree (Ctxt, Node : System.Address) return Interfaces.C.long
+     with Export, Convention => C, External_Name => "xmlSaveTree";
+
+   function Save_Flush (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFlush";
+
+   function Save_Close (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveClose";
+
+   function Save_Finish (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFinish";
+
+   function Save_Set_Indent_String (Ctxt, Indent : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveSetIndentString";
+
 end XML3_C;

@@ -175,6 +175,36 @@ int main() {
     (void)ctxt_read_file;
     (void)ctxt_get_last_error;
     (void)ctxt_reset_last_error;
+    xmlSaveCtxtPtr (*save_to_fd)(int, const char *, int) = xmlSaveToFd;
+    xmlSaveCtxt *(*save_to_filename)(const char *, const char *, int) =
+        xmlSaveToFilename;
+    xmlSaveCtxt *(*save_to_buffer)(xmlBuffer *, const char *, int) =
+        xmlSaveToBuffer;
+    xmlSaveCtxt *(*save_to_io)(xmlOutputWriteCallback, xmlOutputCloseCallback,
+                               void *, const char *, int) = xmlSaveToIO;
+    long (*save_doc)(xmlSaveCtxt *, xmlDoc *) = xmlSaveDoc;
+    long (*save_tree)(xmlSaveCtxt *, xmlNode *) = xmlSaveTree;
+    int (*save_flush)(xmlSaveCtxt *) = xmlSaveFlush;
+    int (*save_close)(xmlSaveCtxt *) = xmlSaveClose;
+    xmlParserErrors (*save_finish)(xmlSaveCtxt *) = xmlSaveFinish;
+    int (*save_set_indent)(xmlSaveCtxt *, const char *) =
+        xmlSaveSetIndentString;
+    xmlSaveOption save_options[] = {
+        XML_SAVE_FORMAT, XML_SAVE_NO_DECL, XML_SAVE_NO_EMPTY,
+        XML_SAVE_NO_XHTML, XML_SAVE_XHTML, XML_SAVE_AS_XML,
+        XML_SAVE_AS_HTML, XML_SAVE_WSNONSIG, XML_SAVE_EMPTY,
+        XML_SAVE_NO_INDENT, XML_SAVE_INDENT};
+    (void)save_to_fd;
+    (void)save_to_filename;
+    (void)save_to_buffer;
+    (void)save_to_io;
+    (void)save_doc;
+    (void)save_tree;
+    (void)save_flush;
+    (void)save_close;
+    (void)save_finish;
+    (void)save_set_indent;
+    (void)save_options;
     {
         xmlParserCtxt context;
         context._private = nullptr;

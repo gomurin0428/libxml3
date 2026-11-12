@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,831 checks
-(1,869 flow and 12,962 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,891 checks
+(1,903 flow and 12,988 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1129,6 +1129,20 @@ and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
 the record published when the file cannot be opened or read. `make
 test-input` compares the documents and error records with the pinned
 libxml2.
+
+`Save_Contexts` decides the `xmlsave.h` save context: which options are
+supported and the output style they select (declaration, empty tags,
+indentation), which indent strings `xmlSaveSetIndentString` accepts, when
+pending bytes reach the target (4000 or more), and the output buffer's
+state after each write, flush and close, from which `xmlSaveFlush`,
+`xmlSaveClose` and `xmlSaveFinish` answer. The serializer takes the style
+as an `Output_Style`; the pending bytes are a `Byte_Buffers` buffer. The
+proof covers absence of runtime errors and the stated properties (a failed
+write always leaves an error, the byte count never decreases, a close
+result is negative exactly when an error is held); calling the target
+(an `xmlBuffer`, a descriptor, a file or the application's callbacks) is
+the adapter's. `make test-save` compares the output and the results with
+the pinned libxml2.
 
 `Parser.Contexts` decides what the reduced `xmlParserCtxt` stores: the
 initial options, the option masks of `xmlCtxtUseOptions` and

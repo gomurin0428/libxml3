@@ -1899,5 +1899,167 @@
     "scope": "The last error the most recent read raised, owned by the context and released by xmlCtxtReset, xmlCtxtResetLastError and xmlFreeParserCtxt. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveToBuffer": {
+    "implementation": "partial",
+    "scope": "A save context appending to an xmlBuffer (NULL returns NULL). The encoding must be NULL (no encoding declaration, non-ASCII characters as character references, as libxml2 writes without an encoder) or UTF-8 in any letter case; any other name is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING at XML_ERR_ERROR, as libxml2 refuses an unknown one, so encodings libxml2 converts to are not available. XML_SAVE_XHTML, XML_SAVE_AS_HTML and XML_SAVE_WSNONSIG without XML_SAVE_FORMAT select output this serializer does not produce, and the context is refused with XML_FROM_OUTPUT / XML_ERR_ARGUMENT; the other options are applied or already describe the output (the SPARK XML3_Save_Contexts.Supported and Style_For). Saved bytes are kept and reach the target, as libxml2's output buffer does, once 4000 or more are pending at the end of a save (libxml2 checks after each of its smaller writes, so for large output a different share may be written before the flush) and at xmlSaveFlush, xmlSaveClose and xmlSaveFinish; the error and byte-count rules are the SPARK XML3_Save_Contexts.After_Write, After_Close and Close_Result. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveToFd": {
+    "implementation": "partial",
+    "scope": "A save context writing to a descriptor, which is left open; a negative descriptor returns NULL. The encoding must be NULL (no encoding declaration, non-ASCII characters as character references, as libxml2 writes without an encoder) or UTF-8 in any letter case; any other name is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING at XML_ERR_ERROR, as libxml2 refuses an unknown one, so encodings libxml2 converts to are not available. XML_SAVE_XHTML, XML_SAVE_AS_HTML and XML_SAVE_WSNONSIG without XML_SAVE_FORMAT select output this serializer does not produce, and the context is refused with XML_FROM_OUTPUT / XML_ERR_ARGUMENT; the other options are applied or already describe the output (the SPARK XML3_Save_Contexts.Supported and Style_For). Saved bytes are kept and reach the target, as libxml2's output buffer does, once 4000 or more are pending at the end of a save (libxml2 checks after each of its smaller writes, so for large output a different share may be written before the flush) and at xmlSaveFlush, xmlSaveClose and xmlSaveFinish; the error and byte-count rules are the SPARK XML3_Save_Contexts.After_Write, After_Close and Close_Result. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveToFilename": {
+    "implementation": "partial",
+    "scope": "A save context writing to a file created or truncated (mode 0666) when the context is made, or to standard output for \"-\"; the name is resolved by the SPARK XML3_File_Paths planner as for xmlSaveFile, and a name that cannot be opened returns NULL without a diagnostic, as in libxml2. The file is closed by xmlSaveClose or xmlSaveFinish, whose results include a failed close. The encoding must be NULL (no encoding declaration, non-ASCII characters as character references, as libxml2 writes without an encoder) or UTF-8 in any letter case; any other name is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING at XML_ERR_ERROR, as libxml2 refuses an unknown one, so encodings libxml2 converts to are not available. XML_SAVE_XHTML, XML_SAVE_AS_HTML and XML_SAVE_WSNONSIG without XML_SAVE_FORMAT select output this serializer does not produce, and the context is refused with XML_FROM_OUTPUT / XML_ERR_ARGUMENT; the other options are applied or already describe the output (the SPARK XML3_Save_Contexts.Supported and Style_For). Saved bytes are kept and reach the target, as libxml2's output buffer does, once 4000 or more are pending at the end of a save (libxml2 checks after each of its smaller writes, so for large output a different share may be written before the flush) and at xmlSaveFlush, xmlSaveClose and xmlSaveFinish; the error and byte-count rules are the SPARK XML3_Save_Contexts.After_Write, After_Close and Close_Result. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveToIO": {
+    "implementation": "partial",
+    "scope": "A save context calling the application's write callback (and close callback, if any) as libxml2's output buffer does: an empty write at each flush, -1 as XML_IO_WRITE and other negative results as the negated error. A NULL write callback returns NULL. The encoding must be NULL (no encoding declaration, non-ASCII characters as character references, as libxml2 writes without an encoder) or UTF-8 in any letter case; any other name is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING at XML_ERR_ERROR, as libxml2 refuses an unknown one, so encodings libxml2 converts to are not available. XML_SAVE_XHTML, XML_SAVE_AS_HTML and XML_SAVE_WSNONSIG without XML_SAVE_FORMAT select output this serializer does not produce, and the context is refused with XML_FROM_OUTPUT / XML_ERR_ARGUMENT; the other options are applied or already describe the output (the SPARK XML3_Save_Contexts.Supported and Style_For). Saved bytes are kept and reach the target, as libxml2's output buffer does, once 4000 or more are pending at the end of a save (libxml2 checks after each of its smaller writes, so for large output a different share may be written before the flush) and at xmlSaveFlush, xmlSaveClose and xmlSaveFinish; the error and byte-count rules are the SPARK XML3_Save_Contexts.After_Write, After_Close and Close_Result. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveDoc": {
+    "implementation": "partial",
+    "scope": "Serializes a managed document with the context's options and encoding (the serializer's Output_Style: declaration, empty tags, indent and indent unit) and adds it to the context's pending bytes; 0, or -1 without a diagnostic for a NULL argument or a node that is not a managed document, as libxml2 returns -1. A failed write only shows in the flush and close results, as in libxml2. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveTree": {
+    "implementation": "partial",
+    "scope": "As xmlSaveDoc for any managed node: a document whole, an element with its subtree formatted from level 0, an attribute as ' name=\"value\"', other nodes as xmlNodeDump writes them. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveFlush": {
+    "implementation": "partial",
+    "scope": "Hands every pending byte to the target once and answers its result: the bytes taken, or the error; -1 once the output has failed or for NULL. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveClose": {
+    "implementation": "partial",
+    "scope": "Flushes, then releases the context as libxml2 does (a second flush and the close callback) and answers the first flush's result; -1 for NULL. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveFinish": {
+    "implementation": "partial",
+    "scope": "Releases the context (a last flush and the close callback) and answers XML_ERR_OK or the output's error, such as XML_IO_WRITE; XML_ERR_INTERNAL_ERROR for NULL. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlsave.h:xmlSaveSetIndentString": {
+    "implementation": "partial",
+    "scope": "Sets the indent unit of formatted output: 1 to 60 bytes (the SPARK Indent_Accepted), indented as many whole units deep as fit in 60 bytes, as libxml2 does; -1 for NULL, empty or longer strings. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "struct:xmlsave.h:_xmlSaveCtxt": {
+    "implementation": "partial",
+    "scope": "Opaque in libxml2 and here; the library's own record holds the target, the options, the indent and the pending bytes. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:xmlsave.h:xmlSaveCtxt": {
+    "implementation": "partial",
+    "scope": "Public typedef for the opaque save context. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:xmlsave.h:xmlSaveCtxtPtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for the opaque save context. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:xmlsave.h:xmlSaveOption": {
+    "implementation": "partial",
+    "scope": "The xmlSaveOption enumeration with the values of libxml2 2.15.4. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlIO.h:xmlOutputWriteCallback": {
+    "implementation": "partial",
+    "scope": "Write callback of xmlSaveToIO, declared in a reduced xmlIO.h; the I/O buffer structures and functions of libxml2 are not provided. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlIO.h:xmlOutputCloseCallback": {
+    "implementation": "partial",
+    "scope": "Close callback of xmlSaveToIO, declared in a reduced xmlIO.h. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_FORMAT": {
+    "implementation": "partial",
+    "scope": "Formatted output: newlines and indentation, as xmlDocDumpFormatMemory. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_NO_DECL": {
+    "implementation": "partial",
+    "scope": "No XML declaration for a document. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_NO_EMPTY": {
+    "implementation": "partial",
+    "scope": "Elements without children as start and end tags. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_NO_XHTML": {
+    "implementation": "partial",
+    "scope": "Accepted; documents have no XHTML DTD here, so it has no effect. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_XHTML": {
+    "implementation": "partial",
+    "scope": "Refused: XHTML serialization is not provided. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_AS_XML": {
+    "implementation": "partial",
+    "scope": "Accepted; documents are always saved as XML. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_AS_HTML": {
+    "implementation": "partial",
+    "scope": "Refused: HTML serialization is not provided. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_WSNONSIG": {
+    "implementation": "partial",
+    "scope": "Refused unless XML_SAVE_FORMAT is also set, where libxml2 ignores it. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_EMPTY": {
+    "implementation": "partial",
+    "scope": "Accepted; empty tags are the default (the deprecated xmlSaveNoEmptyTags is not provided). Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_NO_INDENT": {
+    "implementation": "partial",
+    "scope": "Formatted output without indentation. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "constant:xmlsave.h:XML_SAVE_INDENT": {
+    "implementation": "partial",
+    "scope": "Accepted; indentation is the default (the deprecated xmlIndentTreeOutput is not provided). Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

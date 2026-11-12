@@ -8,6 +8,7 @@ with XML3_Encoding;
 with XML3_Namespaces;
 with XML3_Native_Memory;
 with XML3_Parser;
+with XML3_Serialization;
 with XML3_Text;
 
 package XML3_DOM_Runtime
@@ -310,6 +311,15 @@ is
          Result : out System.Address; Length : out Natural;
          Status : out XML3_DOM_Store.Operation_Status;
          Formatted : Boolean := False)
+        with Global =>
+          (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
+
+      procedure Save
+        (Node, Encoding : System.Address;
+         Document_Only, Formatted : Boolean;
+         Style : XML3_Serialization.Output_Style;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
         with Global =>
           (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
 

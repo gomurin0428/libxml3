@@ -12,6 +12,26 @@ package XML3_Serialization with SPARK_Mode is
 
    subtype UTF8_Name is String (1 .. 5);
 
+   --  The xmlsave.h choices beyond formatting: whether a document gets its
+   --  XML declaration, whether an element without children is written as
+   --  an empty tag (<a/>) or as a start and an end tag (<a></a>), whether
+   --  formatted output is indented, and the indent unit (two spaces by
+   --  default; at most 60 bytes, as libxml2's MAX_INDENT).
+   Max_Indent : constant := 60;
+   subtype Indent_Size is Positive range 1 .. Max_Indent;
+
+   type Output_Style is record
+      Declaration : Boolean := True;
+      Empty_Tags : Boolean := True;
+      Indent : Boolean := True;
+      Indent_Unit : String (1 .. Max_Indent) := (others => ' ');
+      Unit_Size : Indent_Size := 2;
+   end record;
+
+   Default_Style : constant Output_Style :=
+     (Declaration => True, Empty_Tags => True, Indent => True,
+      Indent_Unit => (others => ' '), Unit_Size => 2);
+
    procedure Read_UTF8_Name
      (Input : System.Address; Name : out UTF8_Name; Valid : out Boolean)
      with Global => (Input => XML3_Native_Memory.Foreign_Memory);
@@ -26,7 +46,8 @@ package XML3_Serialization with SPARK_Mode is
       Length : out Natural;
       Status : out XML3_DOM_Constructors.Construction_Status;
       Default_Encoding, Formatted : Boolean := False;
-      Level : Natural := 0)
+      Level : Natural := 0;
+      Style : Output_Style := Default_Style)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => XML3_DOM.Valid (Tree)
          and then Document in

@@ -490,4 +490,17 @@ is
            (Current, Document, Encoding, Result, Length, Status,
             Formatted);
       end Dump_Memory_Encoding;
+
+      procedure Save
+        (Node, Encoding : System.Address;
+         Document_Only, Formatted : Boolean;
+         Style : XML3_Serialization.Output_Style;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Serialization.Save
+           (Current, Node, Encoding, Document_Only, Formatted, Style,
+            Result, Length, Status);
+      end Save;
 end XML3_DOM_Runtime;

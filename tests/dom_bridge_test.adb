@@ -2521,6 +2521,10 @@ begin
             --  when a copy cannot be made from its arguments.
             when Results.Node_Copy =>
                return False;
+            --  New with the save context: xmlSaveDoc and xmlSaveTree
+            --  answer -1 without a diagnostic for a node they cannot save.
+            when Results.Node_Save =>
+               return False;
          end case;
       end Reference_Flag;
 
@@ -2542,7 +2546,7 @@ begin
             Silent := Silent + 1;
          end if;
       end loop;
-      pragma Assert (Reported = 5 and then Silent = 8);
+      pragma Assert (Reported = 5 and then Silent = 9);
    end;
    Ada.Text_IO.Put_Line ("DOM operation class policy passed");
    declare
@@ -2749,6 +2753,12 @@ begin
             --  New with the parser context entry points.
             when Guards.Context_Use =>
                return (Refuse => not First, Report => False);
+            --  New with the save context entry points.
+            when Guards.Save_Creation | Guards.Save_Use =>
+               return (Refuse => not First, Report => False);
+            when Guards.Save_Output =>
+               return (Refuse => not First or else not Second,
+                       Report => False);
             when Guards.Buffer_Append | Guards.Node_Dump
                | Guards.Stream_Dump | Guards.File_Save =>
                return (Refuse => not First or else not Second,

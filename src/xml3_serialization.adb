@@ -97,7 +97,8 @@ package body XML3_Serialization with SPARK_Mode is
       Length : out Natural;
       Status : out XML3_DOM_Constructors.Construction_Status;
       Default_Encoding, Formatted : Boolean := False;
-      Level : Natural := 0)
+      Level : Natural := 0;
+      Style : Output_Style := Default_Style)
    is
       Cursor : Natural := 0;
       Capacity : Natural := Max_Output_Bytes;
@@ -848,7 +849,13 @@ package body XML3_Serialization with SPARK_Mode is
                Put_Namespaces (N);
                Put_Properties (N);
                if Item.First_Child = Null_Node then
-                  Put ("/>");
+                  if Style.Empty_Tags then
+                     Put ("/>");
+                  else
+                     Put ("></");
+                     Put_Name (N);
+                     Put (">");
+                  end if;
                else
                   Put (">");
                end if;
@@ -944,11 +951,15 @@ package body XML3_Serialization with SPARK_Mode is
          Whole : Boolean;
 
          procedure Put_Indent is
-            --  The pinned serializer caps its default indent at 60 bytes.
-            Max_Depth : constant := 30;
+            --  The pinned serializer caps the indent at 60 bytes: as many
+            --  whole units as fit.
+            Max_Depth : constant Natural := Max_Indent / Style.Unit_Size;
          begin
+            if not Style.Indent then
+               return;
+            end if;
             for I in 1 .. Natural'Min (Depth, Max_Depth) loop
-               Put ("  ");
+               Put (Style.Indent_Unit (1 .. Style.Unit_Size));
             end loop;
          end Put_Indent;
       begin
@@ -960,14 +971,16 @@ package body XML3_Serialization with SPARK_Mode is
          Whole := D.Kind = Document_Node;
          if Whole then
             Current := D.First_Child;
-            Put ("<?xml version=""");
-            Emit_Text (D.Content, D.Content_Length, True, False, False);
-            if not Default_Encoding then
-               Put (""" encoding=""");
-               Put (Encoding);
+            if Style.Declaration then
+               Put ("<?xml version=""");
+               Emit_Text (D.Content, D.Content_Length, True, False, False);
+               if not Default_Encoding then
+                  Put (""" encoding=""");
+                  Put (Encoding);
+               end if;
+               Put ("""?>");
+               Put_Byte (Character'Val (10));
             end if;
-            Put ("""?>");
-            Put_Byte (Character'Val (10));
             if (D.First_Child = Null_Node) /= (D.Last_Child = Null_Node) then
                Good := False;
                return;
