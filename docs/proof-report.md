@@ -1922,7 +1922,7 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 126 hashes identify the source files and build/test configuration
+The following 129 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
@@ -2026,10 +2026,11 @@ ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parse
 c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-buffers.adb
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 d26474b2a939148a4be5361e30910b9e703e0029c5c1c24428947f956cf99c5a  include/libxml/tree.h
-dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
+703fd38d8b1c2e6708a11c8dca8866fe922b071bb545e9d26587dac29a544d0c  include/libxml/xmlstring.h
 8b172f3cd4b44a79e9837c10dad5db226f0241562bb922c01bb6cbfdcde92eb1  proof.gpr
-5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-42a4b6b573c5ec34fed7f08a00ef0cee773a527bb5252e032f493c0881ad3556  Makefile
+57627b512338fb7221748af16c268faedb77cbca94184c6aac1b13e62552e9af  libxml3.gpr
+f056616a73d059d7d862a5629fcce4e4a1f82f49cc5fcfa1f9f654124d5a2988  libxml3.sym
+0a36ca81028daa0936478ecfde559361dd86cde36eb14617ec902ae7dcd76fec  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 a52de86fc8f3faf3aadefe52b3b69778e7ae0ab6779f1efdd97b2dc4fd9ccf07  tests/oom-test.c
@@ -2037,7 +2038,7 @@ d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serializ
 29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
 c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
 b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
-4e1279b8f86f5d35bb34878797fcc70860a4e4782196e3bc8d6061b4ed0960d4  .github/workflows/manual.yml
+ff948ff90c37f8383f176f1e4d653f334e3747cab49bc58087aed0fd71797d3b  .github/workflows/manual.yml
 cb4af7a636be3bab93bc2e9bcd746b990e1ce8f36e5f0b175601944a7b9052f6  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
 12b31fb627e06379e10aad76a8ba942eed16162a9f96fc0b69d45f157c6a7ad7  tests/dom_bridge_test.adb
@@ -2051,8 +2052,10 @@ f5384b35c3951c33d6a5c66b562b4c45d7906a11dfc3baf78d7ffb175cf8a5fc  tests/context-
 a5d8c06a69110f289962af1bca9b4b659053a43659673e33631ee40d8f8e8d1d  tests/handler-test.c
 d7ede60942a024f6775ffc9d4e1f2e78e45ae64ca5735989f4638c19354eb8ca  tests/uri-test.c
 b38191e8ef55e1b125d3af3dd971d667f1b6108c50ce2c801d1c6dfe02f41b1c  tests/uri-build-test.c
+82b0e8746626c25714520da45d7e6716c99da010125852405cec94df86bbf761  tests/format-test.c
 7975704364f8752e5bcd452953db036f6b12a34f743a46429c107648dc82887c  include/libxml/xmlsave.h
 4cc63357f09653642769d79d40d4c92ec6bbf205553a0350a65726241fff5b1a  include/libxml/xmlIO.h
+d8f9e296e83bce81a95d9e67bfdd393a6e3f8f3bf812ab9efe53af5f20eb66cf  src/xml3_format.c
 ```
 
 A source or contract change invalidates this record until proof is rerun.

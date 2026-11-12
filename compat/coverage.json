@@ -2253,5 +2253,17 @@
     "scope": "Parses the text with the unwise characters allowed and writes each component escaped with libxml2's per-component exceptions (xmlURIEscapeStr); NULL when the text is not a URI reference or nothing is written, as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrPrintf": {
+    "implementation": "partial",
+    "scope": "Formats into the caller's buffer with vsnprintf, as libxml2 2.15.4 does: -1 for a NULL buffer or format or a length of 0 or less; otherwise vsnprintf's result (the untruncated length), with the last byte of the buffer set to NUL. A small trusted C shim (src/xml3_format.c), since variable arguments cannot cross into Ada; the formatting itself is the C library's. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/format-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlstring.h:xmlStrVPrintf": {
+    "implementation": "partial",
+    "scope": "As xmlStrPrintf with a va_list. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/format-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

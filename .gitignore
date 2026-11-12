@@ -111,3 +111,7 @@ tests/uri-build-test-reference
 tests/uri-build-test-sanitize
 tests/uri-build-test.out
 tests/uri-build-test-reference.out
+tests/format-test
+tests/format-test-reference
+tests/format-test.out
+tests/format-test-reference.out

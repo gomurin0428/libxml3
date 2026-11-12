@@ -149,7 +149,7 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   `xmlSearchNsByHref`、`xmlGetNsList`、`xmlGetNsListSafe`、`xmlHasNsProp`、
   `xmlGetNsProp`、`xmlGetNoNsProp`、`xmlBuildQName`、`xmlSplitQName2`、`xmlSplitQName3`、
   要素 sibling/child 関数
-* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
+* `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`、`xmlStrPrintf`、`xmlStrVPrintf`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString` / `xmlNormalizeURIPath`、URIの解析と書き出し
   （`xmlCreateURI`、`xmlParseURI` 系、`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）、組み立てと変換
@@ -968,6 +968,12 @@ shared byte vectorsとguard-page casesはpinned referenceとlibxml3の両方で�
 checkはlibxml3-onlyです。SPARKはloop bounds、result range、native preconditions、cap failure contractを
 証明しますが、native pointer/readable bounds/actual bytes、address arithmetic、C mapping、完全なAPI意味論は
 信頼境界です。
+`xmlStrPrintf` / `xmlStrVPrintf` は libxml2 2.15.4 と同じく、NULLのバッファや書式、0以下の長さで-1を返し、
+それ以外は `vsnprintf` の結果（切り詰め前の長さ）を返してバッファ最後のバイトをNULにします。可変長引数は
+Adaへ渡せないため、小さな信頼済みCシム（`src/xml3_format.c`）で実装しています。`make test-format` で固定版と比較しています。
+共有ライブラリが公開するシンボルは `libxml3.sym`（`eng/library_symbols.py` で生成し、`make check-inventory` で検査）
+に列挙した公開エントリポイントだけです。
+
 `xmlStrncatNew` は負の `len` を `str2` のNUL終端長として扱い、
 `str1 == NULL` なら `xmlStrndup` 相当、非NULLの `str1` ではNULLの `str2` または
 有効長0なら `str1` の複製、それ以外では `str1` と `str2` の指定byte spanを連結します。

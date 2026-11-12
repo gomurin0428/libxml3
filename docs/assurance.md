@@ -1147,6 +1147,12 @@ made by a handler neither are attributed to the outer context nor change
 the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
 
+The shared library exports exactly the public entry points listed in
+`libxml3.sym` (gprbuild's restricted symbol policy); `eng/library_symbols.py`
+generates it from the interface specifications and `make check-inventory`
+checks that it is current. `xmlStrPrintf` and `xmlStrVPrintf` are a small
+trusted C shim over `vsnprintf` (variable arguments cannot cross into Ada).
+
 `URIs.Parse` finds the components of a URI reference as libxml2's
 `xmlParse3986URIReference` does (an absolute URI, else a relative
 reference, with the struct's cleanup flags and its unreset port), and

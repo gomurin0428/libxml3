@@ -291,6 +291,12 @@ needle は全体を走査せず、`Max_Bytes` 未満の payload と境界の NUL
 上限ではありません。返却 pointer は入力が有効な間だけ使い、`xmlFree` せず、allocation・
 書き込み・transcodeも行いません。native pointer、読み取り可能範囲、byte内容、address
 計算、完全なAPI意味論は信頼境界です。
+`xmlStrPrintf` / `xmlStrVPrintf` は libxml2 2.15.4 と同じく、NULLのバッファや書式、0以下の長さで-1を返し、
+それ以外は `vsnprintf` の結果（切り詰め前の長さ）を返してバッファ最後のバイトをNULにします。可変長引数は
+Adaへ渡せないため、小さな信頼済みCシム（`src/xml3_format.c`）で実装しています。`make test-format` で固定版と比較しています。
+共有ライブラリが公開するシンボルは `libxml3.sym`（`eng/library_symbols.py` で生成し、`make check-inventory` で検査）
+に列挙した公開エントリポイントだけです。
+
 `xmlStrsub(str, start, len)` は独立した `xmlFree` 所有の raw-byte copy を返します。
 NULL入力、負の `start`/`len` は診断なしでNULLです。start byte を検証するため `0..start` を走査し、
 その範囲でNULを見つけた場合もNULLです。`len == 0` でもstartを検証して空allocationを返します。

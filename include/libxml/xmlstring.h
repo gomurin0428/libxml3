@@ -1,6 +1,7 @@
 #ifndef LIBXML3_XMLSTRING_H
 #define LIBXML3_XMLSTRING_H
 
+#include <stdarg.h>
 #include <stddef.h>
 #include <libxml/xmlversion.h>
 
@@ -39,6 +40,15 @@ xmlChar *xmlCharStrdup(const char *cur);
 xmlChar *xmlCharStrndup(const char *cur, int len);
 xmlChar *xmlStrndup(const xmlChar *cur, int len);
 xmlChar *xmlStrncatNew(const xmlChar *str1, const xmlChar *str2, int len);
+#if defined(__GNUC__) || defined(__clang__)
+int xmlStrPrintf(xmlChar *buf, int len, const char *msg, ...)
+    __attribute__((format(printf, 3, 4)));
+int xmlStrVPrintf(xmlChar *buf, int len, const char *msg, va_list ap)
+    __attribute__((format(printf, 3, 0)));
+#else
+int xmlStrPrintf(xmlChar *buf, int len, const char *msg, ...);
+int xmlStrVPrintf(xmlChar *buf, int len, const char *msg, va_list ap);
+#endif
 xmlChar *xmlStrcat(xmlChar *cur, const xmlChar *add);
 xmlChar *xmlStrncat(xmlChar *cur, const xmlChar *add, int len);
 
