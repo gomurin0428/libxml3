@@ -275,7 +275,12 @@ size_t xmlMemSize(void *block) {
 }
 
 int xmlMemUsed(void) {
-    return (int)debug_size;
+    size_t size;
+
+    pthread_mutex_lock(&debug_mutex);
+    size = debug_size;
+    pthread_mutex_unlock(&debug_mutex);
+    return (int)size;
 }
 
 int xmlMemBlocks(void) {

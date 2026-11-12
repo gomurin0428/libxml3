@@ -2057,7 +2057,7 @@ b38191e8ef55e1b125d3af3dd971d667f1b6108c50ce2c801d1c6dfe02f41b1c  tests/uri-buil
 7975704364f8752e5bcd452953db036f6b12a34f743a46429c107648dc82887c  include/libxml/xmlsave.h
 4cc63357f09653642769d79d40d4c92ec6bbf205553a0350a65726241fff5b1a  include/libxml/xmlIO.h
 d8f9e296e83bce81a95d9e67bfdd393a6e3f8f3bf812ab9efe53af5f20eb66cf  src/xml3_format.c
-c0cdb39871962c71d84c5d0a30c58893d30e55dbd4d6a8f68f408a7572324fc3  src/xml3_memory.c
+e5d6b5e83e2242191a0e5c86bd18c1be8a53f1bf3b68d38a3409ea8303481443  src/xml3_memory.c
 ```
 
 A source or contract change invalidates this record until proof is rerun.
