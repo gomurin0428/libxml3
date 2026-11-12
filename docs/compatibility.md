@@ -470,7 +470,7 @@ text/CDATA がなければ、独立した `xmlFree` 所有の空文字列を返�
 複製して `doc` を無視します。`inLine == 0` は `doc == NULL` または登録済み Document_Node だけを受け入れ、
 各選択 node の UTF-8 を個別に検証した後、XML 文字を検証して escaping します。attribute mode は開始 node の
 親から決まり、attribute の tab/LF は数値参照、quote は `&quot;`、text の tab/LF/quote は raw のままです。
-CR は `&#13;`、非 ASCII は大文字 hex 数値参照にします。document encoding は保持しないため、明示 UTF-8 document に対しても
+CR は `&#13;`、非 ASCII は大文字 hex 数値参照にします。文書の encoding（`doc->encoding`）は参照しないため、encoding のある document に対しても
 reference の UTF-8 出力とは異なり得ます。出力は独立所有で `xmlFree` 解放です。HTML 固有の escaping と
 entity expansion は未対応です。DOM は読み取り専用で、失敗時に変更しません。
 NULL list は NULL、選択 text のない non-NULL list は独立した空文字列を返します。
@@ -580,6 +580,15 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
 - `terminate` 後に渡したチャンクは無視されます（libxml2 は続けて受け取り、次の終了で余分な内容として
   エラーにします）。
 - SAXハンドラー（`xmlSAXHandler`）は提供しないので、NULL以外を渡すとコンテキストを作りません。
+
+解析は文書のencodingを `doc->encoding` に記録します。libxml2 2.15.4 の `xmlGetActualEncoding` と同じく、
+読み込みにencodingを指定すればその名前（`UTF-8`、`UTF-16`、`UTF-16LE`、`UTF-16BE`）、指定がなければXML宣言の
+encodingを書かれたとおりに、どちらもなければNULLです（宣言の値はSPARKの `XML3_Declarations` で見つけます）。
+`xmlCopyDoc` はコピーし、`xmlFreeDoc` は解放します。encodingを指定しない出力（`xmlDocDumpMemory` 系、
+`xmlDocDump`、`xmlSaveFile`、`xmlSaveFileTo`、encodingなしの保存コンテキストでの文書の `xmlSaveDoc` /
+`xmlSaveTree`）は、それがUTF-8の表記なら libxml2 と同じくそのencodingで出力します。縮小した `xmlDoc` では
+`encoding` は `version` の次にあり、libxml2 の構造体と同じ位置ではありません。固定版2.15.4と同じ結果になる
+ことを `make test-doc-encoding` で比較しています。
 
 構造化エラーハンドラーは `xmlSetStructuredErrorFunc`（スレッドごと）と `xmlCtxtSetErrorHandler`（解析コンテキストごと）
 に対応します。公開されたエラーは、libxml2 の `xmlCtxtVErr` と同じ規則で、コンテキストでの読み込み中はそのハンドラー
@@ -728,11 +737,12 @@ policy は SPARK Store が管理します。C adapter は guarded Runtime 呼び
 encodingを読み、不正文書・kind違いではencodingに触れません。SPARKの `Read_UTF8_Name` が
 最大6byte（終端を含む）でUTF-8名を確認し、最初の不一致で停止します。C文字列の中間コピーはなく、
 5文字の表記だけを固定長フィールドへ保持します。空文字列と余分なsuffixは拒否し、NULLだけが既定指定です。
-この経路は整形出力を含む4つのメモリ出力APIで共用します。`xmlDocDumpMemory` とNULL encodingは
-encoding宣言を省き、text・属性・namespace URIの非ASCII scalarを大文字16進の文字参照にします。
+この経路は整形出力を含む4つのメモリ出力APIで共用します。`xmlDocDumpMemory` とNULL encodingは、
+文書のencoding（解析が記録した `doc->encoding`）がUTF-8の表記ならその表記の宣言と生のUTF-8で出力します。
+それ以外（encodingなし、UTF-16、ハイフンのない `UTF8` など）ではencoding宣言を省き、text・属性・
+namespace URIの非ASCII scalarを大文字16進の文字参照にします（固定版はUTF-16などの文書をそのencodingで出力します）。
 名前・comment・PI・CDATAはUTF-8のまま保持するため、出力全体がASCIIになる保証はありません。
-空のencoding名はNULLとは区別して拒否します。source encoding/standalone metadata は保持されず、
-元文書にencoding宣言があっても復元しない点は固定版と異なります。DTD、file output
+空のencoding名はNULLとは区別して拒否します。standalone metadata は保持されません。DTD、file output
 は未対応です。C入口は既存の出力adapterを共用し、検査・文字参照化・二段階出力はSPARK側にあります。
 失敗では出力NULL・長さ0を返し、元DOMは変更しません。成功結果は独立したxmlFree所有です。
 `xmlDocDumpFormatMemory` / `xmlDocDumpFormatMemoryEnc` は同じ出力経路を使用します。

@@ -120,6 +120,10 @@ struct _xmlDoc {
     xmlNodePtr prev;
     xmlDocPtr doc;
     const xmlChar *version;
+    /* The encoding the parse recorded (the requested encoding, or the one
+     * the XML declaration names), used when the document is serialized
+     * without an encoding; NULL otherwise. */
+    const xmlChar *encoding;
 };
 
 xmlNodePtr xmlDocGetRootElement(const xmlDoc *doc);

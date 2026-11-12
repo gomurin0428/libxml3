@@ -1149,6 +1149,16 @@ thread's record), and no read is current while a handler runs, so reads
 made by a handler neither are attributed to the outer context nor change
 the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
+`Declarations.Find_Encoding` finds the encoding the XML declaration of
+an accepted document names, and `Declarations.Source` decides what the
+parse records in `doc->encoding` (the requested encoding's name, the
+declared one, or none), as libxml2's `xmlGetActualEncoding` does. The
+adapter keeps the recorded name in the document facade's `encoding`
+slot, which the DOM projection does not write, copies it with
+`xmlCopyDoc`, releases it with `xmlFreeDoc` and passes it to the
+serializer when a document is written without an encoding; `make
+test-doc-encoding` compares the records and the output with the pinned
+libxml2.
 The push parser keeps the pushed chunks in the adapter and parses them as
 memory when `xmlParseChunk` terminates the input, through the same context
 read; `Parser.Contexts.Chunk_Result` decides what `xmlParseChunk` answers

@@ -4,23 +4,23 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               565           565                                       .           .          .
+Data Dependencies               568           568                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                 1065          1065                                       .           .          .
+Initialization                 1073          1073                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                6285             .     6285 (CVC5 35%, Trivial 0%, Z3 64%)           .          .
-Assertions                     1839             .    1839 (CVC5 22%, Trivial 10%, Z3 68%)           .          .
-Functional Contracts           5000             .     5000 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
+Run-time Checks                6320             .     6320 (CVC5 36%, Trivial 0%, Z3 64%)           .          .
+Assertions                     1845             .    1845 (CVC5 22%, Trivial 10%, Z3 68%)           .          .
+Functional Contracts           5002             .     5002 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     418           329                   89 (CVC5 45%, Z3 55%)           .          .
+Termination                     426           332                   94 (CVC5 48%, Z3 52%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         15173    1960 (13%)                             13213 (87%)           .          .
+Total                         15235    1974 (13%)                             13261 (87%)           .          .
 
 
 max steps used for successful proof: 787963
 
-Analyzed 49 units
+Analyzed 50 units
 in unit xml3_byte_buffers, 26 subprograms and packages out of 26 analyzed
   XML3_Byte_Buffers at xml3_byte_buffers.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Add at xml3_byte_buffers.ads:54 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
@@ -48,6 +48,12 @@ in unit xml3_byte_buffers, 26 subprograms and packages out of 26 analyzed
   XML3_Byte_Buffers.Shrink at xml3_byte_buffers.ads:72 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
   XML3_Byte_Buffers.Snapshot at xml3_byte_buffers.adb:350 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Byte_Buffers.Well_Formed at xml3_byte_buffers.ads:24 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+in unit xml3_declarations, 5 subprograms and packages out of 5 analyzed
+  XML3_Declarations at xml3_declarations.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Declarations.Find_Encoding at xml3_declarations.ads:14 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (47 checks)
+  XML3_Declarations.Requested_Text at xml3_declarations.ads:39 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Declarations.Source at xml3_declarations.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Declarations.Space at xml3_declarations.adb:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Diagnostic_Codes.For_Admission at xml3_diagnostic_codes.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

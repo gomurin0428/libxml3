@@ -1406,8 +1406,10 @@ static void test_default_rejections_and_metadata(void) {
         xmlFree(memory);
         xmlFreeDoc(doc);
     }
+    /* The declared encoding is the document's (doc->encoding), which a
+     * serialization without an encoding uses, as in libxml2. */
     expect_default_output("<?xml version='1.0' encoding='UTF-8'?><r>é</r>",
-        "<?xml version=\"1.0\"?>\n<r>&#xE9;</r>\n");
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<r>é</r>\n");
     xmlResetLastError();
 }
 
