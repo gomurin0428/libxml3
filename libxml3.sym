@@ -50,7 +50,9 @@ xmlCreateURI
 xmlCtxtGetLastError
 xmlCtxtGetOptions
 xmlCtxtReadDoc
+xmlCtxtReadFd
 xmlCtxtReadFile
+xmlCtxtReadIO
 xmlCtxtReadMemory
 xmlCtxtReset
 xmlCtxtResetLastError
@@ -181,7 +183,9 @@ xmlPathToURI
 xmlPreviousElementSibling
 xmlPrintURI
 xmlReadDoc
+xmlReadFd
 xmlReadFile
+xmlReadIO
 xmlReadMemory
 xmlRealloc
 xmlReallocLoc

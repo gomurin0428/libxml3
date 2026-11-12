@@ -2,6 +2,7 @@
 #define LIBXML3_PARSER_H
 
 #include <libxml/tree.h>
+#include <libxml/xmlIO.h>
 #include <libxml/xmlerror.h>
 
 #ifdef __cplusplus
@@ -37,6 +38,11 @@ xmlDocPtr xmlReadDoc(const xmlChar *cur, const char *URL,
 xmlDocPtr xmlParseDoc(const xmlChar *cur);
 xmlDocPtr xmlReadFile(const char *filename, const char *encoding, int options);
 xmlDocPtr xmlParseFile(const char *filename);
+xmlDocPtr xmlReadFd(int fd, const char *URL, const char *encoding,
+                    int options);
+xmlDocPtr xmlReadIO(xmlInputReadCallback ioread,
+                    xmlInputCloseCallback ioclose, void *ioctx,
+                    const char *URL, const char *encoding, int options);
 
 xmlParserCtxtPtr xmlNewParserCtxt(void);
 void xmlCtxtSetErrorHandler(xmlParserCtxtPtr ctxt,
@@ -53,6 +59,11 @@ xmlDocPtr xmlCtxtReadDoc(xmlParserCtxtPtr ctxt, const xmlChar *cur,
                          const char *URL, const char *encoding, int options);
 xmlDocPtr xmlCtxtReadFile(xmlParserCtxtPtr ctxt, const char *filename,
                           const char *encoding, int options);
+xmlDocPtr xmlCtxtReadFd(xmlParserCtxtPtr ctxt, int fd, const char *URL,
+                        const char *encoding, int options);
+xmlDocPtr xmlCtxtReadIO(xmlParserCtxtPtr ctxt, xmlInputReadCallback ioread,
+                        xmlInputCloseCallback ioclose, void *ioctx,
+                        const char *URL, const char *encoding, int options);
 
 #ifdef __cplusplus
 }

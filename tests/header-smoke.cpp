@@ -149,6 +149,18 @@ int main() {
     xmlDoc *(*parse_file)(const char *) = xmlParseFile;
     (void)read_file;
     (void)parse_file;
+    xmlDoc *(*read_fd)(int, const char *, const char *, int) = xmlReadFd;
+    xmlDoc *(*read_io)(xmlInputReadCallback, xmlInputCloseCallback, void *,
+                       const char *, const char *, int) = xmlReadIO;
+    xmlDoc *(*ctxt_read_fd)(xmlParserCtxt *, int, const char *, const char *,
+                            int) = xmlCtxtReadFd;
+    xmlDoc *(*ctxt_read_io)(xmlParserCtxt *, xmlInputReadCallback,
+                            xmlInputCloseCallback, void *, const char *,
+                            const char *, int) = xmlCtxtReadIO;
+    (void)read_fd;
+    (void)read_io;
+    (void)ctxt_read_fd;
+    (void)ctxt_read_io;
     xmlParserCtxtPtr (*new_parser_ctxt)() = xmlNewParserCtxt;
     void (*free_parser_ctxt)(xmlParserCtxt *) = xmlFreeParserCtxt;
     void (*ctxt_reset)(xmlParserCtxtPtr) = xmlCtxtReset;
