@@ -2061,5 +2061,23 @@
     "scope": "Accepted; indentation is the default (the deprecated xmlIndentTreeOutput is not provided). Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/save-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlSetStructuredErrorFunc": {
+    "implementation": "partial",
+    "scope": "Sets the calling thread's structured handler and its data, as libxml2's per-thread xmlStructuredError; NULL removes it. Every published error goes to it unless a parser context's handler hears the error (the SPARK XML3_Error_Records.Select_Handler): XML_PARSE_NOERROR and XML_PARSE_NOWARNING silence a context's handler, not this one, as in libxml2. The handler receives the thread's last error record and may call back into the library; an error published while the thread holds the DOM lock reaches it once the lock is released (no current path publishes one there). Unlike libxml2, an error of a plain read (xmlReadMemory) has a NULL ctxt field, where libxml2 names its internal parser context. The generic handler (xmlSetGenericErrorFunc) and libxml2's default output on standard error are not provided. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/handler-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtSetErrorHandler": {
+    "implementation": "partial",
+    "scope": "Sets the error handler of a parser context; during its reads (xmlCtxtReadMemory, xmlCtxtReadDoc, xmlCtxtReadFile) errors name the context in their ctxt field and go to this handler unless the context's options include XML_PARSE_NOERROR (or XML_PARSE_NOWARNING for a warning), in which case the thread's structured handler hears them, as libxml2 decides in xmlCtxtVErr. NULL context is a no-op; a NULL handler removes it. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/handler-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlerror.h:xmlStructuredErrorFunc": {
+    "implementation": "partial",
+    "scope": "Structured error callback type of xmlSetStructuredErrorFunc and xmlCtxtSetErrorHandler. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/handler-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

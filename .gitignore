@@ -94,3 +94,9 @@ tests/save-test-development
 tests/save-test-sanitize
 tests/save-test.out
 tests/save-test-reference.out
+tests/handler-test
+tests/handler-test-reference
+tests/handler-test-development
+tests/handler-test-sanitize
+tests/handler-test.out
+tests/handler-test-reference.out

@@ -48,6 +48,35 @@ package XML3_Errors is
 
    function Last_Error_Is_OOM return Boolean;
 
+   --  xmlStructuredErrorFunc.
+   type Structured_Handler is access procedure
+     (Data : System.Address; Error : System.Address)
+     with Convention => C;
+
+   procedure Set_Structured_Error_Func
+     (Data : System.Address; Handler : Structured_Handler)
+     with Export, Convention => C,
+       External_Name => "xmlSetStructuredErrorFunc";
+
+   --  A read through a parser context: until End_Context_Read, published
+   --  errors name the context and go to its handler as Select_Handler
+   --  decides.  The previous read state is returned for nesting.
+   type Context_Read is record
+      Context : System.Address := System.Null_Address;
+      Handler : Structured_Handler := null;
+      Data : System.Address := System.Null_Address;
+      Options : Interfaces.C.int := 0;
+   end record;
+
+   procedure Begin_Context_Read
+     (Read : Context_Read; Previous : out Context_Read);
+
+   procedure End_Context_Read (Previous : Context_Read);
+
+   --  Hands the errors published while this thread held the DOM lock to
+   --  their handlers; called once the lock is released.
+   procedure Dispatch_Deferred;
+
    --  The fields of the thread's error mark (XML3_Error_Records.Error_Mark).
    procedure Current_Mark
      (Serial, Fatal_Serial, Error_Serial : out Interfaces.Unsigned_64;

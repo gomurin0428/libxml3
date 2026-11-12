@@ -189,6 +189,16 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
 読み込みの前後で比べます。固定版2.15.4と同じ結果になることを `make test-context` で比較しています。
 解析器が対応しないオプションも保存はしますが、そのオプションでの読み込みは `xmlReadMemory` と同じく拒否します。
 
+構造化エラーハンドラーは `xmlSetStructuredErrorFunc`（スレッドごと）と `xmlCtxtSetErrorHandler`（解析コンテキストごと）
+に対応します。公開されたエラーは、libxml2 の `xmlCtxtVErr` と同じ規則で、コンテキストでの読み込み中はそのハンドラー
+（オプションに `XML_PARSE_NOERROR`、警告では `XML_PARSE_NOWARNING` がない場合）、それ以外はスレッドのハンドラーへ
+渡します。`XML_PARSE_NOERROR` が止めるのはコンテキストのハンドラーだけで、スレッドのハンドラーには届く点も libxml2
+と同じです。振り分けはSPARKの `XML3_Error_Records.Select_Handler` で決めます。ハンドラーからライブラリを呼び返せます。
+DOM ロックを保持している間に公開されたエラーは、ロックの解放後にハンドラーへ渡します（現在そのような経路はありません）。
+固定版2.15.4と同じ呼び出しになることを `make test-handler` で比較しています。libxml2 との差は次のとおりです。
+- `xmlReadMemory` などの単純な読み込みのエラーは `ctxt` フィールドがNULLです（libxml2 は内部の解析コンテキストを指します）。
+- 汎用ハンドラー（`xmlSetGenericErrorFunc`）と、ハンドラーがないときに libxml2 が標準エラーへ書く出力はありません。
+
 `xmlNewNodeEatName`、`xmlNewDocNodeEatName`、`xmlNewNsPropEatName` は通常の生成と同じノードを作り、
 渡された名前を成否にかかわらず `xmlFree` で解放します（ノードは名前の複製を持ちます）。
 `xmlNodeBufGetContent` はノードの内容を、`xmlAttrSerializeTxtContent` は属性値としてエスケープした文字列を

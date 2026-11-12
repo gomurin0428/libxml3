@@ -87,7 +87,7 @@ package XML3_Entry_Guards with SPARK_Mode is
       --  xmlFreeParserCtxt, xmlCtxtReset, xmlCtxtResetLastError,
       --  xmlCtxtGetLastError, xmlCtxtUseOptions, xmlCtxtSetOptions,
       --  xmlCtxtGetOptions, xmlCtxtReadMemory, xmlCtxtReadDoc,
-      --  xmlCtxtReadFile: the context
+      --  xmlCtxtReadFile, xmlCtxtSetErrorHandler: the context
       Save_Creation,
       --  xmlSaveToBuffer: the buffer; xmlSaveToFilename: the name;
       --  xmlSaveToIO: the write callback

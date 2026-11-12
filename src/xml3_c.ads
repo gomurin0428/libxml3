@@ -3,6 +3,7 @@
 
 with Interfaces.C;
 with System;
+with XML3_Errors;
 
 package XML3_C is
 
@@ -84,6 +85,11 @@ package XML3_C is
      (Ctxt, Name, Encoding : System.Address; Options : Interfaces.C.int)
       return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtReadFile";
+
+   procedure Ctxt_Set_Error_Handler
+     (Ctxt : System.Address; Handler : XML3_Errors.Structured_Handler;
+      Data : System.Address)
+     with Export, Convention => C, External_Name => "xmlCtxtSetErrorHandler";
 
    function Ctxt_Get_Last_Error (Ctxt : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtGetLastError";

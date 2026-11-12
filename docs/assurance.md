@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,891 checks
-(1,903 flow and 12,988 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,898 checks
+(1,907 flow and 12,991 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1129,6 +1129,16 @@ and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
 the record published when the file cannot be opened or read. `make
 test-input` compares the documents and error records with the pinned
 libxml2.
+
+`Error_Records.Select_Handler` decides which structured handler hears a
+published error: during a read through a parser context with a handler,
+that handler unless the context's options include `XML_PARSE_NOERROR`
+(or `XML_PARSE_NOWARNING` for a warning), otherwise the thread's handler,
+as libxml2's `xmlCtxtVErr` and `xmlVRaiseError` choose. The adapter calls
+the handler with the thread's last error record; an error published while
+the thread holds the DOM lock is copied and handed over once the lock is
+released, so a handler can call back into the library. `make test-handler`
+compares the calls with the pinned libxml2.
 
 `Save_Contexts` decides the `xmlsave.h` save context: which options are
 supported and the output style they select (declaration, empty tags,

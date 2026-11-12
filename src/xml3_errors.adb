@@ -1,6 +1,8 @@
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
+with System.Storage_Elements;
 with XML3_Diagnostic_Messages;
+with XML3_DOM_Lock;
 with XML3_Error_Records;
 with XML3_Text;
 
@@ -228,6 +230,150 @@ package body XML3_Errors is
    procedure Clear_Record (Item : in out Error_Record)
      renames XML3_Error_Records.Release;
 
+   --  The thread's structured handler and the parser context being read.
+   --  Thread-local storage takes static initial values only, so the
+   --  addresses are kept as integers.
+   subtype Integer_Address is System.Storage_Elements.Integer_Address;
+   function To_Address (Value : Integer_Address) return System.Address
+     renames System.Storage_Elements.To_Address;
+   function To_Integer (Value : System.Address) return Integer_Address
+     renames System.Storage_Elements.To_Integer;
+
+   Global_Handler : Structured_Handler := null
+     with Thread_Local_Storage;
+   Global_Data : Integer_Address := 0
+     with Thread_Local_Storage;
+   Reading_Context : Integer_Address := 0
+     with Thread_Local_Storage;
+   Reading_Handler : Structured_Handler := null
+     with Thread_Local_Storage;
+   Reading_Data : Integer_Address := 0
+     with Thread_Local_Storage;
+   Reading_Options : Interfaces.C.int := 0
+     with Thread_Local_Storage;
+
+   function Reading return Context_Read is
+     ((Context => To_Address (Reading_Context), Handler => Reading_Handler,
+       Data => To_Address (Reading_Data), Options => Reading_Options));
+
+   procedure Set_Reading (Read : Context_Read) is
+   begin
+      Reading_Context := To_Integer (Read.Context);
+      Reading_Handler := Read.Handler;
+      Reading_Data := To_Integer (Read.Data);
+      Reading_Options := Read.Options;
+   end Set_Reading;
+
+   procedure Set_Structured_Error_Func
+     (Data : System.Address; Handler : Structured_Handler) is
+   begin
+      Global_Handler := Handler;
+      Global_Data := To_Integer (Data);
+   end Set_Structured_Error_Func;
+
+   procedure Begin_Context_Read
+     (Read : Context_Read; Previous : out Context_Read) is
+   begin
+      Previous := Reading;
+      Set_Reading (Read);
+   end Begin_Context_Read;
+
+   procedure End_Context_Read (Previous : Context_Read) is
+   begin
+      Set_Reading (Previous);
+   end End_Context_Read;
+
+   --  Errors published while the thread held the DOM lock, with the
+   --  handler chosen for each, in publication order.
+   type Deferred_Error;
+   type Deferred_Access is access Deferred_Error;
+   type Deferred_Error is record
+      Error : aliased Error_Record := (others => <>);
+      Handler : Structured_Handler;
+      Data : System.Address;
+      Next : Deferred_Access;
+   end record;
+
+   procedure Free_Deferred is new Ada.Unchecked_Deallocation
+     (Deferred_Error, Deferred_Access);
+
+   Deferred_First, Deferred_Last : Deferred_Access := null
+     with Thread_Local_Storage;
+
+   --  Hands the error just published (Level) to the handler that hears
+   --  it: at once, or once the DOM lock is released.
+   procedure Dispatch (Level : Interfaces.C.int) is
+      Choice : constant XML3_Error_Records.Handler_Choice :=
+        XML3_Error_Records.Select_Handler
+          (Context_Set => Reading_Handler /= null,
+           Options => Reading_Options, Level => Level,
+           Global_Set => Global_Handler /= null);
+      Handler : Structured_Handler;
+      Data : System.Address;
+      Last : System.Address;
+   begin
+      case Choice is
+         when XML3_Error_Records.No_Handler =>
+            return;
+         when XML3_Error_Records.Context_Handler =>
+            Handler := Reading_Handler;
+            Data := To_Address (Reading_Data);
+         when XML3_Error_Records.Global_Handler =>
+            Handler := Global_Handler;
+            Data := To_Address (Global_Data);
+      end case;
+      Last := Get_Last_Error;
+      if Last = System.Null_Address then
+         return;
+      end if;
+      if not XML3_DOM_Lock.Held_By_Caller then
+         Handler (Data, Last);
+         return;
+      end if;
+      declare
+         Item : Deferred_Access := new Deferred_Error;
+         Success : Boolean;
+      begin
+         XML3_Error_Records.Clone
+           (Error_Conversion.To_Pointer (Last).all, Item.Error, Success);
+         if not Success then
+            Free_Deferred (Item);
+            return;
+         end if;
+         Item.Handler := Handler;
+         Item.Data := Data;
+         if Deferred_Last = null then
+            Deferred_First := Item;
+         else
+            Deferred_Last.Next := Item;
+         end if;
+         Deferred_Last := Item;
+      end;
+   exception
+      when others =>
+         null;
+   end Dispatch;
+
+   procedure Dispatch_Deferred is
+      Item : Deferred_Access;
+   begin
+      while Deferred_First /= null loop
+         Item := Deferred_First;
+         Deferred_First := Item.Next;
+         if Deferred_First = null then
+            Deferred_Last := null;
+         end if;
+         begin
+            Item.Handler (Item.Data, Item.Error'Address);
+         exception
+            when others =>
+               null;
+         end;
+         Clear_Record (Item.Error);
+         Free_Deferred (Item);
+      end loop;
+   end Dispatch_Deferred;
+
    procedure Set_OOM is
       State : constant Error_State_Access := Current_State (False);
    begin
@@ -240,6 +386,7 @@ package body XML3_Errors is
            (Emergency_Error.all, Emergency_Message'Address);
          Emergency_Active := True;
       end if;
+      Dispatch (XML3_Error_Records.Fatal_Level);
    exception
       when others =>
          XML3_Error_Records.Fill_Out_Of_Memory
@@ -268,7 +415,8 @@ package body XML3_Errors is
       XML3_Error_Records.Clone
         ((Domain => Domain, Code => Code, Level => Level, Line => Line,
           Int1 => Int1, Int2 => Int2, Message => Message, File => File,
-          Str1 => Str1, Str2 => Str2, Str3 => Str3, others => <>),
+          Str1 => Str1, Str2 => Str2, Str3 => Str3,
+          Ctxt => To_Address (Reading_Context), others => <>),
          Replacement, Success);
       if not Success then
          Set_OOM;
@@ -281,6 +429,7 @@ package body XML3_Errors is
       end if;
       XML3_Error_Records.Install (State.all, Replacement);
       Emergency_Active := False;
+      Dispatch (Level);
    exception
       when others =>
          Clear_Record (Replacement);

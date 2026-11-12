@@ -9,7 +9,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save test-handler compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -24,7 +24,7 @@ test-development: build-development tests/runtime-test tests/string-exception-te
 		tests/serialization-test-development tests/content-edit-test-development \
 		tests/copy-test-development tests/output-test-development \
 		tests/input-test-development tests/context-test-development \
-		tests/save-test-development
+		tests/save-test-development tests/handler-test-development
 	LD_LIBRARY_PATH=lib/development ./tests/runtime-test
 	LD_LIBRARY_PATH=lib/development ./tests/string-exception-test
 	LD_LIBRARY_PATH=lib/development ./tests/namespace-test
@@ -37,6 +37,7 @@ test-development: build-development tests/runtime-test tests/string-exception-te
 	LD_LIBRARY_PATH=lib/development ./tests/input-test-development > /dev/null 2>&1
 	LD_LIBRARY_PATH=lib/development ./tests/context-test-development > /dev/null 2>&1
 	LD_LIBRARY_PATH=lib/development ./tests/save-test-development > /dev/null
+	LD_LIBRARY_PATH=lib/development ./tests/handler-test-development > /dev/null 2>&1
 
 tests/dom-core-test: tests/dom_core_test.adb tests/dom_core_test.gpr \
 		src/xml3_dom.ads src/xml3_dom.adb $(DOM_CHILD_SOURCES) src/xml3_dom_allocation.ads src/xml3_dom_allocation.adb
@@ -254,6 +255,29 @@ test-save: tests/save-test tests/save-test-reference
 	LD_LIBRARY_PATH=lib ./tests/save-test > tests/save-test.out
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/save-test-reference > tests/save-test-reference.out
 	diff -u tests/save-test-reference.out tests/save-test.out
+
+tests/handler-test: tests/handler-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/handler-test-reference: tests/handler-test.c compat/baseline.json \
+		build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+tests/handler-test-development: tests/handler-test.c $(PUBLIC_HEADERS) Makefile | build-development
+	$(CC) $(CFLAGS) -Werror $< -Llib/development \
+		-Wl,-rpath,'$$ORIGIN/../lib/development' -lxml3 -o $@
+
+tests/handler-test-sanitize: tests/handler-test.c $(PUBLIC_HEADERS) | build
+	$(CC) $(CFLAGS) -Werror -fsanitize=address,undefined $< -Llib -lxml3 -o $@
+
+# The handler test prints each error a structured handler receives; both
+# outputs must match.  libxml2's default error output is not compared.
+test-handler: tests/handler-test tests/handler-test-reference
+	LD_LIBRARY_PATH=lib ./tests/handler-test > tests/handler-test.out 2> /dev/null
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/handler-test-reference > tests/handler-test-reference.out 2> /dev/null
+	diff -u tests/handler-test-reference.out tests/handler-test.out
 
 # The copy test prints what each copy looks like; both outputs must match.
 test-copy: tests/copy-test tests/copy-test-reference
@@ -568,6 +592,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlCtxtResetLastError \
 	xmlSaveToFd xmlSaveToFilename xmlSaveToBuffer xmlSaveToIO xmlSaveDoc xmlSaveTree \
 	xmlSaveFlush xmlSaveClose xmlSaveFinish xmlSaveSetIndentString \
+	xmlSetStructuredErrorFunc xmlCtxtSetErrorHandler \
 	xmlNewNodeEatName xmlNewDocNodeEatName xmlNewNsPropEatName xmlGetBufferAllocationScheme \
 	xmlSetBufferAllocationScheme xmlNodeBufGetContent xmlAttrSerializeTxtContent xmlFreeNsList \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
@@ -613,7 +638,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 		tests/attribute-test-sanitize tests/runtime-test-sanitize \
 		tests/serialization-test-sanitize tests/content-edit-test-sanitize \
 		tests/copy-test-sanitize tests/output-test-sanitize tests/input-test-sanitize \
-		tests/context-test-sanitize tests/save-test-sanitize
+		tests/context-test-sanitize tests/save-test-sanitize tests/handler-test-sanitize
 	$(CC) $(CFLAGS) -fsanitize=address,undefined tests/api-test.c -Llib -lxml3 -o tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/api-test-sanitize
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/namespace-test-sanitize
@@ -635,6 +660,7 @@ test-sanitize: build tests/namespace-test-sanitize tests/resource-test-sanitize 
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/input-test-sanitize > /dev/null 2>&1
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/context-test-sanitize > /dev/null 2>&1
 	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/save-test-sanitize > /dev/null
+	ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=lib ./tests/handler-test-sanitize > /dev/null 2>&1
 
 clean:
 	rm -rf obj lib tests/api-test tests/header-smoke.o tests/differential-libxml3 \
@@ -668,6 +694,8 @@ clean:
 		tests/context-test-sanitize tests/context-test.out tests/context-test-reference.out \
 		tests/save-test tests/save-test-reference tests/save-test-development \
 		tests/save-test-sanitize tests/save-test.out tests/save-test-reference.out \
+		tests/handler-test tests/handler-test-reference tests/handler-test-development \
+		tests/handler-test-sanitize tests/handler-test.out tests/handler-test-reference.out \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out
