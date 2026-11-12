@@ -10,6 +10,7 @@ project Proof is
                         "xml3_parser-outcomes.ads",
                         "xml3_parser-requests.ads",
                         "xml3_parser-statuses.ads",
+                        "xml3_parser-contexts.ads",
                         "xml3_dom_results.ads",
                         "xml3_text_results.ads",
                         "xml3_entry_guards.ads",

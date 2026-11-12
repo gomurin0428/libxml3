@@ -82,3 +82,9 @@ tests/input-test-development
 tests/input-test-sanitize
 tests/input-test.out
 tests/input-test-reference.out
+tests/context-test
+tests/context-test-reference
+tests/context-test-development
+tests/context-test-sanitize
+tests/context-test.out
+tests/context-test-reference.out

@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,802 checks
-(1,849 flow and 12,953 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,831 checks
+(1,869 flow and 12,962 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1129,6 +1129,20 @@ and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
 the record published when the file cannot be opened or read. `make
 test-input` compares the documents and error records with the pinned
 libxml2.
+
+`Parser.Contexts` decides what the reduced `xmlParserCtxt` stores: the
+initial options, the option masks of `xmlCtxtUseOptions` and
+`xmlCtxtSetOptions` with their unknown-bit results, and the state after a
+read. `Error_Records.Advanced` keeps a per-thread mark of the errors
+published (a serial, the serials of the last fatal error and of the last
+error of level `XML_ERR_ERROR` or above, and that error's code); comparing
+the marks taken before and after a read tells the context whether to clear
+`wellFormed`, which code goes to `errNo` and whether to copy the read's
+last error. The proof covers absence of runtime errors and the stated
+properties (no unknown bit is stored; a read that raised nothing leaves the
+state unchanged); the struct, the copy and the reads themselves are the
+adapter's. `make test-context` compares the contexts' states and error
+records with the pinned libxml2.
 
 `Text_Results` selects the diagnostics and `int` results of the string
 entry points from the statuses of the SPARK string operations: a length

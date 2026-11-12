@@ -19,6 +19,8 @@ typedef struct _xmlNs xmlNs;
 typedef struct _xmlNs *xmlNsPtr;
 typedef struct _xmlEntity xmlEntity;
 typedef struct _xmlEntity *xmlEntityPtr;
+typedef struct _xmlParserCtxt xmlParserCtxt;
+typedef xmlParserCtxt *xmlParserCtxtPtr;
 
 typedef enum {
     XML_ELEMENT_NODE = 1,

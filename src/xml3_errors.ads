@@ -1,3 +1,4 @@
+with Interfaces;
 with Interfaces.C;
 with System;
 
@@ -46,6 +47,11 @@ package XML3_Errors is
       File   : System.Address);
 
    function Last_Error_Is_OOM return Boolean;
+
+   --  The fields of the thread's error mark (XML3_Error_Records.Error_Mark).
+   procedure Current_Mark
+     (Serial, Fatal_Serial, Error_Serial : out Interfaces.Unsigned_64;
+      Error_Code : out Interfaces.C.int);
 
    procedure Destroy_State (State : System.Address)
      with Convention => C;

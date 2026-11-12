@@ -83,6 +83,11 @@ package XML3_Entry_Guards with SPARK_Mode is
       --  xmlSaveFile and its variants: the filename, the document
       File_Read,
       --  xmlReadFile, xmlParseFile: the filename
+      Context_Use,
+      --  xmlFreeParserCtxt, xmlCtxtReset, xmlCtxtResetLastError,
+      --  xmlCtxtGetLastError, xmlCtxtUseOptions, xmlCtxtSetOptions,
+      --  xmlCtxtGetOptions, xmlCtxtReadMemory, xmlCtxtReadDoc,
+      --  xmlCtxtReadFile: the context
       Namespace_Assignment,
       --  xmlSetNs: node
       Namespace_Release,
@@ -168,6 +173,7 @@ package XML3_Entry_Guards with SPARK_Mode is
       Stream_Dump => Silent_Two,
       File_Save => Silent_Two,
       File_Read => Silent_One,
+      Context_Use => Silent_One,
       Namespace_Assignment => Silent_One,
       Namespace_Release => Silent_One,
       Namespace_Query => Silent_One,

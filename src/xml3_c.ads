@@ -47,6 +47,50 @@ package XML3_C is
    function Parse_File (Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlParseFile";
 
+   function New_Parser_Ctxt return System.Address
+     with Export, Convention => C, External_Name => "xmlNewParserCtxt";
+
+   procedure Free_Parser_Ctxt (Ctxt : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeParserCtxt";
+
+   procedure Ctxt_Reset (Ctxt : System.Address)
+     with Export, Convention => C, External_Name => "xmlCtxtReset";
+
+   function Ctxt_Use_Options
+     (Ctxt : System.Address; Options : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtUseOptions";
+
+   function Ctxt_Set_Options
+     (Ctxt : System.Address; Options : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtSetOptions";
+
+   function Ctxt_Get_Options (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtGetOptions";
+
+   function Ctxt_Read_Memory
+     (Ctxt, Buffer : System.Address; Size : Interfaces.C.int;
+      URL, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtReadMemory";
+
+   function Ctxt_Read_Doc
+     (Ctxt, Cur, URL, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtReadDoc";
+
+   function Ctxt_Read_File
+     (Ctxt, Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtReadFile";
+
+   function Ctxt_Get_Last_Error (Ctxt : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtGetLastError";
+
+   procedure Ctxt_Reset_Last_Error (Ctxt : System.Address)
+     with Export, Convention => C, External_Name => "xmlCtxtResetLastError";
+
    function Read_Doc
      (Cur      : System.Address;
       URL      : System.Address;
