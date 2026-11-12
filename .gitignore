@@ -106,3 +106,8 @@ tests/uri-test-development
 tests/uri-test-sanitize
 tests/uri-test.out
 tests/uri-test-reference.out
+tests/uri-build-test
+tests/uri-build-test-reference
+tests/uri-build-test-sanitize
+tests/uri-build-test.out
+tests/uri-build-test-reference.out

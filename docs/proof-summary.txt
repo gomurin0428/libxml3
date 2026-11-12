@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               557           557                                       .           .          .
+Data Dependencies               558           558                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                 1064          1064                                       .           .          .
+Initialization                 1065          1065                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                6255             .     6255 (CVC5 35%, Trivial 0%, Z3 64%)           .          .
-Assertions                     1828             .    1828 (CVC5 21%, Trivial 10%, Z3 68%)           .          .
-Functional Contracts           4997             .     4997 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
+Run-time Checks                6283             .     6283 (CVC5 35%, Trivial 0%, Z3 64%)           .          .
+Assertions                     1839             .    1839 (CVC5 22%, Trivial 10%, Z3 68%)           .          .
+Functional Contracts           4998             .     4998 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     405           320                   85 (CVC5 42%, Z3 58%)           .          .
+Termination                     411           322                   89 (CVC5 45%, Z3 55%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         15107    1942 (13%)                             13165 (87%)           .          .
+Total                         15155    1946 (13%)                             13209 (87%)           .          .
 
 
 max steps used for successful proof: 787963
@@ -819,7 +819,7 @@ in unit xml3_text_results, 24 subprograms and packages out of 24 analyzed
   XML3_Text_Results.Path_Code at xml3_text_results.ads:176 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text_Results.Unsupported at xml3_text_results.ads:23 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Text_Results.Validity at xml3_text_results.ads:144 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-in unit xml3_uris, 36 subprograms and packages out of 36 analyzed
+in unit xml3_uris, 39 subprograms and packages out of 39 analyzed
   XML3_URIs at xml3_uris.ads:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_URIs.Is_Alpha at xml3_uris.adb:5 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_URIs.Is_Digit at xml3_uris.adb:8 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -830,7 +830,10 @@ in unit xml3_uris, 36 subprograms and packages out of 36 analyzed
   XML3_URIs.Is_Sub_Delim at xml3_uris.adb:13 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_URIs.Is_UCS_Char at xml3_uris.adb:25 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_URIs.Is_Unwise at xml3_uris.adb:20 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_URIs.Kept at xml3_uris.ads:76 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_URIs.Kept at xml3_uris.ads:92 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_URIs.Normalize_Path at xml3_uris.ads:78 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (43 checks)
+  XML3_URIs.Normalize_Path.Byte at xml3_uris.adb:442 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_URIs.Normalize_Path.Is_Separator at xml3_uris.adb:445 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_URIs.Parse at xml3_uris.ads:56 flow analyzed (0 errors, 0 checks, 2 warnings and 0 pragma Assume statements) and proved (12 checks)
   XML3_URIs.Parse.Char at xml3_uris.adb:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_URIs.Parse.Clean at xml3_uris.adb:95 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)

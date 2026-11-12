@@ -428,4 +428,119 @@ package body XML3_URIs with SPARK_Mode is
       Result := R;
    end Parse;
 
+   procedure Normalize_Path
+     (Path : in out String; Length : Natural; Is_File : Boolean;
+      Last : out Natural)
+   is
+      Cur : Positive := 1;
+      Out_Pos : Positive := 1;
+      Segments : Integer := 0;
+      Done : Boolean := False;
+
+      --  The byte at I as libxml2 reads its buffer: what is there now up
+      --  to the original length, then the terminating NUL.
+      function Byte (I : Positive) return Character is
+        (if I <= Length and then I in Path'Range then Path (I) else NUL);
+
+      function Is_Separator (C : Character) return Boolean is (C = '/');
+   begin
+      Last := 0;
+      if Length = 0 then
+         --  An empty path is returned as it is, even a file path.
+         return;
+      end if;
+      if Is_Separator (Byte (Cur)) then
+         Cur := Cur + 1;
+         Path (Out_Pos) := '/';
+         Out_Pos := Out_Pos + 1;
+      end if;
+      while not Done and then Byte (Cur) /= NUL loop
+         pragma Loop_Invariant (Out_Pos <= Cur and then Cur <= Length);
+         pragma Loop_Invariant (Segments in -Cur .. Cur);
+         pragma Loop_Variant (Increases => Cur);
+         declare
+            Start : constant Positive := Cur with Ghost;
+            Handled : Boolean := False;
+         begin
+            --  Collapse separators.
+            while Is_Separator (Byte (Cur)) loop
+               pragma Loop_Invariant (Cur in Start .. Length);
+               pragma Loop_Variant (Increases => Cur);
+               Cur := Cur + 1;
+            end loop;
+            if Byte (Cur) = '.' then
+               if Byte (Cur + 1) = NUL then
+                  --  "." at the end.
+                  Done := True;
+                  Handled := True;
+               elsif Is_Separator (Byte (Cur + 1)) then
+                  --  "./"
+                  Cur := Cur + 2;
+                  Handled := True;
+               elsif Byte (Cur + 1) = '.'
+                 and then (Byte (Cur + 2) = NUL
+                           or else Is_Separator (Byte (Cur + 2)))
+               then
+                  if Segments > 0 then
+                     --  ".." removes the last segment.  (A segment was
+                     --  written, so the output is not empty; libxml2 has
+                     --  no check here.)
+                     while Out_Pos > 1 loop
+                        pragma Loop_Invariant (Out_Pos in 2 .. Cur);
+                        pragma Loop_Variant (Decreases => Out_Pos);
+                        Out_Pos := Out_Pos - 1;
+                        exit when Out_Pos = 1
+                          or else Is_Separator (Path (Out_Pos - 1));
+                     end loop;
+                     Segments := Segments - 1;
+                     if Byte (Cur + 2) = NUL then
+                        Done := True;
+                     else
+                        Cur := Cur + 3;
+                     end if;
+                     Handled := True;
+                  elsif Byte (Out_Pos) = '/' then
+                     --  An extraneous ".." of an absolute path (libxml2
+                     --  looks at the byte at its output position).
+                     if Byte (Cur + 2) = NUL then
+                        Done := True;
+                     else
+                        Cur := Cur + 3;
+                     end if;
+                     Handled := True;
+                  else
+                     --  "../" kept at the start of a relative path.
+                     Segments := Segments - 1;
+                  end if;
+               end if;
+            end if;
+            if not Handled then
+               --  Copy the segment and its separator.
+               while Byte (Cur) /= NUL and then not Is_Separator (Byte (Cur)) loop
+                  pragma Loop_Invariant
+                    (Out_Pos <= Cur and then Cur in Start .. Length);
+                  pragma Loop_Variant (Increases => Cur);
+                  Path (Out_Pos) := Byte (Cur);
+                  Out_Pos := Out_Pos + 1;
+                  Cur := Cur + 1;
+               end loop;
+               if Byte (Cur) /= NUL then
+                  Cur := Cur + 1;
+                  Path (Out_Pos) := '/';
+                  Out_Pos := Out_Pos + 1;
+               end if;
+               Segments := Segments + 1;
+            end if;
+            exit when Done or else Cur > Length;
+            pragma Assert (Cur > Start);
+         end;
+      end loop;
+      if Is_File and then Out_Pos = 1 then
+         --  An empty file path becomes ".".
+         Path (Out_Pos) := '.';
+         Out_Pos := Out_Pos + 1;
+      end if;
+      Last := Out_Pos - 1;
+   end Normalize_Path;
+
 end XML3_URIs;

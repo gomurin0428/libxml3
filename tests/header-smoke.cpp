@@ -227,6 +227,23 @@ int main() {
     (void)save_uri;
     (void)print_uri;
     (void)free_uri;
+    xmlChar *(*build_uri)(const xmlChar *, const xmlChar *) = xmlBuildURI;
+    int (*build_uri_safe)(const xmlChar *, const xmlChar *, xmlChar **) =
+        xmlBuildURISafe;
+    xmlChar *(*build_relative)(const xmlChar *, const xmlChar *) =
+        xmlBuildRelativeURI;
+    int (*build_relative_safe)(const xmlChar *, const xmlChar *, xmlChar **) =
+        xmlBuildRelativeURISafe;
+    xmlChar *(*canonic_path)(const xmlChar *) = xmlCanonicPath;
+    xmlChar *(*path_to_uri)(const xmlChar *) = xmlPathToURI;
+    xmlChar *(*uri_escape_full)(const xmlChar *) = xmlURIEscape;
+    (void)build_uri;
+    (void)build_uri_safe;
+    (void)build_relative;
+    (void)build_relative_safe;
+    (void)canonic_path;
+    (void)path_to_uri;
+    (void)uri_escape_full;
     {
         xmlURI uri = {};
         uri.port = 0;

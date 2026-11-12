@@ -788,6 +788,31 @@ package XML3_C is
    procedure Print_URI (Stream, URI : System.Address)
      with Export, Convention => C, External_Name => "xmlPrintURI";
 
+   function Build_URI_Safe (URI, Base, Output : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBuildURISafe";
+
+   function Build_URI (URI, Base : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlBuildURI";
+
+   function Build_Relative_URI_Safe (URI, Base, Output : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C,
+       External_Name => "xmlBuildRelativeURISafe";
+
+   function Build_Relative_URI (URI, Base : System.Address)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlBuildRelativeURI";
+
+   function Canonic_Path (Path : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCanonicPath";
+
+   function Path_To_URI (Path : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlPathToURI";
+
+   function URI_Escape (Text : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlURIEscape";
+
    --  The output callbacks of xmlSaveToIO.
    type Output_Write_Callback is access function
      (Context, Data : System.Address; Length : Interfaces.C.int)
