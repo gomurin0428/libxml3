@@ -100,3 +100,9 @@ tests/handler-test-development
 tests/handler-test-sanitize
 tests/handler-test.out
 tests/handler-test-reference.out
+tests/uri-test
+tests/uri-test-reference
+tests/uri-test-development
+tests/uri-test-sanitize
+tests/uri-test.out
+tests/uri-test-reference.out

@@ -35,6 +35,8 @@ with XML3_Text;
 with XML3_Text.Buffers;
 with XML3_Text.QNames;
 with XML3_Text_Results;
+with XML3_URIs;
+with Ada.Strings.Unbounded;
 
 package body XML3_C is
    use type System.Address;
@@ -4679,5 +4681,387 @@ package body XML3_C is
          Report_Failure (Unexpected_Exception);
          return -1;
    end Save_Set_Indent_String;
+
+
+   ------------------------------------------------------------------
+   --  URI references (uri.h).  The components are found by the SPARK
+   --  XML3_URIs.Parse; this part copies or unescapes them into the
+   --  public struct and serializes it with XML3_URIs.Kept.
+   ------------------------------------------------------------------
+
+   type C_URI is record
+      Scheme, Opaque, Authority, Server, User : System.Address;
+      Port : int;
+      Path, Query, Fragment : System.Address;
+      Cleanup : int;
+      Query_Raw : System.Address;
+   end record with Convention => C;
+
+   Empty_URI : constant C_URI :=
+     (Scheme | Opaque | Authority | Server | User | Path | Query
+        | Fragment | Query_Raw => System.Null_Address,
+      Port => XML3_URIs.Port_Empty, Cleanup => 0);
+
+   function Create_URI return System.Address is
+      Result : System.Address;
+   begin
+      XML3_Native_Memory.Allocate
+        (XML3_Native_Memory.Byte_Count (C_URI'Max_Size_In_Storage_Elements),
+         Result);
+      if Result /= System.Null_Address then
+         declare
+            Item : C_URI with Import, Address => Result;
+         begin
+            Item := Empty_URI;
+         end;
+      end if;
+      return Result;
+   end Create_URI;
+
+   procedure Free_If_Set (Item : in out System.Address) is
+   begin
+      if Item /= System.Null_Address then
+         XML3_Native_Memory.Free (Item);
+         Item := System.Null_Address;
+      end if;
+   end Free_If_Set;
+
+   --  xmlCleanURI: every string released, the port and flags kept.
+   procedure Clean_URI (Item : in out C_URI) is
+   begin
+      Free_If_Set (Item.Scheme);
+      Free_If_Set (Item.Server);
+      Free_If_Set (Item.User);
+      Free_If_Set (Item.Path);
+      Free_If_Set (Item.Fragment);
+      Free_If_Set (Item.Opaque);
+      Free_If_Set (Item.Authority);
+      Free_If_Set (Item.Query);
+      Free_If_Set (Item.Query_Raw);
+   end Clean_URI;
+
+   procedure Free_URI (URI : System.Address) is
+   begin
+      if URI = System.Null_Address then
+         return;
+      end if;
+      declare
+         Item : C_URI with Import, Address => URI;
+      begin
+         Clean_URI (Item);
+      end;
+      XML3_Native_Memory.Free (URI);
+   end Free_URI;
+
+   --  xmlParse3986URIReference into Item: 0, 1 when the text is not a URI
+   --  reference, -1 for a missing text or a failed allocation.
+   function Parse_Into
+     (Item : in out C_URI; Text : System.Address; Detached : Boolean := False)
+      return int
+   is
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+      Parts : XML3_URIs.Parts;
+      Ok : Boolean;
+      Failed : Boolean := False;
+      Raw : constant Boolean := (Item.Cleanup / 2) mod 2 = 1;
+
+      --  The component of Span: a copy, or an unescaped copy unless the
+      --  struct keeps components escaped (Keep_Escaped) or the flags do.
+      function Component
+        (S : XML3_URIs.Span; Keep_Escaped : Boolean := False)
+         return System.Address
+      is
+         Start : System.Address;
+         Count : Natural;
+         Result : System.Address;
+      begin
+         if not S.Present then
+            return System.Null_Address;
+         end if;
+         Start := XML3_Native_Memory.Offset
+           (Text, XML3_Native_Memory.Byte_Count (S.First - 1));
+         Count := S.Last - S.First + 1;
+         if Raw or else Keep_Escaped then
+            Result := Str_N_Duplicate (Start, int (Count));
+         else
+            --  As libxml2, an empty component is unescaped from its start
+            --  to the end of the text (xmlURIUnescapeString with length 0).
+            Result := URI_Unescape_String
+              (Start, int (Count), System.Null_Address);
+         end if;
+         if Result = System.Null_Address then
+            Failed := True;
+         end if;
+         return Result;
+      end Component;
+   begin
+      if Text = System.Null_Address then
+         return -1;
+      end if;
+      Clean_URI (Item);
+      XML3_Text.Buffers.Measure (Text, Length, Found);
+      if not Found or else Natural (Length) >= Natural'Last - 4 then
+         return -1;
+      end if;
+      declare
+         Input : String (1 .. Natural (Length)) with Import, Address => Text;
+      begin
+         XML3_URIs.Parse
+           (Input, Item.Cleanup, Item.Port, Parts, Ok, Detached);
+      end;
+      Item.Port := Parts.Port;
+      if not Ok then
+         return 1;
+      end if;
+      Item.Scheme := Component (Parts.Scheme, Keep_Escaped => True);
+      Item.Server := Component (Parts.Server);
+      Item.User := Component (Parts.User);
+      Item.Path := Component (Parts.Path);
+      Item.Query := Component (Parts.Query);
+      Item.Query_Raw := Component (Parts.Query, Keep_Escaped => True);
+      Item.Fragment := Component (Parts.Fragment);
+      if Failed then
+         Clean_URI (Item);
+         return -1;
+      end if;
+      return 0;
+   end Parse_Into;
+
+   function Parse_URI_Reference (URI, Text : System.Address) return int is
+   begin
+      if Text = System.Null_Address then
+         return -1;
+      end if;
+      if URI = System.Null_Address then
+         --  Only whether the text is a URI reference.
+         declare
+            Scratch : C_URI := Empty_URI;
+            Result : constant int :=
+              Parse_Into (Scratch, Text, Detached => True);
+         begin
+            Clean_URI (Scratch);
+            return Result;
+         end;
+      end if;
+      declare
+         Item : C_URI with Import, Address => URI;
+      begin
+         return Parse_Into (Item, Text);
+      end;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Parse_URI_Reference;
+
+   function Parse_New_URI (Text : System.Address; Cleanup : int;
+                           Code : out int) return System.Address
+   is
+      Result : System.Address;
+   begin
+      Result := Create_URI;
+      if Result = System.Null_Address then
+         Code := -1;
+         return System.Null_Address;
+      end if;
+      declare
+         Item : C_URI with Import, Address => Result;
+      begin
+         Item.Cleanup := Cleanup;
+         Code := Parse_Into (Item, Text);
+      end;
+      if Code /= 0 then
+         Free_URI (Result);
+         return System.Null_Address;
+      end if;
+      return Result;
+   end Parse_New_URI;
+
+   function Parse_URI_Safe (Text, Output : System.Address) return int is
+      Code : int;
+      Result : System.Address;
+   begin
+      if Output = System.Null_Address then
+         return 1;
+      end if;
+      Set_Address (Output, System.Null_Address);
+      if Text = System.Null_Address then
+         return 1;
+      end if;
+      Result := Parse_New_URI (Text, 0, Code);
+      Set_Address (Output, Result);
+      return Code;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Parse_URI_Safe;
+
+   function Parse_URI (Text : System.Address) return System.Address is
+      Code : int;
+   begin
+      if Text = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return Parse_New_URI (Text, 0, Code);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Parse_URI;
+
+   function Parse_URI_Raw (Text : System.Address; Raw : int)
+      return System.Address
+   is
+      Code : int;
+   begin
+      if Text = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      return Parse_New_URI
+        (Text, (if Raw /= 0 then XML3_URIs.No_Unescape else 0), Code);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Parse_URI_Raw;
+
+   function Save_URI (URI : System.Address) return System.Address is
+      use Ada.Strings.Unbounded;
+      Output : Unbounded_String;
+      Hex : constant String := "0123456789ABCDEF";
+
+      function Text_Of (Item : System.Address) return String is
+         Length : XML3_Text.Byte_Count;
+         Found : Boolean;
+      begin
+         XML3_Text.Buffers.Measure (Item, Length, Found);
+         if not Found then
+            raise Constraint_Error;
+         end if;
+         declare
+            Value : String (1 .. Natural (Length))
+              with Import, Address => Item;
+         begin
+            return Value;
+         end;
+      end Text_Of;
+
+      procedure Put_Escaped
+        (Component : XML3_URIs.Save_Component; Value : String) is
+      begin
+         for C of Value loop
+            if XML3_URIs.Kept (Component, C) then
+               Append (Output, C);
+            else
+               Append (Output, '%');
+               Append (Output, Hex (Character'Pos (C) / 16 + 1));
+               Append (Output, Hex (Character'Pos (C) mod 16 + 1));
+            end if;
+         end loop;
+      end Put_Escaped;
+
+      Result : System.Address;
+   begin
+      if URI = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Item : C_URI with Import, Address => URI;
+         Null_Address : constant System.Address := System.Null_Address;
+      begin
+         if Item.Scheme /= Null_Address then
+            Append (Output, Text_Of (Item.Scheme));
+            Append (Output, ':');
+         end if;
+         if Item.Opaque /= Null_Address then
+            Put_Escaped (XML3_URIs.Opaque_Part, Text_Of (Item.Opaque));
+         else
+            if Item.Server /= Null_Address
+              or else Item.Port /= XML3_URIs.Port_Empty
+            then
+               Append (Output, "//");
+               if Item.User /= Null_Address then
+                  Put_Escaped (XML3_URIs.User_Part, Text_Of (Item.User));
+                  Append (Output, '@');
+               end if;
+               if Item.Server /= Null_Address then
+                  Append (Output, Text_Of (Item.Server));
+               end if;
+               if Item.Port > 0 then
+                  declare
+                     Image : constant String := int'Image (Item.Port);
+                  begin
+                     Append (Output, ':');
+                     Append (Output, Image (Image'First + 1 .. Image'Last));
+                  end;
+               end if;
+            elsif Item.Authority /= Null_Address then
+               Append (Output, "//");
+               Put_Escaped
+                 (XML3_URIs.Authority_Part, Text_Of (Item.Authority));
+            end if;
+            if Item.Path /= Null_Address then
+               declare
+                  Path : constant String := Text_Of (Item.Path);
+                  From : Positive := 1;
+               begin
+                  --  file:///d: keeps the drive colon.
+                  if Item.Scheme /= Null_Address
+                    and then Path'Length >= 3
+                    and then Path (1) = '/'
+                    and then Path (2) in 'a' .. 'z' | 'A' .. 'Z'
+                    and then Path (3) = ':'
+                    and then Text_Of (Item.Scheme) = "file"
+                  then
+                     Append (Output, Path (1 .. 3));
+                     From := 4;
+                  end if;
+                  Put_Escaped (XML3_URIs.Path_Part, Path (From .. Path'Last));
+               end;
+            end if;
+            if Item.Query_Raw /= Null_Address then
+               Append (Output, '?');
+               Append (Output, Text_Of (Item.Query_Raw));
+            elsif Item.Query /= Null_Address then
+               Append (Output, '?');
+               Put_Escaped (XML3_URIs.Query_Part, Text_Of (Item.Query));
+            end if;
+         end if;
+         if Item.Fragment /= Null_Address then
+            Append (Output, '#');
+            Put_Escaped (XML3_URIs.Fragment_Part, Text_Of (Item.Fragment));
+         end if;
+      end;
+      declare
+         Value : constant String := To_String (Output);
+      begin
+         XML3_Native_Memory.Allocate
+           (XML3_Native_Memory.Byte_Count (Value'Length + 1), Result);
+         if Result = System.Null_Address then
+            return System.Null_Address;
+         end if;
+         XML3_Native_Memory.Write_String (Result, 0, Value);
+         XML3_Native_Memory.Write_Byte (Result, Value'Length, Character'Val (0));
+      end;
+      return Result;
+   exception
+      when others =>
+         return System.Null_Address;
+   end Save_URI;
+
+   function C_Fputs (Text, Stream : System.Address) return int
+     with Import, Convention => C, External_Name => "fputs";
+
+   procedure Print_URI (Stream, URI : System.Address) is
+      Text : System.Address := Save_URI (URI);
+      Ignored : int;
+   begin
+      if Text /= System.Null_Address then
+         Ignored := C_Fputs (Text, Stream);
+         XML3_Native_Memory.Free (Text);
+      end if;
+   end Print_URI;
 
 end XML3_C;

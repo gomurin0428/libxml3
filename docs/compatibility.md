@@ -151,7 +151,8 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
   要素 sibling/child 関数
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
-* `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString` / `xmlNormalizeURIPath`。他のURI APIは未対応
+* `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString` / `xmlNormalizeURIPath`、URIの解析と書き出し
+  （`xmlCreateURI`、`xmlParseURI` 系、`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）。`xmlBuildURI` などは未対応
 * `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -1236,6 +1237,17 @@ are compared without normalizing snapshot fields, with explicit per-case reasons
 for intentional libxml3 differences. A 1 GB value allocation is not tested.
 
 ## URI の byte エスケープ
+
+URI の解析と書き出し（`xmlCreateURI`、`xmlParseURI`、`xmlParseURISafe`、`xmlParseURIRaw`、`xmlParseURIReference`、
+`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）に対応します。成分の切り出しは libxml2 の `xmlParse3986URIReference` と
+同じ手順をSPARKの `XML3_URIs.Parse` で行い（絶対URI、だめなら相対参照）、構造体の `cleanup` フラグ
+（1: 好ましくない文字を許す、2: 成分をエスケープしたまま保持、4: URI外の文字を許す）も同じに扱います。
+libxml2 の癖もそのまま再現します。IPv4 の判定は常に失敗するのでホストは常に登録名として読み、空のユーザーや
+クエリは文字列末尾まで（`xmlURIUnescapeString` に長さ0を渡すため）をアンエスケープし（`http://a/b?#f` のクエリは
+`#f`）、`port` は解析で初期化されないので再利用した構造体はそれを保ちます。`xmlSaveUri` は成分ごとの libxml2 の
+エスケープ規則（SPARKの `XML3_URIs.Kept`、大文字の `%XX`）で書き出します。固定版2.15.4と同じ結果になることを
+`make test-uri` で比較しています。libxml2 と異なり、終端の NUL では必ず止まります（libxml2 はフラグ4だけのとき
+NUL を越えて読みます）。`xmlBuildURI` などの組み立て系は未対応です。
 
 `xmlURIEscapeStr` は入力の先頭NULまでをbyte単位で処理します。ASCII英数字、
 `-._~!*'()@`、例外リストに含まれるbyteを保持し、他のbyteをuppercase `%HH` にします。

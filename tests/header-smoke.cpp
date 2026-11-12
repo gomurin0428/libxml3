@@ -211,6 +211,29 @@ int main() {
         xmlCtxtSetErrorHandler;
     (void)set_structured;
     (void)ctxt_set_handler;
+    xmlURI *(*create_uri)() = xmlCreateURI;
+    int (*parse_uri_safe)(const char *, xmlURI **) = xmlParseURISafe;
+    xmlURIPtr (*parse_uri)(const char *) = xmlParseURI;
+    xmlURIPtr (*parse_uri_raw)(const char *, int) = xmlParseURIRaw;
+    int (*parse_uri_reference)(xmlURI *, const char *) = xmlParseURIReference;
+    xmlChar *(*save_uri)(xmlURI *) = xmlSaveUri;
+    void (*print_uri)(FILE *, xmlURI *) = xmlPrintURI;
+    void (*free_uri)(xmlURI *) = xmlFreeURI;
+    (void)create_uri;
+    (void)parse_uri_safe;
+    (void)parse_uri;
+    (void)parse_uri_raw;
+    (void)parse_uri_reference;
+    (void)save_uri;
+    (void)print_uri;
+    (void)free_uri;
+    {
+        xmlURI uri = {};
+        uri.port = 0;
+        uri.cleanup = 0;
+        uri.query_raw = nullptr;
+        (void)uri;
+    }
     {
         xmlParserCtxt context;
         context._private = nullptr;

@@ -761,6 +761,33 @@ package XML3_C is
    procedure Free (Item : System.Address)
      with Export, Convention => C, External_Name => "xmlFree";
 
+   function Create_URI return System.Address
+     with Export, Convention => C, External_Name => "xmlCreateURI";
+
+   procedure Free_URI (URI : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeURI";
+
+   function Parse_URI_Safe (Text, Output : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlParseURISafe";
+
+   function Parse_URI (Text : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlParseURI";
+
+   function Parse_URI_Raw (Text : System.Address; Raw : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlParseURIRaw";
+
+   function Parse_URI_Reference (URI, Text : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlParseURIReference";
+
+   function Save_URI (URI : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlSaveUri";
+
+   procedure Print_URI (Stream, URI : System.Address)
+     with Export, Convention => C, External_Name => "xmlPrintURI";
+
    --  The output callbacks of xmlSaveToIO.
    type Output_Write_Callback is access function
      (Context, Data : System.Address; Length : Interfaces.C.int)
