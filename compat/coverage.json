@@ -1986,7 +1986,7 @@
   },
   "callback:xmlIO.h:xmlOutputWriteCallback": {
     "implementation": "partial",
-    "scope": "Write callback of xmlSaveToIO, declared in a reduced xmlIO.h; the I/O buffer structures and functions of libxml2 are not provided. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "scope": "Write callback of xmlSaveToIO, declared in a reduced xmlIO.h; it is also the write callback of xmlOutputBufferCreateIO. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/save-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
@@ -2627,6 +2627,272 @@
     "scope": "A bit of xmlCtxtGetStatus, with libxml2's value. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": [
       "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlAllocOutputBuffer": {
+    "implementation": "partial",
+    "scope": "A memory output buffer without a target: written bytes stay pending (xmlOutputBufferGetContent), flushes write nothing and the close answers 0. The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferCreateIO": {
+    "implementation": "partial",
+    "scope": "An output buffer writing through the caller's callbacks; NULL without a write callback. The close callback, when given, is called once by xmlOutputBufferClose. The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferCreateBuffer": {
+    "implementation": "partial",
+    "scope": "An output buffer appending to an xmlBuffer (xmlBufferWrite); NULL for a NULL buffer. writecallback is NULL in the struct (libxml2 stores its own xmlBufferWrite). The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferCreateFd": {
+    "implementation": "partial",
+    "scope": "An output buffer writing to a descriptor, which stays open; NULL for a negative descriptor. The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferCreateFile": {
+    "implementation": "partial",
+    "scope": "An output buffer writing to a caller's FILE stream with fwrite; the close flushes it (xmlFileFlush) without closing it; NULL for a NULL stream. The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferCreateFilename": {
+    "implementation": "partial",
+    "scope": "An output buffer writing to a file created or truncated now, resolved as libxml2's default output callback resolves the name (the XML3_File_Paths planner, \"-\" for standard output); a name that cannot be opened gives NULL without a diagnostic. The compression argument is ignored, as in libxml2 2.15.4. The buffer keeps libxml2's public fields (written and error as the SPARK XML3_Save_Contexts output state decides) and reserves MINLEN bytes for the pending bytes; an allocation failure gives no buffer and reports the memory failure. Encoding handlers are not provided: a non-NULL encoder is refused with XML_FROM_OUTPUT / XML_ERR_UNSUPPORTED_ENCODING, and no buffer is made. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferWrite": {
+    "implementation": "partial",
+    "scope": "Adds the bytes; with a target, they are written once MINLEN (4000) are pending, as XML3_Save_Contexts.Must_Write decides, and the result is the bytes the target took during the call, or -1 after a failure (a target answering -1 records XML_IO_WRITE, another negative answer its negation, nothing or more than given XML_ERR_INTERNAL_ERROR); without a target the result is the length. -1 for a NULL or failed buffer, 0 for a length of 0 or less; NULL bytes fail the buffer with XML_ERR_NO_MEMORY, as xmlBufAdd refuses them. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferWriteString": {
+    "implementation": "partial",
+    "scope": "xmlOutputBufferWrite of a NUL-terminated string; -1 for a NULL or failed buffer or a NULL string, 0 for an empty one. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferFlush": {
+    "implementation": "partial",
+    "scope": "Hands every pending byte to the target once (also when there are none, as libxml2 does) and answers its result; 0 without a target, -1 for a NULL or failed buffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferClose": {
+    "implementation": "partial",
+    "scope": "A last flush, the close step of the target (the close callback, closing a file the buffer opened, or flushing a FILE stream) and the release; answers the negated error or the bytes written, as XML3_Save_Contexts.After_Close and Close_Result decide; -1 for NULL. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferGetContent": {
+    "implementation": "partial",
+    "scope": "The pending bytes (NUL-terminated); NULL for a NULL or failed buffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:xmlIO.h:xmlOutputBufferGetSize": {
+    "implementation": "partial",
+    "scope": "The number of pending bytes; 0 for a NULL or failed buffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeDumpOutput": {
+    "implementation": "partial",
+    "scope": "Writes the serialization of a node into an output buffer, as xmlNodeDump produces it, with the level kept within 0 .. 100; without an encoder on the buffer the bytes are UTF-8 whatever the encoding argument names, as in libxml2. A failed serialization (reported) fails the buffer with XML_ERR_NO_MEMORY. Nothing for a NULL buffer or node. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFileTo": {
+    "implementation": "partial",
+    "scope": "xmlSaveFormatFileTo without formatting. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFormatFileTo": {
+    "implementation": "partial",
+    "scope": "Writes the serialization of a document into an output buffer, as xmlSaveFormatFileEnc produces it, then closes the buffer and answers the close result. -1 for a NULL buffer; a NULL or non-document node closes the buffer and answers -1. An encoding the serializer cannot produce (it writes UTF-8 only) fails the buffer with XML_ERR_UNSUPPORTED_ENCODING and reports it at XML_ERR_ERROR, as libxml2 does for an unknown encoding; libxml2 converts to the encodings it knows. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "struct:xmlIO.h:_xmlOutputBuffer": {
+    "implementation": "partial",
+    "scope": "The output buffer with libxml2's fields: context, writecallback and closecallback (the caller's for xmlOutputBufferCreateIO, NULL otherwise), encoder and conv (always NULL), buffer (an opaque handle of the pending bytes), written and error. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "struct:tree.h:_xmlOutputBuffer": {
+    "implementation": "partial",
+    "scope": "The forward declaration of the output buffer of xmlIO.h. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlOutputBuffer": {
+    "implementation": "partial",
+    "scope": "The output buffer type. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlOutputBufferPtr": {
+    "implementation": "partial",
+    "scope": "The output buffer pointer type. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlBuf": {
+    "implementation": "partial",
+    "scope": "libxml2's opaque byte buffer, declared only as the type of the output buffer's buffer and conv fields. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlBufPtr": {
+    "implementation": "partial",
+    "scope": "Pointer to the opaque byte buffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.context": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.writecallback": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.closecallback": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.encoder": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.buffer": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.conv": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.written": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "field:xmlIO.h:_xmlOutputBuffer.error": {
+    "implementation": "partial",
+    "scope": "A field of the output buffer; see struct _xmlOutputBuffer. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/output-buffer-test.c",
       "tests/header-smoke.cpp"
     ],
     "proof": "not-proved"

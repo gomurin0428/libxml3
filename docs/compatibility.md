@@ -629,6 +629,19 @@ URIとしてアンエスケープし、`file:` URI は接頭辞の後をアン�
   `XML_FROM_OUTPUT` / `XML_ERR_ARGUMENT` でコンテキストを作りません。
 - libxml2 は細かい書き込みごとに4000バイトを確かめますが、libxml3 は保存1回の終わりに確かめます。
   大きな出力では、フラッシュ前に出力先へ渡る量が異なる場合があります（最終的な出力は同じです）。
+
+出力バッファ（`xmlIO.h`）の `xmlAllocOutputBuffer`、`xmlOutputBufferCreateIO`、`xmlOutputBufferCreateBuffer`、
+`xmlOutputBufferCreateFd`、`xmlOutputBufferCreateFile`、`xmlOutputBufferCreateFilename` は、出力先なし（メモリ）、
+アプリケーションの書き込み・クローズ関数、`xmlBuffer`、ファイル記述子（閉じない）、`FILE` ストリーム
+（クローズ時に `fflush`）、ファイル（作成・切り詰め）へ書くバッファを作ります。`xmlOutputBufferWrite`、
+`xmlOutputBufferWriteString`、`xmlOutputBufferFlush`、`xmlOutputBufferClose`、`xmlOutputBufferGetContent`、
+`xmlOutputBufferGetSize` と、バッファへシリアライズする `xmlNodeDumpOutput`、`xmlSaveFileTo`、`xmlSaveFormatFileTo`
+は libxml2 2.15.4 と同じ規則で動き、公開構造体の `written` と `error` も同じ値になります。保存コンテキストと
+同じ出力チャネルで、状態遷移はSPARKの `XML3_Save_Contexts` で決めます。エンコーディングハンドラーは
+提供しないので、エンコーダーはNULLだけを受け付けます（それ以外は未知のエンコーディングと同じエラーで作りません）。
+シリアライザはUTF-8しか出力しないため、`xmlSaveFileTo` に他のエンコーディングを渡すと、libxml2 が未知の
+エンコーディングに対して返すのと同じ `XML_ERR_UNSUPPORTED_ENCODING` になります。固定版2.15.4と同じ結果に
+なることを `make test-output-buffer` で比較しています。
 - `xmlSaveSetEscape` / `xmlSaveSetAttrEscape` と、非推奨の `xmlSaveNoEmptyTags`、`xmlIndentTreeOutput`、
   `xmlTreeIndentString` は対象外です。
 

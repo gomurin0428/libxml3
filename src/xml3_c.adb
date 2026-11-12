@@ -4562,20 +4562,65 @@ package body XML3_C is
       return int
      with Import, Convention => C, External_Name => "xml3FileOpenWrite";
 
-   type Target_Kind is (Buffer_Target, Fd_Target, File_Target, IO_Target);
+   function Stream_Write
+     (Stream, Data : System.Address; Length : int) return int
+     with Import, Convention => C, External_Name => "xml3StreamWrite";
+   function Stream_Flush (Stream : System.Address) return int
+     with Import, Convention => C, External_Name => "xml3StreamFlush";
 
-   type Save_Context is record
-      Kind : Target_Kind;
-      Target : System.Address;
-      Fd : int;
+   --  Where an output channel writes: an xmlBuffer (xmlBufferWrite), a
+   --  descriptor left open, a descriptor the channel opened and closes, a
+   --  caller's FILE stream (fwrite, fflush at the close), the caller's
+   --  callbacks, or nowhere (a memory output buffer, whose bytes stay
+   --  pending).
+   type Target_Kind is
+     (Buffer_Target, Fd_Target, File_Target, Stream_Target, IO_Target,
+      Memory_Target);
+
+   --  An output buffer (xmlOutputBuffer): libxml2's public fields, then
+   --  the target and the pending bytes.  Save contexts write through one
+   --  too.  Written and Error are the Output_State that
+   --  XML3_Save_Contexts decides.
+   type Output_Channel is record
+      Context : System.Address;
       Write : Output_Write_Callback;
       Close : Output_Close_Callback;
+      Encoder : System.Address;
+      Buffer : System.Address;
+      Conv : System.Address;
+      Written : int;
+      Error : int;
+      Kind : Target_Kind;
+      Fd : int;
+      Pending : aliased Buffers.Buffer;
+   end record with Convention => C;
+
+   function New_Channel
+     (Kind : Target_Kind; Target : System.Address; Fd : int;
+      Write : Output_Write_Callback; Close : Output_Close_Callback)
+      return Output_Channel is
+     ((Context => Target, Write => Write, Close => Close,
+       Encoder => System.Null_Address, Buffer => System.Null_Address,
+       Conv => System.Null_Address, Written => 0, Error => 0, Kind => Kind,
+       Fd => Fd, Pending => (others => <>)));
+
+   function State_Of (Channel : Output_Channel) return Save.Output_State is
+     ((Written => (if Channel.Written < 0 then 0 else Channel.Written),
+       Error => (if Channel.Error < 0 then 0 else Channel.Error)));
+
+   procedure Set_State
+     (Channel : in out Output_Channel; State : Save.Output_State) is
+   begin
+      Channel.Written := State.Written;
+      Channel.Error := State.Error;
+   end Set_State;
+
+   type Save_Context is record
+      Channel : Output_Channel;
       Has_Encoding : Boolean;
       Encoding : String (1 .. 6);
       Formatted : Boolean;
       Style : XML3_Serialization.Output_Style;
-      Pending : Buffers.Buffer;
-      Output : Save.Output_State;
    end record;
 
    --  The bytes handed to a target for an empty write.
@@ -4629,13 +4674,11 @@ package body XML3_C is
          Context : Save_Context with Import, Address => Result;
       begin
          Context :=
-           (Kind => Kind, Target => Target, Fd => Fd, Write => Write,
-            Close => Close, Has_Encoding => Has_Encoding,
+           (Channel => New_Channel (Kind, Target, Fd, Write, Close),
+            Has_Encoding => Has_Encoding,
             Encoding => Name & Character'Val (0),
             Formatted => Save.Formatted (Options),
-            Style => Save.Style_For (Options),
-            Pending => (others => <>),
-            Output => (Written => 0, Error => 0));
+            Style => Save.Style_For (Options));
       end;
       return Result;
    end New_Save_Context;
@@ -4680,14 +4723,29 @@ package body XML3_C is
          return System.Null_Address;
    end Save_To_Fd;
 
+   --  Creates or truncates the file Name for writing, as libxml2's default
+   --  output callback opens it; -1 when it cannot be opened.
+   function Open_Output_File (Name : System.Address) return int is
+      Path : System.Address;
+      Owned, Standard, Ok : Boolean;
+      Fd : int := -1;
+   begin
+      Resolve_Output (Name, Path, Owned, Standard, Ok);
+      if Ok then
+         Fd := File_Open_Write (Path, (if Standard then 1 else 0));
+      end if;
+      if Owned then
+         XML3_Native_Memory.Free (Path);
+      end if;
+      return Fd;
+   end Open_Output_File;
+
    function Save_To_Filename
      (Name, Encoding : System.Address; Options : int) return System.Address
    is
       Encoding_Name : XML3_Serialization.UTF8_Name;
       Ok : Boolean;
-      Path : System.Address;
-      Owned, Standard : Boolean;
-      Fd : int := -1;
+      Fd : int;
       Result : System.Address;
    begin
       Check_Save_Request (Encoding, Options, Encoding_Name, Ok);
@@ -4698,13 +4756,7 @@ package body XML3_C is
       end if;
       --  The file is created or truncated now; a name that cannot be
       --  opened gives no context and no diagnostic, as in libxml2.
-      Resolve_Output (Name, Path, Owned, Standard, Ok);
-      if Ok then
-         Fd := File_Open_Write (Path, (if Standard then 1 else 0));
-      end if;
-      if Owned then
-         XML3_Native_Memory.Free (Path);
-      end if;
+      Fd := Open_Output_File (Name);
       if Fd < 0 then
          return System.Null_Address;
       end if;
@@ -4744,13 +4796,13 @@ package body XML3_C is
 
    --  The target's write callback for Length bytes at Data.
    function Call_Write
-     (Context : Save_Context; Data : System.Address; Length : Natural)
+     (Channel : Output_Channel; Data : System.Address; Length : Natural)
       return int
    is
       Bytes : constant System.Address :=
         (if Data = System.Null_Address then Empty_Bytes'Address else Data);
    begin
-      case Context.Kind is
+      case Channel.Kind is
          when Buffer_Target =>
             --  xmlBufferWrite: the length, or -XML_ERR_NO_MEMORY.
             declare
@@ -4759,99 +4811,478 @@ package body XML3_C is
                Status : Buffers.Add_Status;
                use type Buffers.Add_Status;
             begin
-               Read_Buffer (Context.Target, View, Ok);
+               Read_Buffer (Channel.Context, View, Ok);
                if not Ok then
                   return -int (Save.No_Memory_Code);
                end if;
                Buffers.Add (View, Bytes, Length, Status);
-               Write_Buffer (Context.Target, View);
+               Write_Buffer (Channel.Context, View);
                return (if Status = Buffers.Added then int (Length)
                        else -int (Save.No_Memory_Code));
             end;
          when Fd_Target | File_Target =>
-            return Fd_Write (Context.Fd, Bytes, int (Length));
+            return Fd_Write (Channel.Fd, Bytes, int (Length));
+         when Stream_Target =>
+            return Stream_Write (Channel.Context, Bytes, int (Length));
          when IO_Target =>
-            return Context.Write (Context.Target, Bytes, int (Length));
+            if Channel.Write = null then
+               return -1;
+            end if;
+            return Channel.Write (Channel.Context, Bytes, int (Length));
+         when Memory_Target =>
+            return 0;
       end case;
    end Call_Write;
 
-   --  xmlOutputBufferFlush: hands every pending byte to the target once.
-   function Flush_Output (Ctxt : System.Address) return int is
-      Context : Save_Context with Import, Address => Ctxt;
-      Count : constant Natural := Context.Pending.Used;
+   --  xmlOutputBufferFlush: hands every pending byte to the target once;
+   --  a memory output buffer, without a target, writes nothing.
+   function Flush_Output (Address : System.Address) return int is
+      Channel : Output_Channel with Import, Address => Address;
+      Count : constant Natural := Channel.Pending.Used;
       Result : int;
       Ignored : Integer;
    begin
-      if Context.Output.Error /= 0 then
+      if Channel.Error /= 0 then
          return -1;
       end if;
-      Result := Call_Write (Context, Buffers.Content (Context.Pending), Count);
-      Buffers.Shrink (Context.Pending, Save.Taken (Result, Count), Ignored);
-      Context.Output :=
-        Save.After_Write (Context.Output, Result, Count, Strict => False);
+      if Channel.Kind = Memory_Target then
+         return 0;
+      end if;
+      Result := Call_Write (Channel, Buffers.Content (Channel.Pending), Count);
+      Buffers.Shrink (Channel.Pending, Save.Taken (Result, Count), Ignored);
+      Set_State
+        (Channel,
+         Save.After_Write (State_Of (Channel), Result, Count, Strict => False));
       return Result;
    end Flush_Output;
 
-   --  xmlOutputBufferWrite of a serialization: the bytes are kept, and
-   --  reach the target once MINLEN of them are pending.
-   procedure Add_Output
-     (Ctxt, Bytes : System.Address; Length : Natural)
+   --  xmlOutputBufferWrite: the bytes are kept and reach the target once
+   --  MINLEN of them are pending.  Answers what xmlOutputBufferWrite
+   --  returns: -1 after an error, the bytes the target took during this
+   --  call, or Length for a memory output buffer.
+   function Add_Output
+     (Address, Bytes : System.Address; Length : Natural) return int
    is
-      Context : Save_Context with Import, Address => Ctxt;
+      Channel : Output_Channel with Import, Address => Address;
       Status : Buffers.Add_Status;
       Count : Natural;
       Result : int;
+      Taken : Natural := 0;
       Ignored : Integer;
       use type Buffers.Add_Status;
    begin
-      if Context.Output.Error /= 0 then
-         return;
+      if Channel.Error /= 0 then
+         return -1;
       end if;
-      Buffers.Add (Context.Pending, Bytes, Length, Status);
+      Buffers.Add
+        (Channel.Pending,
+         (if Bytes = System.Null_Address then Empty_Bytes'Address
+          else Bytes),
+         Length, Status);
       if Status /= Buffers.Added then
-         Context.Output.Error := Save.No_Memory_Code;
-         return;
+         Channel.Error := int (Save.No_Memory_Code);
+         return -1;
       end if;
-      while Save.Must_Write (Context.Pending.Used) loop
-         Count := Context.Pending.Used;
+      if Channel.Kind = Memory_Target then
+         return int (Length);
+      end if;
+      while Save.Must_Write (Channel.Pending.Used) loop
+         Count := Channel.Pending.Used;
          Result := Call_Write
-           (Context, Buffers.Content (Context.Pending), Count);
-         Context.Output :=
-           Save.After_Write (Context.Output, Result, Count, Strict => True);
-         exit when Context.Output.Error /= 0;
-         Buffers.Shrink (Context.Pending, Save.Taken (Result, Count), Ignored);
+           (Channel, Buffers.Content (Channel.Pending), Count);
+         Set_State
+           (Channel,
+            Save.After_Write
+              (State_Of (Channel), Result, Count, Strict => True));
+         if Channel.Error /= 0 then
+            return -1;
+         end if;
+         Buffers.Shrink (Channel.Pending, Save.Taken (Result, Count), Ignored);
+         Taken := (if Taken > Natural'Last - Save.Taken (Result, Count)
+                   then Natural'Last else Taken + Save.Taken (Result, Count));
       end loop;
+      return int (Taken);
    end Add_Output;
 
-   --  xmlOutputBufferClose and the release of the context: a last flush,
-   --  the close callback, and the result of the output.
-   function Close_Output (Ctxt : System.Address) return Save.Output_State is
-      Ignored : int;
-      State : Save.Output_State;
+   procedure Add_Output
+     (Address, Bytes : System.Address; Length : Natural)
+   is
+      Ignored : constant int := Add_Output (Address, Bytes, Length);
    begin
-      Ignored := Flush_Output (Ctxt);
+      null;
+   end Add_Output;
+
+   --  xmlOutputBufferClose without the release of the channel's own
+   --  memory: a last flush when there is a target, the close callback,
+   --  and the result of the output.
+   function Close_Output (Address : System.Address) return Save.Output_State
+   is
+      Ignored : int;
+   begin
+      Ignored := Flush_Output (Address);
       declare
-         Context : Save_Context with Import, Address => Ctxt;
+         Channel : Output_Channel with Import, Address => Address;
       begin
-         case Context.Kind is
+         case Channel.Kind is
             when File_Target =>
-               Context.Output :=
-                 Save.After_Close (Context.Output, Fd_Close (Context.Fd));
+               Set_State
+                 (Channel,
+                  Save.After_Close (State_Of (Channel), Fd_Close (Channel.Fd)));
+            when Stream_Target =>
+               Set_State
+                 (Channel,
+                  Save.After_Close
+                    (State_Of (Channel), Stream_Flush (Channel.Context)));
             when IO_Target =>
-               if Context.Close /= null then
-                  Context.Output :=
-                    Save.After_Close
-                      (Context.Output, Context.Close (Context.Target));
+               if Channel.Close /= null then
+                  Set_State
+                    (Channel,
+                     Save.After_Close
+                       (State_Of (Channel), Channel.Close (Channel.Context)));
                end if;
-            when Buffer_Target | Fd_Target =>
+            when Buffer_Target | Fd_Target | Memory_Target =>
                null;
          end case;
-         State := Context.Output;
-         Buffers.Release (Context.Pending);
+         Buffers.Release (Channel.Pending);
+         return State_Of (Channel);
       end;
-      XML3_Native_Memory.Free (Ctxt);
-      return State;
    end Close_Output;
+
+   ------------------------------------------------------------------
+   --  Output buffers (xmlOutputBuffer of xmlIO.h): an Output_Channel of
+   --  their own, with libxml2's MINLEN (4000) bytes reserved for the
+   --  pending bytes.  Encoders are not provided, so only a NULL encoder is
+   --  accepted.
+   ------------------------------------------------------------------
+
+   Output_Reserve : constant := 4000;
+
+   function New_Output
+     (Kind : Target_Kind; Target : System.Address; Fd : int;
+      Write : Output_Write_Callback; Close : Output_Close_Callback;
+      Encoder : System.Address) return System.Address
+   is
+      Result : System.Address;
+      Ok : Boolean;
+   begin
+      if Encoder /= System.Null_Address then
+         XML3_Errors.Report_Simple
+           (Save.Output_Domain, Save.Unsupported_Encoding_Code,
+            Save.Unsupported_Encoding_Level, System.Null_Address);
+         return System.Null_Address;
+      end if;
+      XML3_Native_Memory.Allocate
+        (XML3_Native_Memory.Byte_Count
+           (Output_Channel'Max_Size_In_Storage_Elements),
+         Result);
+      if Result = System.Null_Address then
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Result;
+      begin
+         Channel := New_Channel (Kind, Target, Fd, Write, Close);
+         Buffers.Create (False, Output_Reserve, Channel.Pending, Ok);
+         if not Ok then
+            XML3_Native_Memory.Free (Result);
+            Report_Failure (Allocation_Failure);
+            return System.Null_Address;
+         end if;
+         Channel.Buffer := Channel.Pending'Address;
+      end;
+      return Result;
+   end New_Output;
+
+   function Alloc_Output_Buffer (Encoder : System.Address)
+      return System.Address is
+     (New_Output (Memory_Target, System.Null_Address, -1, null, null,
+                  Encoder));
+
+   function Output_Buffer_Create_IO
+     (Write : Output_Write_Callback; Close : Output_Close_Callback;
+      Context, Encoder : System.Address) return System.Address is
+     (if Write = null then System.Null_Address
+      else New_Output (IO_Target, Context, -1, Write, Close, Encoder));
+
+   function Output_Buffer_Create_Buffer
+     (Buffer, Encoder : System.Address) return System.Address is
+     (if Buffer = System.Null_Address then System.Null_Address
+      else New_Output (Buffer_Target, Buffer, -1, null, null, Encoder));
+
+   function Output_Buffer_Create_Fd
+     (Fd : int; Encoder : System.Address) return System.Address is
+     (if Fd < 0 then System.Null_Address
+      else New_Output (Fd_Target, System.Null_Address, Fd, null, null,
+                       Encoder));
+
+   function Output_Buffer_Create_File
+     (Stream, Encoder : System.Address) return System.Address is
+     (if Stream = System.Null_Address then System.Null_Address
+      else New_Output (Stream_Target, Stream, -1, null, null, Encoder));
+
+   function Output_Buffer_Create_Filename
+     (URI, Encoder : System.Address; Compression : int)
+      return System.Address
+   is
+      pragma Unreferenced (Compression);
+      Fd : int;
+      Result : System.Address;
+      Ignored : int;
+   begin
+      if URI = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if Encoder /= System.Null_Address then
+         return New_Output
+           (Memory_Target, System.Null_Address, -1, null, null, Encoder);
+      end if;
+      --  A name that cannot be opened gives no buffer and no diagnostic.
+      Fd := Open_Output_File (URI);
+      if Fd < 0 then
+         return System.Null_Address;
+      end if;
+      Result := New_Output
+        (File_Target, System.Null_Address, Fd, null, null,
+         System.Null_Address);
+      if Result = System.Null_Address then
+         Ignored := Fd_Close (Fd);
+      end if;
+      return Result;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Output_Buffer_Create_Filename;
+
+   function Output_Buffer_Write
+     (Output : System.Address; Length : int; Data : System.Address)
+      return int
+   is
+   begin
+      if Output = System.Null_Address then
+         return -1;
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Output;
+      begin
+         if Channel.Error /= 0 then
+            return -1;
+         elsif Length <= 0 then
+            return 0;
+         elsif Data = System.Null_Address then
+            --  xmlBufAdd refuses NULL bytes, which the buffer records as a
+            --  memory failure.
+            Channel.Error := int (Save.No_Memory_Code);
+            return -1;
+         end if;
+      end;
+      return Add_Output (Output, Data, Natural (Length));
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Output_Buffer_Write;
+
+   function Output_Buffer_Write_String
+     (Output, Text : System.Address) return int
+   is
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+   begin
+      if Output = System.Null_Address or else Text = System.Null_Address then
+         return -1;
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Output;
+      begin
+         if Channel.Error /= 0 then
+            return -1;
+         end if;
+      end;
+      XML3_Text.Buffers.Measure (Text, Length, Found);
+      if not Found then
+         return -1;
+      end if;
+      return Output_Buffer_Write (Output, int (Length), Text);
+   end Output_Buffer_Write_String;
+
+   function Output_Buffer_Flush (Output : System.Address) return int is
+   begin
+      if Output = System.Null_Address then
+         return -1;
+      end if;
+      return Flush_Output (Output);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Output_Buffer_Flush;
+
+   function Output_Buffer_Close (Output : System.Address) return int is
+   begin
+      if Output = System.Null_Address then
+         return -1;
+      end if;
+      declare
+         State : constant Save.Output_State := Close_Output (Output);
+      begin
+         XML3_Native_Memory.Free (Output);
+         return Save.Close_Result (State);
+      end;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Output_Buffer_Close;
+
+   function Output_Buffer_Get_Content (Output : System.Address)
+      return System.Address
+   is
+   begin
+      if Output = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Output;
+      begin
+         if Channel.Buffer = System.Null_Address or else Channel.Error /= 0
+         then
+            return System.Null_Address;
+         end if;
+         return Buffers.Content (Channel.Pending);
+      end;
+   end Output_Buffer_Get_Content;
+
+   function Output_Buffer_Get_Size (Output : System.Address)
+      return Interfaces.C.size_t
+   is
+   begin
+      if Output = System.Null_Address then
+         return 0;
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Output;
+      begin
+         if Channel.Buffer = System.Null_Address or else Channel.Error /= 0
+         then
+            return 0;
+         end if;
+         return Interfaces.C.size_t (Channel.Pending.Used);
+      end;
+   end Output_Buffer_Get_Size;
+
+   procedure Node_Dump_Output
+     (Output, Doc, Node : System.Address; Level, Format : int;
+      Encoding : System.Address)
+   is
+      pragma Unreferenced (Doc, Encoding);
+      Bytes : System.Address;
+      Length : Natural;
+   begin
+      if Output = System.Null_Address or else Node = System.Null_Address then
+         return;
+      end if;
+      --  The level is kept within 0 .. 100; without an encoder on the
+      --  buffer the bytes are UTF-8 whatever the encoding names.
+      Serialize
+        (Node, System.Null_Address, System.Null_Address,
+         Integer (int'Max (0, int'Min (Level, 100))), Format /= 0, Bytes,
+         Length);
+      if Bytes /= System.Null_Address then
+         Add_Output (Output, Bytes, Length);
+         XML3_Native_Memory.Free (Bytes);
+      else
+         --  The serialization failed for want of memory (reported), which
+         --  the buffer records as libxml2's failed writes do.
+         declare
+            Channel : Output_Channel with Import, Address => Output;
+         begin
+            if Channel.Error = 0 then
+               Channel.Error := int (Save.No_Memory_Code);
+            end if;
+         end;
+      end if;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+   end Node_Dump_Output;
+
+   function Save_Format_File_To
+     (Output, Doc, Encoding : System.Address; Format : int) return int
+   is
+      type Node_Head is record
+         Private_Data : System.Address;
+         Kind : int;
+      end record with Convention => C;
+      Bytes : System.Address;
+      Length : Natural;
+      Is_Document : Boolean := False;
+      Ignored : int;
+      Name : XML3_Serialization.UTF8_Name;
+      Valid : Boolean := True;
+   begin
+      if Output = System.Null_Address then
+         return -1;
+      end if;
+      if Doc /= System.Null_Address then
+         declare
+            Head : Node_Head with Import, Address => Doc;
+         begin
+            --  XML_DOCUMENT_NODE or XML_HTML_DOCUMENT_NODE.
+            Is_Document := Head.Kind = 9 or else Head.Kind = 13;
+         end;
+      end if;
+      if not Is_Document then
+         Ignored := Output_Buffer_Close (Output);
+         return -1;
+      end if;
+      if Encoding /= System.Null_Address then
+         XML3_Serialization.Read_UTF8_Name (Encoding, Name, Valid);
+      end if;
+      declare
+         Channel : Output_Channel with Import, Address => Output;
+      begin
+         if not Valid then
+            --  An encoding the serializer cannot produce fails the buffer
+            --  with XML_ERR_UNSUPPORTED_ENCODING, as xmlSaveSwitchEncoding
+            --  does through xmlSaveErr.
+            XML3_Errors.Report_Simple
+              (Save.Output_Domain, Save.Unsupported_Encoding_Code,
+               Save.Unsupported_Encoding_Level, System.Null_Address);
+            if Channel.Error = 0 then
+               Channel.Error := int (Save.Unsupported_Encoding_Code);
+            end if;
+         elsif Channel.Error = 0 then
+            Serialize
+              (System.Null_Address, Doc, Encoding, 0, Format /= 0, Bytes,
+               Length);
+            if Bytes /= System.Null_Address then
+               Add_Output (Output, Bytes, Length);
+               XML3_Native_Memory.Free (Bytes);
+            else
+               --  The serialization failed for want of memory (reported).
+               Channel.Error := int (Save.No_Memory_Code);
+            end if;
+         end if;
+      end;
+      return Output_Buffer_Close (Output);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Save_Format_File_To;
+
+   function Save_File_To (Output, Doc, Encoding : System.Address)
+      return int is
+     (Save_Format_File_To (Output, Doc, Encoding, 0));
+
+   --  The channel of a save context.
+   function Channel_Of (Ctxt : System.Address) return System.Address is
+      Context : Save_Context with Import, Address => Ctxt;
+   begin
+      return Context.Channel'Address;
+   end Channel_Of;
 
    function Save_Node
      (Ctxt, Node : System.Address; Document_Only : Boolean)
@@ -4887,7 +5318,7 @@ package body XML3_C is
          Report_Operation_Status (Status, Results.Node_Save);
          return -1;
       end if;
-      Add_Output (Ctxt, Bytes, Length);
+      Add_Output (Channel_Of (Ctxt), Bytes, Length);
       XML3_Native_Memory.Free (Bytes);
       return 0;
    exception
@@ -4919,7 +5350,7 @@ package body XML3_C is
       if Refused (Guards.Save_Use, Ctxt /= System.Null_Address) then
          return -1;
       end if;
-      return Flush_Output (Ctxt);
+      return Flush_Output (Channel_Of (Ctxt));
    exception
       when others =>
          Report_Failure (Unexpected_Exception);
@@ -4933,8 +5364,9 @@ package body XML3_C is
       if Refused (Guards.Save_Use, Ctxt /= System.Null_Address) then
          return -1;
       end if;
-      Result := Flush_Output (Ctxt);
-      Ignored := Close_Output (Ctxt);
+      Result := Flush_Output (Channel_Of (Ctxt));
+      Ignored := Close_Output (Channel_Of (Ctxt));
+      XML3_Native_Memory.Free (Ctxt);
       return Result;
    exception
       when others =>
@@ -4947,7 +5379,13 @@ package body XML3_C is
       if Refused (Guards.Save_Use, Ctxt /= System.Null_Address) then
          return Save.Missing_Context_Finish;
       end if;
-      return Save.Finish_Code (Close_Output (Ctxt));
+      declare
+         State : constant Save.Output_State :=
+           Close_Output (Channel_Of (Ctxt));
+      begin
+         XML3_Native_Memory.Free (Ctxt);
+         return Save.Finish_Code (State);
+      end;
    exception
       when others =>
          Report_Failure (Unexpected_Exception);

@@ -49,6 +49,11 @@ typedef enum {
 
 typedef struct _xmlBuffer xmlBuffer;
 typedef struct _xmlBuffer *xmlBufferPtr;
+/* The output buffer of xmlIO.h, and libxml2's opaque byte buffer. */
+typedef struct _xmlOutputBuffer xmlOutputBuffer;
+typedef xmlOutputBuffer *xmlOutputBufferPtr;
+typedef struct _xmlBuf xmlBuf;
+typedef xmlBuf *xmlBufPtr;
 
 /* The fields are deprecated in libxml2; use xmlBufferContent and
  * xmlBufferLength. */
@@ -196,6 +201,11 @@ xmlChar *xmlBufferDetach(xmlBufferPtr buf);
 void xmlBufferSetAllocationScheme(xmlBufferPtr buf,
                                   xmlBufferAllocationScheme scheme);
 int xmlBufferDump(FILE *file, xmlBufferPtr buf);
+void xmlNodeDumpOutput(xmlOutputBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur,
+                       int level, int format, const char *encoding);
+int xmlSaveFileTo(xmlOutputBufferPtr buf, xmlDocPtr cur, const char *encoding);
+int xmlSaveFormatFileTo(xmlOutputBufferPtr buf, xmlDocPtr cur,
+                        const char *encoding, int format);
 int xmlNodeDump(xmlBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur, int level,
                 int format);
 void xmlElemDump(FILE *f, xmlDocPtr doc, xmlNodePtr cur);

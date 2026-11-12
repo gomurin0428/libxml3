@@ -113,6 +113,30 @@ XML3_INTERNAL long xml3FileWriteStream(void *stream, const void *data,
     return length > (size_t)0x7fffffff ? 0x7fffffff : (long)length;
 }
 
+/* xmlFileWrite: writes length bytes to a caller's FILE; the length, or
+ * the negated XML_IO_* code of a short write. */
+XML3_INTERNAL int xml3StreamWrite(void *stream, const void *data,
+                                  int length) {
+    size_t written;
+
+    if (stream == NULL || data == NULL)
+        return -1;
+    errno = 0;
+    written = fwrite(data, 1, (size_t)length, (FILE *)stream);
+    if (written < (size_t)length)
+        return -io_code(errno);
+    return length;
+}
+
+/* xmlFileFlush: 0, or the XML_IO_* code of a failed fflush. */
+XML3_INTERNAL int xml3StreamFlush(void *stream) {
+    if (stream == NULL)
+        return -1;
+    if (fflush((FILE *)stream) != 0)
+        return io_code(errno);
+    return 0;
+}
+
 /* The standard output stream, for xmlBufferDump with a NULL stream. */
 XML3_INTERNAL void *xml3FileStandardOutput(void) {
     return stdout;

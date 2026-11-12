@@ -764,6 +764,40 @@ int main(int argc, char **argv) {
             xmlFreeDoc(doc);
         }
         doc = NULL;
+    } else if (strcmp(operation, "output-buffer") == 0) {
+        /* Creating an output buffer, growing its pending bytes and
+         * serializing into it each allocate.  A failure leaves no buffer
+         * (with the out-of-memory error) or a buffer whose close reports
+         * XML_ERR_NO_MEMORY. */
+        static const char text[] = "<r a='1'><c>t</c></r>";
+        static char large[9000];
+        xmlOutputBufferPtr out;
+        int closed = 0;
+
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        assert(doc);
+        memset(large, 'x', sizeof(large));
+        xml3_oom_enable(fail_index);
+        out = xmlAllocOutputBuffer(NULL);
+        if (out != NULL) {
+            xmlOutputBufferWrite(out, (int)sizeof(large), large);
+            xmlNodeDumpOutput(out, doc, xmlDocGetRootElement(doc), 0, 1,
+                              NULL);
+            closed = xmlSaveFileTo(out, doc, NULL);
+        }
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (out == NULL) {
+            assert(injected);
+            require_oom_error();
+        } else if (injected) {
+            assert(closed == -XML_ERR_NO_MEMORY);
+        } else {
+            assert(closed == 0);
+        }
+        xmlFreeDoc(doc);
+        doc = NULL;
     } else if (strcmp(operation, "save-context") == 0) {
         /* Creating a save context, saving a document into its pending
          * bytes and closing it each allocate.  A failure leaves no context
