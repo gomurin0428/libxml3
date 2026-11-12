@@ -2495,5 +2495,140 @@
       "tests/header-smoke.cpp"
     ],
     "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetPrivate": {
+    "implementation": "partial",
+    "scope": "ctxt->_private, or NULL for a NULL context. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtSetPrivate": {
+    "implementation": "partial",
+    "scope": "Sets ctxt->_private; a NULL context is ignored. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetUserData": {
+    "implementation": "partial",
+    "scope": "The SAX user data, which is the context itself (the reduced context has no SAX handler to give other data to); NULL for a NULL context. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetDocument": {
+    "implementation": "partial",
+    "scope": "myDoc when the context is well-formed, otherwise NULL after freeing myDoc; myDoc is cleared either way. The 'unknown error' libxml2 raises when wellFormed is 0 while errNo is XML_ERR_OK (reachable only by writing the fields) is not raised. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetNode": {
+    "implementation": "partial",
+    "scope": "myDoc: the context has no node being parsed outside a read, and libxml3 does not return the node being parsed during one (libxml2 also leaves a stale node after some reads). Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtIsHtml": {
+    "implementation": "partial",
+    "scope": "0: the context never parses HTML. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtIsInSubset": {
+    "implementation": "partial",
+    "scope": "0: the context never parses a DTD subset. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtIsStopped": {
+    "implementation": "partial",
+    "scope": "Whether disableSAX is nonzero. The adapter keeps disableSAX beside the public fields; each error published during a read through the context updates it as the SPARK XML3_Parser.Contexts.After_Error decides (1 after a fatal error, 2 after a catastrophic error, a resource limit or an entity loop), xmlCtxtReset clears it and xmlStopParser sets 2. While it is 2 the read publishes no more errors but memory failures (which libxml2 reports through xmlCtxtErrMemory whatever the state), as xmlCtxtVErr returns early for a stopped parser; a failed copy of an error into lastError is such a memory failure and sets it to 2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetStatus": {
+    "implementation": "partial",
+    "scope": "The xmlParserStatus bits, computed by the SPARK XML3_Parser.Contexts.Status from wellFormed, nsWellFormed (cleared by a namespace error of level XML_ERR_ERROR during a read, as xmlNsErr does), lastError (a catastrophic error sets every bit but the validation one, which is added when the options ask for DTD validation) and the options; a NULL context answers the catastrophic bits, as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlStopParser": {
+    "implementation": "partial",
+    "scope": "Sets disableSAX to 2 and, when errNo is XML_ERR_OK, records XML_ERR_USER_STOP in errNo and the code of lastError and clears wellFormed (SPARK XML3_Parser.Contexts.After_Stop). Called by a handler during a read, the read publishes no more errors and keeps no document when the context is no longer well-formed; the parse itself runs to the end, so the partial document libxml2 returns when it stops a well-formed context is not reproduced. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:parser.h:xmlParserStatus": {
+    "implementation": "partial",
+    "scope": "The type of the bits of xmlCtxtGetStatus. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "constant:parser.h:XML_STATUS_NOT_WELL_FORMED": {
+    "implementation": "partial",
+    "scope": "A bit of xmlCtxtGetStatus, with libxml2's value. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "constant:parser.h:XML_STATUS_NOT_NS_WELL_FORMED": {
+    "implementation": "partial",
+    "scope": "A bit of xmlCtxtGetStatus, with libxml2's value. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "constant:parser.h:XML_STATUS_DTD_VALIDATION_FAILED": {
+    "implementation": "partial",
+    "scope": "A bit of xmlCtxtGetStatus, with libxml2's value. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "constant:parser.h:XML_STATUS_CATASTROPHIC_ERROR": {
+    "implementation": "partial",
+    "scope": "A bit of xmlCtxtGetStatus, with libxml2's value. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/context-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
   }
 }

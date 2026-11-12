@@ -1149,6 +1149,15 @@ thread's record), and no read is current while a handler runs, so reads
 made by a handler neither are attributed to the outer context nor change
 the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
+The same publication updates the context's `nsWellFormed` and `disableSAX`
+as `Parser.Contexts.After_Error` decides (a namespace error, a fatal
+error, a catastrophic one); while `disableSAX` is 2 the read publishes no
+more errors but memory failures, as `xmlCtxtVErr` returns early for a
+stopped parser. `Parser.Contexts.Status` computes `xmlCtxtGetStatus` and
+`After_Stop` what `xmlStopParser` records; a read through a context keeps
+its document only while the context stays well-formed, as
+`xmlCtxtParseDocument` decides. `make test-context` compares the accessors
+with the pinned libxml2.
 
 The shared library exports exactly the public entry points listed in
 `libxml3.sym` (gprbuild's restricted symbol policy); `eng/library_symbols.py`

@@ -202,6 +202,17 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
 読み込みの前後で比べます。固定版2.15.4と同じ結果になることを `make test-context` で比較しています。
 解析器が対応しないオプションも保存はしますが、そのオプションでの読み込みは `xmlReadMemory` と同じく拒否します。
 
+`xmlCtxtGetStatus`、`xmlCtxtIsStopped`、`xmlStopParser`、`xmlCtxtGetPrivate` / `xmlCtxtSetPrivate`、
+`xmlCtxtGetUserData`（コンテキスト自身）、`xmlCtxtGetDocument`、`xmlCtxtGetNode`、`xmlCtxtIsHtml`、
+`xmlCtxtIsInSubset` は libxml2 2.15.4 と同じ値を返します。読み込みで出たエラーに応じて、名前空間エラーで
+`nsWellFormed` を、致命的エラーで `disableSAX` を1、メモリ不足・I/Oエラーなどの致命的な失敗で2にし
+（SPARKの `XML3_Parser.Contexts.After_Error`）、`xmlCtxtGetStatus` のビットもSPARKの `Status` で計算します。
+`xmlStopParser` はエラーがまだなければ `XML_ERR_USER_STOP` を記録して `wellFormed` を0にし、
+ハンドラーから呼べばその読み込みはそれ以降エラーを報告せず、`wellFormed` が0なら文書も返しません。
+ただし解析自体は最後まで進むので、libxml2 のように途中までの文書を返すことはありません。
+`xmlCtxtGetNode` は読み込み中のノードを返さず、`myDoc` を返します。固定版2.15.4と同じ結果になることを
+`make test-context` で比較しています。
+
 構造化エラーハンドラーは `xmlSetStructuredErrorFunc`（スレッドごと）と `xmlCtxtSetErrorHandler`（解析コンテキストごと）
 に対応します。公開されたエラーは、libxml2 の `xmlCtxtVErr` と同じ規則で、コンテキストでの読み込み中はそのハンドラー
 （オプションに `XML_PARSE_NOERROR`、警告では `XML_PARSE_NOWARNING` がない場合）、それ以外はスレッドのハンドラーへ

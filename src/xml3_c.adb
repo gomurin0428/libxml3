@@ -789,9 +789,11 @@ package body XML3_C is
       Err_No : int;
       Options : int;
       Last_Error : aliased XML3_Error_Records.Error_Record;
-      --  Not in the public struct: the context's error handler.
+      --  Not in the public struct: the context's error handler, and its
+      --  nsWellFormed and disableSAX.
       Handler : XML3_Errors.Structured_Handler;
       Handler_Data : System.Address;
+      Flags : aliased Contexts.Parse_Flags;
    end record with Convention => C;
 
    function New_Parser_Ctxt return System.Address is
@@ -816,7 +818,8 @@ package body XML3_C is
             Options => Contexts.Initial_Options,
             Last_Error => XML3_Error_Records.Empty_Record,
             Handler => null,
-            Handler_Data => System.Null_Address);
+            Handler_Data => System.Null_Address,
+            Flags => Contexts.Running);
       end;
       return Result;
    end New_Parser_Ctxt;
@@ -849,6 +852,7 @@ package body XML3_C is
          end if;
          Context.Well_Formed := Contexts.Clean.Well_Formed;
          Context.Err_No := Contexts.Clean.Err_No;
+         Context.Flags := Contexts.Running;
          XML3_Errors.Reset_Error (Context.Last_Error'Address);
       end;
    end Ctxt_Reset;
@@ -914,20 +918,29 @@ package body XML3_C is
              Data => Context.Handler_Data, Options => Effective,
              Target => Context.Last_Error'Address,
              Well_Formed => Context.Well_Formed'Address,
-             Err_No => Context.Err_No'Address),
+             Err_No => Context.Err_No'Address,
+             Flags => Context.Flags'Address),
             Previous);
       end;
    end Start_Read;
 
    --  Ends the read: the context's wellFormed, errNo and lastError were
    --  updated as each error was published (XML3_Errors.Note_Context).
+   --  The document is kept only when the context is still well-formed, as
+   --  xmlCtxtParseDocument decides: xmlStopParser, called by a handler
+   --  during the read, can clear wellFormed after the parser built it.
    procedure Finish_Read
-     (Ctxt : System.Address; Previous : XML3_Errors.Saved_Read)
+     (Ctxt : System.Address; Previous : XML3_Errors.Saved_Read;
+      Result : in out System.Address)
    is
-      pragma Unreferenced (Ctxt);
       Outcome : XML3_Errors.Read_Outcome;
+      Context : Parser_Context with Import, Address => Ctxt;
    begin
       XML3_Errors.End_Context_Read (Previous, Outcome);
+      if Result /= System.Null_Address and then Context.Well_Formed = 0 then
+         Free_Doc (Result);
+         Result := System.Null_Address;
+      end if;
    end Finish_Read;
 
    function Ctxt_Read_Memory
@@ -955,7 +968,7 @@ package body XML3_C is
             Report_Failure (Parser_Exception, URL);
             Result := System.Null_Address;
       end;
-      Finish_Read (Ctxt, Previous);
+      Finish_Read (Ctxt, Previous, Result);
       return Result;
    end Ctxt_Read_Memory;
 
@@ -972,7 +985,7 @@ package body XML3_C is
       end if;
       Start_Read (Ctxt, Options, Effective, Previous);
       Result := Read_Doc (Cur, URL, Encoding, Effective);
-      Finish_Read (Ctxt, Previous);
+      Finish_Read (Ctxt, Previous, Result);
       return Result;
    end Ctxt_Read_Doc;
 
@@ -989,7 +1002,7 @@ package body XML3_C is
       end if;
       Start_Read (Ctxt, Options, Effective, Previous);
       Result := Read_File_Input (Name, Encoding, Effective);
-      Finish_Read (Ctxt, Previous);
+      Finish_Read (Ctxt, Previous, Result);
       return Result;
    end Ctxt_Read_File;
 
@@ -1006,7 +1019,7 @@ package body XML3_C is
       end if;
       Start_Read (Ctxt, Options, Effective, Previous);
       Result := Read_Fd_Input (Fd, URL, Encoding, Effective);
-      Finish_Read (Ctxt, Previous);
+      Finish_Read (Ctxt, Previous, Result);
       return Result;
    end Ctxt_Read_Fd;
 
@@ -1024,7 +1037,7 @@ package body XML3_C is
       Start_Read (Ctxt, Options, Effective, Previous);
       Result := Read_IO_Input
         (Read, Close, IO_Context, URL, Encoding, Effective);
-      Finish_Read (Ctxt, Previous);
+      Finish_Read (Ctxt, Previous, Result);
       return Result;
    end Ctxt_Read_IO;
 
@@ -1059,6 +1072,132 @@ package body XML3_C is
          return Context.Last_Error'Address;
       end;
    end Ctxt_Get_Last_Error;
+
+   --  The accessors of libxml2 2.15.4 over the reduced context.  A NULL
+   --  context answers NULL or 0, and xmlCtxtGetStatus answers what a
+   --  catastrophic error gives, as libxml2 does.
+
+   function Ctxt_Get_Private (Ctxt : System.Address) return System.Address
+   is
+   begin
+      if Ctxt = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         return Context.Private_Data;
+      end;
+   end Ctxt_Get_Private;
+
+   procedure Ctxt_Set_Private (Ctxt, Data : System.Address) is
+   begin
+      if Ctxt = System.Null_Address then
+         return;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         Context.Private_Data := Data;
+      end;
+   end Ctxt_Set_Private;
+
+   --  The SAX user data, which is the context itself: the context has no
+   --  SAX handler to pass other data to.
+   function Ctxt_Get_User_Data (Ctxt : System.Address) return System.Address
+   is (Ctxt);
+
+   --  myDoc when the context is well-formed, otherwise NULL after freeing
+   --  it; myDoc is cleared either way.
+   function Ctxt_Get_Document (Ctxt : System.Address) return System.Address
+   is
+      Doc : System.Address;
+   begin
+      if Ctxt = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         Doc := Context.My_Doc;
+         Context.My_Doc := System.Null_Address;
+         if Context.Well_Formed = 0 and then Doc /= System.Null_Address then
+            Free_Doc (Doc);
+            Doc := System.Null_Address;
+         end if;
+         return Doc;
+      end;
+   end Ctxt_Get_Document;
+
+   --  The node being parsed, which outside a read is none: myDoc.
+   function Ctxt_Get_Node (Ctxt : System.Address) return System.Address is
+   begin
+      if Ctxt = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         return Context.My_Doc;
+      end;
+   end Ctxt_Get_Node;
+
+   function Ctxt_Is_Html (Ctxt : System.Address) return int is
+     (0);
+
+   function Ctxt_Is_In_Subset (Ctxt : System.Address) return int is
+     (0);
+
+   function Ctxt_Is_Stopped (Ctxt : System.Address) return int is
+   begin
+      if Ctxt = System.Null_Address then
+         return 0;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         return (if Context.Flags.Disable_SAX /= 0 then 1 else 0);
+      end;
+   end Ctxt_Is_Stopped;
+
+   function Ctxt_Get_Status (Ctxt : System.Address) return int is
+   begin
+      if Ctxt = System.Null_Address then
+         return Contexts.Status
+           (Contexts.Clean.Well_Formed, Contexts.Running,
+            XML3_Error_Records.Fatal_Level,
+            XML3_Error_Records.Out_Of_Memory_Code, False);
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         return Contexts.Status
+           (Context.Well_Formed, Context.Flags, Context.Last_Error.Level,
+            Context.Last_Error.Code, Contexts.Validates (Context.Options));
+      end;
+   end Ctxt_Get_Status;
+
+   procedure Stop_Parser (Ctxt : System.Address) is
+   begin
+      if Ctxt = System.Null_Address then
+         return;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+         State : constant Contexts.Context_State :=
+           Contexts.After_Stop
+             ((Well_Formed => Context.Well_Formed,
+               Err_No => Context.Err_No));
+      begin
+         Context.Flags.Disable_SAX := 2;
+         if Context.Err_No = 0 then
+            --  libxml2 sets only the code of lastError.
+            Context.Last_Error.Code := State.Err_No;
+         end if;
+         Context.Well_Formed := State.Well_Formed;
+         Context.Err_No := State.Err_No;
+      end;
+   end Stop_Parser;
 
    procedure Ctxt_Reset_Last_Error (Ctxt : System.Address) is
    begin
