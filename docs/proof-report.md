@@ -397,7 +397,7 @@ per-unit runs covers the same verification conditions as a single
 whole-project run, while each run stays short and `make prove-units-resume`
 can continue an interrupted run. A unit fails on its own unproved or error
 messages. After the last unit, the script requires the summary GNATprove
-aggregates over the object directory to list all 48 units, with no
+aggregates over the object directory to list all 49 units, with no
 justified or unproved check and no entity reported as not proved.
 
 The `Effects_Valid` assertion at the end of `XML3_DOM.Import.Adopt`
@@ -463,10 +463,11 @@ ranks are kept and only the unlinked node's parent changes.
 
 The 39 units of an earlier revision were proved in one clean
 `make prove-units` run, resumed with `make prove-units-resume` across the
-environment's two-hour invocation limit. Later revisions add nine units,
+environment's two-hour invocation limit. Later revisions add ten units,
 `XML3_DOM_Results`, `XML3_Text_Results`, `XML3_Entry_Guards`,
 `XML3_DOM_Store.Copies`, `XML3_Byte_Buffers`, `XML3_File_Paths`,
-`XML3_IO_Errors`, `XML3_Parser.Contexts` and `XML3_Save_Contexts`, and
+`XML3_IO_Errors`, `XML3_Parser.Contexts`, `XML3_Save_Contexts` and
+`XML3_URIs`, and
 change eight of those 39 units: `XML3_Parser.Statuses`, `XML3_Error_Records`
 (the per-thread error mark and the handler choice),
 `XML3_DOM_Runtime`, `XML3_DOM_Store.Queries` (postcondition),
@@ -475,15 +476,15 @@ the `xmlsave.h` output style) and,
 as clients of the changed `Queries` specification, `XML3_DOM_Store.Content`
 and `XML3_DOM_Store.Properties`. `eng/prove_units.py` proved each new or
 changed unit again in the same object directory, and GNATprove aggregated
-all 48. The sources of the other 31 units are unchanged (see the source
-identities below). All 48 units prove with the switches above.
+all 49. The sources of the other 31 units are unchanged (see the source
+identities below). All 49 units prove with the switches above.
 The longest units take
 47 min (`XML3_DOM.Releases`), 41 min (`XML3_DOM.Marking`), 40 min
 (`XML3_DOM.Links`) and 29 min (`XML3_DOM`). The eight `XML3_DOM` units hold
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **14,898 checks, 1,907 by flow analysis and 12,991 by provers; 0
+Result: **15,107 checks, 1,942 by flow analysis and 13,165 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1151,8 +1152,8 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 726 entity
-summaries report 0 flow errors, 188 warnings, and 0 `pragma Assume`
+The 762 entity
+summaries report 0 flow errors, 191 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
 effect because the value is assigned by the bounded length branch before use.
@@ -1187,14 +1188,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 554 |
-| Initialization | 1,050 |
+| Data dependencies | 557 |
+| Initialization | 1,064 |
 | Non-aliasing | 1 |
-| Runtime checks | 6,198 |
-| Assertions | 1,810 |
-| Functional contracts | 4,907 |
-| Termination | 378 |
-| **Total** | **14,898** |
+| Runtime checks | 6,255 |
+| Assertions | 1,828 |
+| Functional contracts | 4,997 |
+| Termination | 405 |
+| **Total** | **15,107** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1921,18 +1922,18 @@ and 22 checks, respectively.
 
 ## Source identity (SHA-256)
 
-The following 122 hashes identify the source files and build/test configuration
+The following 125 hashes identify the source files and build/test configuration
 for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-aa7bf08e3a3c7277d759e57688c5a3079445235243646167ce3e283156aed557  src/xml3_c.adb
-c11aff147348d45b492414a5371068138ee4c3679f645a4437e5b2f7b4e0de61  src/xml3_c.ads
+2215099d39121dd162ce63ee123ef9d232f0d3028e5136f9128282c9a196397c  src/xml3_c.adb
+a870930a1d0021191ff3b8e9e48162042ac5fe5f0ecf8c12027678a33a0d14e7  src/xml3_c.ads
 8a280b48c8dd1327f90f4d80b2c112a5d56a49b713cb6cd72164e31baf9a312b  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
 c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml/entities.h
 60048419b81a8ad53de631cbbfde91954bf2d8b6995adbefe6a1b8d153d05f03  include/libxml/parserInternals.h
-e8286ea54caf89b1bf0d7501530fb072eebfde5d16e24107096b0935748fbc6c  include/libxml/uri.h
+3eaffec11519a071810be0377389f6ab92950a7e34c37b285e1cc8ee3d5b7346  include/libxml/uri.h
 c688643449bc09c9977197b5b78325eaced0b8852e6bf0dd3497952bb081a5c6  include/libxml/valid.h
 6c0361c1444457c482a6d969f7b88b824c2c33accea3265466129d75b19893a5  src/xml3_dom-import.adb
 64707d2b0c629bbc574ed89d97aa4aedc643bde9744d13bf7ffcb3ae7c3f5ddf  src/xml3_dom-import.ads
@@ -2013,6 +2014,8 @@ e173f0b2b834d7b0fdf2024c8198e5e3a1b569259f0d0e3d850c024cc3f9bc3c  src/xml3_byte_
 b9b9d84b59941b17c1c0bd670c7e262669ad00a2296631e73d2e26d0ed19d578  src/xml3_file_paths.adb
 f0841ece62ede37ac2aeafb0e605bea88bfb2484781797b10a990baca9b02c6e  src/xml3_io_errors.ads
 eb863314fb418d26796ea1b0bbe834a91879e7d5d5342e0442b1b6a408397424  src/xml3_save_contexts.ads
+12789be84d030f03892017196ecab8bd059ebb5578488de04005e7b196086a31  src/xml3_uris.ads
+c9a6ef39ee0a791f8ea189290f9ba8929f6bc00d2c963aac781332dd1715fd8c  src/xml3_uris.adb
 4b43adf88af05f6c81c8c1e33f58ecb427de967c49869d5236f007628c49848b  src/xml3_parser-options.adb
 ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parser-workspaces.ads
 614951b049130edcefaeddb3239f02d04eec6315dbf6fce61f355324c5082839  src/xml3_parser-workspaces.adb
@@ -2024,17 +2027,17 @@ c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
 d26474b2a939148a4be5361e30910b9e703e0029c5c1c24428947f956cf99c5a  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
-f9e40a5cc7a074728f994b50f64cf9b49792446ad68b47d6b46d7a4c4cd9dd48  proof.gpr
+8b172f3cd4b44a79e9837c10dad5db226f0241562bb922c01bb6cbfdcde92eb1  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-a7ada302237240e2433f13ddc5f27830ce74c750c63c5804b25e086198492922  Makefile
+a8fb3b7f715004553e0b57fd7b811cdfd25010344fea42cfdc1a692d64bc65ce  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
-189bc22e03f97720a8a1ff5040542c2ab20f800455160b166d1809edebef55ae  tests/oom-test.c
+9d8cd7ecab29025110b19acd3545cc8d8ef60d5a0e7ee5b99500d6786615aa98  tests/oom-test.c
 d76816a43eeb8515242b31fa5e8a64d3787c3a8a6e3a0df0dbe87a14516ff48a  tests/serialization-test.c
 29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
 c0e9cc9f473c8c109cb1ff166530b4ade85c0325f5ee3bae135fe29afb70f105  tests/text_buffers_test.gpr
 b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
-da17eae9c6a6d69d2f9d11005c4dc2f8dd9dc96a231a7d600df1f7018cc5486d  .github/workflows/manual.yml
+dce00fc697e78804bed39e9b40a9a03cd257959ef2343e1457aa252a2552e068  .github/workflows/manual.yml
 cb4af7a636be3bab93bc2e9bcd746b990e1ce8f36e5f0b175601944a7b9052f6  src/xml3_error_records.ads
 d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error_records.adb
 12b31fb627e06379e10aad76a8ba942eed16162a9f96fc0b69d45f157c6a7ad7  tests/dom_bridge_test.adb
@@ -2046,6 +2049,7 @@ ffd91cf400eeec27207cf0a919a36cd615bbb3c10d5213b6d82516110992cc90  tests/input-te
 f5384b35c3951c33d6a5c66b562b4c45d7906a11dfc3baf78d7ffb175cf8a5fc  tests/context-test.c
 4f26f4a141d45ea5e6eb44488d12f0e6d6f31ebaa0a076a6b1b46f837285c29f  tests/save-test.c
 a5d8c06a69110f289962af1bca9b4b659053a43659673e33631ee40d8f8e8d1d  tests/handler-test.c
+d7ede60942a024f6775ffc9d4e1f2e78e45ae64ca5735989f4638c19354eb8ca  tests/uri-test.c
 7975704364f8752e5bcd452953db036f6b12a34f743a46429c107648dc82887c  include/libxml/xmlsave.h
 4cc63357f09653642769d79d40d4c92ec6bbf205553a0350a65726241fff5b1a  include/libxml/xmlIO.h
 ```

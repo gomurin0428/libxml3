@@ -2079,5 +2079,137 @@
     "scope": "Structured error callback type of xmlSetStructuredErrorFunc and xmlCtxtSetErrorHandler. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/handler-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:uri.h:xmlCreateURI": {
+    "implementation": "partial",
+    "scope": "Allocates an empty xmlURI (port 0, cleanup 0); NULL without a diagnostic when the allocation fails, as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlFreeURI": {
+    "implementation": "partial",
+    "scope": "Releases every string of the struct and the struct; NULL is a no-op. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlParseURISafe": {
+    "implementation": "partial",
+    "scope": "Parses a URI reference into a new struct: 0, 1 when the text is not a URI reference (or for a NULL text or output), -1 when an allocation fails; the output is set to NULL first. The components are found by the SPARK XML3_URIs.Parse, which follows libxml2's xmlParse3986URIReference: an absolute URI, else a relative reference, with the struct's cleanup flags (1 allows the unwise characters, 4 other characters outside URIs, 2 keeps components escaped). libxml2's quirks are kept: the IPv4 branch never matches, so every host is read as a registered name; an empty user or query is unescaped from its start to the end of the text (xmlURIUnescapeString with length 0), so \"http://a/b?#f\" has the query \"#f\"; the port is never reset, so a reused struct keeps it, and an authority without a server sets it to -1 only when it is 0. Unlike libxml2, the terminating NUL always ends the text, where libxml2 reads past it with only flag 4 set. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlParseURI": {
+    "implementation": "partial",
+    "scope": "xmlParseURISafe returning the struct, or NULL. The components are found by the SPARK XML3_URIs.Parse, which follows libxml2's xmlParse3986URIReference: an absolute URI, else a relative reference, with the struct's cleanup flags (1 allows the unwise characters, 4 other characters outside URIs, 2 keeps components escaped). libxml2's quirks are kept: the IPv4 branch never matches, so every host is read as a registered name; an empty user or query is unescaped from its start to the end of the text (xmlURIUnescapeString with length 0), so \"http://a/b?#f\" has the query \"#f\"; the port is never reset, so a reused struct keeps it, and an authority without a server sets it to -1 only when it is 0. Unlike libxml2, the terminating NUL always ends the text, where libxml2 reads past it with only flag 4 set. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlParseURIRaw": {
+    "implementation": "partial",
+    "scope": "As xmlParseURI, with the components kept escaped (cleanup flag 2) when raw is nonzero. The components are found by the SPARK XML3_URIs.Parse, which follows libxml2's xmlParse3986URIReference: an absolute URI, else a relative reference, with the struct's cleanup flags (1 allows the unwise characters, 4 other characters outside URIs, 2 keeps components escaped). libxml2's quirks are kept: the IPv4 branch never matches, so every host is read as a registered name; an empty user or query is unescaped from its start to the end of the text (xmlURIUnescapeString with length 0), so \"http://a/b?#f\" has the query \"#f\"; the port is never reset, so a reused struct keeps it, and an authority without a server sets it to -1 only when it is 0. Unlike libxml2, the terminating NUL always ends the text, where libxml2 reads past it with only flag 4 set. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlParseURIReference": {
+    "implementation": "partial",
+    "scope": "Parses into an existing struct after releasing its strings: 0, 1 or -1 (NULL text). The struct's port and cleanup flags are used as libxml2 uses them. A NULL struct parses without storing anything, accepting no unreserved character, as libxml2's xmlIsUnreserved does without a struct. The components are found by the SPARK XML3_URIs.Parse, which follows libxml2's xmlParse3986URIReference: an absolute URI, else a relative reference, with the struct's cleanup flags (1 allows the unwise characters, 4 other characters outside URIs, 2 keeps components escaped). libxml2's quirks are kept: the IPv4 branch never matches, so every host is read as a registered name; an empty user or query is unescaped from its start to the end of the text (xmlURIUnescapeString with length 0), so \"http://a/b?#f\" has the query \"#f\"; the port is never reset, so a reused struct keeps it, and an authority without a server sets it to -1 only when it is 0. Unlike libxml2, the terminating NUL always ends the text, where libxml2 reads past it with only flag 4 set. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlSaveUri": {
+    "implementation": "partial",
+    "scope": "Serializes the struct as libxml2 does: scheme, then the opaque part, or \"//\" with the user, server and a positive port (or the authority), the path (with file:/X: kept), query_raw or the escaped query, and the fragment, each escaped with libxml2's per-component sets (the SPARK XML3_URIs.Kept, uppercase %XX). NULL for NULL or a failed allocation. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlPrintURI": {
+    "implementation": "partial",
+    "scope": "Writes xmlSaveUri's text to the stream; nothing when it is NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "struct:uri.h:_xmlURI": {
+    "implementation": "partial",
+    "scope": "The xmlURI record with libxml2's fields in libxml2's order; the Ada adapter record mirrors it with Convention C. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:uri.h:xmlURI": {
+    "implementation": "partial",
+    "scope": "Public typedef for the URI record. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:uri.h:xmlURIPtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for the URI record. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.scheme": {
+    "implementation": "partial",
+    "scope": "The scheme, kept escaped. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.opaque": {
+    "implementation": "partial",
+    "scope": "Never set by the parser; written by xmlSaveUri when present. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.authority": {
+    "implementation": "partial",
+    "scope": "Never set by the parser; written by xmlSaveUri when there is no server or port. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.server": {
+    "implementation": "partial",
+    "scope": "The host, NULL when empty. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.user": {
+    "implementation": "partial",
+    "scope": "The user information before \"@\". Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.port": {
+    "implementation": "partial",
+    "scope": "0 when absent, -1 for an authority without a server; never reset by a parse. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.path": {
+    "implementation": "partial",
+    "scope": "The path, NULL when empty. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.query": {
+    "implementation": "partial",
+    "scope": "The query, unescaped unless kept escaped. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.fragment": {
+    "implementation": "partial",
+    "scope": "The fragment. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.cleanup": {
+    "implementation": "partial",
+    "scope": "The parse flags 1, 2 and 4. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:uri.h:_xmlURI.query_raw": {
+    "implementation": "partial",
+    "scope": "The query as it appears in the text. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

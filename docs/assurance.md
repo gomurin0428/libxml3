@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,898 checks
-(1,907 flow and 12,991 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 15,107 checks
+(1,942 flow and 13,165 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1146,6 +1146,15 @@ thread's record), and no read is current while a handler runs, so reads
 made by a handler neither are attributed to the outer context nor change
 the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
+
+`URIs.Parse` finds the components of a URI reference as libxml2's
+`xmlParse3986URIReference` does (an absolute URI, else a relative
+reference, with the struct's cleanup flags and its unreset port), and
+`URIs.Kept` holds `xmlSaveUri`'s per-component escaping sets. The proof
+covers absence of runtime errors and that every component span lies within
+the text (positions past it read as the terminating NUL); the adapter copies
+or unescapes the spans into the public struct. `make test-uri` compares the
+parsed fields and serializations with the pinned libxml2.
 
 `Save_Contexts` decides the `xmlsave.h` save context: which options are
 supported and the output style they select (declaration, empty tags,

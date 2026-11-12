@@ -408,6 +408,17 @@ in-place処理は確保不要、それ以外の非空出力は一時領域を経
 固定版の `..//..` → `../`、`/../a` → `/../a` という不整合は再現しません。
 成功は0、NULLと走査上限超過は-1で、上限超過は書き換え前に診断115を返します。
 空入力は書き込みもしません。非空入力は元の終端まで書き込み可能な、安定した領域が必要です。
+
+URI の解析と書き出し（`xmlCreateURI`、`xmlParseURI`、`xmlParseURISafe`、`xmlParseURIRaw`、`xmlParseURIReference`、
+`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）に対応します。成分の切り出しは libxml2 の `xmlParse3986URIReference` と
+同じ手順をSPARKの `XML3_URIs.Parse` で行い（絶対URI、だめなら相対参照）、構造体の `cleanup` フラグ
+（1: 好ましくない文字を許す、2: 成分をエスケープしたまま保持、4: URI外の文字を許す）も同じに扱います。
+libxml2 の癖もそのまま再現します。IPv4 の判定は常に失敗するのでホストは常に登録名として読み、空のユーザーや
+クエリは文字列末尾まで（`xmlURIUnescapeString` に長さ0を渡すため）をアンエスケープし（`http://a/b?#f` のクエリは
+`#f`）、`port` は解析で初期化されないので再利用した構造体はそれを保ちます。`xmlSaveUri` は成分ごとの libxml2 の
+エスケープ規則（SPARKの `XML3_URIs.Kept`、大文字の `%XX`）で書き出します。固定版2.15.4と同じ結果になることを
+`make test-uri` で比較しています。libxml2 と異なり、終端の NUL では必ず止まります（libxml2 はフラグ4だけのとき
+NUL を越えて読みます）。`xmlBuildURI` などの組み立て系は未対応です。
 backslash・percent sequence・UTF-8・queryは解釈しません。URI全体の解析・解決、
 filesystemのcanonicalizationやdirectory traversal防止ではなく、pathだけの処理です。
 `libxml/parserInternals.h` から公開するのは deprecated な低level UTF-8 writer

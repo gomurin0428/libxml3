@@ -760,6 +760,33 @@ int main(int argc, char **argv) {
         xmlFreeParserCtxt(ctxt);
         xmlFreeParserCtxt(nested_ctxt);
         nested_ctxt = NULL;
+    } else if (strcmp(operation, "uri-parse") == 0) {
+        /* Creating the struct and copying or unescaping each component
+         * allocate; a failure answers -1 and leaves no struct. */
+        xmlURIPtr uri = NULL;
+        xmlChar *saved = NULL;
+        int ret;
+
+        xml3_oom_enable(fail_index);
+        ret = xmlParseURISafe("http://u%40@h:80/p%20q?x=1#f", &uri);
+        if (ret == 0)
+            saved = xmlSaveUri(uri);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (ret == 0) {
+            assert(uri && uri->port == 80);
+            assert(strcmp(uri->user, "u@") == 0 && strcmp(uri->path, "/p q") == 0);
+            if (saved != NULL)
+                assert(strcmp((const char *)saved,
+                              "http://u%40@h:80/p%20q?x=1#f") == 0);
+            else
+                assert(injected);
+        } else {
+            assert(injected && ret == -1 && uri == NULL);
+        }
+        xmlFree(saved);
+        xmlFreeURI(uri);
     } else if (strcmp(operation, "handler-detached") == 0) {
         /* Whether or not the handler gets a copy of the record, its own
          * reset and failing read do not change the record it holds. */

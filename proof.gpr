@@ -39,6 +39,7 @@ project Proof is
                         "xml3_file_paths.ads", "xml3_file_paths.adb",
                         "xml3_io_errors.ads",
                         "xml3_save_contexts.ads",
+                        "xml3_uris.ads", "xml3_uris.adb",
                         "xml3_dom_store-serialization.ads", "xml3_dom_store-serialization.adb",
                         "xml3_serialization.ads", "xml3_serialization.adb",
                         "xml3_dom_runtime.ads", "xml3_dom_runtime.adb",
