@@ -48,6 +48,16 @@ package XML3_C is
    function Parse_File (Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlParseFile";
 
+   function Read_Fd
+     (Fd : Interfaces.C.int; URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlReadFd";
+
+   function Read_IO
+     (Read, Close, IO_Context, URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlReadIO";
+
    function New_Parser_Ctxt return System.Address
      with Export, Convention => C, External_Name => "xmlNewParserCtxt";
 
@@ -85,6 +95,17 @@ package XML3_C is
      (Ctxt, Name, Encoding : System.Address; Options : Interfaces.C.int)
       return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtReadFile";
+
+   function Ctxt_Read_Fd
+     (Ctxt : System.Address; Fd : Interfaces.C.int;
+      URL, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtReadFd";
+
+   function Ctxt_Read_IO
+     (Ctxt, Read, Close, IO_Context, URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtReadIO";
 
    procedure Ctxt_Set_Error_Handler
      (Ctxt : System.Address; Handler : XML3_Errors.Structured_Handler;

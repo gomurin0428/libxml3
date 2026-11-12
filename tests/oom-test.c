@@ -154,6 +154,28 @@ static const xmlError *require_oom_error(void) {
     return error;
 }
 
+/* A callback input for read-io. */
+typedef struct {
+    const char *text;
+    size_t at;
+    int closes;
+} oom_source;
+
+static int oom_source_read(void *context, char *buffer, int length) {
+    oom_source *input = context;
+    size_t left = strlen(input->text) - input->at;
+    size_t count = left < (size_t)length ? left : (size_t)length;
+
+    memcpy(buffer, input->text + input->at, count);
+    input->at += count;
+    return (int)count;
+}
+
+static int oom_source_close(void *context) {
+    ((oom_source *)context)->closes++;
+    return 0;
+}
+
 int main(int argc, char **argv) {
     const char *operation;
     long fail_index;
@@ -685,6 +707,38 @@ int main(int argc, char **argv) {
         allocation_count = xml3_oom_count();
         xml3_oom_disable();
         unlink(path);
+        if (injected) {
+            assert(!doc);
+            require_oom_error();
+        } else {
+            assert(doc && xmlDocGetRootElement(doc));
+            xmlFreeDoc(doc);
+        }
+        doc = NULL;
+    } else if (strcmp(operation, "read-fd") == 0 ||
+               strcmp(operation, "read-io") == 0) {
+        /* The read buffer and the parse each allocate; every failure
+         * returns NULL with the out-of-memory error, and the callback
+         * input is still closed. */
+        static const char text[] = "<r a='1'><c>t</c></r>";
+        int pipes[2];
+        oom_source input = {text, 0, 0};
+
+        assert(pipe(pipes) == 0);
+        assert(write(pipes[1], text, sizeof(text) - 1) == (ssize_t)(sizeof(text) - 1));
+        close(pipes[1]);
+        xml3_oom_enable(fail_index);
+        if (strcmp(operation, "read-fd") == 0)
+            doc = xmlReadFd(pipes[0], "pipe.xml", NULL, 0);
+        else
+            doc = xmlReadIO(oom_source_read, oom_source_close, &input,
+                            "io.xml", NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        close(pipes[0]);
+        if (strcmp(operation, "read-io") == 0)
+            assert(input.closes == 1);
         if (injected) {
             assert(!doc);
             require_oom_error();

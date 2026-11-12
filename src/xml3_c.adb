@@ -535,7 +535,7 @@ package body XML3_C is
       XML3_Native_Memory.Write_Byte (Message, Text'Length, Character'Val (0));
       if While_Reading then
          XML3_Errors.Set_Error
-           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Fatal_Level,
+           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Level_For (Code),
             1, 0, 1, Message, Name_Address,
             System.Null_Address, System.Null_Address, System.Null_Address);
       else
@@ -646,6 +646,131 @@ package body XML3_C is
 
    function Parse_File (Name : System.Address) return System.Address is
      (Read_File_Input (Name, System.Null_Address, 0));
+
+   ------------------------------------------------------------------
+   --  Input from a file descriptor or from the caller's callbacks
+   --  (xmlReadFd, xmlReadIO and their context forms).  The C helper reads
+   --  the whole input as libxml2 requests it, then it is parsed as memory
+   --  with the URL.  A read failure is reported before the parse, at
+   --  line 1, as xmlCtxtErrIO does when the parser cannot grow its input;
+   --  after a warning (XML_IO_UNKNOWN, XML_IO_ENOENT) the bytes read are
+   --  parsed, any other failure stops the read without a document.
+   ------------------------------------------------------------------
+
+   function Fd_Read_All
+     (Fd : Interfaces.C.int; Limit : Interfaces.C.size_t;
+      Data : access System.Address; Length : access Interfaces.C.size_t;
+      Failure : access Interfaces.C.int) return Interfaces.C.int
+     with Import, Convention => C, External_Name => "xml3FdReadAll";
+
+   function IO_Read_All
+     (Read, IO_Context : System.Address; Limit : Interfaces.C.size_t;
+      Data : access System.Address; Length : access Interfaces.C.size_t;
+      Failure : access Interfaces.C.int) return Interfaces.C.int
+     with Import, Convention => C, External_Name => "xml3IOReadAll";
+
+   procedure IO_Close (Close, IO_Context : System.Address)
+     with Import, Convention => C, External_Name => "xml3IOClose";
+
+   --  Code, Data, Length and Failure are what the C helper answered.
+   function Parse_Read_Input
+     (Code : Interfaces.C.int; Data : System.Address;
+      Length : Interfaces.C.size_t; Failure : Interfaces.C.int;
+      URL, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+   is
+      Status : XML3_Parser.Statuses.Public_Status;
+      Result : System.Address;
+   begin
+      if Code = -1 then
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      elsif Code = -2 then
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, URL);
+         return System.Null_Address;
+      end if;
+      if Failure /= 0 then
+         Report_Input_Failure ("", URL, Failure, While_Reading => True);
+         if XML3_IO_Errors.Level_For (Failure) /= XML3_IO_Errors.Warning_Level
+         then
+            XML3_Native_Memory.Free (Data);
+            return System.Null_Address;
+         end if;
+      end if;
+      if Length > Interfaces.C.size_t (Interfaces.C.int'Last) then
+         XML3_Native_Memory.Free (Data);
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, URL);
+         return System.Null_Address;
+      end if;
+      Result := Parse_Buffer
+        (Data, Interfaces.C.int (Length), URL, Encoding, Options, Status);
+      XML3_Native_Memory.Free (Data);
+      return Result;
+   exception
+      when Storage_Error =>
+         XML3_Native_Memory.Free (Data);
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      when others =>
+         XML3_Native_Memory.Free (Data);
+         Report_Failure (Parser_Exception);
+         return System.Null_Address;
+   end Parse_Read_Input;
+
+   function Read_Fd_Input
+     (Fd : Interfaces.C.int; URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+   is
+      Data : aliased System.Address := System.Null_Address;
+      Length : aliased Interfaces.C.size_t := 0;
+      Failure : aliased Interfaces.C.int := 0;
+      Code : Interfaces.C.int;
+   begin
+      --  libxml2 makes no input for a negative descriptor, silently.
+      if Fd < 0 then
+         return System.Null_Address;
+      end if;
+      Code := Fd_Read_All
+        (Fd, Interfaces.C.size_t (XML3_Text.Max_Bytes), Data'Access,
+         Length'Access, Failure'Access);
+      return Parse_Read_Input
+        (Code, Data, Length, Failure, URL, Encoding, Options);
+   end Read_Fd_Input;
+
+   function Read_IO_Input
+     (Read, Close, IO_Context, URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address
+   is
+      Data : aliased System.Address := System.Null_Address;
+      Length : aliased Interfaces.C.size_t := 0;
+      Failure : aliased Interfaces.C.int := 0;
+      Code : Interfaces.C.int;
+      Result : System.Address;
+   begin
+      --  Without a read callback there is no input, and the close
+      --  callback is not called.
+      if Read = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Code := IO_Read_All
+        (Read, IO_Context, Interfaces.C.size_t (XML3_Text.Max_Bytes),
+         Data'Access, Length'Access, Failure'Access);
+      Result := Parse_Read_Input
+        (Code, Data, Length, Failure, URL, Encoding, Options);
+      --  The input is freed, and closed, when the parse has finished.
+      IO_Close (Close, IO_Context);
+      return Result;
+   end Read_IO_Input;
+
+   function Read_Fd
+     (Fd : Interfaces.C.int; URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address is
+     (Read_Fd_Input (Fd, URL, Encoding, Options));
+
+   function Read_IO
+     (Read, Close, IO_Context, URL, Encoding : System.Address;
+      Options : Interfaces.C.int) return System.Address is
+     (Read_IO_Input (Read, Close, IO_Context, URL, Encoding, Options));
 
    ------------------------------------------------------------------
    --  Parser contexts: the reduced xmlParserCtxt of parser.h.  What a
@@ -867,6 +992,41 @@ package body XML3_C is
       Finish_Read (Ctxt, Previous);
       return Result;
    end Ctxt_Read_File;
+
+   function Ctxt_Read_Fd
+     (Ctxt : System.Address; Fd : int; URL, Encoding : System.Address;
+      Options : int) return System.Address
+   is
+      Result : System.Address;
+      Effective : int;
+      Previous : XML3_Errors.Saved_Read;
+   begin
+      if Refused (Guards.Context_Use, Ctxt /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Start_Read (Ctxt, Options, Effective, Previous);
+      Result := Read_Fd_Input (Fd, URL, Encoding, Effective);
+      Finish_Read (Ctxt, Previous);
+      return Result;
+   end Ctxt_Read_Fd;
+
+   function Ctxt_Read_IO
+     (Ctxt, Read, Close, IO_Context, URL, Encoding : System.Address;
+      Options : int) return System.Address
+   is
+      Result : System.Address;
+      Effective : int;
+      Previous : XML3_Errors.Saved_Read;
+   begin
+      if Refused (Guards.Context_Use, Ctxt /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Start_Read (Ctxt, Options, Effective, Previous);
+      Result := Read_IO_Input
+        (Read, Close, IO_Context, URL, Encoding, Effective);
+      Finish_Read (Ctxt, Previous);
+      return Result;
+   end Ctxt_Read_IO;
 
    procedure Ctxt_Set_Error_Handler
      (Ctxt : System.Address; Handler : XML3_Errors.Structured_Handler;

@@ -138,7 +138,8 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
 インストール対象ヘッダーは `libxml3.h` と次の五つです。
 
 * `libxml/parser.h`: `xmlInitParser`、`xmlCleanupParser`、`xmlReadMemory`、
-  `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`
+  `xmlParseMemory`、`xmlReadDoc`、`xmlParseDoc`、`xmlReadFile`、`xmlParseFile`、`xmlReadFd`、`xmlReadIO`、
+  縮小した解析コンテキスト（`xmlNewParserCtxt`、`xmlCtxtRead*` 系など）
 * `libxml/tree.h`: ノード型、`xmlDocGetRootElement`、`xmlFreeDoc`、
   `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、`xmlAddChild`、`xmlAddSibling`、`xmlAddPrevSibling`、`xmlAddNextSibling`、
   `xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlNodeGetLang`、`xmlNodeGetSpacePreserve`、`xmlNodeSetLang`、`xmlNodeSetSpacePreserve`、`xmlNewChild`、`xmlNewTextChild`、
@@ -521,10 +522,23 @@ element arena を解放し、独立作成宣言の reservation を一度だけ�
 `file:` URI だけを接頭辞の後でアンエスケープし、それ以外はそのまま使います（SPARKの `XML3_File_Paths`）。
 開けない場合は libxml2 の `xmlCtxtErrIO` と同じ `XML_FROM_IO` のエラーを記録します（`failed to load "名前": 理由`、
 str1にファイル名、見つからない場合は警告、それ以外は致命的）。読めない場合（ディレクトリなど）は
-ファイル名付きで1行1列目の致命的エラーです。コードと文言はSPARKの `XML3_IO_Errors` の表で決め、
+ファイル名付きで1行1列目のエラー（`XML_IO_UNKNOWN` なら警告、それ以外は致命的）として報告し、文書は返しません。
+コードと文言はSPARKの `XML3_IO_Errors` の表で決め、
 読み込み自体は小さなCヘルパーで行います。固定版2.15.4と同じ結果になることを `make test-input` で比較しています。
 公開 `xmlDoc` に `URL` フィールドがないこと、圧縮入力とネットワークURL、`xmlReadMemory` が受け付けない解析オプションは
 対象外です。
+
+`xmlReadFd` はファイル記述子の現在位置から、`xmlReadIO` は呼び出し側の読み込みコールバックから入力を読み、
+`xmlReadMemory` と同じ解析をURL付きで行います。`xmlCtxtReadFd` / `xmlCtxtReadIO` はリセットとオプション適用のあと
+同じ読み込みをコンテキストで行います。libxml2 と同じく、記述子は複製を読んで閉じるので呼び出し側の記述子は
+開いたまま（読んだ位置まで進む）、負の記述子は何も報告せずNULL、複製できない記述子はメモリ不足の報告になります。
+読み込みコールバックがなければ何もせず（閉じるコールバックも呼ばない）、あれば解析の後で閉じるコールバックを1回呼びます。
+入力は libxml2 と同じ4000バイトずつの要求で、0か失敗が返るまで解析の前にすべて読みます。そのため libxml2 が
+致命的な解析エラーで読むのをやめる入力でも、libxml3 は最後まで読みます。読み込みの失敗（-1は `XML_IO_UNKNOWN`、
+それ以外の負の値はその符号反転）は `xmlCtxtErrIO` と同じ `XML_FROM_IO` のエラーとして解析の前に1行目で報告し、
+警告（`XML_IO_UNKNOWN`、`XML_IO_ENOENT`）なら読めた分を解析し、それ以外なら文書を返しません
+（`XML_IO_*` 以外のコードでは libxml2 は解析を続けて他のエラーも報告し、その文言も異なりますが、文書を返さない点は同じです）。
+固定版2.15.4と同じ結果になることを `make test-input` で比較しています。
 
 解析コンテキストは libxml2 の `xmlParserCtxt` を縮小した構造体で、`_private`、`myDoc`、`wellFormed`、
 `errNo`、`options`、`lastError` だけを公開します（SAXハンドラー、入力スタック、辞書、`valid` などはありません）。

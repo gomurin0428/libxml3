@@ -1722,13 +1722,13 @@
   },
   "function:parser.h:xmlReadFile": {
     "implementation": "partial",
-    "scope": "Reads a file, or standard input for \"-\", and parses it with the given encoding and options. NULL returns NULL without a diagnostic. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "scope": "Reads a file, or standard input for \"-\", and parses it with the given encoding and options. NULL returns NULL without a diagnostic. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is reported at line 1, column 1 with the file name (fatal, or a warning for XML_IO_UNKNOWN as in xmlCtxtErrIO) and ends the read without a document; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
   "function:parser.h:xmlParseFile": {
     "implementation": "partial",
-    "scope": "xmlReadFile without an encoding or options. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "scope": "xmlReadFile without an encoding or options. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is reported at line 1, column 1 with the file name (fatal, or a warning for XML_IO_UNKNOWN as in xmlCtxtErrIO) and ends the read without a document; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },
@@ -2438,6 +2438,62 @@
     "implementation": "partial",
     "scope": "Strdup function type of xmlMemSetup. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadFd": {
+    "implementation": "partial",
+    "scope": "Reads a file descriptor from its current position and parses it with the URL, encoding and options. The descriptor is duplicated and the duplicate read and closed, so the caller's descriptor stays open after what was read, as libxml2's xmlInputFromFd does; a negative descriptor makes no input and reports nothing, and a descriptor that cannot be duplicated reports a memory failure, as libxml2 2.15.4 does. The input is read whole before the parse by a small trusted C helper, in requests of 4000 bytes until a read answers 0 or fails, and parsed as by xmlReadMemory with the URL, so the read callback is called as libxml2 calls it for input that parses to the end, but also after a fatal parse error libxml2 stops reading at. A failed read (-1 is XML_IO_UNKNOWN, another negative answer its negation, an answer above the request XML_ERR_NO_MEMORY) publishes the XML_FROM_IO record of xmlCtxtErrIO at line 1 with the URL as file, before the parse: after a warning (XML_IO_UNKNOWN, XML_IO_ENOENT) the bytes read are parsed, any other failure ends the read without a document (libxml2 stops for XML_IO_* failures; for other codes it parses on and reports more, also without a document, and its message for them is not reproduced). The codes, texts and levels come from the SPARK XML3_IO_Errors table. Encodings and options are those of xmlReadMemory. Native I/O, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadIO": {
+    "implementation": "partial",
+    "scope": "Reads the input of the caller's callbacks and parses it with the URL, encoding and options. Without a read callback there is no input and the close callback is not called; otherwise the close callback, when given, is called once after the parse. The input is read whole before the parse by a small trusted C helper, in requests of 4000 bytes until a read answers 0 or fails, and parsed as by xmlReadMemory with the URL, so the read callback is called as libxml2 calls it for input that parses to the end, but also after a fatal parse error libxml2 stops reading at. A failed read (-1 is XML_IO_UNKNOWN, another negative answer its negation, an answer above the request XML_ERR_NO_MEMORY) publishes the XML_FROM_IO record of xmlCtxtErrIO at line 1 with the URL as file, before the parse: after a warning (XML_IO_UNKNOWN, XML_IO_ENOENT) the bytes read are parsed, any other failure ends the read without a document (libxml2 stops for XML_IO_* failures; for other codes it parses on and reports more, also without a document, and its message for them is not reproduced). The codes, texts and levels come from the SPARK XML3_IO_Errors table. Encodings and options are those of xmlReadMemory. Native I/O, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReadFd": {
+    "implementation": "partial",
+    "scope": "xmlReadFd through a parser context. xmlCtxtReset and xmlCtxtUseOptions come first, even when no input is made; the context records the read's errors as for xmlCtxtReadFile. The descriptor is duplicated and the duplicate read and closed, so the caller's descriptor stays open after what was read, as libxml2's xmlInputFromFd does; a negative descriptor makes no input and reports nothing, and a descriptor that cannot be duplicated reports a memory failure, as libxml2 2.15.4 does. The input is read whole before the parse by a small trusted C helper, in requests of 4000 bytes until a read answers 0 or fails, and parsed as by xmlReadMemory with the URL, so the read callback is called as libxml2 calls it for input that parses to the end, but also after a fatal parse error libxml2 stops reading at. A failed read (-1 is XML_IO_UNKNOWN, another negative answer its negation, an answer above the request XML_ERR_NO_MEMORY) publishes the XML_FROM_IO record of xmlCtxtErrIO at line 1 with the URL as file, before the parse: after a warning (XML_IO_UNKNOWN, XML_IO_ENOENT) the bytes read are parsed, any other failure ends the read without a document (libxml2 stops for XML_IO_* failures; for other codes it parses on and reports more, also without a document, and its message for them is not reproduced). The codes, texts and levels come from the SPARK XML3_IO_Errors table. Encodings and options are those of xmlReadMemory. Native I/O, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReadIO": {
+    "implementation": "partial",
+    "scope": "xmlReadIO through a parser context. xmlCtxtReset and xmlCtxtUseOptions come first, even when no input is made; the context records the read's errors as for xmlCtxtReadFile. Without a read callback there is no input and the close callback is not called; otherwise the close callback, when given, is called once after the parse. The input is read whole before the parse by a small trusted C helper, in requests of 4000 bytes until a read answers 0 or fails, and parsed as by xmlReadMemory with the URL, so the read callback is called as libxml2 calls it for input that parses to the end, but also after a fatal parse error libxml2 stops reading at. A failed read (-1 is XML_IO_UNKNOWN, another negative answer its negation, an answer above the request XML_ERR_NO_MEMORY) publishes the XML_FROM_IO record of xmlCtxtErrIO at line 1 with the URL as file, before the parse: after a warning (XML_IO_UNKNOWN, XML_IO_ENOENT) the bytes read are parsed, any other failure ends the read without a document (libxml2 stops for XML_IO_* failures; for other codes it parses on and reports more, also without a document, and its message for them is not reproduced). The codes, texts and levels come from the SPARK XML3_IO_Errors table. Encodings and options are those of xmlReadMemory. Native I/O, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "callback:xmlIO.h:xmlInputReadCallback": {
+    "implementation": "partial",
+    "scope": "Read callback of xmlReadIO and xmlCtxtReadIO, declared in a reduced xmlIO.h: the number of bytes stored, 0 at the end, or a negative error code. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "callback:xmlIO.h:xmlInputCloseCallback": {
+    "implementation": "partial",
+    "scope": "Close callback of xmlReadIO and xmlCtxtReadIO, called once after the parse. Native pointer validity, native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/input-test.c",
+      "tests/header-smoke.cpp"
+    ],
     "proof": "not-proved"
   }
 }

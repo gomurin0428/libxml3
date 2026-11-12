@@ -1128,7 +1128,10 @@ helper and parse it as `xmlReadMemory` does, with the file name as URL.
 and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
 the record published when the file cannot be opened or read. `make
 test-input` compares the documents and error records with the pinned
-libxml2.
+libxml2. `xmlReadFd`, `xmlReadIO` and their context forms read the whole
+descriptor or callback input through the same C helper, in libxml2's
+requests of 4000 bytes, and parse it the same way; the record of a failed
+read comes from the same `IO_Errors` table.
 
 `Error_Records.Select_Handler` decides which structured handler hears a
 published error: during a read through a parser context with a handler,

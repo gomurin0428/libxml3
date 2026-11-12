@@ -257,3 +257,127 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
     *length = size;
     return 0;
 }
+
+/* Input from a descriptor or from caller callbacks (xmlReadFd, xmlReadIO
+ * and their context forms).  libxml2 reads its input in requests of 4000
+ * bytes (MINLEN) until the read answers 0 or fails; the whole input is
+ * read here the same way before the parse. */
+typedef int (*xml3_input_read)(void *context, char *buffer, int length);
+typedef int (*xml3_input_close)(void *context);
+
+enum { XML3_READ_REQUEST = 4000 };
+
+/* Reads until the source answers 0 or fails.  Returns 0 with the bytes in
+ * *data (to be freed by the caller) and their count in *length, *failure
+ * being the code of a failed read (0 when the input ended): -1 becomes
+ * XML_IO_UNKNOWN, another negative answer is negated, as
+ * xmlParserInputBufferGrow does.  Returns -1 when an allocation fails
+ * and -2 as soon as the input exceeds limit bytes. */
+static int read_all(xml3_input_read source, void *context, size_t limit,
+                    void **data, size_t *length, int *failure) {
+    size_t size = 0, capacity = XML3_READ_REQUEST;
+    char *buffer = xml3MemAllocate(capacity);
+
+    *data = NULL;
+    *length = 0;
+    *failure = 0;
+    if (buffer == NULL)
+        return -1;
+    for (;;) {
+        int count;
+
+        if (capacity - size < XML3_READ_REQUEST) {
+            char *grown;
+
+            if (capacity > ((size_t)-1) / 2) {
+                xml3MemRelease(buffer);
+                return -1;
+            }
+            grown = xml3MemReallocate(buffer, capacity * 2);
+            if (grown == NULL) {
+                xml3MemRelease(buffer);
+                return -1;
+            }
+            buffer = grown;
+            capacity *= 2;
+        }
+        count = source(context, buffer + size, XML3_READ_REQUEST);
+        if (count < 0) {
+            *failure = count == -1 ? 1500 : -count;
+            break;
+        }
+        if (count == 0)
+            break;
+        if (count > XML3_READ_REQUEST) {
+            /* More than requested: libxml2 cannot add it to its buffer
+             * and fails the read with XML_ERR_NO_MEMORY. */
+            *failure = 2;
+            break;
+        }
+        size += (size_t)count;
+        if (size > limit) {
+            xml3MemRelease(buffer);
+            return -2;
+        }
+    }
+    *data = buffer;
+    *length = size;
+    return 0;
+}
+
+/* xmlFdRead: fills the request unless the input ends; a failure after
+ * some bytes returns them, the next read reports it. */
+static int fd_read(void *context, char *buffer, int length) {
+    int fd = *(int *)context;
+    int done = 0;
+
+    while (length > 0) {
+        ssize_t count = read(fd, buffer, (size_t)length);
+
+        if (count < 0) {
+            if (errno == EINTR)
+                continue;
+            if (done > 0)
+                break;
+            return -io_code(errno);
+        }
+        if (count == 0)
+            break;
+        done += (int)count;
+        buffer += count;
+        length -= (int)count;
+    }
+    return done;
+}
+
+/* xmlReadFd's input: a duplicate of fd is read and closed, the caller's
+ * descriptor stays open (at the position the reads left).  A failed dup
+ * answers -1: libxml2 then reports a memory failure. */
+XML3_INTERNAL int xml3FdReadAll(int fd, size_t limit, void **data,
+                                size_t *length, int *failure) {
+    int copy = dup(fd);
+    int result;
+
+    *data = NULL;
+    *length = 0;
+    *failure = 0;
+    if (copy < 0)
+        return -1;
+    result = read_all(fd_read, &copy, limit, data, length, failure);
+    close(copy);
+    return result;
+}
+
+/* xmlReadIO's input, read with the caller's callback. */
+XML3_INTERNAL int xml3IOReadAll(xml3_input_read source, void *context,
+                                size_t limit, void **data, size_t *length,
+                                int *failure) {
+    return read_all(source, context, limit, data, length, failure);
+}
+
+/* Calls the caller's close callback, when there is one, as libxml2 does
+ * when it frees the input. */
+XML3_INTERNAL void xml3IOClose(xml3_input_close closer, void *context) {
+    if (closer != NULL)
+        closer(context);
+}
