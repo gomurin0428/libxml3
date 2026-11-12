@@ -567,6 +567,20 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
 `xmlCtxtGetNode` は読み込み中のノードを返さず、`myDoc` を返します。固定版2.15.4と同じ結果になることを
 `make test-context` で比較しています。
 
+プッシュパーサー（`xmlCreatePushParserCtxt`、`xmlParseChunk`、`xmlCtxtResetPush`）は、SAXハンドラーなし
+（NULL）で木を作る使い方に対応します。libxml3 の解析器は逐次処理をしないため、チャンクをためておき、
+`terminate` を指定した呼び出しでまとめて（URL、`xmlCtxtResetPush` のエンコーディング、コンテキストの
+オプションで）解析し、文書を `myDoc` に置きます。戻り値（整形式でなければ `errNo`、引数の誤りや
+プッシュ入力のないコンテキストには `XML_ERR_ARGUMENT`、停止したパーサーには `errNo`）、`wellFormed` /
+`errNo`、エラー記録、`xmlCtxtReset` や `xmlCtxtRead*` でプッシュ入力がなくなることは libxml2 2.15.4 と
+同じで、`make test-push` で比較しています。libxml2との差は次のとおりです。
+- エラーは `terminate` の呼び出しで報告されます（libxml2 はエラーを含むチャンクの時点で報告します）。
+- 整形式でない入力では `myDoc` はNULLです（libxml2 は途中までの文書を残します）。`terminate` 前の
+  `myDoc` もNULLです。
+- `terminate` 後に渡したチャンクは無視されます（libxml2 は続けて受け取り、次の終了で余分な内容として
+  エラーにします）。
+- SAXハンドラー（`xmlSAXHandler`）は提供しないので、NULL以外を渡すとコンテキストを作りません。
+
 構造化エラーハンドラーは `xmlSetStructuredErrorFunc`（スレッドごと）と `xmlCtxtSetErrorHandler`（解析コンテキストごと）
 に対応します。公開されたエラーは、libxml2 の `xmlCtxtVErr` と同じ規則で、コンテキストでの読み込み中はそのハンドラー
 （オプションに `XML_PARSE_NOERROR`、警告では `XML_PARSE_NOWARNING` がない場合）、それ以外はスレッドのハンドラーへ

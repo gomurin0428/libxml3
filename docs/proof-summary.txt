@@ -4,7 +4,7 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               563           563                                       .           .          .
+Data Dependencies               565           565                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                 1065          1065                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
@@ -12,10 +12,10 @@ Run-time Checks                6285             .     6285 (CVC5 35%, Trivial 0%
 Assertions                     1839             .    1839 (CVC5 22%, Trivial 10%, Z3 68%)           .          .
 Functional Contracts           5000             .     5000 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     416           327                   89 (CVC5 45%, Z3 55%)           .          .
+Termination                     418           329                   89 (CVC5 45%, Z3 55%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         15169    1956 (13%)                             13213 (87%)           .          .
+Total                         15173    1960 (13%)                             13213 (87%)           .          .
 
 
 max steps used for successful proof: 787963
@@ -619,7 +619,7 @@ in unit xml3_parser-attempts, 3 subprograms and packages out of 3 analyzed
   XML3_Parser.Attempts at xml3_parser-attempts.ads:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Attempts.Attempt_Procedure at xml3_parser-attempts.ads:16 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Attempts.Run at xml3_parser-attempts.ads:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (10 checks)
-in unit xml3_parser-contexts, 15 subprograms and packages out of 15 analyzed
+in unit xml3_parser-contexts, 17 subprograms and packages out of 17 analyzed
   XML3_Parser.Contexts at xml3_parser-contexts.ads:9 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Contexts.Adopts at xml3_parser-contexts.ads:106 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Contexts.After_Copy_Failure at xml3_parser-contexts.ads:113 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
@@ -628,6 +628,8 @@ in unit xml3_parser-contexts, 15 subprograms and packages out of 15 analyzed
   XML3_Parser.Contexts.After_Stop at xml3_parser-contexts.ads:210 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Contexts.Bits at xml3_parser-contexts.ads:33 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Parser.Contexts.Catastrophic at xml3_parser-contexts.ads:141 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Contexts.Chunk_Result at xml3_parser-contexts.ads:235 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Parser.Contexts.Push_Parse_Options at xml3_parser-contexts.ads:223 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Contexts.Status at xml3_parser-contexts.ads:185 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_Parser.Contexts.Stored at xml3_parser-contexts.ads:56 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Parser.Contexts.Stored_Bits at xml3_parser-contexts.ads:47 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)

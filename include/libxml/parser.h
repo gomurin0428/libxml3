@@ -72,6 +72,15 @@ xmlDocPtr xmlCtxtReadFd(xmlParserCtxtPtr ctxt, int fd, const char *URL,
 xmlDocPtr xmlCtxtReadIO(xmlParserCtxtPtr ctxt, xmlInputReadCallback ioread,
                         xmlInputCloseCallback ioclose, void *ioctx,
                         const char *URL, const char *encoding, int options);
+/* The push parser.  The chunks are kept and parsed when xmlParseChunk is
+ * called with terminate set; the document is then in ctxt->myDoc. */
+xmlParserCtxtPtr xmlCreatePushParserCtxt(xmlSAXHandlerPtr sax,
+                                         void *user_data, const char *chunk,
+                                         int size, const char *filename);
+int xmlParseChunk(xmlParserCtxtPtr ctxt, const char *chunk, int size,
+                  int terminate);
+int xmlCtxtResetPush(xmlParserCtxtPtr ctxt, const char *chunk, int size,
+                     const char *filename, const char *encoding);
 void *xmlCtxtGetPrivate(xmlParserCtxtPtr ctxt);
 void xmlCtxtSetPrivate(xmlParserCtxtPtr ctxt, void *priv);
 void *xmlCtxtGetUserData(xmlParserCtxtPtr ctxt);

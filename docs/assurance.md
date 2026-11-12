@@ -1149,6 +1149,11 @@ thread's record), and no read is current while a handler runs, so reads
 made by a handler neither are attributed to the outer context nor change
 the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
+The push parser keeps the pushed chunks in the adapter and parses them as
+memory when `xmlParseChunk` terminates the input, through the same context
+read; `Parser.Contexts.Chunk_Result` decides what `xmlParseChunk` answers
+and `Push_Parse_Options` the options of the parse. `make test-push`
+compares it with the pinned libxml2.
 The same publication updates the context's `nsWellFormed` and `disableSAX`
 as `Parser.Contexts.After_Error` decides (a namespace error, a fatal
 error, a catastrophic one); while `disableSAX` is 2 the read publishes no

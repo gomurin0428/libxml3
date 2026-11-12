@@ -782,6 +782,8 @@ package body XML3_C is
    package Contexts renames XML3_Parser.Contexts;
 
 
+   package Buffers renames XML3_Byte_Buffers;
+
    type Parser_Context is record
       Private_Data : System.Address;
       My_Doc : System.Address;
@@ -794,6 +796,14 @@ package body XML3_C is
       Handler : XML3_Errors.Structured_Handler;
       Handler_Data : System.Address;
       Flags : aliased Contexts.Parse_Flags;
+      --  The push input (xmlCreatePushParserCtxt, xmlCtxtResetPush): the
+      --  bytes pushed so far, whether the push was terminated, and owned
+      --  copies of its URL and encoding name.
+      Push : Boolean;
+      Push_Done : Boolean;
+      Push_Data : Buffers.Buffer;
+      Push_URL : System.Address;
+      Push_Encoding : System.Address;
    end record with Convention => C;
 
    function New_Parser_Ctxt return System.Address is
@@ -819,10 +829,30 @@ package body XML3_C is
             Last_Error => XML3_Error_Records.Empty_Record,
             Handler => null,
             Handler_Data => System.Null_Address,
-            Flags => Contexts.Running);
+            Flags => Contexts.Running,
+            Push => False, Push_Done => False, Push_Data => (others => <>),
+            Push_URL => System.Null_Address,
+            Push_Encoding => System.Null_Address);
       end;
       return Result;
    end New_Parser_Ctxt;
+
+   --  Drops the push input of a context, as libxml2 frees its inputs.
+   procedure Drop_Push (Ctxt : System.Address) is
+      Context : Parser_Context with Import, Address => Ctxt;
+   begin
+      Buffers.Release (Context.Push_Data);
+      if Context.Push_URL /= System.Null_Address then
+         XML3_Native_Memory.Free (Context.Push_URL);
+      end if;
+      if Context.Push_Encoding /= System.Null_Address then
+         XML3_Native_Memory.Free (Context.Push_Encoding);
+      end if;
+      Context.Push := False;
+      Context.Push_Done := False;
+      Context.Push_URL := System.Null_Address;
+      Context.Push_Encoding := System.Null_Address;
+   end Drop_Push;
 
    procedure Free_Parser_Ctxt (Ctxt : System.Address) is
    begin
@@ -835,6 +865,7 @@ package body XML3_C is
          --  As in libxml2, a document left in myDoc is not released.
          XML3_Errors.Reset_Error (Context.Last_Error'Address);
       end;
+      Drop_Push (Ctxt);
       XML3_Native_Memory.Free (Ctxt);
    end Free_Parser_Ctxt;
 
@@ -855,6 +886,7 @@ package body XML3_C is
          Context.Flags := Contexts.Running;
          XML3_Errors.Reset_Error (Context.Last_Error'Address);
       end;
+      Drop_Push (Ctxt);
    end Ctxt_Reset;
 
    function Store_Options
@@ -904,12 +936,26 @@ package body XML3_C is
    --  Starts a read through Ctxt: xmlCtxtReset and xmlCtxtUseOptions, then
    --  the errors published until Finish_Read are recorded for the context
    --  and go to its handler.  Effective is the options the read uses.
+   procedure Begin_Read
+     (Ctxt : System.Address; Effective : int;
+      Previous : out XML3_Errors.Saved_Read);
+
    procedure Start_Read
      (Ctxt : System.Address; Options : int; Effective : out int;
       Previous : out XML3_Errors.Saved_Read)
    is
    begin
       Effective := Prepare_Read (Ctxt, Options);
+      Begin_Read (Ctxt, Effective, Previous);
+   end Start_Read;
+
+   --  The errors published until Finish_Read are recorded for the context
+   --  and go to its handler; the context is not reset.
+   procedure Begin_Read
+     (Ctxt : System.Address; Effective : int;
+      Previous : out XML3_Errors.Saved_Read)
+   is
+   begin
       declare
          Context : Parser_Context with Import, Address => Ctxt;
       begin
@@ -922,7 +968,7 @@ package body XML3_C is
              Flags => Context.Flags'Address),
             Previous);
       end;
-   end Start_Read;
+   end Begin_Read;
 
    --  Ends the read: the context's wellFormed, errNo and lastError were
    --  updated as each error was published (XML3_Errors.Note_Context).
@@ -1072,6 +1118,201 @@ package body XML3_C is
          return Context.Last_Error'Address;
       end;
    end Ctxt_Get_Last_Error;
+
+   ------------------------------------------------------------------
+   --  The push parser.  The parser is not incremental: the chunks are
+   --  kept, and the input is parsed as memory (with the push URL and
+   --  encoding and the context's options) when xmlParseChunk terminates
+   --  it; the document is then left in myDoc.  What xmlParseChunk answers
+   --  is decided by XML3_Parser.Contexts.Chunk_Result.
+   ------------------------------------------------------------------
+
+   Empty_Input : aliased constant char_array (0 .. 0) := (0 => nul);
+
+   --  An owned NUL-terminated copy of Text (null for null); Ok is False
+   --  when the copy could not be made.
+   procedure Copy_Name
+     (Text : System.Address; Result : out System.Address; Ok : out Boolean)
+   is
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+   begin
+      Result := System.Null_Address;
+      Ok := True;
+      if Text = System.Null_Address then
+         return;
+      end if;
+      XML3_Text.Buffers.Measure (Text, Length, Found);
+      if not Found then
+         Ok := False;
+         return;
+      end if;
+      XML3_Native_Memory.Allocate
+        (XML3_Native_Memory.Byte_Count (Length) + 1, Result);
+      if Result = System.Null_Address then
+         Ok := False;
+         return;
+      end if;
+      declare
+         Source : String (1 .. Natural (Length)) with Import, Address => Text;
+      begin
+         XML3_Native_Memory.Write_String (Result, 0, Source);
+         XML3_Native_Memory.Write_Byte
+           (Result, Natural (Length), Character'Val (0));
+      end;
+   end Copy_Name;
+
+   --  Gives the context a push input of the first chunk, URL and encoding,
+   --  as xmlNewPushInput does.  Ok is False after a memory failure.
+   procedure Start_Push
+     (Ctxt, Chunk : System.Address; Size : int;
+      URL, Encoding : System.Address; Ok : out Boolean)
+   is
+      Context : Parser_Context with Import, Address => Ctxt;
+      Status : Buffers.Add_Status;
+      use type Buffers.Add_Status;
+   begin
+      Drop_Push (Ctxt);
+      Copy_Name (URL, Context.Push_URL, Ok);
+      if Ok then
+         Copy_Name (Encoding, Context.Push_Encoding, Ok);
+      end if;
+      if Ok and then Chunk /= System.Null_Address and then Size > 0 then
+         Buffers.Add (Context.Push_Data, Chunk, Natural (Size), Status);
+         Ok := Status = Buffers.Added;
+      end if;
+      if Ok then
+         Context.Push := True;
+      else
+         Drop_Push (Ctxt);
+      end if;
+   end Start_Push;
+
+   function Create_Push_Parser_Ctxt
+     (SAX, User_Data, Chunk : System.Address; Size : int;
+      Filename : System.Address) return System.Address
+   is
+      pragma Unreferenced (User_Data);
+      Ctxt : System.Address;
+      Ok : Boolean;
+   begin
+      --  SAX handlers are not provided.
+      if SAX /= System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Ctxt := New_Parser_Ctxt;
+      if Ctxt = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         Context.Options := Contexts.Push_Options;
+      end;
+      Start_Push (Ctxt, Chunk, Size, Filename, System.Null_Address, Ok);
+      if not Ok then
+         Free_Parser_Ctxt (Ctxt);
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      end if;
+      return Ctxt;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Create_Push_Parser_Ctxt;
+
+   function Ctxt_Reset_Push
+     (Ctxt, Chunk : System.Address; Size : int;
+      Filename, Encoding : System.Address) return int
+   is
+      Ok : Boolean;
+   begin
+      if Ctxt = System.Null_Address then
+         return 1;
+      end if;
+      Ctxt_Reset (Ctxt);
+      Start_Push (Ctxt, Chunk, Size, Filename, Encoding, Ok);
+      if not Ok then
+         Report_Failure (Allocation_Failure);
+         return 1;
+      end if;
+      return 0;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return 1;
+   end Ctxt_Reset_Push;
+
+   function Parse_Chunk
+     (Ctxt, Chunk : System.Address; Size, Final : int) return int
+   is
+      Status : Buffers.Add_Status;
+      Previous : XML3_Errors.Saved_Read;
+      Result : System.Address := System.Null_Address;
+      Parse_Status : XML3_Parser.Statuses.Public_Status;
+      use type Buffers.Add_Status;
+   begin
+      if Ctxt = System.Null_Address or else Size < 0
+        or else (Chunk = System.Null_Address and then Size > 0)
+      then
+         return Contexts.Argument_Error;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         if not Context.Push then
+            return Contexts.Argument_Error;
+         elsif Context.Flags.Disable_SAX /= 0 then
+            return Context.Err_No;
+         elsif Context.Push_Done then
+            return Contexts.Chunk_Result
+              ((Well_Formed => Context.Well_Formed,
+                Err_No => Context.Err_No));
+         end if;
+         if Size > 0 then
+            Buffers.Add (Context.Push_Data, Chunk, Natural (Size), Status);
+            if Status /= Buffers.Added then
+               Begin_Read (Ctxt, Context.Options, Previous);
+               Report_Failure (Allocation_Failure, Context.Push_URL);
+               Finish_Read (Ctxt, Previous, Result);
+               return Context.Err_No;
+            end if;
+         end if;
+         if Final /= 0 then
+            Context.Push_Done := True;
+            Begin_Read (Ctxt, Context.Options, Previous);
+            begin
+               Result := Parse_Buffer
+                 ((if Context.Push_Data.Base = System.Null_Address
+                   then Empty_Input'Address
+                   else Buffers.Content (Context.Push_Data)),
+                  int (Context.Push_Data.Used), Context.Push_URL,
+                  Context.Push_Encoding,
+                  Contexts.Push_Parse_Options (Context.Options),
+                  Parse_Status);
+            exception
+               when Storage_Error =>
+                  Report_Failure (Allocation_Failure, Context.Push_URL);
+                  Result := System.Null_Address;
+               when others =>
+                  Report_Failure (Parser_Exception, Context.Push_URL);
+                  Result := System.Null_Address;
+            end;
+            Finish_Read (Ctxt, Previous, Result);
+            Buffers.Release (Context.Push_Data);
+            if Result /= System.Null_Address then
+               Context.My_Doc := Result;
+            end if;
+         end if;
+         return Contexts.Chunk_Result
+           ((Well_Formed => Context.Well_Formed, Err_No => Context.Err_No));
+      end;
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return Contexts.Argument_Error;
+   end Parse_Chunk;
 
    --  The accessors of libxml2 2.15.4 over the reduced context.  A NULL
    --  context answers NULL or 0, and xmlCtxtGetStatus answers what a
@@ -1392,7 +1633,6 @@ package body XML3_C is
    --  are decided there.
    ------------------------------------------------------------------
 
-   package Buffers renames XML3_Byte_Buffers;
 
    type C_Buffer is record
       Content : System.Address;
@@ -5251,7 +5491,7 @@ package body XML3_C is
               (Save.Output_Domain, Save.Unsupported_Encoding_Code,
                Save.Unsupported_Encoding_Level, System.Null_Address);
             if Channel.Error = 0 then
-               Channel.Error := int (Save.Unsupported_Encoding_Code);
+               Channel.Error := Save.Unsupported_Encoding_Code;
             end if;
          elsif Channel.Error = 0 then
             Serialize

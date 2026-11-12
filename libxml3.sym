@@ -47,6 +47,7 @@ xmlCopyError
 xmlCopyNamespace
 xmlCopyNode
 xmlCopyProp
+xmlCreatePushParserCtxt
 xmlCreateURI
 xmlCtxtGetDocument
 xmlCtxtGetLastError
@@ -65,6 +66,7 @@ xmlCtxtReadIO
 xmlCtxtReadMemory
 xmlCtxtReset
 xmlCtxtResetLastError
+xmlCtxtResetPush
 xmlCtxtSetErrorHandler
 xmlCtxtSetOptions
 xmlCtxtSetPrivate
@@ -194,6 +196,7 @@ xmlOutputBufferGetContent
 xmlOutputBufferGetSize
 xmlOutputBufferWrite
 xmlOutputBufferWriteString
+xmlParseChunk
 xmlParseDoc
 xmlParseFile
 xmlParseMemory

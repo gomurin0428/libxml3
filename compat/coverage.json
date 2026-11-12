@@ -2896,5 +2896,52 @@
       "tests/header-smoke.cpp"
     ],
     "proof": "not-proved"
+  },
+  "function:parser.h:xmlCreatePushParserCtxt": {
+    "implementation": "partial",
+    "scope": "A parser context with a push input of the first chunk and the file name as URL, without options (libxml2 clears XML_PARSE_NODICT); user_data is not kept, as libxml2 keeps the context as SAX user data without a handler. SAX handlers are not provided: a non-NULL handler gives no context. A memory failure gives no context and reports it. The parser is not incremental: the chunks are kept and the input is parsed as memory (with the push URL and encoding and the context's options without XML_PARSE_NODICT, SPARK XML3_Parser.Contexts.Push_Parse_Options) when xmlParseChunk terminates it, through the context like a read, and the document is left in myDoc. Errors are therefore reported by the terminating call (libxml2 reports them at the chunk that contains them), myDoc is NULL for input that is not well-formed (libxml2 leaves the partial document) and before the termination, and chunks after the termination are ignored (libxml2 takes them and reports extra content at the next termination). Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/push-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlParseChunk": {
+    "implementation": "partial",
+    "scope": "Adds a chunk and, when terminate is set, parses the input. Answers XML_ERR_ARGUMENT for a NULL context, a negative size, NULL bytes of a positive size or a context without a push input (also after xmlCtxtReset or a read through the context), the error number of a stopped parser (disableSAX set by a fatal error or xmlStopParser), and otherwise the error number when the context is not well-formed or XML_ERR_OK, as the SPARK XML3_Parser.Contexts.Chunk_Result decides. The parser is not incremental: the chunks are kept and the input is parsed as memory (with the push URL and encoding and the context's options without XML_PARSE_NODICT, SPARK XML3_Parser.Contexts.Push_Parse_Options) when xmlParseChunk terminates it, through the context like a read, and the document is left in myDoc. Errors are therefore reported by the terminating call (libxml2 reports them at the chunk that contains them), myDoc is NULL for input that is not well-formed (libxml2 leaves the partial document) and before the termination, and chunks after the termination are ignored (libxml2 takes them and reports extra content at the next termination). Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/push-test.c",
+      "tests/oom-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtResetPush": {
+    "implementation": "partial",
+    "scope": "xmlCtxtReset, then a push input of the chunk, file name and encoding, for any context; the options are kept. 1 for a NULL context or a memory failure, 0 otherwise. The parser is not incremental: the chunks are kept and the input is parsed as memory (with the push URL and encoding and the context's options without XML_PARSE_NODICT, SPARK XML3_Parser.Contexts.Push_Parse_Options) when xmlParseChunk terminates it, through the context like a read, and the document is left in myDoc. Errors are therefore reported by the terminating call (libxml2 reports them at the chunk that contains them), myDoc is NULL for input that is not well-formed (libxml2 leaves the partial document) and before the termination, and chunks after the termination are ignored (libxml2 takes them and reports extra content at the next termination). Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/push-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlSAXHandler": {
+    "implementation": "partial",
+    "scope": "Declared only for the handler argument of xmlCreatePushParserCtxt, which must be NULL; the handler structure is not provided. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/push-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlSAXHandlerPtr": {
+    "implementation": "partial",
+    "scope": "Pointer to the SAX handler, which must be NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": [
+      "tests/push-test.c",
+      "tests/header-smoke.cpp"
+    ],
+    "proof": "not-proved"
   }
 }
