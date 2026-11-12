@@ -43,6 +43,73 @@ static void context_handler(void *data, const xmlError *error) {
     put_error((const char *)data, error);
 }
 
+/* A context handler that parses malformed XML itself: with a plain read,
+ * or through a second context. */
+static xmlParserCtxtPtr inner;
+static int nested_depth;
+
+static void nested_handler(void *data, const xmlError *error) {
+    xmlDocPtr doc;
+
+    put_error((const char *)data, error);
+    if (nested_depth > 0)
+        return;
+    nested_depth++;
+    if (inner == NULL) {
+        doc = xmlReadMemory("<plain>", 7, "plain.xml", NULL, 0);
+        printf("  plain read in handler: doc=%s\n", doc ? "yes" : "no");
+    } else {
+        doc = xmlCtxtReadMemory(inner, "<inner>", 7, "inner.xml", NULL, 0);
+        printf("  context read in handler: doc=%s inner wellFormed=%d"
+               " errNo=%d\n", doc ? "yes" : "no", inner->wellFormed,
+               inner->errNo);
+    }
+    xmlFreeDoc(doc);
+    nested_depth--;
+}
+
+static void put_context(const char *label, xmlParserCtxtPtr ctxt) {
+    const xmlError *error = xmlCtxtGetLastError(ctxt);
+
+    printf("  %s: wellFormed=%d errNo=%d last=", label, ctxt->wellFormed,
+           ctxt->errNo);
+    if (error == NULL)
+        puts("none");
+    else
+        printf("%d/%d level=%d file=%s own=%s\n", error->domain, error->code,
+               error->level, error->file ? error->file : "null",
+               error->ctxt == (void *)ctxt ? "ctxt" : "-");
+}
+
+static void test_nested(void) {
+    xmlParserCtxtPtr outer = xmlNewParserCtxt();
+    xmlDocPtr doc;
+
+    assert(outer != NULL);
+    xmlSetStructuredErrorFunc((void *)"global", global_handler);
+    xmlCtxtSetErrorHandler(outer, nested_handler, (void *)"outer");
+
+    puts("plain read in context handler:");
+    current = outer;
+    inner = NULL;
+    doc = xmlCtxtReadMemory(outer, "<a>", 3, "outer.xml", NULL, 0);
+    xmlFreeDoc(doc);
+    put_context("outer", outer);
+
+    puts("context read in context handler:");
+    inner = xmlNewParserCtxt();
+    assert(inner != NULL);
+    doc = xmlCtxtReadFile(outer, "/nonexistent-xml3/missing.xml", NULL, 0);
+    xmlFreeDoc(doc);
+    put_context("outer", outer);
+    put_context("inner", inner);
+    xmlFreeParserCtxt(inner);
+    inner = NULL;
+    xmlFreeParserCtxt(outer);
+    current = NULL;
+    xmlSetStructuredErrorFunc(NULL, NULL);
+}
+
 static void read_memory(const char *label, const char *text, int options) {
     xmlDocPtr doc;
 
@@ -119,6 +186,8 @@ int main(void) {
                  XML_PARSE_NOERROR);
     xmlFreeParserCtxt(ctxt);
     current = NULL;
+
+    test_nested();
 
     xmlSetStructuredErrorFunc(NULL, NULL);
     read_memory("handler removed", "<a>", 0);

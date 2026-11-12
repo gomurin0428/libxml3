@@ -1137,7 +1137,11 @@ that handler unless the context's options include `XML_PARSE_NOERROR`
 as libxml2's `xmlCtxtVErr` and `xmlVRaiseError` choose. The adapter calls
 the handler with the thread's last error record; an error published while
 the thread holds the DOM lock is copied and handed over once the lock is
-released, so a handler can call back into the library. `make test-handler`
+released, so a handler can call back into the library. During a context
+read each error is recorded for the context as it is published (its
+`lastError`, and its own error mark, from which `Parser.Contexts.After_Read`
+derives `wellFormed` and `errNo`), and no read is current while a handler
+runs, so reads made by a handler are not attributed to the outer context. `make test-handler`
 compares the calls with the pinned libxml2.
 
 `Save_Contexts` decides the `xmlsave.h` save context: which options are

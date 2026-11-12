@@ -59,19 +59,38 @@ package XML3_Errors is
        External_Name => "xmlSetStructuredErrorFunc";
 
    --  A read through a parser context: until End_Context_Read, published
-   --  errors name the context and go to its handler as Select_Handler
-   --  decides.  The previous read state is returned for nesting.
+   --  errors name the context, are copied into its lastError (Target) and
+   --  counted in its own error mark as they are published, as libxml2
+   --  records them in ctxt->lastError, and go to its handler as
+   --  Select_Handler decides.  While a handler runs, no read is current,
+   --  so the library calls it makes are not attributed to the context.
    type Context_Read is record
       Context : System.Address := System.Null_Address;
       Handler : Structured_Handler := null;
       Data : System.Address := System.Null_Address;
       Options : Interfaces.C.int := 0;
+      Target : System.Address := System.Null_Address;
+   end record;
+
+   --  The read's own error mark (XML3_Error_Records.Error_Mark from zero)
+   --  and whether a copy into its lastError failed.
+   type Read_Outcome is record
+      Serial, Fatal_Serial, Error_Serial : Interfaces.Unsigned_64 := 0;
+      Error_Code : Interfaces.C.int := 0;
+      Copy_Failed : Boolean := False;
+   end record;
+
+   --  The read state saved for nesting.
+   type Saved_Read is record
+      Read : Context_Read;
+      Outcome : Read_Outcome;
    end record;
 
    procedure Begin_Context_Read
-     (Read : Context_Read; Previous : out Context_Read);
+     (Read : Context_Read; Previous : out Saved_Read);
 
-   procedure End_Context_Read (Previous : Context_Read);
+   procedure End_Context_Read
+     (Previous : Saved_Read; Outcome : out Read_Outcome);
 
    --  Hands the errors published while this thread held the DOM lock to
    --  their handlers; called once the lock is released.

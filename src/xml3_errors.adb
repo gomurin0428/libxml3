@@ -234,6 +234,7 @@ package body XML3_Errors is
    --  Thread-local storage takes static initial values only, so the
    --  addresses are kept as integers.
    subtype Integer_Address is System.Storage_Elements.Integer_Address;
+   use type Integer_Address;
    function To_Address (Value : Integer_Address) return System.Address
      renames System.Storage_Elements.To_Address;
    function To_Integer (Value : System.Address) return Integer_Address
@@ -251,18 +252,49 @@ package body XML3_Errors is
      with Thread_Local_Storage;
    Reading_Options : Interfaces.C.int := 0
      with Thread_Local_Storage;
+   Reading_Target : Integer_Address := 0
+     with Thread_Local_Storage;
+   Read_Serial, Read_Fatal_Serial, Read_Error_Serial :
+     Interfaces.Unsigned_64 := 0
+     with Thread_Local_Storage;
+   Read_Error_Code : Interfaces.C.int := 0
+     with Thread_Local_Storage;
+   Read_Copy_Failed : Boolean := False
+     with Thread_Local_Storage;
+   --  A copy into a context's lastError is in progress (its own failure
+   --  must not copy again).
+   Copying : Boolean := False
+     with Thread_Local_Storage;
 
-   function Reading return Context_Read is
-     ((Context => To_Address (Reading_Context), Handler => Reading_Handler,
-       Data => To_Address (Reading_Data), Options => Reading_Options));
+   function Reading return Saved_Read is
+     ((Read =>
+         (Context => To_Address (Reading_Context), Handler => Reading_Handler,
+          Data => To_Address (Reading_Data), Options => Reading_Options,
+          Target => To_Address (Reading_Target)),
+       Outcome =>
+         (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
+          Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code,
+          Copy_Failed => Read_Copy_Failed)));
 
-   procedure Set_Reading (Read : Context_Read) is
+   procedure Set_Reading (Saved : Saved_Read) is
    begin
-      Reading_Context := To_Integer (Read.Context);
-      Reading_Handler := Read.Handler;
-      Reading_Data := To_Integer (Read.Data);
-      Reading_Options := Read.Options;
+      Reading_Context := To_Integer (Saved.Read.Context);
+      Reading_Handler := Saved.Read.Handler;
+      Reading_Data := To_Integer (Saved.Read.Data);
+      Reading_Options := Saved.Read.Options;
+      Reading_Target := To_Integer (Saved.Read.Target);
+      Read_Serial := Saved.Outcome.Serial;
+      Read_Fatal_Serial := Saved.Outcome.Fatal_Serial;
+      Read_Error_Serial := Saved.Outcome.Error_Serial;
+      Read_Error_Code := Saved.Outcome.Error_Code;
+      Read_Copy_Failed := Saved.Outcome.Copy_Failed;
    end Set_Reading;
+
+   No_Read : constant Saved_Read :=
+     (Read => (Context | Data | Target => System.Null_Address,
+               Handler => null, Options => 0),
+      Outcome => (Serial | Fatal_Serial | Error_Serial => 0,
+                  Error_Code => 0, Copy_Failed => False));
 
    procedure Set_Structured_Error_Func
      (Data : System.Address; Handler : Structured_Handler) is
@@ -272,16 +304,63 @@ package body XML3_Errors is
    end Set_Structured_Error_Func;
 
    procedure Begin_Context_Read
-     (Read : Context_Read; Previous : out Context_Read) is
+     (Read : Context_Read; Previous : out Saved_Read) is
    begin
       Previous := Reading;
-      Set_Reading (Read);
+      Set_Reading ((Read => Read, Outcome => No_Read.Outcome));
    end Begin_Context_Read;
 
-   procedure End_Context_Read (Previous : Context_Read) is
+   procedure End_Context_Read
+     (Previous : Saved_Read; Outcome : out Read_Outcome) is
    begin
+      Outcome := Reading.Outcome;
       Set_Reading (Previous);
    end End_Context_Read;
+
+   --  Records in the current context read the error just published (Level,
+   --  Code): its own mark advances and the record is copied into the
+   --  context's lastError.
+   procedure Note_Context (Level, Code : Interfaces.C.int) is
+      Mark : XML3_Error_Records.Error_Mark :=
+        (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
+         Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code);
+   begin
+      if Reading_Context = 0 or else Copying then
+         return;
+      end if;
+      Mark := XML3_Error_Records.Advanced (Mark, Level, Code);
+      Read_Serial := Mark.Serial;
+      Read_Fatal_Serial := Mark.Fatal_Serial;
+      Read_Error_Serial := Mark.Error_Serial;
+      Read_Error_Code := Mark.Error_Code;
+      if Reading_Target /= 0 then
+         Copying := True;
+         if Copy_Error (Get_Last_Error, To_Address (Reading_Target)) /= 0
+         then
+            Read_Copy_Failed := True;
+         end if;
+         Copying := False;
+      end if;
+   exception
+      when others =>
+         Copying := False;
+         Read_Copy_Failed := True;
+   end Note_Context;
+
+   --  Calls a handler with no context read current, so that what it does
+   --  is not attributed to the read that published the error.
+   procedure Call_Handler
+     (Handler : Structured_Handler; Data, Error : System.Address)
+   is
+      Saved : constant Saved_Read := Reading;
+   begin
+      Set_Reading (No_Read);
+      Handler (Data, Error);
+      Set_Reading (Saved);
+   exception
+      when others =>
+         Set_Reading (Saved);
+   end Call_Handler;
 
    --  Errors published while the thread held the DOM lock, with the
    --  handler chosen for each, in publication order.
@@ -327,7 +406,7 @@ package body XML3_Errors is
          return;
       end if;
       if not XML3_DOM_Lock.Held_By_Caller then
-         Handler (Data, Last);
+         Call_Handler (Handler, Data, Last);
          return;
       end if;
       declare
@@ -363,12 +442,7 @@ package body XML3_Errors is
          if Deferred_First = null then
             Deferred_Last := null;
          end if;
-         begin
-            Item.Handler (Item.Data, Item.Error'Address);
-         exception
-            when others =>
-               null;
-         end;
+         Call_Handler (Item.Handler, Item.Data, Item.Error'Address);
          Clear_Record (Item.Error);
          Free_Deferred (Item);
       end loop;
@@ -381,11 +455,14 @@ package body XML3_Errors is
       if State /= null then
          XML3_Error_Records.Install_Out_Of_Memory
            (State.all, Emergency_Message'Address);
+         State.Error.Ctxt := To_Address (Reading_Context);
       else
          XML3_Error_Records.Fill_Out_Of_Memory
            (Emergency_Error.all, Emergency_Message'Address);
+         Emergency_Error.Ctxt := To_Address (Reading_Context);
          Emergency_Active := True;
       end if;
+      Note_Context (XML3_Error_Records.Fatal_Level, XML3_OOM);
       Dispatch (XML3_Error_Records.Fatal_Level);
    exception
       when others =>
@@ -429,6 +506,7 @@ package body XML3_Errors is
       end if;
       XML3_Error_Records.Install (State.all, Replacement);
       Emergency_Active := False;
+      Note_Context (Level, Code);
       Dispatch (Level);
    exception
       when others =>

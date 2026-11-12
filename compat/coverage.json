@@ -2070,7 +2070,7 @@
   },
   "function:parser.h:xmlCtxtSetErrorHandler": {
     "implementation": "partial",
-    "scope": "Sets the error handler of a parser context; during its reads (xmlCtxtReadMemory, xmlCtxtReadDoc, xmlCtxtReadFile) errors name the context in their ctxt field and go to this handler unless the context's options include XML_PARSE_NOERROR (or XML_PARSE_NOWARNING for a warning), in which case the thread's structured handler hears them, as libxml2 decides in xmlCtxtVErr. NULL context is a no-op; a NULL handler removes it. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "scope": "Sets the error handler of a parser context; during its reads (xmlCtxtReadMemory, xmlCtxtReadDoc, xmlCtxtReadFile) errors name the context in their ctxt field and go to this handler unless the context's options include XML_PARSE_NOERROR (or XML_PARSE_NOWARNING for a warning), in which case the thread's structured handler hears them, as libxml2 decides in xmlCtxtVErr. Each error is recorded for the context when it is published (lastError, wellFormed and errNo), and while a handler runs no read is current, so a read the handler makes, plain or through another context, is not attributed to this context. NULL context is a no-op; a NULL handler removes it. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/handler-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
   },

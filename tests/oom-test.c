@@ -88,6 +88,16 @@ static void assert_error_copy(const xmlError *actual,
     assert(strcmp(actual->str3, source->str3) == 0);
 }
 
+/* The errors a context handler receives during the context-handler walk. */
+static int handled_errors;
+static int handled_foreign;
+
+static void oom_context_handler(void *data, const xmlError *error) {
+    handled_errors++;
+    if (error->ctxt != data)
+        handled_foreign++;
+}
+
 static const xmlError *require_oom_error(void) {
     const xmlError *error = xmlGetLastError();
     assert(error != NULL);
@@ -676,6 +686,28 @@ int main(int argc, char **argv) {
         xmlBufferFree(buf);
         xmlFreeDoc(doc);
         doc = NULL;
+    } else if (strcmp(operation, "context-handler") == 0) {
+        /* Every error a read publishes, an out-of-memory one included,
+         * names the context when its handler receives it. */
+        xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+        const xmlError *error;
+
+        assert(ctxt);
+        xmlCtxtSetErrorHandler(ctxt, oom_context_handler, ctxt);
+        handled_errors = handled_foreign = 0;
+        xml3_oom_enable(fail_index);
+        doc = xmlCtxtReadMemory(ctxt, "<r><c/>", 7, "h.xml", NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!doc);
+        assert(handled_errors >= 1 && handled_foreign == 0);
+        error = xmlCtxtGetLastError(ctxt);
+        assert(error && error->ctxt == (void *)ctxt);
+        assert(ctxt->wellFormed == 0 && ctxt->errNo == error->code);
+        if (!injected)
+            assert(error->code == 77);
+        xmlFreeParserCtxt(ctxt);
     } else if (strcmp(operation, "context-new") == 0) {
         xmlParserCtxtPtr ctxt;
 
