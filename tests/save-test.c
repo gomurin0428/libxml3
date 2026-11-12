@@ -184,9 +184,17 @@ static void test_flush(xmlDocPtr doc) {
     putchar('\n');
 
     /* Output of 4000 bytes or more reaches the buffer before a flush. */
-    big = xmlNewNode(NULL, BAD_CAST "big");
-    for (int i = 0; i < 600; ++i)
-        xmlNewChild(big, NULL, BAD_CAST "item", NULL);
+    {
+        /* One long text keeps the development build's contract checks
+         * cheap. */
+        static char content[4201];
+
+        memset(content, 'x', sizeof(content) - 1);
+        big = xmlNewNode(NULL, BAD_CAST "big");
+        assert(big != NULL);
+        assert(xmlNewTextChild(big, NULL, BAD_CAST "item",
+                               BAD_CAST content) != NULL);
+    }
     xmlBufferEmpty(buf);
     ctxt = xmlSaveToBuffer(buf, NULL, 0);
     assert(ctxt != NULL);
