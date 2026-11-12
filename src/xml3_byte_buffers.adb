@@ -1,4 +1,5 @@
 with System.Storage_Elements;
+with XML3_Text.Buffers;
 
 package body XML3_Byte_Buffers with SPARK_Mode is
    package Native renames XML3_Native_Memory;
@@ -392,6 +393,150 @@ package body XML3_Byte_Buffers with SPARK_Mode is
          Native.Free (Copy);
       end if;
    end Add_Quoted;
+
+   --  Appends Text through a native copy, since Add reads native bytes.
+   procedure Add_String
+     (B : in out Buffer; Text : String; Status : out Add_Status)
+   with Global => (In_Out => Native.Foreign_Memory),
+     Pre => Well_Formed (B),
+     Post => Well_Formed (B)
+   is
+      Copy : constant String (1 .. Text'Length) := Text;
+      Room : System.Address;
+   begin
+      Status := Added;
+      if Copy'Length = 0 then
+         return;
+      end if;
+      Native.Allocate (Native.Byte_Count (Copy'Length), Room);
+      if Room = System.Null_Address then
+         Status := No_Memory;
+         return;
+      end if;
+      Native.Write_String (Room, 0, Copy);
+      Add (B, Room, Copy'Length, Status);
+      Native.Free (Room);
+   end Add_String;
+
+   --  xmlSerializeHexCharRef: "&#x" and the hexadecimal digits of Value,
+   --  starting at the highest nonzero byte, or at its low nibble when the
+   --  high nibbles of the selected bytes are zero, then ";".
+   function Hex_Reference (Value : Natural) return String
+   with Global => null,
+     Pre => Value <= 16#10FFFF#
+   is
+      Hex : constant String := "0123456789ABCDEF";
+      Shift : Natural := 0;
+      Bits : Natural := Value;
+      Text : String (1 .. 10) := (others => ' ');
+      Length : Natural := 3;
+   begin
+      Text (1 .. 3) := "&#x";
+      if Bits / 16#10000# mod 16#100# /= 0 then
+         Shift := 16;
+         Bits := Bits / 16#10000# mod 16#100# * 16#10000#;
+      elsif Bits / 16#100# mod 16#100# /= 0 then
+         Shift := 8;
+         Bits := Bits / 16#100# mod 16#100# * 16#100#;
+      end if;
+      --  Bits & 0xF0F0F0
+      if Bits / 16#10# mod 16#10# /= 0
+        or else Bits / 16#1000# mod 16#10# /= 0
+        or else Bits / 16#100000# mod 16#10# /= 0
+      then
+         Shift := Shift + 4;
+      end if;
+      for Step in 0 .. 5 loop
+         pragma Loop_Invariant (Length = 3 + Step);
+         pragma Loop_Invariant (Shift <= 20);
+         Length := Length + 1;
+         Text (Length) := Hex (Value / 2 ** Shift mod 16 + 1);
+         exit when Shift < 4;
+         Shift := Shift - 4;
+      end loop;
+      Length := Length + 1;
+      Text (Length) := ';';
+      return Text (1 .. Length);
+   end Hex_Reference;
+
+   procedure Add_Attribute_Text
+     (B : in out Buffer; Source : System.Address; Length : Natural;
+      Ok : out Boolean)
+   is
+      Item : Character;
+      Index : Natural := 0;
+      Base : Natural := 0;
+      Code : Integer;
+      Width : Natural;
+      Status : Add_Status;
+      Segment : System.Address;
+   begin
+      Ok := True;
+      while Index < Length loop
+         pragma Loop_Invariant (Well_Formed (B));
+         pragma Loop_Invariant (Base <= Index and then Index < Length);
+         pragma Loop_Variant (Increases => Index);
+         Item := Native.Byte_At (Source, Index);
+         if Item in ASCII.HT | ASCII.LF | ASCII.CR | '"' | '&' | '<' | '>'
+           or else Character'Pos (Item) < 32
+           or else Character'Pos (Item) >= 128
+         then
+            if Index > Base then
+               Segment := Native.Offset (Source, Native.Byte_Count (Base));
+               if Segment /= System.Null_Address then
+                  Add (B, Segment, Index - Base, Status);
+                  Ok := Ok and then Status = Added;
+               end if;
+            end if;
+            if Character'Pos (Item) >= 128 then
+               Segment := Native.Offset (Source, Native.Byte_Count (Index));
+               if Segment = System.Null_Address then
+                  Code := -1;
+                  Width := 0;
+               else
+                  XML3_Text.Buffers.Get_UTF8_Char
+                    (Segment, Natural'Min (4, Length - Index), Code, Width);
+               end if;
+               if Code < 0 or else Width = 0 then
+                  Code := 16#FFFD#;
+                  Width := 1;
+               elsif Code in 16#FFFE# | 16#FFFF# then
+                  Code := 16#FFFD#;
+               end if;
+               Add_String (B, Hex_Reference (Code), Status);
+            else
+               Width := 1;
+               Add_String
+                 (B,
+                  (case Item is
+                     when ASCII.HT => "&#9;",
+                     when ASCII.LF => "&#10;",
+                     when ASCII.CR => "&#13;",
+                     when '"' => "&quot;",
+                     when '&' => "&amp;",
+                     when '<' => "&lt;",
+                     when '>' => "&gt;",
+                     when others => "&#xFFFD;"),
+                  Status);
+            end if;
+            Ok := Ok and then Status = Added;
+            exit when Width > Length - Index;
+            Index := Index + Width;
+            Base := Index;
+            exit when Index >= Length;
+         else
+            Index := Index + 1;
+            exit when Index >= Length;
+         end if;
+      end loop;
+      if Length > Base then
+         Segment := Native.Offset (Source, Native.Byte_Count (Base));
+         if Segment /= System.Null_Address then
+            Add (B, Segment, Length - Base, Status);
+            Ok := Ok and then Status = Added;
+         end if;
+      end if;
+   end Add_Attribute_Text;
 
    procedure Release (B : in out Buffer) is
    begin

@@ -204,6 +204,17 @@ int xmlSaveFormatFile(const char *filename, xmlDocPtr cur, int format);
 int xmlSaveFileEnc(const char *filename, xmlDocPtr cur, const char *encoding);
 int xmlSaveFormatFileEnc(const char *filename, xmlDocPtr cur,
                          const char *encoding, int format);
+xmlNodePtr xmlNewNodeEatName(xmlNsPtr ns, xmlChar *name);
+xmlNodePtr xmlNewDocNodeEatName(xmlDocPtr doc, xmlNsPtr ns, xmlChar *name,
+                                const xmlChar *content);
+xmlAttrPtr xmlNewNsPropEatName(xmlNodePtr node, xmlNsPtr ns, xmlChar *name,
+                               const xmlChar *value);
+xmlBufferAllocationScheme xmlGetBufferAllocationScheme(void);
+void xmlSetBufferAllocationScheme(xmlBufferAllocationScheme scheme);
+int xmlNodeBufGetContent(xmlBufferPtr buffer, const xmlNode *cur);
+void xmlAttrSerializeTxtContent(xmlBufferPtr buf, xmlDocPtr doc,
+                                xmlAttrPtr attr, const xmlChar *string);
+void xmlFreeNsList(xmlNsPtr cur);
 xmlAttrPtr xmlNewProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewDocProp(xmlDocPtr doc, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewNsProp(xmlNodePtr node, xmlNsPtr ns,

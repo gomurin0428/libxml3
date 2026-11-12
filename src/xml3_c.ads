@@ -168,6 +168,33 @@ package XML3_C is
       return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlSaveFormatFileEnc";
 
+   --  Creation that takes ownership of the name, buffer helpers and the
+   --  namespace list release.
+   function New_Node_Eat_Name (Ns, Name : System.Address)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlNewNodeEatName";
+   function New_Doc_Node_Eat_Name
+     (Doc, Ns, Name, Content : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewDocNodeEatName";
+   function New_Ns_Prop_Eat_Name
+     (Node, Ns, Name, Value : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlNewNsPropEatName";
+   function Get_Buffer_Allocation_Scheme return Interfaces.C.int
+     with Export, Convention => C,
+       External_Name => "xmlGetBufferAllocationScheme";
+   procedure Set_Buffer_Allocation_Scheme (Scheme : Interfaces.C.int)
+     with Export, Convention => C,
+       External_Name => "xmlSetBufferAllocationScheme";
+   function Node_Buf_Get_Content (Buffer, Node : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeBufGetContent";
+   procedure Attr_Serialize_Txt_Content
+     (Buffer, Doc, Attribute, Text : System.Address)
+     with Export, Convention => C,
+       External_Name => "xmlAttrSerializeTxtContent";
+   procedure Free_Ns_List (Ns : System.Address)
+     with Export, Convention => C, External_Name => "xmlFreeNsList";
+
    function New_Node
      (Ns, Name : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlNewNode";

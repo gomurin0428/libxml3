@@ -1470,6 +1470,146 @@ package body XML3_C is
      (Name, Doc, Encoding : System.Address) return Interfaces.C.int is
      (Save_Format_File_Enc (Name, Doc, Encoding, 0));
 
+   ------------------------------------------------------------------
+   --  Creation that takes ownership of the name: the node gets its own
+   --  copy, and the caller's name is released whether or not the node
+   --  could be made, as libxml2 releases it on failure (it keeps the
+   --  caller's pointer on success).
+   ------------------------------------------------------------------
+
+   function New_Node_Eat_Name (Ns, Name : System.Address)
+      return System.Address is
+     (New_Doc_Node_Eat_Name
+        (System.Null_Address, Ns, Name, System.Null_Address));
+
+   function New_Doc_Node_Eat_Name
+     (Doc, Ns, Name, Content : System.Address) return System.Address
+   is
+      Result : System.Address;
+   begin
+      if Refused (Guards.Node_Creation, Name /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Result := New_Doc_Node (Doc, Ns, Name, Content);
+      XML3_Native_Memory.Free (Name);
+      return Result;
+   end New_Doc_Node_Eat_Name;
+
+   function New_Ns_Prop_Eat_Name
+     (Node, Ns, Name, Value : System.Address) return System.Address
+   is
+      Result : System.Address;
+   begin
+      if Refused (Guards.Node_Creation, Name /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Result := New_Ns_Prop (Node, Ns, Name, Value);
+      XML3_Native_Memory.Free (Name);
+      return Result;
+   end New_Ns_Prop_Eat_Name;
+
+   --  Allocation schemes were removed in libxml2 2.15: the getter answers
+   --  XML_BUFFER_ALLOC_EXACT and the setter has no effect.
+   function Get_Buffer_Allocation_Scheme return Interfaces.C.int is (1);
+
+   procedure Set_Buffer_Allocation_Scheme (Scheme : Interfaces.C.int) is
+      pragma Unreferenced (Scheme);
+   begin
+      null;
+   end Set_Buffer_Allocation_Scheme;
+
+   function Node_Buf_Get_Content (Buffer, Node : System.Address)
+      return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok, Found : Boolean;
+      Text : System.Address;
+      Count : XML3_Text.Byte_Count := 0;
+      Status : Buffers.Add_Status := Buffers.Added;
+   begin
+      if Refused
+           (Guards.Node_Dump, Buffer /= System.Null_Address,
+            Node /= System.Null_Address)
+      then
+         return -1;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return -1;
+      end if;
+      Text := Node_Get_Content (Node);
+      if Text = System.Null_Address then
+         return -1;
+      end if;
+      XML3_Text.Buffers.Measure (Text, Count, Found);
+      if Found and then Count > 0 then
+         Buffers.Add (View, Text, Natural (Count), Status);
+         Write_Buffer (Buffer, View);
+      end if;
+      XML3_Native_Memory.Free (Text);
+      return (if Found and then Buffers.Add_Code (Status) = Buffers.OK_Code
+              then 0 else -1);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Node_Buf_Get_Content;
+
+   procedure Attr_Serialize_Txt_Content
+     (Buffer, Doc, Attribute, Text : System.Address)
+   is
+      pragma Unreferenced (Doc, Attribute);
+      View : Buffers.Buffer;
+      Ok, Found : Boolean;
+      Count : XML3_Text.Byte_Count;
+      Ignored : System.Address;
+   begin
+      if Refused
+           (Guards.Buffer_Append, Buffer /= System.Null_Address,
+            Text /= System.Null_Address)
+      then
+         return;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      XML3_Text.Buffers.Measure (Text, Count, Found);
+      if not Ok or else not Found then
+         return;
+      end if;
+      Buffers.Add_Attribute_Text (View, Text, Natural (Count), Ok);
+      if not Ok then
+         --  libxml2 drops the whole content when an addition fails.
+         Buffers.Detach (View, Ignored);
+         if Ignored /= System.Null_Address then
+            XML3_Native_Memory.Free (Ignored);
+         end if;
+      end if;
+      Write_Buffer (Buffer, View);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+   end Attr_Serialize_Txt_Content;
+
+   --  xmlFreeNsList: each declaration of the chain, as xmlFreeNs releases
+   --  it; the next link is read before the release.
+   procedure Free_Ns_List (Ns : System.Address) is
+      type C_Ns is record
+         Next : System.Address;
+      end record with Convention => C;
+      Current : System.Address := Ns;
+      Next : System.Address;
+   begin
+      for Step in 1 .. Natural'Last loop
+         exit when Current = System.Null_Address;
+         declare
+            Item : C_Ns with Import, Address => Current;
+         begin
+            Next := Item.Next;
+         end;
+         Free_Ns (Current);
+         Current := Next;
+      end loop;
+   end Free_Ns_List;
+
    function New_Node
       (Ns, Name : System.Address) return System.Address
    is

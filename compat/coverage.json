@@ -1731,5 +1731,53 @@
     "scope": "xmlReadFile without an encoding or options. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNodeEatName": {
+    "implementation": "partial",
+    "scope": "xmlNewDocNodeEatName without a document.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewDocNodeEatName": {
+    "implementation": "partial",
+    "scope": "Creates the element as xmlNewDocNode does and then releases the caller's name with xmlFree, whether or not the node could be made; NULL name returns NULL without releasing anything. Unlike libxml2, the node holds its own copy of the name rather than the caller's pointer (libxml2 also releases the name on failure). Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNewNsPropEatName": {
+    "implementation": "partial",
+    "scope": "Creates the attribute as xmlNewNsProp does and then releases the caller's name with xmlFree, whether or not the attribute could be made; NULL name returns NULL without releasing anything. The attribute holds its own copy of the name rather than the caller's pointer. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlGetBufferAllocationScheme": {
+    "implementation": "partial",
+    "scope": "Returns XML_BUFFER_ALLOC_EXACT, as libxml2 2.15 does since allocation schemes were removed.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSetBufferAllocationScheme": {
+    "implementation": "partial",
+    "scope": "No effect, as in libxml2 2.15.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeBufGetContent": {
+    "implementation": "partial",
+    "scope": "Appends the xmlNodeGetContent value of a managed node to an xmlBuffer through the SPARK XML3_Byte_Buffers operations; 0 on success, -1 for NULL arguments, an unusable buffer or a failure. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlAttrSerializeTxtContent": {
+    "implementation": "partial",
+    "scope": "Appends the text escaped as an attribute value (the SPARK XML3_Byte_Buffers.Add_Attribute_Text: &lt; &gt; &amp; &quot;, TAB/LF/CR as &#9; &#10; &#13;, other control characters as &#xFFFD;, and every non-ASCII character as an uppercase hexadecimal character reference, U+FFFD for malformed UTF-8 and U+FFFE/U+FFFF). The public xmlDoc has no encoding, so non-ASCII characters are always escaped, as libxml2 does for a document without an encoding. When an addition fails the buffer content is dropped, as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlFreeNsList": {
+    "implementation": "partial",
+    "scope": "Releases each declaration of the chain as xmlFreeNs does, reading the next link first; declarations attached to an element are refused by xmlFreeNs and stay in place. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

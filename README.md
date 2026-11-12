@@ -173,6 +173,14 @@ str1にファイル名、見つからない場合は警告、それ以外は致�
 公開 `xmlDoc` に `URL` フィールドがないこと、圧縮入力とネットワークURL、`xmlReadMemory` が受け付けない解析オプションは
 対象外です。解析コンテキストのAPI（`xmlNewParserCtxt`、`xmlCtxtReadMemory` など）は未対応です。
 
+`xmlNewNodeEatName`、`xmlNewDocNodeEatName`、`xmlNewNsPropEatName` は通常の生成と同じノードを作り、
+渡された名前を成否にかかわらず `xmlFree` で解放します（ノードは名前の複製を持ちます）。
+`xmlNodeBufGetContent` はノードの内容を、`xmlAttrSerializeTxtContent` は属性値としてエスケープした文字列を
+`xmlBuffer` に追加します。後者は libxml2 と同じく、文書にエンコーディングがない場合として非ASCII文字を
+16進の文字参照（不正なUTF-8は `&#xFFFD;`）にします。`xmlGetBufferAllocationScheme` /
+`xmlSetBufferAllocationScheme` は libxml2 2.15 と同じく固定値と何もしない関数、`xmlFreeNsList` は
+連結した名前空間宣言を順に解放します。
+
 `xmlBuffer` 系（`xmlBufferCreate`、`xmlBufferCreateSize`、`xmlBufferCreateStatic`、`xmlBufferFree`、
 `xmlBufferEmpty`、`xmlBufferShrink`、`xmlBufferGrow`、`xmlBufferResize`、`xmlBufferAdd`、`xmlBufferAddHead`、
 `xmlBufferCat`、`xmlBufferCCat`、`xmlBufferWriteCHAR`、`xmlBufferWriteChar`、`xmlBufferWriteQuotedString`、

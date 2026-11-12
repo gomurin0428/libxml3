@@ -513,6 +513,8 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlBufferContent xmlBufferLength xmlBufferDetach xmlBufferSetAllocationScheme xmlBufferDump \
 	xmlNodeDump xmlElemDump xmlDocDump xmlDocFormatDump xmlSaveFile xmlSaveFormatFile \
 	xmlSaveFileEnc xmlSaveFormatFileEnc xmlReadFile xmlParseFile \
+	xmlNewNodeEatName xmlNewDocNodeEatName xmlNewNsPropEatName xmlGetBufferAllocationScheme \
+	xmlSetBufferAllocationScheme xmlNodeBufGetContent xmlAttrSerializeTxtContent xmlFreeNsList \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
 	xmlGetNsList xmlGetNsListSafe \
 	xmlGetNsProp xmlGetNoNsProp xmlNodeGetAttrValue xmlFirstElementChild xmlLastElementChild xmlGetLastChild xmlNextElementSibling xmlPreviousElementSibling \

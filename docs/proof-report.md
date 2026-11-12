@@ -302,7 +302,11 @@ from the buffer itself stays valid: `Add` reads it before releasing the old
 block, and `Add_Head` and `Add_Quoted` work on a copy of text that lies in
 the block (`Inside`), since moving the content or appending a quote could
 overwrite or release it first. libxml2 reads such text after the move or
-the release. `XML3_Serialization.Render` now also serializes a
+the release. `Add_Attribute_Text` (`xmlAttrSerializeTxtContent`) escapes
+attribute text as libxml2's `xmlSerializeText` does for a document without
+an encoding; `Hex_Reference` reproduces `xmlSerializeHexCharRef`, including
+its choice of the first digit, and the loop over the text is bounded by a
+variant. `XML3_Serialization.Render` now also serializes a
 single node (`xmlNodeDump`): the node itself without a declaration, an
 attribute with its leading space, or a whole document; a separate
 `Nesting` counter bounds the descent while `Depth` adds the starting
@@ -477,7 +481,7 @@ The longest units take
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **14,732 checks, 1,837 by flow analysis and 12,895 by provers; 0
+Result: **14,802 checks, 1,849 by flow analysis and 12,953 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1145,7 +1149,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 695 entity
+The 698 entity
 summaries report 0 flow errors, 188 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1181,14 +1185,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 525 |
-| Initialization | 1,034 |
+| Data dependencies | 528 |
+| Initialization | 1,042 |
 | Non-aliasing | 1 |
-| Runtime checks | 6,137 |
-| Assertions | 1,802 |
-| Functional contracts | 4,881 |
-| Termination | 352 |
-| **Total** | **14,732** |
+| Runtime checks | 6,175 |
+| Assertions | 1,810 |
+| Functional contracts | 4,892 |
+| Termination | 354 |
+| **Total** | **14,802** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1920,8 +1924,8 @@ for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-4fb83004585973ed5d3e1c59b9b23269633c389dc38246adc9b03ce78072b78d  src/xml3_c.adb
-7ff1a2b2b552162bbe02383cf5e9368d0f1d9e1018f0b2c8b4e560f42b156ce0  src/xml3_c.ads
+73b54fdd4de9dd7033c9ba504a340dbe7d88166bed01a4af6ac247f06a45f7ef  src/xml3_c.adb
+7c14e29d675c35145a15039f5b46b9059d7fc8e6ef8c7dd0a2752677e85f1b2f  src/xml3_c.ads
 761e9039b44085882da827f41a953a48331b00a9eb784ada76d70362a88ef003  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
 c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml/entities.h
@@ -2000,8 +2004,8 @@ c2b4a1f34d55437337a9934733cd5123dc326b5e83c965df1c53947e76c9fb7f  src/xml3_parse
 b7d46e18cc71379fa2a02e5c5dec758b2d66bb6e21d31694a586f05b93a1619c  src/xml3_entry_guards.ads
 9098d98c40c85a401839f9e09fd3dab870757985bda1d9dc5a54212edb6175de  src/xml3_dom_store-copies.ads
 588c73ceb48578ab1fef8c169f6d75123067b14edc35702b37ec48e255d5f695  src/xml3_dom_store-copies.adb
-dd41f27dfdb4ef878b8b14feae082a3e1ef1667bfc7df8e2404c53fef9d425cc  src/xml3_byte_buffers.ads
-bed43f0bc00aded8b9f87d3391965411d53ed729ce6d1aea404064e949760b1b  src/xml3_byte_buffers.adb
+e173f0b2b834d7b0fdf2024c8198e5e3a1b569259f0d0e3d850c024cc3f9bc3c  src/xml3_byte_buffers.ads
+452e885ddf2a4598b0d18df3e3360011d29d905e220a3e14b5a3abc2bf78bbed  src/xml3_byte_buffers.adb
 7d2f71bd3d7fec7e838ce6c27113b7249e6d9343c79e02ff4d4575ac1c84ed7b  src/xml3_file_paths.ads
 b9b9d84b59941b17c1c0bd670c7e262669ad00a2296631e73d2e26d0ed19d578  src/xml3_file_paths.adb
 f0841ece62ede37ac2aeafb0e605bea88bfb2484781797b10a990baca9b02c6e  src/xml3_io_errors.ads
@@ -2014,11 +2018,11 @@ ef51236d3edd0dc04e8fa02c2d52315792ac053b5a4e68b021cd97f9063a80ee  src/xml3_parse
 8fb4f085a0ade03d03c58f9e0d50a5349f500479afd2ac7c59eeaefcc00f0302  src/xml3_text-qnames.ads
 c2f728b3a16edb4e8e591130e4a77da753e3f459430600428914b623bcc00cae  src/xml3_text-buffers.adb
 0135b3c7fb6f240713b5de5e49650d4b39a6977f3463f16dfa629d3c0c6da599  src/xml3_text-buffers.ads
-d450e48217f7fe20cf6e29510ef4eb849d1abce119d547bca052fa5bc9563139  include/libxml/tree.h
+47196fa55d73f1bfb337e5d631cea1bd9134937a5271e681b76205bb1f4af3f8  include/libxml/tree.h
 dd8e13d68bed61197b021ef6ab6d35b37e5ba01073015cdd490203fc2ae19e0b  include/libxml/xmlstring.h
 b6cd2373256c2ff14b017f246138b49c6c1837c6b39c44f5b4b4d8ed70da4ea8  proof.gpr
 5ad0affe7e6bcd3fbef62dae8cc27dbc3936a9a4485e4a34bddb65a054fc7431  libxml3.gpr
-6826696d2bb9921ce03bc744dbc338ef1053a9b2a628e72eec6666c9cc469feb  Makefile
+70e5657a7d0a24bbc03e1c48ea64e62da0fa44c48d487e349e11ee1f63a7c7de  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 dea2d5e25ab1ad7f69f07d678726fd21dfce1d136bdc48e0b512d99b4fbd24c4  tests/oom-test.c
@@ -2033,7 +2037,7 @@ ab0d3e69d2e51852e016d58237947b8b03d373d8e64283e3f0967b2016de4e38  tests/dom_brid
 0a6d4abeab3d664ef1079d74a125226a05d018473e503e329bcf0d0b9256a90b  tests/dom_bridge_test.gpr
 1c6e72ecf48a046d130676549fd36c78e834f49a2750ac73b3880a15ed328cee  tests/dom_bridge_facade.c
 de39b5a991725333eb8fe1ac485e641d5ad8ab58ecae6788f838c0268a25079e  tests/copy-test.c
-26ff0356fc451da66f239d1f987360af45ff5ffde7cf478279e25af283e766eb  tests/output-test.c
+bcfe6c992c1e40680aef3163590d7e46c6d3d2c96540849805866439a939d251  tests/output-test.c
 ffd91cf400eeec27207cf0a919a36cd615bbb3c10d5213b6d82516110992cc90  tests/input-test.c
 ```
 
