@@ -154,6 +154,23 @@ static const xmlError *require_oom_error(void) {
     return error;
 }
 
+/* For context-stopped: a callback input whose second read fails with
+ * XML_IO_UNKNOWN (a warning), and a handler that stops the parser. */
+static int oom_warning_read(void *context, char *buffer, int length) {
+    int *reads = context;
+    static const char text[] = "<r a='1'><c>t</c><d>u</d></r>";
+
+    if ((*reads)++ > 0 || length < (int)sizeof(text))
+        return -1;
+    memcpy(buffer, text, sizeof(text) - 1);
+    return (int)sizeof(text) - 1;
+}
+
+static void oom_stop_handler(void *data, const xmlError *error) {
+    (void)error;
+    xmlStopParser(data);
+}
+
 /* A callback input for read-io. */
 typedef struct {
     const char *text;
@@ -932,13 +949,15 @@ int main(int argc, char **argv) {
         xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
         xmlDocPtr bad;
         const xmlError *error;
-        int good_well_formed, good_errno;
+        int good_well_formed, good_errno, good_status, good_stopped;
 
         assert(ctxt);
         xml3_oom_enable(fail_index);
         doc = xmlCtxtReadMemory(ctxt, good, (int)strlen(good), NULL, NULL, 0);
         good_well_formed = ctxt->wellFormed;
         good_errno = ctxt->errNo;
+        good_status = xmlCtxtGetStatus(ctxt);
+        good_stopped = xmlCtxtIsStopped(ctxt);
         bad = xmlCtxtReadMemory(ctxt, "<r>", 3, "bad.xml", NULL,
                                 XML_PARSE_NOERROR);
         injected = xml3_oom_was_injected();
@@ -946,10 +965,13 @@ int main(int argc, char **argv) {
         xml3_oom_disable();
         if (doc != NULL) {
             assert(good_well_formed == 1 && good_errno == 0);
+            assert(good_status == 0 && !good_stopped);
             xmlFreeDoc(doc);
         } else {
             assert(injected);
             assert(good_well_formed == 0 && good_errno == XML_ERR_NO_MEMORY);
+            /* A memory failure is catastrophic and stops the parser. */
+            assert(good_status == 11 && good_stopped);
         }
         doc = NULL;
         assert(!bad && ctxt->wellFormed == 0);
@@ -960,8 +982,66 @@ int main(int argc, char **argv) {
             assert(error->code == 77 || error->code == XML_ERR_NO_MEMORY);
         else
             assert(error->code == 77 && error->line == 1);
+        assert(xmlCtxtIsStopped(ctxt));
+        assert(xmlCtxtGetStatus(ctxt) ==
+               (error->code == XML_ERR_NO_MEMORY ? 11 : 1));
         xmlCtxtReset(ctxt);
         assert(!xmlCtxtGetLastError(ctxt) && ctxt->wellFormed == 1);
+        xmlFreeParserCtxt(ctxt);
+    } else if (strcmp(operation, "context-warning") == 0) {
+        /* The warning of a failed callback read, copied into the context's
+         * lastError; a failed copy is a memory failure, which stops the
+         * parser and makes the status catastrophic. */
+        xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+        int reads = 0;
+
+        assert(ctxt);
+        xml3_oom_enable(fail_index);
+        doc = xmlCtxtReadIO(ctxt, oom_warning_read, NULL, &reads, NULL, NULL,
+                            0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!doc && ctxt->errNo == XML_ERR_NO_MEMORY);
+            assert(xmlCtxtIsStopped(ctxt) && xmlCtxtGetStatus(ctxt) == 11);
+        } else {
+            assert(doc && ctxt->errNo == 0 && !xmlCtxtIsStopped(ctxt));
+            assert(xmlCtxtGetLastError(ctxt)->code == 1500);
+            assert(xmlCtxtGetStatus(ctxt) == 0);
+            xmlFreeDoc(doc);
+        }
+        doc = NULL;
+        xmlFreeParserCtxt(ctxt);
+    } else if (strcmp(operation, "context-stopped") == 0) {
+        /* A handler stops the read on the warning of a failed callback
+         * read; the parse goes on, and a memory failure is still recorded
+         * as the catastrophic error it is. */
+        xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+        int reads = 0;
+        const xmlError *error;
+
+        assert(ctxt);
+        xmlCtxtSetErrorHandler(ctxt, oom_stop_handler, ctxt);
+        xml3_oom_enable(fail_index);
+        doc = xmlCtxtReadIO(ctxt, oom_warning_read, NULL, &reads, NULL, NULL,
+                            0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!doc && xmlCtxtIsStopped(ctxt) && ctxt->wellFormed == 0);
+        error = xmlCtxtGetLastError(ctxt);
+        assert(error);
+        if (injected) {
+            /* Wherever the failure falls, before or after the stop, the
+             * context records it. */
+            assert(ctxt->errNo == XML_ERR_NO_MEMORY);
+            assert(error->code == XML_ERR_NO_MEMORY);
+            assert(xmlCtxtGetStatus(ctxt) == 11);
+        } else {
+            assert(ctxt->errNo == 111 && error->code == 111);
+            assert(xmlCtxtGetStatus(ctxt) == 1);
+        }
         xmlFreeParserCtxt(ctxt);
     } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");

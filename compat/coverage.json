@@ -2561,7 +2561,7 @@
   },
   "function:parser.h:xmlCtxtIsStopped": {
     "implementation": "partial",
-    "scope": "Whether disableSAX is nonzero. The adapter keeps disableSAX beside the public fields; each error published during a read through the context updates it as the SPARK XML3_Parser.Contexts.After_Error decides (1 after a fatal error, 2 after a catastrophic error, a resource limit or an entity loop), xmlCtxtReset clears it and xmlStopParser sets 2. While it is 2 the read publishes no more errors but memory failures, as xmlCtxtVErr returns early for a stopped parser. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "scope": "Whether disableSAX is nonzero. The adapter keeps disableSAX beside the public fields; each error published during a read through the context updates it as the SPARK XML3_Parser.Contexts.After_Error decides (1 after a fatal error, 2 after a catastrophic error, a resource limit or an entity loop), xmlCtxtReset clears it and xmlStopParser sets 2. While it is 2 the read publishes no more errors but memory failures (which libxml2 reports through xmlCtxtErrMemory whatever the state), as xmlCtxtVErr returns early for a stopped parser; a failed copy of an error into lastError is such a memory failure and sets it to 2. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": [
       "tests/context-test.c",
       "tests/header-smoke.cpp"

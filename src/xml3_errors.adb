@@ -397,6 +397,18 @@ package body XML3_Errors is
             Target := XML3_Error_Records.Out_Of_Memory (System.Null_Address);
             Target.Ctxt := To_Address (Reading_Context);
             State := XML3_Parser.Contexts.After_Copy_Failure;
+            --  The memory failure stops the parser for good, as
+            --  xmlCtxtErrMemory does.
+            if Reading_Flags /= 0 then
+               declare
+                  Flags : XML3_Parser.Contexts.Parse_Flags
+                    with Import, Address => To_Address (Reading_Flags);
+               begin
+                  Flags := XML3_Parser.Contexts.After_Error
+                    (Flags, XML3_Error_Records.Memory_Domain,
+                     XML3_Error_Records.Fatal_Level, XML3_OOM);
+               end;
+            end if;
          end if;
          Copying := False;
          Well_Formed := State.Well_Formed;
@@ -612,7 +624,9 @@ package body XML3_Errors is
       Replacement : Error_Record := (others => <>);
       Success : Boolean;
    begin
-      if Reading_Stopped then
+      --  A stopped read publishes nothing more but memory failures, which
+      --  libxml2 reports through xmlCtxtErrMemory whatever the state.
+      if Code /= XML3_OOM and then Reading_Stopped then
          return;
       end if;
       Note (Level, Code);
