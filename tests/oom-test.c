@@ -636,6 +636,46 @@ int main(int argc, char **argv) {
             xmlFreeDoc(doc);
         }
         doc = NULL;
+    } else if (strcmp(operation, "save-context") == 0) {
+        /* Creating a save context, saving a document into its pending
+         * bytes and closing it each allocate.  A failure leaves no context
+         * (with the out-of-memory error), a -1 save, or a close that
+         * reports the failed write. */
+        static const char text[] = "<r a='1'><c>t\xc3\xa9</c><e/></r>";
+        xmlBufferPtr buf = xmlBufferCreate();
+        xmlSaveCtxtPtr ctxt;
+        long saved = -1;
+        int closed = -1;
+
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        assert(doc && buf);
+        /* Output this serializer cannot produce is refused up front. */
+        assert(!xmlSaveToBuffer(buf, NULL, XML_SAVE_XHTML));
+        assert(!xmlSaveToBuffer(buf, NULL, XML_SAVE_WSNONSIG));
+        assert(xmlGetLastError() && xmlGetLastError()->code == 115);
+        assert(!xmlSaveToBuffer(buf, "ISO-8859-1", 0));
+        assert(xmlGetLastError() && xmlGetLastError()->code == 32);
+        xml3_oom_enable(fail_index);
+        ctxt = xmlSaveToBuffer(buf, "UTF-8", XML_SAVE_FORMAT);
+        if (ctxt != NULL) {
+            saved = xmlSaveDoc(ctxt, doc);
+            closed = xmlSaveClose(ctxt);
+        }
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (!injected) {
+            assert(ctxt && saved == 0 && closed == xmlBufferLength(buf));
+            assert(strstr((const char *)xmlBufferContent(buf),
+                          "  <c>t\xc3\xa9</c>\n  <e/>\n") != NULL);
+        } else if (ctxt == NULL) {
+            require_oom_error();
+        } else {
+            assert(saved == -1 || closed == -1 || closed == xmlBufferLength(buf));
+        }
+        xmlBufferFree(buf);
+        xmlFreeDoc(doc);
+        doc = NULL;
     } else if (strcmp(operation, "context-new") == 0) {
         xmlParserCtxtPtr ctxt;
 

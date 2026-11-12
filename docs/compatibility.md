@@ -568,6 +568,28 @@ URIとしてアンエスケープし、`file:` URI は接頭辞の後をアン�
 - ファイル名は、正しいURI参照でなくてもアンエスケープします。シリアライズに失敗した場合はファイルを作りません。
 - シリアライザは整形式で書けない木（`--` を含むコメントなど）を拒否します（libxml2はそのまま書きます）。
 
+保存コンテキスト（`xmlsave.h`）の `xmlSaveToBuffer`、`xmlSaveToFd`、`xmlSaveToFilename`、`xmlSaveToIO` は、
+`xmlBuffer`、ファイル記述子、ファイル（作成時に作成・切り詰め、`-` なら標準出力）、アプリケーションの
+書き込み・クローズ関数へ出力するコンテキストを作ります。`xmlSaveDoc` / `xmlSaveTree` は文書またはノードを
+コンテキストのオプションでシリアライズし、`xmlSaveFlush`、`xmlSaveClose`、`xmlSaveFinish` で出力します。
+`XML_SAVE_FORMAT`、`XML_SAVE_NO_DECL`（XML宣言なし）、`XML_SAVE_NO_EMPTY`（`<a></a>`）、`XML_SAVE_NO_INDENT`、
+`xmlSaveSetIndentString`（1〜60バイトのインデント単位）に対応し、`XML_SAVE_AS_XML`、`XML_SAVE_NO_XHTML`、
+`XML_SAVE_EMPTY`、`XML_SAVE_INDENT` は既定の出力のままです。libxml2 と同じく、書いたバイトは保留され、
+4000バイト以上たまるか、フラッシュ・クローズの時点で出力先へ渡ります。各関数の戻り値（`xmlSaveFlush` の
+書き込みバイト数、`xmlSaveFinish` の `XML_IO_WRITE` などのエラーコード、クローズ関数の失敗）も libxml2 と
+同じ規則です。オプションの解釈、インデント文字列の可否、出力バッファの状態遷移はSPARKの
+`XML3_Save_Contexts` で決め、出力の形はシリアライザの `Output_Style` です。固定版2.15.4と同じ結果になることを
+`make test-save` で比較しています。libxml2との差は次のとおりです。
+- エンコーディングは指定なし（非ASCII文字を文字参照で書く）とUTF-8だけで、それ以外は libxml2 が未知の
+  エンコーディングを拒否するときと同じエラー（`XML_FROM_OUTPUT` / `XML_ERR_UNSUPPORTED_ENCODING`）で
+  コンテキストを作りません。
+- `XML_SAVE_XHTML`、`XML_SAVE_AS_HTML`、`XML_SAVE_FORMAT` なしの `XML_SAVE_WSNONSIG` は出力できないため、
+  `XML_FROM_OUTPUT` / `XML_ERR_ARGUMENT` でコンテキストを作りません。
+- libxml2 は細かい書き込みごとに4000バイトを確かめますが、libxml3 は保存1回の終わりに確かめます。
+  大きな出力では、フラッシュ前に出力先へ渡る量が異なる場合があります（最終的な出力は同じです）。
+- `xmlSaveSetEscape` / `xmlSaveSetAttrEscape` と、非推奨の `xmlSaveNoEmptyTags`、`xmlIndentTreeOutput`、
+  `xmlTreeIndentString` は対象外です。
+
 ### ノード・属性・文書のコピー
 
 `xmlCopyNode`、`xmlDocCopyNode`、`xmlCopyProp`、`xmlCopyDoc` は、SPARKの

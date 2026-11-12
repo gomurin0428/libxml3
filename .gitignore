@@ -88,3 +88,9 @@ tests/context-test-development
 tests/context-test-sanitize
 tests/context-test.out
 tests/context-test-reference.out
+tests/save-test
+tests/save-test-reference
+tests/save-test-development
+tests/save-test-sanitize
+tests/save-test.out
+tests/save-test-reference.out
