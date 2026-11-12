@@ -39,6 +39,8 @@ xmlDocPtr xmlReadFile(const char *filename, const char *encoding, int options);
 xmlDocPtr xmlParseFile(const char *filename);
 
 xmlParserCtxtPtr xmlNewParserCtxt(void);
+void xmlCtxtSetErrorHandler(xmlParserCtxtPtr ctxt,
+                            xmlStructuredErrorFunc handler, void *data);
 void xmlFreeParserCtxt(xmlParserCtxtPtr ctxt);
 void xmlCtxtReset(xmlParserCtxtPtr ctxt);
 int xmlCtxtUseOptions(xmlParserCtxtPtr ctxt, int options);

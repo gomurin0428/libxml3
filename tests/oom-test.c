@@ -88,6 +88,63 @@ static void assert_error_copy(const xmlError *actual,
     assert(strcmp(actual->str3, source->str3) == 0);
 }
 
+/* The errors a context handler receives during the context-handler walk. */
+static int handled_errors;
+static int handled_foreign;
+static int nested_checked;
+static xmlParserCtxtPtr nested_ctxt;
+
+static void oom_context_handler(void *data, const xmlError *error) {
+    handled_errors++;
+    if (error->ctxt != data)
+        handled_foreign++;
+    /* A read through another context from an out-of-memory handler is
+     * recorded for that context, even when the failed allocation was a
+     * copy into the outer context's lastError. */
+    if (error->code == XML_ERR_NO_MEMORY && nested_ctxt != NULL &&
+        !nested_checked) {
+        xmlDocPtr nested;
+
+        nested_checked = 1;
+        nested = xmlCtxtReadMemory(nested_ctxt, "<x>", 3, NULL, NULL,
+                                   XML_PARSE_NOERROR);
+        assert(!nested && nested_ctxt->wellFormed == 0);
+        assert(nested_ctxt->errNo == 77 && xmlCtxtGetLastError(nested_ctxt));
+    }
+}
+
+/* A thread handler that allocates while it handles a warning. */
+static int warning_handler_failed;
+
+static void allocating_handler(void *data, const xmlError *error) {
+    xmlChar *copy;
+
+    (void)data;
+    (void)error;
+    copy = xmlStrdup(BAD_CAST "handled");
+    if (copy == NULL)
+        warning_handler_failed = 1;
+    xmlFree(copy);
+}
+
+/* A thread handler whose own reads would replace the thread's record:
+ * the record it was handed must not change under it. */
+static int detached_changed;
+
+static void resetting_handler(void *data, const xmlError *error) {
+    int code = error->code, line = error->line;
+    xmlDocPtr nested;
+
+    (void)data;
+    xmlSetStructuredErrorFunc(NULL, NULL);
+    xmlResetLastError();
+    nested = xmlReadMemory("<n>\n</m>", 8, NULL, NULL, XML_PARSE_NOERROR);
+    xmlFreeDoc(nested);
+    if (error->code != code || error->line != line)
+        detached_changed = 1;
+    xmlSetStructuredErrorFunc(NULL, resetting_handler);
+}
+
 static const xmlError *require_oom_error(void) {
     const xmlError *error = xmlGetLastError();
     assert(error != NULL);
@@ -674,6 +731,67 @@ int main(int argc, char **argv) {
             assert(saved == -1 || closed == -1 || closed == xmlBufferLength(buf));
         }
         xmlBufferFree(buf);
+        xmlFreeDoc(doc);
+        doc = NULL;
+    } else if (strcmp(operation, "context-handler") == 0) {
+        /* Every error a read publishes, an out-of-memory one included,
+         * names the context when its handler receives it. */
+        xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+        const xmlError *error;
+
+        assert(ctxt);
+        nested_ctxt = xmlNewParserCtxt();
+        assert(nested_ctxt);
+        nested_checked = 0;
+        xmlCtxtSetErrorHandler(ctxt, oom_context_handler, ctxt);
+        handled_errors = handled_foreign = 0;
+        xml3_oom_enable(fail_index);
+        doc = xmlCtxtReadMemory(ctxt, "<r><c/>", 7, "h.xml", NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        assert(!doc);
+        assert(handled_errors >= 1 && handled_foreign == 0);
+        error = xmlCtxtGetLastError(ctxt);
+        assert(error && error->ctxt == (void *)ctxt);
+        assert(ctxt->wellFormed == 0 && ctxt->errNo == error->code);
+        if (!injected)
+            assert(error->code == 77);
+        xmlFreeParserCtxt(ctxt);
+        xmlFreeParserCtxt(nested_ctxt);
+        nested_ctxt = NULL;
+    } else if (strcmp(operation, "handler-detached") == 0) {
+        /* Whether or not the handler gets a copy of the record, its own
+         * reset and failing read do not change the record it holds. */
+        detached_changed = 0;
+        xmlSetStructuredErrorFunc(NULL, resetting_handler);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory("<r><c/>", 7, "d.xml", NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        xmlSetStructuredErrorFunc(NULL, NULL);
+        assert(!doc && !detached_changed);
+    } else if (strcmp(operation, "handler-warning") == 0) {
+        /* A failed allocation inside the handler of a warning does not
+         * change the result of the read that published it. */
+        static const unsigned char input[] = {
+            0xef, 0xbb, 0xbf, '<', '?', 'x', 'm', 'l', ' ',
+            'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '\'', '1', '.', '0',
+            '\'', ' ', 'e', 'n', 'c', 'o', 'd', 'i', 'n', 'g', '=', '\'',
+            'U', 'T', 'F', '-', '1', '6', '\'', '?', '>', '<', 'r', '/', '>'
+        };
+
+        warning_handler_failed = 0;
+        xmlSetStructuredErrorFunc(NULL, allocating_handler);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory((const char *)input, sizeof(input), NULL, NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        xmlSetStructuredErrorFunc(NULL, NULL);
+        if (!injected || warning_handler_failed)
+            assert(doc != NULL);
         xmlFreeDoc(doc);
         doc = NULL;
     } else if (strcmp(operation, "context-new") == 0) {

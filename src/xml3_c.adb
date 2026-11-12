@@ -652,13 +652,6 @@ package body XML3_C is
 
    package Contexts renames XML3_Parser.Contexts;
 
-   function Current_Mark return XML3_Error_Records.Error_Mark is
-      Mark : XML3_Error_Records.Error_Mark;
-   begin
-      XML3_Errors.Current_Mark
-        (Mark.Serial, Mark.Fatal_Serial, Mark.Error_Serial, Mark.Error_Code);
-      return Mark;
-   end Current_Mark;
 
    type Parser_Context is record
       Private_Data : System.Address;
@@ -667,6 +660,9 @@ package body XML3_C is
       Err_No : int;
       Options : int;
       Last_Error : aliased XML3_Error_Records.Error_Record;
+      --  Not in the public struct: the context's error handler.
+      Handler : XML3_Errors.Structured_Handler;
+      Handler_Data : System.Address;
    end record with Convention => C;
 
    function New_Parser_Ctxt return System.Address is
@@ -689,7 +685,9 @@ package body XML3_C is
             Well_Formed => Contexts.Clean.Well_Formed,
             Err_No => Contexts.Clean.Err_No,
             Options => Contexts.Initial_Options,
-            Last_Error => XML3_Error_Records.Empty_Record);
+            Last_Error => XML3_Error_Records.Empty_Record,
+            Handler => null,
+            Handler_Data => System.Null_Address);
       end;
       return Result;
    end New_Parser_Ctxt;
@@ -770,60 +768,54 @@ package body XML3_C is
       return Ctxt_Get_Options (Ctxt);
    end Prepare_Read;
 
-   --  Applies to the context what the read raised between the marks
-   --  Before and the current one, and copies the read's last error.
-   procedure Settle_Read
-     (Ctxt : System.Address; Before : XML3_Error_Records.Error_Mark)
+   --  Starts a read through Ctxt: xmlCtxtReset and xmlCtxtUseOptions, then
+   --  the errors published until Finish_Read are recorded for the context
+   --  and go to its handler.  Effective is the options the read uses.
+   procedure Start_Read
+     (Ctxt : System.Address; Options : int; Effective : out int;
+      Previous : out XML3_Errors.Saved_Read)
    is
-      Context : Parser_Context with Import, Address => Ctxt;
-      After : constant XML3_Error_Records.Error_Mark :=
-        Current_Mark;
-      State : Contexts.Context_State :=
-        Contexts.After_Read
-          ((Well_Formed => Context.Well_Formed, Err_No => Context.Err_No),
-           Before, After);
-      Last : System.Address;
    begin
-      if Contexts.Adopts (Before, After) then
-         Last := XML3_Errors.Get_Last_Error;
-         if Last /= System.Null_Address then
-            declare
-               Source : XML3_Error_Records.Error_Record
-                 with Import, Address => Last;
-            begin
-               --  libxml2 names the context in both records.
-               Source.Ctxt := Ctxt;
-            end;
-            if XML3_Errors.Copy_Error (Last, Context.Last_Error'Address) /= 0
-            then
-               XML3_Errors.Reset_Error (Context.Last_Error'Address);
-               Context.Last_Error :=
-                 XML3_Error_Records.Out_Of_Memory (System.Null_Address);
-               Context.Last_Error.Ctxt := Ctxt;
-               State := Contexts.After_Copy_Failure;
-            end if;
-         end if;
-      end if;
-      Context.Well_Formed := State.Well_Formed;
-      Context.Err_No := State.Err_No;
-   end Settle_Read;
+      Effective := Prepare_Read (Ctxt, Options);
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         XML3_Errors.Begin_Context_Read
+           ((Context => Ctxt, Handler => Context.Handler,
+             Data => Context.Handler_Data, Options => Effective,
+             Target => Context.Last_Error'Address,
+             Well_Formed => Context.Well_Formed'Address,
+             Err_No => Context.Err_No'Address),
+            Previous);
+      end;
+   end Start_Read;
+
+   --  Ends the read: the context's wellFormed, errNo and lastError were
+   --  updated as each error was published (XML3_Errors.Note_Context).
+   procedure Finish_Read
+     (Ctxt : System.Address; Previous : XML3_Errors.Saved_Read)
+   is
+      pragma Unreferenced (Ctxt);
+      Outcome : XML3_Errors.Read_Outcome;
+   begin
+      XML3_Errors.End_Context_Read (Previous, Outcome);
+   end Finish_Read;
 
    function Ctxt_Read_Memory
      (Ctxt, Buffer : System.Address; Size : int;
       URL, Encoding : System.Address; Options : int) return System.Address
    is
-      Before : XML3_Error_Records.Error_Mark;
       Code : XML3_Parser.Statuses.Public_Status;
       Result : System.Address;
+      Effective : int;
+      Previous : XML3_Errors.Saved_Read;
    begin
       if Refused (Guards.Context_Use, Ctxt /= System.Null_Address)
         or else Size < 0
       then
          return System.Null_Address;
       end if;
-      Before := Current_Mark;
-      declare
-         Effective : constant int := Prepare_Read (Ctxt, Options);
+      Start_Read (Ctxt, Options, Effective, Previous);
       begin
          Result := Parse_Buffer (Buffer, Size, URL, Encoding, Effective, Code);
       exception
@@ -834,7 +826,7 @@ package body XML3_C is
             Report_Failure (Parser_Exception, URL);
             Result := System.Null_Address;
       end;
-      Settle_Read (Ctxt, Before);
+      Finish_Read (Ctxt, Previous);
       return Result;
    end Ctxt_Read_Memory;
 
@@ -842,15 +834,16 @@ package body XML3_C is
      (Ctxt, Cur, URL, Encoding : System.Address; Options : int)
       return System.Address
    is
-      Before : XML3_Error_Records.Error_Mark;
       Result : System.Address;
+      Effective : int;
+      Previous : XML3_Errors.Saved_Read;
    begin
       if Refused (Guards.Context_Use, Ctxt /= System.Null_Address) then
          return System.Null_Address;
       end if;
-      Before := Current_Mark;
-      Result := Read_Doc (Cur, URL, Encoding, Prepare_Read (Ctxt, Options));
-      Settle_Read (Ctxt, Before);
+      Start_Read (Ctxt, Options, Effective, Previous);
+      Result := Read_Doc (Cur, URL, Encoding, Effective);
+      Finish_Read (Ctxt, Previous);
       return Result;
    end Ctxt_Read_Doc;
 
@@ -858,17 +851,34 @@ package body XML3_C is
      (Ctxt, Name, Encoding : System.Address; Options : int)
       return System.Address
    is
-      Before : XML3_Error_Records.Error_Mark;
       Result : System.Address;
+      Effective : int;
+      Previous : XML3_Errors.Saved_Read;
    begin
       if Refused (Guards.Context_Use, Ctxt /= System.Null_Address) then
          return System.Null_Address;
       end if;
-      Before := Current_Mark;
-      Result := Read_File_Input (Name, Encoding, Prepare_Read (Ctxt, Options));
-      Settle_Read (Ctxt, Before);
+      Start_Read (Ctxt, Options, Effective, Previous);
+      Result := Read_File_Input (Name, Encoding, Effective);
+      Finish_Read (Ctxt, Previous);
       return Result;
    end Ctxt_Read_File;
+
+   procedure Ctxt_Set_Error_Handler
+     (Ctxt : System.Address; Handler : XML3_Errors.Structured_Handler;
+      Data : System.Address)
+   is
+   begin
+      if Refused (Guards.Context_Use, Ctxt /= System.Null_Address) then
+         return;
+      end if;
+      declare
+         Context : Parser_Context with Import, Address => Ctxt;
+      begin
+         Context.Handler := Handler;
+         Context.Handler_Data := Data;
+      end;
+   end Ctxt_Set_Error_Handler;
 
    function Ctxt_Get_Last_Error (Ctxt : System.Address) return System.Address
    is

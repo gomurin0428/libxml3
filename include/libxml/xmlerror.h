@@ -173,6 +173,11 @@ typedef enum {
     XML_NS_ERR_COLON = 205
 } xmlParserErrors;
 
+/* Receives each published error, as libxml2 calls it: from the thread
+ * that published it, with the error record. */
+typedef void (*xmlStructuredErrorFunc)(void *userData, const xmlError *error);
+
+void xmlSetStructuredErrorFunc(void *ctx, xmlStructuredErrorFunc handler);
 const xmlError *xmlGetLastError(void);
 void xmlResetLastError(void);
 void xmlResetError(xmlError *error);

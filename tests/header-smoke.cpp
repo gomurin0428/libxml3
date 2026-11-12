@@ -205,6 +205,12 @@ int main() {
     (void)save_finish;
     (void)save_set_indent;
     (void)save_options;
+    void (*set_structured)(void *, xmlStructuredErrorFunc) =
+        xmlSetStructuredErrorFunc;
+    void (*ctxt_set_handler)(xmlParserCtxt *, xmlStructuredErrorFunc, void *) =
+        xmlCtxtSetErrorHandler;
+    (void)set_structured;
+    (void)ctxt_set_handler;
     {
         xmlParserCtxt context;
         context._private = nullptr;

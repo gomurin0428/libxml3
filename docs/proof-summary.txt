@@ -4,18 +4,18 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               552           552                                       .           .          .
+Data Dependencies               554           554                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
 Initialization                 1050          1050                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                6196             .     6196 (CVC5 35%, Trivial 0%, Z3 65%)           .          .
+Run-time Checks                6198             .     6198 (CVC5 35%, Trivial 0%, Z3 65%)           .          .
 Assertions                     1810             .    1810 (CVC5 21%, Trivial 11%, Z3 69%)           .          .
-Functional Contracts           4906             .     4906 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
+Functional Contracts           4907             .     4907 (CVC5 29%, Trivial 3%, Z3 68%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     376           300                   76 (CVC5 36%, Z3 64%)           .          .
+Termination                     378           302                   76 (CVC5 36%, Z3 64%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         14891    1903 (13%)                             12988 (87%)           .          .
+Total                         14898    1907 (13%)                             12991 (87%)           .          .
 
 
 max steps used for successful proof: 787963
@@ -536,22 +536,24 @@ in unit xml3_entry_guards, 3 subprograms and packages out of 3 analyzed
   XML3_Entry_Guards at xml3_entry_guards.ads:3 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Entry_Guards.Admit at xml3_entry_guards.ads:202 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Entry_Guards.Diagnostic_For at xml3_entry_guards.ads:232 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-in unit xml3_error_records, 15 subprograms and packages out of 15 analyzed
+in unit xml3_error_records, 17 subprograms and packages out of 17 analyzed
   XML3_Error_Records at xml3_error_records.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Error_Records.Advanced at xml3_error_records.ads:143 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Clear_Slot at xml3_error_records.ads:82 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Clone at xml3_error_records.ads:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Advanced at xml3_error_records.ads:144 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Clear_Slot at xml3_error_records.ads:83 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Clone at xml3_error_records.ads:52 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Error_Records.Copy_Field at xml3_error_records.adb:27 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Decide_Copy at xml3_error_records.ads:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Error_Records.Fill_Out_Of_Memory at xml3_error_records.ads:94 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Decide_Copy at xml3_error_records.ads:108 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Error_Records.Fill_Out_Of_Memory at xml3_error_records.ads:95 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Error_Records.Free_Pointer at xml3_error_records.adb:6 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Install at xml3_error_records.ads:88 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Install_Out_Of_Memory at xml3_error_records.ads:99 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Out_Of_Memory at xml3_error_records.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Error_Records.Release at xml3_error_records.ads:46 flow analyzed (0 errors, 0 checks, 5 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Error_Records.Same_Metadata at xml3_error_records.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Error_Records.Same_String_Presence at xml3_error_records.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Error_Records.Select_Last_Error at xml3_error_records.ads:119 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Error_Records.Install at xml3_error_records.ads:89 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Install_Out_Of_Memory at xml3_error_records.ads:100 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Option_Bits at xml3_error_records.ads:174 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Error_Records.Out_Of_Memory at xml3_error_records.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Error_Records.Release at xml3_error_records.ads:47 flow analyzed (0 errors, 0 checks, 5 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Same_Metadata at xml3_error_records.ads:31 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Error_Records.Same_String_Presence at xml3_error_records.ads:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Error_Records.Select_Handler at xml3_error_records.ads:181 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Error_Records.Select_Last_Error at xml3_error_records.ads:120 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
 in unit xml3_file_paths, 7 subprograms and packages out of 7 analyzed
   XML3_File_Paths at xml3_file_paths.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_File_Paths.Has_Scheme at xml3_file_paths.adb:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)

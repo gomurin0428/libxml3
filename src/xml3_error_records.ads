@@ -8,6 +8,7 @@ package XML3_Error_Records with SPARK_Mode is
    use type System.Address;
    use type Interfaces.C.int;
    use type Interfaces.Unsigned_64;
+   use type Interfaces.Unsigned_32;
 
    type Error_Record is record
       Domain  : Interfaces.C.int := 0;
@@ -157,4 +158,40 @@ package XML3_Error_Records with SPARK_Mode is
          and then (Advanced'Result.Error_Serial /= Mark.Error_Serial)
                     = (Level >= Error_Level
                        and then Mark.Error_Serial /= Mark.Serial + 1);
+
+   --  Which structured handler hears a published error, as libxml2's
+   --  xmlCtxtVErr and xmlVRaiseError choose: during a read through a parser
+   --  context with an error handler (xmlCtxtSetErrorHandler), that handler,
+   --  unless the context's options include XML_PARSE_NOERROR, or the error
+   --  is a warning and they include XML_PARSE_NOWARNING; otherwise the
+   --  thread's handler (xmlSetStructuredErrorFunc), if any.
+   type Handler_Choice is (No_Handler, Context_Handler, Global_Handler);
+
+   No_Error_Option : constant Interfaces.Unsigned_32 := 16#20#;
+   No_Warning_Option : constant Interfaces.Unsigned_32 := 16#40#;
+   Warning_Level : constant Interfaces.C.int := 1;
+
+   function Option_Bits (Options : Interfaces.C.int)
+     return Interfaces.Unsigned_32
+   is
+     (if Options >= 0 then Interfaces.Unsigned_32 (Options)
+      else Interfaces.Unsigned_32 (Long_Long_Integer (Options) + 2 ** 32))
+     with Global => null;
+
+   function Select_Handler
+     (Context_Set : Boolean; Options : Interfaces.C.int;
+      Level : Interfaces.C.int; Global_Set : Boolean) return Handler_Choice
+   is
+     (if Context_Set
+        and then (Option_Bits (Options) and No_Error_Option) = 0
+        and then (Level /= Warning_Level
+                  or else (Option_Bits (Options) and No_Warning_Option) = 0)
+      then Context_Handler
+      elsif Global_Set then Global_Handler
+      else No_Handler)
+     with Global => null,
+       Post => (if Select_Handler'Result = Context_Handler then Context_Set)
+         and then (if Select_Handler'Result = Global_Handler then Global_Set)
+         and then (if Select_Handler'Result = No_Handler
+                   then not Global_Set);
 end XML3_Error_Records;
