@@ -5,6 +5,7 @@ xmlAddChild
 xmlAddNextSibling
 xmlAddPrevSibling
 xmlAddSibling
+xmlAllocOutputBuffer
 xmlAttrSerializeTxtContent
 xmlBufferAdd
 xmlBufferAddHead
@@ -168,6 +169,7 @@ xmlNodeAddContent
 xmlNodeAddContentLen
 xmlNodeBufGetContent
 xmlNodeDump
+xmlNodeDumpOutput
 xmlNodeGetAttrValue
 xmlNodeGetContent
 xmlNodeGetLang
@@ -181,6 +183,17 @@ xmlNodeSetLang
 xmlNodeSetName
 xmlNodeSetSpacePreserve
 xmlNormalizeURIPath
+xmlOutputBufferClose
+xmlOutputBufferCreateBuffer
+xmlOutputBufferCreateFd
+xmlOutputBufferCreateFile
+xmlOutputBufferCreateFilename
+xmlOutputBufferCreateIO
+xmlOutputBufferFlush
+xmlOutputBufferGetContent
+xmlOutputBufferGetSize
+xmlOutputBufferWrite
+xmlOutputBufferWriteString
 xmlParseDoc
 xmlParseFile
 xmlParseMemory
@@ -206,10 +219,12 @@ xmlSaveClose
 xmlSaveDoc
 xmlSaveFile
 xmlSaveFileEnc
+xmlSaveFileTo
 xmlSaveFinish
 xmlSaveFlush
 xmlSaveFormatFile
 xmlSaveFormatFileEnc
+xmlSaveFormatFileTo
 xmlSaveSetIndentString
 xmlSaveToBuffer
 xmlSaveToFd

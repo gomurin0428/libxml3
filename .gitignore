@@ -119,3 +119,7 @@ tests/memory-test
 tests/memory-test-reference
 tests/memory-test.out
 tests/memory-test-reference.out
+tests/output-buffer-test
+tests/output-buffer-test-reference
+tests/output-buffer-test.out
+tests/output-buffer-test-reference.out

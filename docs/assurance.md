@@ -1195,7 +1195,11 @@ write always leaves an error, the byte count never decreases, a close
 result is negative exactly when an error is held); calling the target
 (an `xmlBuffer`, a descriptor, a file or the application's callbacks) is
 the adapter's. `make test-save` compares the output and the results with
-the pinned libxml2.
+the pinned libxml2. The output buffers of `xmlIO.h` (`xmlOutputBuffer*`,
+`xmlNodeDumpOutput`, `xmlSaveFileTo`) are the same output channel as a save
+context, with the same `Save_Contexts` decisions and two more targets (a
+caller's `FILE` stream and none, for a memory buffer); `make
+test-output-buffer` compares them with the pinned libxml2.
 
 `Parser.Contexts` decides what the reduced `xmlParserCtxt` stores: the
 initial options, the option masks of `xmlCtxtUseOptions` and

@@ -107,6 +107,88 @@ package XML3_C is
       Options : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtReadIO";
 
+   --  The output callbacks of xmlSaveToIO and xmlOutputBufferCreateIO.
+   type Output_Write_Callback is access function
+     (Context, Data : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int
+     with Convention => C;
+   type Output_Close_Callback is access function
+     (Context : System.Address) return Interfaces.C.int
+     with Convention => C;
+
+   function Alloc_Output_Buffer (Encoder : System.Address)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlAllocOutputBuffer";
+
+   function Output_Buffer_Create_IO
+     (Write : Output_Write_Callback; Close : Output_Close_Callback;
+      Context, Encoder : System.Address) return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferCreateIO";
+
+   function Output_Buffer_Create_Buffer
+     (Buffer, Encoder : System.Address) return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferCreateBuffer";
+
+   function Output_Buffer_Create_Fd
+     (Fd : Interfaces.C.int; Encoder : System.Address) return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferCreateFd";
+
+   function Output_Buffer_Create_File
+     (Stream, Encoder : System.Address) return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferCreateFile";
+
+   function Output_Buffer_Create_Filename
+     (URI, Encoder : System.Address; Compression : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferCreateFilename";
+
+   function Output_Buffer_Write
+     (Output : System.Address; Length : Interfaces.C.int;
+      Data : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlOutputBufferWrite";
+
+   function Output_Buffer_Write_String
+     (Output, Text : System.Address) return Interfaces.C.int
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferWriteString";
+
+   function Output_Buffer_Flush (Output : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlOutputBufferFlush";
+
+   function Output_Buffer_Close (Output : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlOutputBufferClose";
+
+   function Output_Buffer_Get_Content (Output : System.Address)
+      return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferGetContent";
+
+   function Output_Buffer_Get_Size (Output : System.Address)
+      return Interfaces.C.size_t
+     with Export, Convention => C,
+       External_Name => "xmlOutputBufferGetSize";
+
+   procedure Node_Dump_Output
+     (Output, Doc, Node : System.Address; Level, Format : Interfaces.C.int;
+      Encoding : System.Address)
+     with Export, Convention => C, External_Name => "xmlNodeDumpOutput";
+
+   function Save_File_To (Output, Doc, Encoding : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFileTo";
+
+   function Save_Format_File_To
+     (Output, Doc, Encoding : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFormatFileTo";
+
    function Ctxt_Get_Private (Ctxt : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtGetPrivate";
 
@@ -863,15 +945,6 @@ package XML3_C is
 
    function URI_Escape (Text : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlURIEscape";
-
-   --  The output callbacks of xmlSaveToIO.
-   type Output_Write_Callback is access function
-     (Context, Data : System.Address; Length : Interfaces.C.int)
-      return Interfaces.C.int
-     with Convention => C;
-   type Output_Close_Callback is access function
-     (Context : System.Address) return Interfaces.C.int
-     with Convention => C;
 
    function Save_To_Buffer
      (Buffer, Encoding : System.Address; Options : Interfaces.C.int)

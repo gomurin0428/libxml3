@@ -232,6 +232,54 @@ int main() {
     (void)save_to_filename;
     (void)save_to_buffer;
     (void)save_to_io;
+    xmlOutputBufferPtr (*alloc_output)(xmlCharEncodingHandlerPtr) =
+        xmlAllocOutputBuffer;
+    xmlOutputBufferPtr (*output_create_io)(
+        xmlOutputWriteCallback, xmlOutputCloseCallback, void *,
+        xmlCharEncodingHandlerPtr) = xmlOutputBufferCreateIO;
+    xmlOutputBufferPtr (*output_create_buffer)(
+        xmlBufferPtr, xmlCharEncodingHandlerPtr) = xmlOutputBufferCreateBuffer;
+    xmlOutputBufferPtr (*output_create_fd)(int, xmlCharEncodingHandlerPtr) =
+        xmlOutputBufferCreateFd;
+    xmlOutputBufferPtr (*output_create_file)(FILE *,
+                                             xmlCharEncodingHandlerPtr) =
+        xmlOutputBufferCreateFile;
+    xmlOutputBufferPtr (*output_create_filename)(
+        const char *, xmlCharEncodingHandlerPtr, int) =
+        xmlOutputBufferCreateFilename;
+    int (*output_write)(xmlOutputBufferPtr, int, const char *) =
+        xmlOutputBufferWrite;
+    int (*output_write_string)(xmlOutputBufferPtr, const char *) =
+        xmlOutputBufferWriteString;
+    int (*output_flush)(xmlOutputBufferPtr) = xmlOutputBufferFlush;
+    int (*output_close)(xmlOutputBufferPtr) = xmlOutputBufferClose;
+    const xmlChar *(*output_content)(xmlOutputBufferPtr) =
+        xmlOutputBufferGetContent;
+    size_t (*output_size)(xmlOutputBufferPtr) = xmlOutputBufferGetSize;
+    void (*node_dump_output)(xmlOutputBufferPtr, xmlDocPtr, xmlNodePtr, int,
+                             int, const char *) = xmlNodeDumpOutput;
+    int (*save_file_to)(xmlOutputBufferPtr, xmlDocPtr, const char *) =
+        xmlSaveFileTo;
+    int (*save_format_file_to)(xmlOutputBufferPtr, xmlDocPtr, const char *,
+                               int) = xmlSaveFormatFileTo;
+    xmlOutputBuffer output_fields = {nullptr, nullptr, nullptr, nullptr,
+                                     nullptr, nullptr, 0, 0};
+    (void)alloc_output;
+    (void)output_create_io;
+    (void)output_create_buffer;
+    (void)output_create_fd;
+    (void)output_create_file;
+    (void)output_create_filename;
+    (void)output_write;
+    (void)output_write_string;
+    (void)output_flush;
+    (void)output_close;
+    (void)output_content;
+    (void)output_size;
+    (void)node_dump_output;
+    (void)save_file_to;
+    (void)save_format_file_to;
+    (void)output_fields;
     (void)save_doc;
     (void)save_tree;
     (void)save_flush;
