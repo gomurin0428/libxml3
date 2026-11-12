@@ -768,35 +768,6 @@ package body XML3_C is
       return Ctxt_Get_Options (Ctxt);
    end Prepare_Read;
 
-   --  Applies to the context what its read published, as each error was
-   --  recorded for it (XML3_Errors.Note_Context): a fatal error clears
-   --  wellFormed, the last error of level XML_ERR_ERROR or above sets
-   --  errNo, and a failed copy into lastError leaves the out-of-memory
-   --  record there.
-   procedure Settle_Read
-     (Ctxt : System.Address; Outcome : XML3_Errors.Read_Outcome)
-   is
-      Context : Parser_Context with Import, Address => Ctxt;
-      Start : constant XML3_Error_Records.Error_Mark := (0, 0, 0, 0);
-      State : Contexts.Context_State :=
-        Contexts.After_Read
-          ((Well_Formed => Context.Well_Formed, Err_No => Context.Err_No),
-           Start,
-           (Serial => Outcome.Serial, Fatal_Serial => Outcome.Fatal_Serial,
-            Error_Serial => Outcome.Error_Serial,
-            Error_Code => Outcome.Error_Code));
-   begin
-      if Outcome.Copy_Failed then
-         XML3_Errors.Reset_Error (Context.Last_Error'Address);
-         Context.Last_Error :=
-           XML3_Error_Records.Out_Of_Memory (System.Null_Address);
-         Context.Last_Error.Ctxt := Ctxt;
-         State := Contexts.After_Copy_Failure;
-      end if;
-      Context.Well_Formed := State.Well_Formed;
-      Context.Err_No := State.Err_No;
-   end Settle_Read;
-
    --  Starts a read through Ctxt: xmlCtxtReset and xmlCtxtUseOptions, then
    --  the errors published until Finish_Read are recorded for the context
    --  and go to its handler.  Effective is the options the read uses.
@@ -812,18 +783,22 @@ package body XML3_C is
          XML3_Errors.Begin_Context_Read
            ((Context => Ctxt, Handler => Context.Handler,
              Data => Context.Handler_Data, Options => Effective,
-             Target => Context.Last_Error'Address),
+             Target => Context.Last_Error'Address,
+             Well_Formed => Context.Well_Formed'Address,
+             Err_No => Context.Err_No'Address),
             Previous);
       end;
    end Start_Read;
 
+   --  Ends the read: the context's wellFormed, errNo and lastError were
+   --  updated as each error was published (XML3_Errors.Note_Context).
    procedure Finish_Read
      (Ctxt : System.Address; Previous : XML3_Errors.Saved_Read)
    is
+      pragma Unreferenced (Ctxt);
       Outcome : XML3_Errors.Read_Outcome;
    begin
       XML3_Errors.End_Context_Read (Previous, Outcome);
-      Settle_Read (Ctxt, Outcome);
    end Finish_Read;
 
    function Ctxt_Read_Memory

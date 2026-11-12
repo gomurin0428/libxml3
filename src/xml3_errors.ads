@@ -62,7 +62,8 @@ package XML3_Errors is
    --  errors name the context, are copied into its lastError (Target) and
    --  counted in its own error mark as they are published, as libxml2
    --  records them in ctxt->lastError, and go to its handler as
-   --  Select_Handler decides.  While a handler runs, no read is current,
+   --  Select_Handler decides; the handler receives the context's
+   --  lastError, which reads made by the handler do not change.  While a handler runs, no read is current,
    --  so the library calls it makes are not attributed to the context.
    type Context_Read is record
       Context : System.Address := System.Null_Address;
@@ -70,6 +71,9 @@ package XML3_Errors is
       Data : System.Address := System.Null_Address;
       Options : Interfaces.C.int := 0;
       Target : System.Address := System.Null_Address;
+      --  The context's wellFormed and errNo, updated as each error is
+      --  published, before its handler is called (as xmlCtxtVErr does).
+      Well_Formed, Err_No : System.Address := System.Null_Address;
    end record;
 
    --  The read's own error mark (XML3_Error_Records.Error_Mark from zero)

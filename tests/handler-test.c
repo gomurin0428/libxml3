@@ -41,6 +41,9 @@ static void global_handler(void *data, const xmlError *error) {
 
 static void context_handler(void *data, const xmlError *error) {
     put_error((const char *)data, error);
+    if (current != NULL)
+        printf("  in handler: wellFormed=%d errNo=%d\n", current->wellFormed,
+               current->errNo);
 }
 
 /* A context handler that parses malformed XML itself: with a plain read,
@@ -50,11 +53,14 @@ static int nested_depth;
 
 static void nested_handler(void *data, const xmlError *error) {
     xmlDocPtr doc;
+    int code = error->code, line = error->line;
 
     put_error((const char *)data, error);
     if (nested_depth > 0)
         return;
     nested_depth++;
+    printf("  in handler: wellFormed=%d errNo=%d\n", current->wellFormed,
+           current->errNo);
     if (inner == NULL) {
         doc = xmlReadMemory("<plain>", 7, "plain.xml", NULL, 0);
         printf("  plain read in handler: doc=%s\n", doc ? "yes" : "no");
@@ -65,6 +71,9 @@ static void nested_handler(void *data, const xmlError *error) {
                inner->errNo);
     }
     xmlFreeDoc(doc);
+    /* The record handed to the handler is not replaced by its own reads. */
+    printf("  record kept: %s\n",
+           error->code == code && error->line == line ? "yes" : "no");
     nested_depth--;
 }
 

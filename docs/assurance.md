@@ -1140,8 +1140,11 @@ the thread holds the DOM lock is copied and handed over once the lock is
 released, so a handler can call back into the library. During a context
 read each error is recorded for the context as it is published (its
 `lastError`, and its own error mark, from which `Parser.Contexts.After_Read`
-derives `wellFormed` and `errNo`), and no read is current while a handler
-runs, so reads made by a handler are not attributed to the outer context. `make test-handler`
+derives `wellFormed` and `errNo`) before its handler is called, the handler
+receives the context's `lastError` (outside a context read, a copy of the
+thread's record), and no read is current while a handler runs, so reads
+made by a handler neither are attributed to the outer context nor change
+the record it is reading. `make test-handler`
 compares the calls with the pinned libxml2.
 
 `Save_Contexts` decides the `xmlsave.h` save context: which options are

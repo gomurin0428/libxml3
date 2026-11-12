@@ -4,6 +4,7 @@ with System.Storage_Elements;
 with XML3_Diagnostic_Messages;
 with XML3_DOM_Lock;
 with XML3_Error_Records;
+with XML3_Parser.Contexts;
 with XML3_Text;
 
 package body XML3_Errors is
@@ -254,6 +255,11 @@ package body XML3_Errors is
      with Thread_Local_Storage;
    Reading_Target : Integer_Address := 0
      with Thread_Local_Storage;
+   Reading_Well_Formed, Reading_Err_No : Integer_Address := 0
+     with Thread_Local_Storage;
+   --  The error just published was copied into the context's lastError.
+   Target_Current : Boolean := False
+     with Thread_Local_Storage;
    Read_Serial, Read_Fatal_Serial, Read_Error_Serial :
      Interfaces.Unsigned_64 := 0
      with Thread_Local_Storage;
@@ -270,7 +276,9 @@ package body XML3_Errors is
      ((Read =>
          (Context => To_Address (Reading_Context), Handler => Reading_Handler,
           Data => To_Address (Reading_Data), Options => Reading_Options,
-          Target => To_Address (Reading_Target)),
+          Target => To_Address (Reading_Target),
+          Well_Formed => To_Address (Reading_Well_Formed),
+          Err_No => To_Address (Reading_Err_No)),
        Outcome =>
          (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
           Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code,
@@ -283,6 +291,9 @@ package body XML3_Errors is
       Reading_Data := To_Integer (Saved.Read.Data);
       Reading_Options := Saved.Read.Options;
       Reading_Target := To_Integer (Saved.Read.Target);
+      Reading_Well_Formed := To_Integer (Saved.Read.Well_Formed);
+      Reading_Err_No := To_Integer (Saved.Read.Err_No);
+      Target_Current := False;
       Read_Serial := Saved.Outcome.Serial;
       Read_Fatal_Serial := Saved.Outcome.Fatal_Serial;
       Read_Error_Serial := Saved.Outcome.Error_Serial;
@@ -291,7 +302,8 @@ package body XML3_Errors is
    end Set_Reading;
 
    No_Read : constant Saved_Read :=
-     (Read => (Context | Data | Target => System.Null_Address,
+     (Read => (Context | Data | Target | Well_Formed | Err_No =>
+                 System.Null_Address,
                Handler => null, Options => 0),
       Outcome => (Serial | Fatal_Serial | Error_Serial => 0,
                   Error_Code => 0, Copy_Failed => False));
@@ -321,30 +333,57 @@ package body XML3_Errors is
    --  Code): its own mark advances and the record is copied into the
    --  context's lastError.
    procedure Note_Context (Level, Code : Interfaces.C.int) is
-      Mark : XML3_Error_Records.Error_Mark :=
+      Old : constant XML3_Error_Records.Error_Mark :=
         (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
          Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code);
+      Mark : XML3_Error_Records.Error_Mark;
+      State : XML3_Parser.Contexts.Context_State;
    begin
+      Target_Current := False;
       if Reading_Context = 0 or else Copying then
          return;
       end if;
-      Mark := XML3_Error_Records.Advanced (Mark, Level, Code);
+      Mark := XML3_Error_Records.Advanced (Old, Level, Code);
       Read_Serial := Mark.Serial;
       Read_Fatal_Serial := Mark.Fatal_Serial;
       Read_Error_Serial := Mark.Error_Serial;
       Read_Error_Code := Mark.Error_Code;
-      if Reading_Target /= 0 then
+      if Reading_Well_Formed = 0 or else Reading_Err_No = 0
+        or else Reading_Target = 0
+      then
+         return;
+      end if;
+      declare
+         Well_Formed : Interfaces.C.int
+           with Import, Address => To_Address (Reading_Well_Formed);
+         Err_No : Interfaces.C.int
+           with Import, Address => To_Address (Reading_Err_No);
+         Target : Error_Record
+           with Import, Address => To_Address (Reading_Target);
+      begin
+         State := XML3_Parser.Contexts.After_Read
+           ((Well_Formed => Well_Formed, Err_No => Err_No), Old, Mark);
          Copying := True;
-         if Copy_Error (Get_Last_Error, To_Address (Reading_Target)) /= 0
-         then
+         if Copy_Error (Get_Last_Error, To_Address (Reading_Target)) = 0 then
+            Target_Current := True;
+         else
+            --  The context records the failed copy as xmlCtxtErrMemory
+            --  does.
             Read_Copy_Failed := True;
+            Clear_Record (Target);
+            Target := XML3_Error_Records.Out_Of_Memory (System.Null_Address);
+            Target.Ctxt := To_Address (Reading_Context);
+            State := XML3_Parser.Contexts.After_Copy_Failure;
          end if;
          Copying := False;
-      end if;
+         Well_Formed := State.Well_Formed;
+         Err_No := State.Err_No;
+      end;
    exception
       when others =>
          Copying := False;
          Read_Copy_Failed := True;
+         Target_Current := False;
    end Note_Context;
 
    --  Calls a handler with no context read current, so that what it does
@@ -401,12 +440,32 @@ package body XML3_Errors is
             Handler := Global_Handler;
             Data := To_Address (Global_Data);
       end case;
-      Last := Get_Last_Error;
+      --  A context read hands over the context's lastError; otherwise a
+      --  copy of the thread's record, which reads made by the handler
+      --  would replace.
+      Last := (if Reading_Context /= 0 and then Target_Current
+               then To_Address (Reading_Target) else Get_Last_Error);
       if Last = System.Null_Address then
          return;
       end if;
       if not XML3_DOM_Lock.Held_By_Caller then
-         Call_Handler (Handler, Data, Last);
+         if Last = To_Address (Reading_Target) then
+            Call_Handler (Handler, Data, Last);
+         else
+            declare
+               Copy : aliased Error_Record := (others => <>);
+               Success : Boolean;
+            begin
+               XML3_Error_Records.Clone
+                 (Error_Conversion.To_Pointer (Last).all, Copy, Success);
+               if Success then
+                  Call_Handler (Handler, Data, Copy'Address);
+                  Clear_Record (Copy);
+               else
+                  Call_Handler (Handler, Data, Last);
+               end if;
+            end;
+         end if;
          return;
       end if;
       declare
