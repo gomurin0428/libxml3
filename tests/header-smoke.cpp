@@ -149,6 +149,16 @@ int main() {
     xmlDoc *(*parse_file)(const char *) = xmlParseFile;
     (void)read_file;
     (void)parse_file;
+    xmlNode *(*new_node_eat_name)(xmlNs *, xmlChar *) = xmlNewNodeEatName;
+    int (*node_buf_get_content)(xmlBuffer *, const xmlNode *) =
+        xmlNodeBufGetContent;
+    void (*attr_serialize)(xmlBuffer *, xmlDoc *, xmlAttr *, const xmlChar *) =
+        xmlAttrSerializeTxtContent;
+    void (*free_ns_list)(xmlNs *) = xmlFreeNsList;
+    (void)new_node_eat_name;
+    (void)node_buf_get_content;
+    (void)attr_serialize;
+    (void)free_ns_list;
     xmlChar *(*build_qname)(const xmlChar *, const xmlChar *, xmlChar *, int) = xmlBuildQName;
     (void)build_qname;
     xmlChar *(*split_copy)(const xmlChar *, xmlChar **) = xmlSplitQName2;

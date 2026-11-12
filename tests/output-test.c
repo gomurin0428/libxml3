@@ -278,6 +278,75 @@ static void test_streams_and_files(void) {
     xmlFreeDoc(doc);
 }
 
+static void test_tree_helpers(void) {
+    static const char text[] =
+        "<r xmlns:p='urn:p'><c a='v'>x<d>y</d>z</c><!--k--></r>";
+    xmlDocPtr doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    xmlNodePtr c = root->children;
+    xmlBufferPtr buf = xmlBufferCreate();
+    xmlNodePtr node;
+    xmlAttrPtr attr;
+    xmlNsPtr ns;
+
+    printf("allocation scheme=%d\n", (int)xmlGetBufferAllocationScheme());
+    xmlSetBufferAllocationScheme(XML_BUFFER_ALLOC_DOUBLEIT);
+    printf("allocation scheme after set=%d\n",
+           (int)xmlGetBufferAllocationScheme());
+
+    printf("node content: %d %d %d %d\n",
+           xmlNodeBufGetContent(buf, c), xmlNodeBufGetContent(buf, root),
+           xmlNodeBufGetContent(buf, (xmlNodePtr)c->properties),
+           xmlNodeBufGetContent(buf, root->last));
+    put_buffer("node content", buf);
+    printf("node content null: %d %d\n", xmlNodeBufGetContent(NULL, c),
+           xmlNodeBufGetContent(buf, NULL));
+    xmlBufferEmpty(buf);
+
+    xmlAttrSerializeTxtContent(buf, NULL, NULL,
+        BAD_CAST "a<b>&\"c'd\te\nf\rg\x01h\xc3\xa9i\xe2\x82\xac"
+                 "j\xf0\x9f\x98\x80k\xffl\xef\xbf\xbem");
+    put_buffer("attribute text", buf);
+    xmlAttrSerializeTxtContent(buf, NULL, NULL, NULL);
+    xmlAttrSerializeTxtContent(NULL, NULL, NULL, BAD_CAST "x");
+    put_buffer("attribute text after null", buf);
+    xmlBufferFree(buf);
+
+    node = xmlNewNodeEatName(NULL, xmlStrdup(BAD_CAST "eaten"));
+    printf("eat name node: %s\n", node ? (const char *)node->name : "null");
+    xmlFreeNode(node);
+    node = xmlNewDocNodeEatName(doc, NULL, xmlStrdup(BAD_CAST "eaten-doc"),
+                                BAD_CAST "t&amp;");
+    printf("eat name doc node: %s doc=%s content=", (const char *)node->name,
+           node->doc == doc ? "doc" : "other");
+    {
+        xmlChar *content = xmlNodeGetContent(node);
+        printf("%s\n", (const char *)content);
+        xmlFree(content);
+    }
+    xmlFreeNode(node);
+    printf("eat name null: %s %s\n",
+           xmlNewNodeEatName(NULL, NULL) ? "node" : "null",
+           xmlNewDocNodeEatName(doc, NULL, NULL, NULL) ? "node" : "null");
+    ns = xmlSearchNs(doc, root, BAD_CAST "p");
+    attr = xmlNewNsPropEatName(c, ns, xmlStrdup(BAD_CAST "q"), BAD_CAST "1");
+    printf("eat name prop: %s ns=%s value=", (const char *)attr->name,
+           attr->ns ? (const char *)attr->ns->prefix : "none");
+    {
+        xmlChar *value = xmlGetNsProp(c, BAD_CAST "q", BAD_CAST "urn:p");
+        printf("%s\n", (const char *)value);
+        xmlFree(value);
+    }
+    printf("eat name prop null: %s\n",
+           xmlNewNsPropEatName(c, ns, NULL, NULL) ? "attr" : "null");
+
+    ns = xmlNewNs(NULL, BAD_CAST "urn:free", BAD_CAST "f");
+    xmlFreeNsList(ns);
+    xmlFreeNsList(NULL);
+    puts("free ns list done");
+    xmlFreeDoc(doc);
+}
+
 int main(void) {
     char cwd[256];
 
@@ -287,6 +356,7 @@ int main(void) {
     test_buffers();
     test_node_dumps();
     test_streams_and_files();
+    test_tree_helpers();
     assert(rmdir(directory) == 0);
     puts("output tests passed");
     return 0;

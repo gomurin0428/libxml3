@@ -4,46 +4,49 @@ Summary of SPARK analysis
 ----------------------------------------------------------------------------------------------------------------
 SPARK Analysis results        Total          Flow                                 Provers   Justified   Unproved
 ----------------------------------------------------------------------------------------------------------------
-Data Dependencies               525           525                                       .           .          .
+Data Dependencies               528           528                                       .           .          .
 Flow Dependencies                 .             .                                       .           .          .
-Initialization                 1034          1034                                       .           .          .
+Initialization                 1042          1042                                       .           .          .
 Non-Aliasing                      1             1                                       .           .          .
-Run-time Checks                6137             .     6137 (CVC5 34%, Trivial 0%, Z3 66%)           .          .
-Assertions                     1802             .    1802 (CVC5 20%, Trivial 11%, Z3 69%)           .          .
-Functional Contracts           4881             .     4881 (CVC5 29%, Trivial 3%, Z3 69%)           .          .
+Run-time Checks                6175             .     6175 (CVC5 35%, Trivial 0%, Z3 65%)           .          .
+Assertions                     1810             .    1810 (CVC5 21%, Trivial 11%, Z3 69%)           .          .
+Functional Contracts           4892             .     4892 (CVC5 29%, Trivial 3%, Z3 69%)           .          .
 LSP Verification                  .             .                                       .           .          .
-Termination                     352           277                   75 (CVC5 35%, Z3 65%)           .          .
+Termination                     354           278                   76 (CVC5 36%, Z3 64%)           .          .
 Concurrency                       .             .                                       .           .          .
 ----------------------------------------------------------------------------------------------------------------
-Total                         14732    1837 (12%)                             12895 (88%)           .          .
+Total                         14802    1849 (12%)                             12953 (88%)           .          .
 
 
 max steps used for successful proof: 787963
 
 Analyzed 46 units
-in unit xml3_byte_buffers, 23 subprograms and packages out of 23 analyzed
+in unit xml3_byte_buffers, 26 subprograms and packages out of 26 analyzed
   XML3_Byte_Buffers at xml3_byte_buffers.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Add at xml3_byte_buffers.ads:54 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
-  XML3_Byte_Buffers.Add_Code at xml3_byte_buffers.ads:109 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Byte_Buffers.Add_Attribute_Text at xml3_byte_buffers.ads:107 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
+  XML3_Byte_Buffers.Add_Code at xml3_byte_buffers.ads:123 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Add_Head at xml3_byte_buffers.ads:64 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Byte_Buffers.Add_Head_Code at xml3_byte_buffers.ads:113 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
-  XML3_Byte_Buffers.Add_Head_Unaliased at xml3_byte_buffers.adb:158 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
+  XML3_Byte_Buffers.Add_Head_Code at xml3_byte_buffers.ads:127 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  XML3_Byte_Buffers.Add_Head_Unaliased at xml3_byte_buffers.adb:159 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (21 checks)
   XML3_Byte_Buffers.Add_Quoted at xml3_byte_buffers.ads:94 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
-  XML3_Byte_Buffers.Add_Quoted_Unaliased at xml3_byte_buffers.adb:253 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
-  XML3_Byte_Buffers.Add_Quoted_Unaliased.Add_Segment at xml3_byte_buffers.adb:290 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Byte_Buffers.Add_Quoted_Unaliased.Add_Text at xml3_byte_buffers.adb:267 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
+  XML3_Byte_Buffers.Add_Quoted_Unaliased at xml3_byte_buffers.adb:254 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (17 checks)
+  XML3_Byte_Buffers.Add_Quoted_Unaliased.Add_Segment at xml3_byte_buffers.adb:291 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Byte_Buffers.Add_Quoted_Unaliased.Add_Text at xml3_byte_buffers.adb:268 flow analyzed (0 errors, 0 checks, 1 warnings and 0 pragma Assume statements) and proved (9 checks)
+  XML3_Byte_Buffers.Add_String at xml3_byte_buffers.adb:398 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (9 checks)
   XML3_Byte_Buffers.Content at xml3_byte_buffers.ads:30 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
   XML3_Byte_Buffers.Create at xml3_byte_buffers.ads:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
   XML3_Byte_Buffers.Detach at xml3_byte_buffers.ads:85 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
   XML3_Byte_Buffers.Empty at xml3_byte_buffers.ads:78 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
   XML3_Byte_Buffers.Grow at xml3_byte_buffers.ads:45 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (7 checks)
-  XML3_Byte_Buffers.Grown_Size at xml3_byte_buffers.adb:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
-  XML3_Byte_Buffers.Inside at xml3_byte_buffers.adb:338 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
-  XML3_Byte_Buffers.Move_Bytes at xml3_byte_buffers.adb:17 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
-  XML3_Byte_Buffers.Move_To_New_Block at xml3_byte_buffers.adb:50 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
-  XML3_Byte_Buffers.Release at xml3_byte_buffers.ads:118 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Byte_Buffers.Grown_Size at xml3_byte_buffers.adb:38 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  XML3_Byte_Buffers.Hex_Reference at xml3_byte_buffers.adb:424 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (28 checks)
+  XML3_Byte_Buffers.Inside at xml3_byte_buffers.adb:339 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Byte_Buffers.Move_Bytes at xml3_byte_buffers.adb:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  XML3_Byte_Buffers.Move_To_New_Block at xml3_byte_buffers.adb:51 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  XML3_Byte_Buffers.Release at xml3_byte_buffers.ads:132 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
   XML3_Byte_Buffers.Shrink at xml3_byte_buffers.ads:72 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
-  XML3_Byte_Buffers.Snapshot at xml3_byte_buffers.adb:349 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  XML3_Byte_Buffers.Snapshot at xml3_byte_buffers.adb:350 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
   XML3_Byte_Buffers.Well_Formed at xml3_byte_buffers.ads:24 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
 in unit xml3_diagnostic_codes, 6 subprograms and packages out of 6 analyzed
   XML3_Diagnostic_Codes at xml3_diagnostic_codes.ads:7 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)

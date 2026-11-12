@@ -98,6 +98,20 @@ package XML3_Byte_Buffers with SPARK_Mode is
        and then (Length = 0 or else Source /= System.Null_Address),
      Post => Well_Formed (B);
 
+   --  xmlAttrSerializeTxtContent for a document without an encoding: the
+   --  text escaped as an attribute value, with every non-ASCII character
+   --  (U+FFFD for malformed UTF-8 and for U+FFFE / U+FFFF) and every
+   --  control character other than TAB, LF and CR written as a
+   --  hexadecimal character reference.  Ok is False when an addition
+   --  failed.
+   procedure Add_Attribute_Text
+     (B : in out Buffer; Source : System.Address; Length : Natural;
+      Ok : out Boolean)
+   with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
+     Pre => Well_Formed (B)
+       and then (Length = 0 or else Source /= System.Null_Address),
+     Post => Well_Formed (B);
+
    --  The int results of xmlBufferAdd and xmlBufferAddHead: libxml2
    --  answers XML_ERR_OK, XML_ERR_ARGUMENT for a missing buffer or string
    --  and XML_ERR_NO_MEMORY, except that xmlBufferAddHead answers -1 when
