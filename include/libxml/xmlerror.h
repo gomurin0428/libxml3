@@ -177,6 +177,8 @@ const xmlError *xmlGetLastError(void);
 void xmlResetLastError(void);
 void xmlResetError(xmlError *error);
 int xmlCopyError(const xmlError *from, xmlError *to);
+const xmlError *xmlCtxtGetLastError(void *ctx);
+void xmlCtxtResetLastError(void *ctx);
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,4 @@
+with Interfaces;
 with Interfaces.C;
 with System;
 with XML3_Native_Memory;
@@ -6,6 +7,7 @@ with XML3_Text;
 package XML3_Error_Records with SPARK_Mode is
    use type System.Address;
    use type Interfaces.C.int;
+   use type Interfaces.Unsigned_64;
 
    type Error_Record is record
       Domain  : Interfaces.C.int := 0;
@@ -122,4 +124,37 @@ package XML3_Error_Records with SPARK_Mode is
       elsif Emergency_Active then Emergency_Record
       else No_Error)
      with Global => null;
+
+   --  What a thread has raised so far.  Every published error advances
+   --  Serial; Fatal_Serial and Error_Serial are the serials of the last
+   --  error of level XML_ERR_FATAL and of level XML_ERR_ERROR or above, and
+   --  Error_Code is the code of the latter.  A parser context compares the
+   --  marks taken before and after a read.
+   type Error_Mark is record
+      Serial : Interfaces.Unsigned_64 := 0;
+      Fatal_Serial : Interfaces.Unsigned_64 := 0;
+      Error_Serial : Interfaces.Unsigned_64 := 0;
+      Error_Code : Interfaces.C.int := 0;
+   end record;
+
+   Error_Level : constant Interfaces.C.int := 2;
+
+   --  The mark after an error of Level and Code is published.
+   function Advanced
+     (Mark : Error_Mark; Level, Code : Interfaces.C.int) return Error_Mark
+   is
+     ((Serial => Mark.Serial + 1,
+       Fatal_Serial =>
+         (if Level >= Fatal_Level then Mark.Serial + 1 else Mark.Fatal_Serial),
+       Error_Serial =>
+         (if Level >= Error_Level then Mark.Serial + 1 else Mark.Error_Serial),
+       Error_Code => (if Level >= Error_Level then Code else Mark.Error_Code)))
+     with Global => null,
+       Post => Advanced'Result.Serial /= Mark.Serial
+         and then (Advanced'Result.Fatal_Serial /= Mark.Fatal_Serial)
+                    = (Level >= Fatal_Level
+                       and then Mark.Fatal_Serial /= Mark.Serial + 1)
+         and then (Advanced'Result.Error_Serial /= Mark.Error_Serial)
+                    = (Level >= Error_Level
+                       and then Mark.Error_Serial /= Mark.Serial + 1);
 end XML3_Error_Records;

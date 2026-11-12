@@ -636,6 +636,62 @@ int main(int argc, char **argv) {
             xmlFreeDoc(doc);
         }
         doc = NULL;
+    } else if (strcmp(operation, "context-new") == 0) {
+        xmlParserCtxtPtr ctxt;
+
+        xml3_oom_enable(fail_index);
+        ctxt = xmlNewParserCtxt();
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!ctxt);
+            require_oom_error();
+        } else {
+            assert(ctxt && ctxt->wellFormed == 1 && ctxt->errNo == 0);
+            assert(xmlCtxtGetOptions(ctxt) == (1 << 12));
+            assert(!xmlCtxtGetLastError(ctxt));
+            xmlFreeParserCtxt(ctxt);
+        }
+    } else if (strcmp(operation, "context-read") == 0) {
+        /* A good read, then a malformed one whose error the context
+         * copies.  A failed parse or copy leaves the context with the
+         * out-of-memory error. */
+        static const char good[] = "<r a='1'><c>t</c></r>";
+        xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+        xmlDocPtr bad;
+        const xmlError *error;
+        int good_well_formed, good_errno;
+
+        assert(ctxt);
+        xml3_oom_enable(fail_index);
+        doc = xmlCtxtReadMemory(ctxt, good, (int)strlen(good), NULL, NULL, 0);
+        good_well_formed = ctxt->wellFormed;
+        good_errno = ctxt->errNo;
+        bad = xmlCtxtReadMemory(ctxt, "<r>", 3, "bad.xml", NULL,
+                                XML_PARSE_NOERROR);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (doc != NULL) {
+            assert(good_well_formed == 1 && good_errno == 0);
+            xmlFreeDoc(doc);
+        } else {
+            assert(injected);
+            assert(good_well_formed == 0 && good_errno == XML_ERR_NO_MEMORY);
+        }
+        doc = NULL;
+        assert(!bad && ctxt->wellFormed == 0);
+        error = xmlCtxtGetLastError(ctxt);
+        assert(error && error->ctxt == (void *)ctxt);
+        assert(ctxt->errNo == error->code);
+        if (injected)
+            assert(error->code == 77 || error->code == XML_ERR_NO_MEMORY);
+        else
+            assert(error->code == 77 && error->line == 1);
+        xmlCtxtReset(ctxt);
+        assert(!xmlCtxtGetLastError(ctxt) && ctxt->wellFormed == 1);
+        xmlFreeParserCtxt(ctxt);
     } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);

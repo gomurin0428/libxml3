@@ -1779,5 +1779,125 @@
     "scope": "Releases each declaration of the chain as xmlFreeNs does, reading the next link first; declarations attached to an element are refused by xmlFreeNs and stay in place. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/output-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:parser.h:xmlNewParserCtxt": {
+    "implementation": "partial",
+    "scope": "Allocates a reduced context: myDoc NULL, wellFormed 1, errNo 0, options XML_PARSE_NODICT (the SPARK Initial_Options) and an empty lastError, as xmlInitSAXParserCtxt starts them; the deprecated global defaults are not consulted. NULL with the out-of-memory error when the allocation fails. There is no SAX handler, input stack or dictionary. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlFreeParserCtxt": {
+    "implementation": "partial",
+    "scope": "Releases the strings of lastError and the context; as in libxml2, a document left in myDoc is not released. NULL is a no-op. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReset": {
+    "implementation": "partial",
+    "scope": "Releases myDoc, sets wellFormed to 1 and errNo to XML_ERR_OK and resets lastError, as libxml2 does; the options are kept. NULL is a no-op. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtUseOptions": {
+    "implementation": "partial",
+    "scope": "Stores the options as libxml2 2.15.4 does: NOERROR, NOWARNING, NONET, NSCLEAN, NOCDATA, COMPACT, OLD10, HUGE, OLDSAX, IGNORE_ENC and BIG_LINES already set stay set, every known option requested is set, and the result is the unknown bits (including XInclude options and a negative int's high bits). The masks and the merge are the SPARK XML3_Parser.Contexts.Stored and Unknown. -1 for NULL. Options the parser does not support are stored, and a read with them is refused as xmlReadMemory refuses them. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtSetOptions": {
+    "implementation": "partial",
+    "scope": "As xmlCtxtUseOptions without keeping any option: every known option requested replaces the stored ones; the result is the unknown bits, -1 for NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtGetOptions": {
+    "implementation": "partial",
+    "scope": "The stored options, -1 for NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReadMemory": {
+    "implementation": "partial",
+    "scope": "NULL for a NULL context or a negative size without touching the context; otherwise xmlCtxtReset, xmlCtxtUseOptions and the xmlReadMemory parse with the context's options. The document is returned, never left in myDoc. Unlike libxml2, the context only records what the read raised: a fatal error clears wellFormed, the code of the last error of level XML_ERR_ERROR or above becomes errNo, and the read's last error (of any level) is copied into lastError with its ctxt field naming the context, in that record and in the thread's last error, as libxml2's xmlVRaiseError does. These decisions (XML3_Parser.Contexts.After_Read, the thread's error marks XML3_Error_Records.Advanced) are in SPARK. When the copy fails for want of memory, lastError holds an out-of-memory record without message and errNo is XML_ERR_NO_MEMORY. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReadDoc": {
+    "implementation": "partial",
+    "scope": "xmlCtxtReset, xmlCtxtUseOptions and the xmlReadDoc parse with the context's options; NULL text returns NULL silently after the reset. Unlike libxml2, the context only records what the read raised: a fatal error clears wellFormed, the code of the last error of level XML_ERR_ERROR or above becomes errNo, and the read's last error (of any level) is copied into lastError with its ctxt field naming the context, in that record and in the thread's last error, as libxml2's xmlVRaiseError does. These decisions (XML3_Parser.Contexts.After_Read, the thread's error marks XML3_Error_Records.Advanced) are in SPARK. When the copy fails for want of memory, lastError holds an out-of-memory record without message and errNo is XML_ERR_NO_MEMORY. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlCtxtReadFile": {
+    "implementation": "partial",
+    "scope": "xmlCtxtReset, xmlCtxtUseOptions and the xmlReadFile read and parse with the context's options, so a failure to open (a warning for a missing file) is recorded in lastError without changing wellFormed or errNo, as in libxml2. Unlike libxml2, the context only records what the read raised: a fatal error clears wellFormed, the code of the last error of level XML_ERR_ERROR or above becomes errNo, and the read's last error (of any level) is copied into lastError with its ctxt field naming the context, in that record and in the thread's last error, as libxml2's xmlVRaiseError does. These decisions (XML3_Parser.Contexts.After_Read, the thread's error marks XML3_Error_Records.Advanced) are in SPARK. When the copy fails for want of memory, lastError holds an out-of-memory record without message and errNo is XML_ERR_NO_MEMORY. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlCtxtGetLastError": {
+    "implementation": "partial",
+    "scope": "The context's lastError, or NULL when its code is XML_ERR_OK or the context is NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlerror.h:xmlCtxtResetLastError": {
+    "implementation": "partial",
+    "scope": "Sets errNo to XML_ERR_OK and resets lastError; wellFormed is kept. NULL is a no-op. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "struct:parser.h:_xmlParserCtxt": {
+    "implementation": "partial",
+    "scope": "Reduced public context record with _private, myDoc, wellFormed, errNo, options and lastError, in that order; the other fields of libxml2's struct (SAX handler, inputs, dictionary, valid and the rest) are not declared, so this is not libxml2's layout. The Ada adapter record mirrors it with Convention C. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlParserCtxt": {
+    "implementation": "partial",
+    "scope": "Public typedef for the reduced parser context record, declared in tree.h as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "typedef:tree.h:xmlParserCtxtPtr": {
+    "implementation": "partial",
+    "scope": "Public pointer typedef for the reduced parser context record. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt._private": {
+    "implementation": "partial",
+    "scope": "Application data, NULL in a new context and otherwise untouched. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt.myDoc": {
+    "implementation": "partial",
+    "scope": "NULL after every read, as libxml2's xmlCtxtGetDocument leaves it; xmlCtxtReset releases a document an application stores there. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt.wellFormed": {
+    "implementation": "partial",
+    "scope": "1 for a new or reset context; 0 after a read that raised a fatal error. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt.errNo": {
+    "implementation": "partial",
+    "scope": "XML_ERR_OK for a new or reset context; the code of the last error of level XML_ERR_ERROR or above a read raised. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt.options": {
+    "implementation": "partial",
+    "scope": "The stored xmlParserOption bits; the reads use them. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "field:parser.h:_xmlParserCtxt.lastError": {
+    "implementation": "partial",
+    "scope": "The last error the most recent read raised, owned by the context and released by xmlCtxtReset, xmlCtxtResetLastError and xmlFreeParserCtxt. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/context-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

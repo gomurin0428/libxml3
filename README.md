@@ -171,7 +171,23 @@ str1にファイル名、見つからない場合は警告、それ以外は致�
 ファイル名付きで1行1列目の致命的エラーです。コードと文言はSPARKの `XML3_IO_Errors` の表で決め、
 読み込み自体は小さなCヘルパーで行います。固定版2.15.4と同じ結果になることを `make test-input` で比較しています。
 公開 `xmlDoc` に `URL` フィールドがないこと、圧縮入力とネットワークURL、`xmlReadMemory` が受け付けない解析オプションは
-対象外です。解析コンテキストのAPI（`xmlNewParserCtxt`、`xmlCtxtReadMemory` など）は未対応です。
+対象外です。
+
+解析コンテキストは libxml2 の `xmlParserCtxt` を縮小した構造体で、`_private`、`myDoc`、`wellFormed`、
+`errNo`、`options`、`lastError` だけを公開します（SAXハンドラー、入力スタック、辞書、`valid` などはありません）。
+`xmlNewParserCtxt` / `xmlFreeParserCtxt` で作成・解放し、`xmlCtxtReset` は `myDoc` を解放して
+`wellFormed` を1、`errNo` を0に戻し、`lastError` を消します。`xmlCtxtUseOptions` / `xmlCtxtSetOptions` /
+`xmlCtxtGetOptions` は libxml2 2.15.4 と同じ規則でオプションを保存し、未知のビットを返します
+（`xmlCtxtUseOptions` は NOERROR、NOWARNING、NONET、HUGE などを一度立てると落としません）。
+`xmlCtxtReadMemory`、`xmlCtxtReadDoc`、`xmlCtxtReadFile` はリセットとオプション適用のあと、
+それぞれ `xmlReadMemory`、`xmlReadDoc`、`xmlReadFile` と同じ解析をコンテキストのオプションで行います。
+文書は返り値で渡し、`myDoc` には残しません。読み込み中に致命的エラーが出れば `wellFormed` を0にし、
+XML_ERR_ERROR以上の最後のエラーのコードを `errNo` に、最後のエラーを（警告も含め）`lastError` に複製します。
+libxml2 と同じく、どちらのエラー記録も `ctxt` フィールドがコンテキストを指します。`xmlCtxtGetLastError` /
+`xmlCtxtResetLastError` はこの `lastError` を返す・消す関数です。保存するオプションと読み込み後の状態は
+SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの記録（`XML3_Error_Records.Advanced`）を
+読み込みの前後で比べます。固定版2.15.4と同じ結果になることを `make test-context` で比較しています。
+解析器が対応しないオプションも保存はしますが、そのオプションでの読み込みは `xmlReadMemory` と同じく拒否します。
 
 `xmlNewNodeEatName`、`xmlNewDocNodeEatName`、`xmlNewNsPropEatName` は通常の生成と同じノードを作り、
 渡された名前を成否にかかわらず `xmlFree` で解放します（ノードは名前の複製を持ちます）。

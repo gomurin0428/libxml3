@@ -43,6 +43,25 @@ package body XML3_Errors is
    Emergency_Active : Boolean := False
      with Thread_Local_Storage;
 
+   Marks : XML3_Error_Records.Error_Mark := (0, 0, 0, 0)
+     with Thread_Local_Storage;
+
+   --  Records that an error of Level and Code is being published.
+   procedure Note (Level, Code : Interfaces.C.int) is
+   begin
+      Marks := XML3_Error_Records.Advanced (Marks, Level, Code);
+   end Note;
+
+   procedure Current_Mark
+     (Serial, Fatal_Serial, Error_Serial : out Interfaces.Unsigned_64;
+      Error_Code : out Interfaces.C.int) is
+   begin
+      Serial := Marks.Serial;
+      Fatal_Serial := Marks.Fatal_Serial;
+      Error_Serial := Marks.Error_Serial;
+      Error_Code := Marks.Error_Code;
+   end Current_Mark;
+
    Message_Empty : aliased constant Interfaces.C.char_array :=
      Interfaces.C.To_C ("Document is empty" & ASCII.LF);
    Message_Start : aliased constant Interfaces.C.char_array :=
@@ -212,6 +231,7 @@ package body XML3_Errors is
    procedure Set_OOM is
       State : constant Error_State_Access := Current_State (False);
    begin
+      Note (XML3_Error_Records.Fatal_Level, XML3_OOM);
       if State /= null then
          XML3_Error_Records.Install_Out_Of_Memory
            (State.all, Emergency_Message'Address);
@@ -244,6 +264,7 @@ package body XML3_Errors is
       Replacement : Error_Record := (others => <>);
       Success : Boolean;
    begin
+      Note (Level, Code);
       XML3_Error_Records.Clone
         ((Domain => Domain, Code => Code, Level => Level, Line => Line,
           Int1 => Int1, Int2 => Int2, Message => Message, File => File,

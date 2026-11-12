@@ -149,6 +149,42 @@ int main() {
     xmlDoc *(*parse_file)(const char *) = xmlParseFile;
     (void)read_file;
     (void)parse_file;
+    xmlParserCtxtPtr (*new_parser_ctxt)() = xmlNewParserCtxt;
+    void (*free_parser_ctxt)(xmlParserCtxt *) = xmlFreeParserCtxt;
+    void (*ctxt_reset)(xmlParserCtxtPtr) = xmlCtxtReset;
+    int (*ctxt_use_options)(xmlParserCtxt *, int) = xmlCtxtUseOptions;
+    int (*ctxt_set_options)(xmlParserCtxt *, int) = xmlCtxtSetOptions;
+    int (*ctxt_get_options)(xmlParserCtxt *) = xmlCtxtGetOptions;
+    xmlDoc *(*ctxt_read_memory)(xmlParserCtxt *, const char *, int,
+                                const char *, const char *, int) =
+        xmlCtxtReadMemory;
+    xmlDoc *(*ctxt_read_doc)(xmlParserCtxt *, const xmlChar *, const char *,
+                             const char *, int) = xmlCtxtReadDoc;
+    xmlDoc *(*ctxt_read_file)(xmlParserCtxt *, const char *, const char *,
+                              int) = xmlCtxtReadFile;
+    const xmlError *(*ctxt_get_last_error)(void *) = xmlCtxtGetLastError;
+    void (*ctxt_reset_last_error)(void *) = xmlCtxtResetLastError;
+    (void)new_parser_ctxt;
+    (void)free_parser_ctxt;
+    (void)ctxt_reset;
+    (void)ctxt_use_options;
+    (void)ctxt_set_options;
+    (void)ctxt_get_options;
+    (void)ctxt_read_memory;
+    (void)ctxt_read_doc;
+    (void)ctxt_read_file;
+    (void)ctxt_get_last_error;
+    (void)ctxt_reset_last_error;
+    {
+        xmlParserCtxt context;
+        context._private = nullptr;
+        context.myDoc = nullptr;
+        context.wellFormed = 1;
+        context.errNo = 0;
+        context.options = 0;
+        context.lastError.code = 0;
+        (void)context;
+    }
     xmlNode *(*new_node_eat_name)(xmlNs *, xmlChar *) = xmlNewNodeEatName;
     int (*node_buf_get_content)(xmlBuffer *, const xmlNode *) =
         xmlNodeBufGetContent;
