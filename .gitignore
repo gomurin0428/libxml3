@@ -123,3 +123,7 @@ tests/output-buffer-test
 tests/output-buffer-test-reference
 tests/output-buffer-test.out
 tests/output-buffer-test-reference.out
+tests/push-test
+tests/push-test-reference
+tests/push-test.out
+tests/push-test-reference.out

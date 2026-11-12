@@ -189,6 +189,22 @@ package XML3_C is
       return Interfaces.C.int
      with Export, Convention => C, External_Name => "xmlSaveFormatFileTo";
 
+   function Create_Push_Parser_Ctxt
+     (SAX, User_Data, Chunk : System.Address; Size : Interfaces.C.int;
+      Filename : System.Address) return System.Address
+     with Export, Convention => C,
+       External_Name => "xmlCreatePushParserCtxt";
+
+   function Ctxt_Reset_Push
+     (Ctxt, Chunk : System.Address; Size : Interfaces.C.int;
+      Filename, Encoding : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtResetPush";
+
+   function Parse_Chunk
+     (Ctxt, Chunk : System.Address; Size, Final : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlParseChunk";
+
    function Ctxt_Get_Private (Ctxt : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtGetPrivate";
 

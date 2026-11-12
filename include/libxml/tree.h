@@ -54,6 +54,10 @@ typedef struct _xmlOutputBuffer xmlOutputBuffer;
 typedef xmlOutputBuffer *xmlOutputBufferPtr;
 typedef struct _xmlBuf xmlBuf;
 typedef xmlBuf *xmlBufPtr;
+/* SAX handlers are not provided: xmlCreatePushParserCtxt accepts only a
+ * NULL handler and builds a tree. */
+typedef struct _xmlSAXHandler xmlSAXHandler;
+typedef xmlSAXHandler *xmlSAXHandlerPtr;
 
 /* The fields are deprecated in libxml2; use xmlBufferContent and
  * xmlBufferLength. */

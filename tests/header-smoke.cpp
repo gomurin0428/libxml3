@@ -168,6 +168,16 @@ int main() {
     int (*ctxt_is_in_subset)(xmlParserCtxt *) = xmlCtxtIsInSubset;
     void (*stop_parser)(xmlParserCtxt *) = xmlStopParser;
     xmlParserStatus status_bit = XML_STATUS_CATASTROPHIC_ERROR;
+    xmlParserCtxtPtr (*create_push)(xmlSAXHandlerPtr, void *, const char *,
+                                    int, const char *) =
+        xmlCreatePushParserCtxt;
+    int (*parse_chunk)(xmlParserCtxtPtr, const char *, int, int) =
+        xmlParseChunk;
+    int (*ctxt_reset_push)(xmlParserCtxtPtr, const char *, int, const char *,
+                           const char *) = xmlCtxtResetPush;
+    (void)create_push;
+    (void)parse_chunk;
+    (void)ctxt_reset_push;
     (void)ctxt_get_private;
     (void)ctxt_set_private;
     (void)ctxt_get_user_data;

@@ -1022,6 +1022,35 @@ int main(int argc, char **argv) {
         xmlCtxtReset(ctxt);
         assert(!xmlCtxtGetLastError(ctxt) && ctxt->wellFormed == 1);
         xmlFreeParserCtxt(ctxt);
+    } else if (strcmp(operation, "push") == 0) {
+        /* The push context, its URL, the pushed bytes and the parse at the
+         * termination each allocate.  A failure leaves no context (with
+         * the out-of-memory error) or a context that records it, stopped
+         * and without a document. */
+        xmlParserCtxtPtr ctxt;
+        int ret = -1;
+
+        xml3_oom_enable(fail_index);
+        ctxt = xmlCreatePushParserCtxt(NULL, NULL, "<r a='1'>", 9, "push.xml");
+        if (ctxt != NULL) {
+            xmlParseChunk(ctxt, "<c>t</c>", 8, 0);
+            ret = xmlParseChunk(ctxt, "</r>", 4, 1);
+        }
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (ctxt == NULL) {
+            assert(injected);
+            require_oom_error();
+        } else if (injected) {
+            assert(ret == XML_ERR_NO_MEMORY);
+            assert(ctxt->errNo == XML_ERR_NO_MEMORY && ctxt->myDoc == NULL);
+            assert(xmlCtxtGetStatus(ctxt) == 11);
+        } else {
+            assert(ret == 0 && ctxt->myDoc != NULL);
+            xmlFreeDoc(ctxt->myDoc);
+        }
+        xmlFreeParserCtxt(ctxt);
     } else if (strcmp(operation, "context-warning") == 0) {
         /* The warning of a failed callback read, copied into the context's
          * lastError; a failed copy is a memory failure, which stops the

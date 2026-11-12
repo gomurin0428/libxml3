@@ -212,4 +212,28 @@ package XML3_Parser.Contexts with SPARK_Mode is
       else State)
    with Global => null;
 
+   --  A push parser context (xmlCreatePushParserCtxt) has no options:
+   --  libxml2 clears XML_PARSE_NODICT.
+   Push_Options : constant Interfaces.C.int := 0;
+
+   --  The options a push input is parsed with: the context's, without
+   --  XML_PARSE_NODICT, which only selects how libxml2 stores names and
+   --  which a context made by xmlNewParserCtxt keeps through
+   --  xmlCtxtResetPush.
+   function Push_Parse_Options (Options : Interfaces.C.int)
+     return Interfaces.C.int
+   is
+     (To_Int (Bits (Options) and not Bits (Initial_Options)))
+   with Global => null;
+
+   --  xmlParseChunk without a push input, a NULL context, a negative size
+   --  or NULL bytes of a positive size: XML_ERR_ARGUMENT.
+   Argument_Error : constant Interfaces.C.int := Argument_Code;
+
+   --  What xmlParseChunk answers after it ran: the error number when the
+   --  context is no longer well-formed, otherwise XML_ERR_OK.
+   function Chunk_Result (State : Context_State) return Interfaces.C.int is
+     (if State.Well_Formed = 0 then State.Err_No else 0)
+   with Global => null;
+
 end XML3_Parser.Contexts;
