@@ -91,11 +91,26 @@ static void assert_error_copy(const xmlError *actual,
 /* The errors a context handler receives during the context-handler walk. */
 static int handled_errors;
 static int handled_foreign;
+static int nested_checked;
+static xmlParserCtxtPtr nested_ctxt;
 
 static void oom_context_handler(void *data, const xmlError *error) {
     handled_errors++;
     if (error->ctxt != data)
         handled_foreign++;
+    /* A read through another context from an out-of-memory handler is
+     * recorded for that context, even when the failed allocation was a
+     * copy into the outer context's lastError. */
+    if (error->code == XML_ERR_NO_MEMORY && nested_ctxt != NULL &&
+        !nested_checked) {
+        xmlDocPtr nested;
+
+        nested_checked = 1;
+        nested = xmlCtxtReadMemory(nested_ctxt, "<x>", 3, NULL, NULL,
+                                   XML_PARSE_NOERROR);
+        assert(!nested && nested_ctxt->wellFormed == 0);
+        assert(nested_ctxt->errNo == 77 && xmlCtxtGetLastError(nested_ctxt));
+    }
 }
 
 static const xmlError *require_oom_error(void) {
@@ -693,6 +708,9 @@ int main(int argc, char **argv) {
         const xmlError *error;
 
         assert(ctxt);
+        nested_ctxt = xmlNewParserCtxt();
+        assert(nested_ctxt);
+        nested_checked = 0;
         xmlCtxtSetErrorHandler(ctxt, oom_context_handler, ctxt);
         handled_errors = handled_foreign = 0;
         xml3_oom_enable(fail_index);
@@ -708,6 +726,8 @@ int main(int argc, char **argv) {
         if (!injected)
             assert(error->code == 77);
         xmlFreeParserCtxt(ctxt);
+        xmlFreeParserCtxt(nested_ctxt);
+        nested_ctxt = NULL;
     } else if (strcmp(operation, "context-new") == 0) {
         xmlParserCtxtPtr ctxt;
 

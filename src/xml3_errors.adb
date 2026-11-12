@@ -257,9 +257,6 @@ package body XML3_Errors is
      with Thread_Local_Storage;
    Reading_Well_Formed, Reading_Err_No : Integer_Address := 0
      with Thread_Local_Storage;
-   --  The error just published was copied into the context's lastError.
-   Target_Current : Boolean := False
-     with Thread_Local_Storage;
    Read_Serial, Read_Fatal_Serial, Read_Error_Serial :
      Interfaces.Unsigned_64 := 0
      with Thread_Local_Storage;
@@ -293,7 +290,6 @@ package body XML3_Errors is
       Reading_Target := To_Integer (Saved.Read.Target);
       Reading_Well_Formed := To_Integer (Saved.Read.Well_Formed);
       Reading_Err_No := To_Integer (Saved.Read.Err_No);
-      Target_Current := False;
       Read_Serial := Saved.Outcome.Serial;
       Read_Fatal_Serial := Saved.Outcome.Fatal_Serial;
       Read_Error_Serial := Saved.Outcome.Error_Serial;
@@ -339,7 +335,6 @@ package body XML3_Errors is
       Mark : XML3_Error_Records.Error_Mark;
       State : XML3_Parser.Contexts.Context_State;
    begin
-      Target_Current := False;
       if Reading_Context = 0 or else Copying then
          return;
       end if;
@@ -364,9 +359,8 @@ package body XML3_Errors is
          State := XML3_Parser.Contexts.After_Read
            ((Well_Formed => Well_Formed, Err_No => Err_No), Old, Mark);
          Copying := True;
-         if Copy_Error (Get_Last_Error, To_Address (Reading_Target)) = 0 then
-            Target_Current := True;
-         else
+         if Copy_Error (Get_Last_Error, To_Address (Reading_Target)) /= 0
+         then
             --  The context records the failed copy as xmlCtxtErrMemory
             --  does.
             Read_Copy_Failed := True;
@@ -383,8 +377,7 @@ package body XML3_Errors is
       when others =>
          Copying := False;
          Read_Copy_Failed := True;
-         Target_Current := False;
-   end Note_Context;
+      end Note_Context;
 
    --  Calls a handler with no context read current, so that what it does
    --  is not attributed to the read that published the error.
@@ -392,14 +385,19 @@ package body XML3_Errors is
      (Handler : Structured_Handler; Data, Error : System.Address)
    is
       Saved : constant Saved_Read := Reading;
+      Saved_Copying : constant Boolean := Copying;
    begin
+      --  The handler's own reads are independent of a copy in progress.
       Set_Reading (No_Read);
+      Copying := False;
       Handler (Data, Error);
       Set_Reading (Saved);
+      Copying := Saved_Copying;
    exception
       when others =>
          Set_Reading (Saved);
-   end Call_Handler;
+         Copying := Saved_Copying;
+      end Call_Handler;
 
    --  Errors published while the thread held the DOM lock, with the
    --  handler chosen for each, in publication order.
@@ -443,7 +441,11 @@ package body XML3_Errors is
       --  A context read hands over the context's lastError; otherwise a
       --  copy of the thread's record, which reads made by the handler
       --  would replace.
-      Last := (if Reading_Context /= 0 and then Target_Current
+      --  (Note_Context has just updated the context's lastError, with an
+      --  out-of-memory record if the copy failed; while that copy is in
+      --  progress the record is not ready.)
+      Last := (if Reading_Context /= 0 and then Reading_Target /= 0
+                 and then not Copying
                then To_Address (Reading_Target) else Get_Last_Error);
       if Last = System.Null_Address then
          return;
