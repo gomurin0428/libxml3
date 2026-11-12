@@ -157,6 +157,28 @@ int main() {
     xmlDoc *(*ctxt_read_io)(xmlParserCtxt *, xmlInputReadCallback,
                             xmlInputCloseCallback, void *, const char *,
                             const char *, int) = xmlCtxtReadIO;
+    void *(*ctxt_get_private)(xmlParserCtxt *) = xmlCtxtGetPrivate;
+    void (*ctxt_set_private)(xmlParserCtxt *, void *) = xmlCtxtSetPrivate;
+    void *(*ctxt_get_user_data)(xmlParserCtxt *) = xmlCtxtGetUserData;
+    xmlDoc *(*ctxt_get_document)(xmlParserCtxt *) = xmlCtxtGetDocument;
+    xmlNode *(*ctxt_get_node)(xmlParserCtxt *) = xmlCtxtGetNode;
+    int (*ctxt_get_status)(xmlParserCtxt *) = xmlCtxtGetStatus;
+    int (*ctxt_is_stopped)(xmlParserCtxt *) = xmlCtxtIsStopped;
+    int (*ctxt_is_html)(xmlParserCtxt *) = xmlCtxtIsHtml;
+    int (*ctxt_is_in_subset)(xmlParserCtxt *) = xmlCtxtIsInSubset;
+    void (*stop_parser)(xmlParserCtxt *) = xmlStopParser;
+    xmlParserStatus status_bit = XML_STATUS_CATASTROPHIC_ERROR;
+    (void)ctxt_get_private;
+    (void)ctxt_set_private;
+    (void)ctxt_get_user_data;
+    (void)ctxt_get_document;
+    (void)ctxt_get_node;
+    (void)ctxt_get_status;
+    (void)ctxt_is_stopped;
+    (void)ctxt_is_html;
+    (void)ctxt_is_in_subset;
+    (void)stop_parser;
+    (void)status_bit;
     (void)read_fd;
     (void)read_io;
     (void)ctxt_read_fd;

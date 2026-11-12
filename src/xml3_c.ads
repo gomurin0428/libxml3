@@ -107,6 +107,36 @@ package XML3_C is
       Options : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlCtxtReadIO";
 
+   function Ctxt_Get_Private (Ctxt : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtGetPrivate";
+
+   procedure Ctxt_Set_Private (Ctxt, Data : System.Address)
+     with Export, Convention => C, External_Name => "xmlCtxtSetPrivate";
+
+   function Ctxt_Get_User_Data (Ctxt : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtGetUserData";
+
+   function Ctxt_Get_Document (Ctxt : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtGetDocument";
+
+   function Ctxt_Get_Node (Ctxt : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCtxtGetNode";
+
+   function Ctxt_Is_Html (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtIsHtml";
+
+   function Ctxt_Is_In_Subset (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtIsInSubset";
+
+   function Ctxt_Is_Stopped (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtIsStopped";
+
+   function Ctxt_Get_Status (Ctxt : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlCtxtGetStatus";
+
+   procedure Stop_Parser (Ctxt : System.Address)
+     with Export, Convention => C, External_Name => "xmlStopParser";
+
    procedure Ctxt_Set_Error_Handler
      (Ctxt : System.Address; Handler : XML3_Errors.Structured_Handler;
       Data : System.Address)

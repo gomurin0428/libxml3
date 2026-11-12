@@ -74,6 +74,11 @@ package XML3_Errors is
       --  The context's wellFormed and errNo, updated as each error is
       --  published, before its handler is called (as xmlCtxtVErr does).
       Well_Formed, Err_No : System.Address := System.Null_Address;
+      --  Its nsWellFormed and disableSAX (XML3_Parser.Contexts.Parse_Flags),
+      --  updated the same way.  While disableSAX is 2 the read publishes
+      --  no more errors but memory failures, as xmlCtxtVErr returns early
+      --  for a stopped parser.
+      Flags : System.Address := System.Null_Address;
    end record;
 
    --  The read's own error mark (XML3_Error_Records.Error_Mark from zero)

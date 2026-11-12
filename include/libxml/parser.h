@@ -16,6 +16,14 @@ typedef enum {
     XML_PARSE_HUGE = 1 << 19
 } xmlParserOption;
 
+/* The bits of xmlCtxtGetStatus. */
+typedef enum {
+    XML_STATUS_NOT_WELL_FORMED = (1 << 0),
+    XML_STATUS_NOT_NS_WELL_FORMED = (1 << 1),
+    XML_STATUS_DTD_VALIDATION_FAILED = (1 << 2),
+    XML_STATUS_CATASTROPHIC_ERROR = (1 << 3)
+} xmlParserStatus;
+
 /* A reduced parser context: the fields below keep their libxml2 meaning,
  * the other fields of libxml2's struct are not provided.  Contexts are
  * made by xmlNewParserCtxt and released by xmlFreeParserCtxt. */
@@ -64,6 +72,16 @@ xmlDocPtr xmlCtxtReadFd(xmlParserCtxtPtr ctxt, int fd, const char *URL,
 xmlDocPtr xmlCtxtReadIO(xmlParserCtxtPtr ctxt, xmlInputReadCallback ioread,
                         xmlInputCloseCallback ioclose, void *ioctx,
                         const char *URL, const char *encoding, int options);
+void *xmlCtxtGetPrivate(xmlParserCtxtPtr ctxt);
+void xmlCtxtSetPrivate(xmlParserCtxtPtr ctxt, void *priv);
+void *xmlCtxtGetUserData(xmlParserCtxtPtr ctxt);
+xmlDocPtr xmlCtxtGetDocument(xmlParserCtxtPtr ctxt);
+xmlNodePtr xmlCtxtGetNode(xmlParserCtxtPtr ctxt);
+int xmlCtxtIsHtml(xmlParserCtxtPtr ctxt);
+int xmlCtxtIsStopped(xmlParserCtxtPtr ctxt);
+int xmlCtxtIsInSubset(xmlParserCtxtPtr ctxt);
+int xmlCtxtGetStatus(xmlParserCtxtPtr ctxt);
+void xmlStopParser(xmlParserCtxtPtr ctxt);
 
 #ifdef __cplusplus
 }

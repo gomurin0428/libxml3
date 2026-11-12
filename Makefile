@@ -668,6 +668,8 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlNewParserCtxt xmlFreeParserCtxt xmlCtxtReset xmlCtxtUseOptions xmlCtxtSetOptions \
 	xmlCtxtGetOptions xmlCtxtReadMemory xmlCtxtReadDoc xmlCtxtReadFile xmlCtxtGetLastError \
 	xmlCtxtResetLastError xmlCtxtReadFd xmlCtxtReadIO \
+	xmlCtxtGetPrivate xmlCtxtSetPrivate xmlCtxtGetUserData xmlCtxtGetDocument xmlCtxtGetNode \
+	xmlCtxtIsHtml xmlCtxtIsInSubset xmlCtxtIsStopped xmlCtxtGetStatus xmlStopParser \
 	xmlSaveToFd xmlSaveToFilename xmlSaveToBuffer xmlSaveToIO xmlSaveDoc xmlSaveTree \
 	xmlSaveFlush xmlSaveClose xmlSaveFinish xmlSaveSetIndentString \
 	xmlSetStructuredErrorFunc xmlCtxtSetErrorHandler \

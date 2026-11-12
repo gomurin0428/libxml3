@@ -114,4 +114,102 @@ package XML3_Parser.Contexts with SPARK_Mode is
      ((Well_Formed => 0, Err_No => XML3_Error_Records.Out_Of_Memory_Code))
    with Global => null;
 
+   --  What a context records beyond its public fields, as libxml2's
+   --  xmlCtxtVErr and xmlNsErr update it: nsWellFormed, cleared by a
+   --  namespace error, and disableSAX, 1 after a fatal error (the parser
+   --  then only stops reporting to SAX) and 2 when the parser stopped
+   --  for good.
+   subtype Stop_Level is Interfaces.C.int range 0 .. 2;
+
+   type Parse_Flags is record
+      Ns_Well_Formed : Interfaces.C.int := 1;
+      Disable_SAX : Stop_Level := 0;
+   end record;
+
+   --  A new or reset context.
+   Running : constant Parse_Flags := (Ns_Well_Formed => 1, Disable_SAX => 0);
+
+   Namespace_Domain : constant Interfaces.C.int := 3;
+   Internal_Error_Code : constant Interfaces.C.int := 1;
+   Entity_Loop_Code : constant Interfaces.C.int := 89;
+   Resource_Limit_Code : constant Interfaces.C.int := 114;
+   Argument_Code : constant Interfaces.C.int := 115;
+   System_Code : constant Interfaces.C.int := 116;
+
+   --  xmlIsCatastrophicError: a fatal memory, internal, argument, system
+   --  or I/O failure.
+   function Catastrophic (Level, Code : Interfaces.C.int) return Boolean is
+     (Level = XML3_Error_Records.Fatal_Level
+      and then (Code in Internal_Error_Code | Argument_Code | System_Code
+                  | XML3_Error_Records.Out_Of_Memory_Code
+                or else Code in 1500 .. 1599))
+   with Global => null;
+
+   --  The flags after an error of Domain, Level and Code is published
+   --  during a read: a namespace error (xmlNsErr, level XML_ERR_ERROR)
+   --  clears nsWellFormed; a catastrophic error, a resource limit or an
+   --  entity loop stops the parser for good, any other fatal error
+   --  disables SAX (the parser does not recover); warnings and stopped
+   --  parsers change nothing else.
+   function After_Error
+     (Flags : Parse_Flags; Domain, Level, Code : Interfaces.C.int)
+      return Parse_Flags
+   is
+     ((Ns_Well_Formed =>
+         (if Domain = Namespace_Domain
+            and then Level = XML3_Error_Records.Error_Level
+          then 0 else Flags.Ns_Well_Formed),
+       Disable_SAX =>
+         (if Level < XML3_Error_Records.Error_Level or else Flags.Disable_SAX = 2
+          then Flags.Disable_SAX
+          elsif Catastrophic (Level, Code) or else Code = Resource_Limit_Code
+            or else Code = Entity_Loop_Code
+          then 2
+          elsif Level >= XML3_Error_Records.Fatal_Level then 1
+          else Flags.Disable_SAX)))
+   with Global => null,
+     Post => (if Level < XML3_Error_Records.Error_Level
+              then After_Error'Result.Disable_SAX = Flags.Disable_SAX)
+       and then (if Flags.Disable_SAX = 2
+                 then After_Error'Result.Disable_SAX = 2);
+
+   --  xmlCtxtGetStatus bits.
+   Not_Well_Formed_Bit : constant Interfaces.C.int := 1;
+   Not_Ns_Well_Formed_Bit : constant Interfaces.C.int := 2;
+   DTD_Validation_Failed_Bit : constant Interfaces.C.int := 4;
+   Catastrophic_Error_Bit : constant Interfaces.C.int := 8;
+
+   --  xmlCtxtGetStatus, from the context's wellFormed, flags, lastError
+   --  and whether its options ask for DTD validation (the parser never
+   --  validates, so a validation never fails otherwise).
+   function Status
+     (Well_Formed : Interfaces.C.int; Flags : Parse_Flags;
+      Last_Level, Last_Code : Interfaces.C.int; Validate : Boolean)
+      return Interfaces.C.int
+   is
+     (if Catastrophic (Last_Level, Last_Code) then
+        Catastrophic_Error_Bit + Not_Well_Formed_Bit + Not_Ns_Well_Formed_Bit
+        + (if Validate then DTD_Validation_Failed_Bit else 0)
+      else
+        (if Well_Formed = 0 then Not_Well_Formed_Bit else 0)
+        + (if Flags.Ns_Well_Formed = 0 then Not_Ns_Well_Formed_Bit else 0))
+   with Global => null,
+     Post => Status'Result in 0 .. 15;
+
+   --  XML_PARSE_DTDVALID, which sets ctxt->validate.
+   DTD_Valid_Option : constant Interfaces.Unsigned_32 := 16#10#;
+
+   function Validates (Options : Interfaces.C.int) return Boolean is
+     ((Bits (Options) and DTD_Valid_Option) /= 0)
+   with Global => null;
+
+   --  xmlStopParser: the parser stops for good; a context that recorded no
+   --  error yet records XML_ERR_USER_STOP and is no longer well-formed.
+   User_Stop_Code : constant Interfaces.C.int := 111;
+
+   function After_Stop (State : Context_State) return Context_State is
+     (if State.Err_No = 0 then (Well_Formed => 0, Err_No => User_Stop_Code)
+      else State)
+   with Global => null;
+
 end XML3_Parser.Contexts;

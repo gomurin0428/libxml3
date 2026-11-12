@@ -255,7 +255,7 @@ package body XML3_Errors is
      with Thread_Local_Storage;
    Reading_Target : Integer_Address := 0
      with Thread_Local_Storage;
-   Reading_Well_Formed, Reading_Err_No : Integer_Address := 0
+   Reading_Well_Formed, Reading_Err_No, Reading_Flags : Integer_Address := 0
      with Thread_Local_Storage;
    Read_Serial, Read_Fatal_Serial, Read_Error_Serial :
      Interfaces.Unsigned_64 := 0
@@ -279,7 +279,8 @@ package body XML3_Errors is
           Data => To_Address (Reading_Data), Options => Reading_Options,
           Target => To_Address (Reading_Target),
           Well_Formed => To_Address (Reading_Well_Formed),
-          Err_No => To_Address (Reading_Err_No)),
+          Err_No => To_Address (Reading_Err_No),
+          Flags => To_Address (Reading_Flags)),
        Outcome =>
          (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
           Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code,
@@ -294,6 +295,7 @@ package body XML3_Errors is
       Reading_Target := To_Integer (Saved.Read.Target);
       Reading_Well_Formed := To_Integer (Saved.Read.Well_Formed);
       Reading_Err_No := To_Integer (Saved.Read.Err_No);
+      Reading_Flags := To_Integer (Saved.Read.Flags);
       Read_Serial := Saved.Outcome.Serial;
       Read_Fatal_Serial := Saved.Outcome.Fatal_Serial;
       Read_Error_Serial := Saved.Outcome.Error_Serial;
@@ -302,7 +304,7 @@ package body XML3_Errors is
    end Set_Reading;
 
    No_Read : constant Saved_Read :=
-     (Read => (Context | Data | Target | Well_Formed | Err_No =>
+     (Read => (Context | Data | Target | Well_Formed | Err_No | Flags =>
                  System.Null_Address,
                Handler => null, Options => 0),
       Outcome => (Serial | Fatal_Serial | Error_Serial => 0,
@@ -332,7 +334,21 @@ package body XML3_Errors is
    --  Records in the current context read the error just published (Level,
    --  Code): its own mark advances and the record is copied into the
    --  context's lastError.
-   procedure Note_Context (Level, Code : Interfaces.C.int) is
+   --  The current context read's parser stopped for good (disableSAX 2).
+   function Reading_Stopped return Boolean is
+   begin
+      if Reading_Context = 0 or else Reading_Flags = 0 then
+         return False;
+      end if;
+      declare
+         Flags : XML3_Parser.Contexts.Parse_Flags
+           with Import, Address => To_Address (Reading_Flags);
+      begin
+         return Flags.Disable_SAX = 2;
+      end;
+   end Reading_Stopped;
+
+   procedure Note_Context (Domain, Level, Code : Interfaces.C.int) is
       Old : constant XML3_Error_Records.Error_Mark :=
         (Serial => Read_Serial, Fatal_Serial => Read_Fatal_Serial,
          Error_Serial => Read_Error_Serial, Error_Code => Read_Error_Code);
@@ -347,6 +363,15 @@ package body XML3_Errors is
       Read_Fatal_Serial := Mark.Fatal_Serial;
       Read_Error_Serial := Mark.Error_Serial;
       Read_Error_Code := Mark.Error_Code;
+      if Reading_Flags /= 0 then
+         declare
+            Flags : XML3_Parser.Contexts.Parse_Flags
+              with Import, Address => To_Address (Reading_Flags);
+         begin
+            Flags := XML3_Parser.Contexts.After_Error
+              (Flags, Domain, Level, Code);
+         end;
+      end if;
       if Reading_Well_Formed = 0 or else Reading_Err_No = 0
         or else Reading_Target = 0
       then
@@ -559,7 +584,9 @@ package body XML3_Errors is
          Emergency_Error.Ctxt := To_Address (Reading_Context);
          Emergency_Active := True;
       end if;
-      Note_Context (XML3_Error_Records.Fatal_Level, XML3_OOM);
+      Note_Context
+        (XML3_Error_Records.Memory_Domain, XML3_Error_Records.Fatal_Level,
+         XML3_OOM);
       Dispatch (XML3_Error_Records.Fatal_Level);
    exception
       when others =>
@@ -585,6 +612,9 @@ package body XML3_Errors is
       Replacement : Error_Record := (others => <>);
       Success : Boolean;
    begin
+      if Reading_Stopped then
+         return;
+      end if;
       Note (Level, Code);
       XML3_Error_Records.Clone
         ((Domain => Domain, Code => Code, Level => Level, Line => Line,
@@ -604,7 +634,7 @@ package body XML3_Errors is
       XML3_Error_Records.Install (State.all, Replacement);
       Emergency_Active := False;
       Published_OOM := Code = XML3_OOM;
-      Note_Context (Level, Code);
+      Note_Context (Domain, Level, Code);
       Dispatch (Level);
    exception
       when others =>

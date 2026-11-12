@@ -47,8 +47,16 @@ xmlCopyNamespace
 xmlCopyNode
 xmlCopyProp
 xmlCreateURI
+xmlCtxtGetDocument
 xmlCtxtGetLastError
+xmlCtxtGetNode
 xmlCtxtGetOptions
+xmlCtxtGetPrivate
+xmlCtxtGetStatus
+xmlCtxtGetUserData
+xmlCtxtIsHtml
+xmlCtxtIsInSubset
+xmlCtxtIsStopped
 xmlCtxtReadDoc
 xmlCtxtReadFd
 xmlCtxtReadFile
@@ -58,6 +66,7 @@ xmlCtxtReset
 xmlCtxtResetLastError
 xmlCtxtSetErrorHandler
 xmlCtxtSetOptions
+xmlCtxtSetPrivate
 xmlCtxtUseOptions
 xmlDocCopyNode
 xmlDocDump
@@ -217,6 +226,7 @@ xmlSetProp
 xmlSetStructuredErrorFunc
 xmlSplitQName2
 xmlSplitQName3
+xmlStopParser
 xmlStrEqual
 xmlStrPrintf
 xmlStrQEqual

@@ -484,7 +484,7 @@ The longest units take
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **15,155 checks, 1,946 by flow analysis and 13,209 by provers; 0
+Result: **15,169 checks, 1,956 by flow analysis and 13,213 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1152,7 +1152,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 765 entity
+The 770 entity
 summaries report 0 flow errors, 191 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1188,14 +1188,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 558 |
+| Data dependencies | 563 |
 | Initialization | 1,065 |
 | Non-aliasing | 1 |
-| Runtime checks | 6,283 |
+| Runtime checks | 6,285 |
 | Assertions | 1,839 |
-| Functional contracts | 4,998 |
-| Termination | 411 |
-| **Total** | **15,155** |
+| Functional contracts | 5,000 |
+| Termination | 416 |
+| **Total** | **15,169** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1927,8 +1927,8 @@ for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-9f60069ace65345d1ba6355f9e5cc8a17573d00ccadfa1ed53d702f007e7f7b7  src/xml3_c.adb
-2f49265d20f5c8e1cc639de895db12952a972514d1aa9d9a18c183c622f399cb  src/xml3_c.ads
+3f76ed0adeff4e9348e7461c2e9bdf3b2627c4560f7e531cadb02e3855389e27  src/xml3_c.adb
+d6b1123260739b76d824b536dc4ee369778d73fd21d711d1c9441c929676e0b9  src/xml3_c.ads
 8a280b48c8dd1327f90f4d80b2c112a5d56a49b713cb6cd72164e31baf9a312b  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
 c182792b54b0c427b508002c06c6228f7efb31f3b81dc45179c7c7febcb50909  include/libxml/entities.h
@@ -1983,10 +1983,10 @@ a1fc38d820142fb7c9bee27e9defd4a637ab75b60720bb21589467f86754573f  src/xml3_encod
 28a7fea5a94bb0db015deb93b66d88ac2d459bc45c52a84bdd9e85ef32ef8a95  src/xml3_encoding-buffers.adb
 140f58f4fb0edd3c4466e976f2995e404b454514160541869e6438d1c23307fa  src/xml3_encoding-buffers.ads
 53fed6a5a3374aa4f67ff6865a0d703274f89bfd44f036285a2166a31d843cfe  src/xml3_error_tls.c
-368ed07c92dd5366760bc4b12f0b298d7b5999cae15b631ef087f252a370d102  src/xml3_errors.adb
+e4f1b244aa5a63d709c19758617d542fe76f4e14bca553f1f65f0f621c96aa51  src/xml3_errors.adb
 8cd2d2fedd9befc9f727d8f9055c94250484c83a543be7dcd9b1b6c76452199e  src/xml3_diagnostic_messages.ads
 5731a2fbf1783f9b160e1562c00371f2758263b2a2509c93e05ca693a15130a3  src/xml3_diagnostic_codes.ads
-0cd13c4023d7da1d60c8e3ea830b903b78cbcd2c7ea796b1a2b4a0296c79a36f  src/xml3_errors.ads
+d14b50b2095a8d47f84c665886d3f4190310caf9a8e7b3319641a807d1439997  src/xml3_errors.ads
 09734ebf88516572b7fbd7dc1b023316755d8ab156d7fcce58e2c785c0ec219f  src/xml3_namespaces.adb
 055155bfd5a5e8b1c55cba12d27739810c9e70c6e3bb979f2aee07d4e9372831  src/xml3_namespaces.ads
 9635087d455bb29a987535cc5ce1f04fb33fd59ef2b67f6af967279495113e1f  src/xml3_native_memory.adb
@@ -2002,7 +2002,7 @@ dd8bc8decd0750060ca05fecd2522078d80a198292f76f0e7396e1ef07796fe5  src/xml3_parse
 c2b4a1f34d55437337a9934733cd5123dc326b5e83c965df1c53947e76c9fb7f  src/xml3_parser-outcomes.ads
 53dc47e2a48012d545f0e6ca3483932a246faa9226f99c5a1cb7a630628b41cc  src/xml3_parser-requests.ads
 44ae59e8a3376cb11dbe157f1af3e0df276d5e5d913beaf87bb4cb793fed8cc6  src/xml3_parser-statuses.ads
-d907d72a35b735f909e90159649e161a9e4eeb537d3cd5b8587e2190afec0203  src/xml3_parser-contexts.ads
+6a480e37b16b5ddf886c1cc6c0d40e0fa4c4e35059426f60ec474860f43a1e0a  src/xml3_parser-contexts.ads
 50e786dbb39401878a4a405fbf814f4ee6b0187900f75aa365f723a6608a690a  src/xml3_dom_results.ads
 70811a782487da090c7f51455548bf53a2178bb4aea0f348aef605025c5875cd  src/xml3_text_results.ads
 75d63d2900b4a894f24c6f534b30b51f38f8ae04c4418301c23c7214635bdb05  src/xml3_entry_guards.ads
@@ -2029,8 +2029,8 @@ d26474b2a939148a4be5361e30910b9e703e0029c5c1c24428947f956cf99c5a  include/libxml
 703fd38d8b1c2e6708a11c8dca8866fe922b071bb545e9d26587dac29a544d0c  include/libxml/xmlstring.h
 8b172f3cd4b44a79e9837c10dad5db226f0241562bb922c01bb6cbfdcde92eb1  proof.gpr
 57627b512338fb7221748af16c268faedb77cbca94184c6aac1b13e62552e9af  libxml3.gpr
-e24b284703ec8eeeab01706542f58123d725edef77df1af79ed7bf01e0098bc5  libxml3.sym
-b6bd1096f7d55b7b49648550a934c724bb9de84f05c732ba0d05c88359084cd4  Makefile
+d857745b41e71e0d23b2eac45732f0e507c534548bb1833215bbbbb68b210ee0  libxml3.sym
+f8a7832570f607f2d611fe819ab323b17218dbda998cfdd39514a0e8c617099c  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 7565c225de19da9afed2e5089a4fd614823a767698fe10b2b59270b1bcf3b3c7  tests/oom-test.c
@@ -2047,7 +2047,7 @@ d200fabffa4a2a434647d2fc1eac91a7df6ae1f4a68777b55be8d7308421328f  src/xml3_error
 de39b5a991725333eb8fe1ac485e641d5ad8ab58ecae6788f838c0268a25079e  tests/copy-test.c
 bcfe6c992c1e40680aef3163590d7e46c6d3d2c96540849805866439a939d251  tests/output-test.c
 a6df322dbf1b723432cc83a0dd31b038915afb46c6098d8b4320e0881a123786  tests/input-test.c
-f5384b35c3951c33d6a5c66b562b4c45d7906a11dfc3baf78d7ffb175cf8a5fc  tests/context-test.c
+0af2d7389b38587964cc7e5574fd30f16019df2761c745d2611a37c565e94e0c  tests/context-test.c
 4f26f4a141d45ea5e6eb44488d12f0e6d6f31ebaa0a076a6b1b46f837285c29f  tests/save-test.c
 a5d8c06a69110f289962af1bca9b4b659053a43659673e33631ee40d8f8e8d1d  tests/handler-test.c
 d7ede60942a024f6775ffc9d4e1f2e78e45ae64ca5735989f4638c19354eb8ca  tests/uri-test.c

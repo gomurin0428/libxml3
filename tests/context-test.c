@@ -1,5 +1,6 @@
 /* The parser context API: xmlNewParserCtxt, the option functions, the
- * xmlCtxtRead* functions and the context's error state.  The output of
+ * xmlCtxtRead* functions, the context's error state and its accessors
+ * (xmlCtxtGetStatus, xmlCtxtIsStopped, xmlStopParser and the others).  The output of
  * this program is compared between libxml3 and the pinned reference
  * libxml2 (make test-context), so every line must describe behavior both
  * share.  Paths are printed relative to the test's temporary directory. */
@@ -9,6 +10,7 @@
 #include <libxml/xmlerror.h>
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -194,6 +196,146 @@ static void test_reads(void) {
            xmlGetLastError() ? xmlGetLastError()->code : 0);
 }
 
+static void put_state(const char *label, xmlParserCtxtPtr ctxt) {
+    const xmlError *error = xmlCtxtGetLastError(ctxt);
+
+    printf("%s: stopped=%d status=%d wellFormed=%d errNo=%d last=%d\n",
+           label, xmlCtxtIsStopped(ctxt), xmlCtxtGetStatus(ctxt),
+           ctxt->wellFormed, ctxt->errNo, error ? error->code : 0);
+}
+
+static int handler_calls;
+static int stop_at;
+
+static void state_handler(void *data, const xmlError *error) {
+    xmlParserCtxtPtr ctxt = data;
+
+    handler_calls++;
+    printf("  handler %d: %d/%d level=%d stopped=%d status=%d\n",
+           handler_calls, error->domain, error->code, (int)error->level,
+           xmlCtxtIsStopped(ctxt), xmlCtxtGetStatus(ctxt));
+    if (handler_calls == stop_at)
+        xmlStopParser(ctxt);
+}
+
+/* Reads text with the context; with show_doc 0 only the context's state
+ * is compared (libxml3 keeps no document after a namespace error). */
+static void state_read(xmlParserCtxtPtr ctxt, const char *label,
+                       const char *text, int stop, int show_doc) {
+    xmlDocPtr doc;
+
+    handler_calls = 0;
+    stop_at = stop;
+    doc = read_memory(ctxt, text, NULL, 0);
+    if (show_doc)
+        printf("%s: doc=%s calls=%d\n", label, doc ? "yes" : "no",
+               handler_calls);
+    put_state(label, ctxt);
+    xmlFreeDoc(doc);
+}
+
+/* A callback input whose second read fails with XML_IO_UNKNOWN, which is
+ * a warning: the bytes read are parsed. */
+static int warning_read(void *context, char *buffer, int length) {
+    int *reads = context;
+
+    (void)length;
+    if ((*reads)++ > 0)
+        return -1;
+    memcpy(buffer, "<r/>", 4);
+    return 4;
+}
+
+static void test_accessors(void) {
+    xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+    int value = 0, reads = 0, fd;
+    char path[200];
+    xmlDocPtr doc;
+
+    assert(ctxt != NULL);
+    printf("new: private=%d user=%d html=%d subset=%d node=%d doc=%d\n",
+           xmlCtxtGetPrivate(ctxt) == NULL, xmlCtxtGetUserData(ctxt) == ctxt,
+           xmlCtxtIsHtml(ctxt), xmlCtxtIsInSubset(ctxt),
+           xmlCtxtGetNode(ctxt) == NULL, xmlCtxtGetDocument(ctxt) == NULL);
+    put_state("new", ctxt);
+    xmlCtxtSetPrivate(ctxt, &value);
+    printf("private set: %d\n", xmlCtxtGetPrivate(ctxt) == &value);
+    xmlCtxtSetPrivate(NULL, &value);
+    xmlStopParser(NULL);
+    printf("null: private=%d user=%d html=%d subset=%d stopped=%d status=%d "
+           "node=%d doc=%d\n",
+           xmlCtxtGetPrivate(NULL) == NULL, xmlCtxtGetUserData(NULL) == NULL,
+           xmlCtxtIsHtml(NULL), xmlCtxtIsInSubset(NULL),
+           xmlCtxtIsStopped(NULL), xmlCtxtGetStatus(NULL),
+           xmlCtxtGetNode(NULL) == NULL, xmlCtxtGetDocument(NULL) == NULL);
+
+    state_read(ctxt, "well-formed", "<r/>", 0, 1);
+    state_read(ctxt, "malformed", "<r>", 0, 1);
+    state_read(ctxt, "namespace error", "<a:b/>", 0, 0);
+    state_read(ctxt, "empty namespace", "<r xmlns:a=''/>", 0, 0);
+    xmlCtxtSetErrorHandler(ctxt, state_handler, ctxt);
+    state_read(ctxt, "handled malformed", "<r><a></r>", 0, 1);
+    state_read(ctxt, "handled namespace error", "<a:b/>", 0, 0);
+    state_read(ctxt, "stop on fatal", "<r><a></r>", 1, 1);
+    /* Stopping on a warning clears wellFormed (errNo was XML_ERR_OK), so
+     * the read keeps no document. */
+    handler_calls = 0;
+    stop_at = 1;
+    doc = xmlCtxtReadIO(ctxt, warning_read, NULL, &reads, NULL, NULL, 0);
+    printf("stop on warning: doc=%s calls=%d\n", doc ? "yes" : "no",
+           handler_calls);
+    put_state("stop on warning", ctxt);
+    xmlFreeDoc(doc);
+    reads = 0;
+    handler_calls = 0;
+    stop_at = 0;
+    doc = xmlCtxtReadIO(ctxt, warning_read, NULL, &reads, NULL, NULL, 0);
+    printf("warning: doc=%s\n", doc ? "yes" : "no");
+    put_state("warning", ctxt);
+    xmlFreeDoc(doc);
+    xmlCtxtSetErrorHandler(ctxt, NULL, NULL);
+
+    /* A catastrophic error: a descriptor that cannot be read. */
+    snprintf(path, sizeof(path), "%s/ok.xml", directory);
+    fd = open(path, O_WRONLY);
+    assert(fd >= 0);
+    doc = xmlCtxtReadFd(ctxt, fd, NULL, NULL, 0);
+    close(fd);
+    assert(doc == NULL);
+    put_state("catastrophic", ctxt);
+    /* XML_PARSE_DTDVALID asks for validation, which then counts as
+     * failed too. */
+    xmlCtxtUseOptions(ctxt, 1 << 4);
+    put_state("catastrophic validating", ctxt);
+    xmlCtxtReset(ctxt);
+    put_state("reset", ctxt);
+
+    xmlStopParser(ctxt);
+    put_state("stopped", ctxt);
+    xmlStopParser(ctxt);
+    put_state("stopped again", ctxt);
+    state_read(ctxt, "read after stop", "<r/>", 0, 1);
+    state_read(ctxt, "malformed", "<r>", 0, 1);
+    xmlStopParser(ctxt);
+    put_state("stopped after error", ctxt);
+
+    xmlCtxtReset(ctxt);
+    ctxt->myDoc = xmlNewDoc(BAD_CAST "1.0");
+    printf("node is myDoc: %d\n",
+           xmlCtxtGetNode(ctxt) == (xmlNodePtr)ctxt->myDoc);
+    doc = xmlCtxtGetDocument(ctxt);
+    printf("document: %s myDoc=%s\n", doc ? "yes" : "no",
+           ctxt->myDoc ? "kept" : "cleared");
+    xmlFreeDoc(doc);
+    ctxt->myDoc = xmlNewDoc(BAD_CAST "1.0");
+    ctxt->wellFormed = 0;
+    ctxt->errNo = XML_ERR_DOCUMENT_END;
+    doc = xmlCtxtGetDocument(ctxt);
+    printf("document not well-formed: %s myDoc=%s\n", doc ? "yes" : "no",
+           ctxt->myDoc ? "kept" : "cleared");
+    xmlFreeParserCtxt(ctxt);
+}
+
 int main(void) {
     char path[200];
 
@@ -205,6 +347,7 @@ int main(void) {
     test_options();
     test_null();
     test_reads();
+    test_accessors();
 
     snprintf(path, sizeof(path), "%s/ok.xml", directory);
     unlink(path);
