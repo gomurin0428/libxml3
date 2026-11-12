@@ -39,6 +39,15 @@ int xmlParseURIReference(xmlURIPtr uri, const char *str);
 xmlChar *xmlSaveUri(xmlURIPtr uri);
 void xmlPrintURI(FILE *stream, xmlURIPtr uri);
 void xmlFreeURI(xmlURIPtr uri);
+int xmlBuildURISafe(const xmlChar *URI, const xmlChar *base,
+                    xmlChar **out);
+xmlChar *xmlBuildURI(const xmlChar *URI, const xmlChar *base);
+int xmlBuildRelativeURISafe(const xmlChar *URI, const xmlChar *base,
+                            xmlChar **out);
+xmlChar *xmlBuildRelativeURI(const xmlChar *URI, const xmlChar *base);
+xmlChar *xmlCanonicPath(const xmlChar *path);
+xmlChar *xmlPathToURI(const xmlChar *path);
+xmlChar *xmlURIEscape(const xmlChar *str);
 xmlChar *xmlURIEscapeStr(const xmlChar *str, const xmlChar *list);
 char *xmlURIUnescapeString(const char *str, int len, char *target);
 int xmlNormalizeURIPath(char *path);

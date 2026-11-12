@@ -787,6 +787,38 @@ int main(int argc, char **argv) {
         }
         xmlFree(saved);
         xmlFreeURI(uri);
+    } else if (strcmp(operation, "uri-build") == 0) {
+        /* Resolving, relativizing and escaping each allocate; a failure
+         * answers -1 and no string, otherwise the result is complete. */
+        xmlChar *built = NULL, *relative = NULL, *escaped;
+        int build_ret, relative_ret;
+
+        xml3_oom_enable(fail_index);
+        build_ret = xmlBuildURISafe(BAD_CAST "../g?y#s",
+                                    BAD_CAST "http://a/b/c/d;p?q", &built);
+        relative_ret = xmlBuildRelativeURISafe(BAD_CAST "http://a/b/x%20y/z",
+                                               BAD_CAST "http://a/b/c/d",
+                                               &relative);
+        escaped = xmlURIEscape(BAD_CAST "rel{x}|y");
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (build_ret == 0)
+            assert(built && strcmp((const char *)built, "http://a/b/g?y#s") == 0);
+        else
+            assert(injected && build_ret == -1 && built == NULL);
+        if (relative_ret == 0)
+            assert(relative &&
+                   strcmp((const char *)relative, "../x%20y/z") == 0);
+        else
+            assert(injected && relative_ret == -1 && relative == NULL);
+        if (escaped != NULL)
+            assert(strcmp((const char *)escaped, "rel%7Bx%7D%7Cy") == 0);
+        else
+            assert(injected);
+        xmlFree(built);
+        xmlFree(relative);
+        xmlFree(escaped);
     } else if (strcmp(operation, "handler-detached") == 0) {
         /* Whether or not the handler gets a copy of the record, its own
          * reset and failing read do not change the record it holds. */

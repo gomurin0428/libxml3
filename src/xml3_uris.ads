@@ -67,6 +67,22 @@ package XML3_URIs with SPARK_Mode is
                    and then Result.Query = No_Span
                    and then Result.Fragment = No_Span);
 
+   --  libxml2's xmlNormalizePath, used by xmlBuildURI (Is_File False) and
+   --  for file system paths (Is_File True), on Path (1 .. Last) in place,
+   --  as libxml2 runs it on its buffer: separators are collapsed, "."
+   --  segments removed, ".." removes the previous segment, an extraneous
+   --  ".." of an absolute path is dropped and a leading one of a relative
+   --  path kept.  libxml2's way of telling the two apart (it looks at the
+   --  byte at its output position) is kept.  An empty file path becomes
+   --  ".".  Last is the new length; the bytes after it are not used.
+   procedure Normalize_Path
+     (Path : in out String; Length : Natural; Is_File : Boolean;
+      Last : out Natural)
+   with Global => null,
+     Pre => Path'First = 1 and then Path'Last >= 1
+       and then Length <= Path'Last and then Path'Last < Natural'Last - 3,
+     Post => Last <= Natural'Max (Length, 1) and then Last <= Path'Last;
+
    --  xmlSaveUri's escaping: whether a byte of each component is written
    --  as it is (otherwise as %XX with uppercase hexadecimal digits).
    type Save_Component is

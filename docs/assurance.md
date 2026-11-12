@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 15,107 checks
-(1,942 flow and 13,165 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 15,155 checks
+(1,946 flow and 13,209 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1150,7 +1150,11 @@ compares the calls with the pinned libxml2.
 `URIs.Parse` finds the components of a URI reference as libxml2's
 `xmlParse3986URIReference` does (an absolute URI, else a relative
 reference, with the struct's cleanup flags and its unreset port), and
-`URIs.Kept` holds `xmlSaveUri`'s per-component escaping sets. The proof
+`URIs.Kept` holds `xmlSaveUri`'s per-component escaping sets.
+`URIs.Normalize_Path` reproduces libxml2's `xmlNormalizePath` on its buffer
+for `xmlBuildURI`, `xmlBuildRelativeURI` and file-path resolution; the
+proof covers absence of runtime errors and that the result stays within the
+buffer. The proof
 covers absence of runtime errors and that every component span lies within
 the text (positions past it read as the terminating NUL); the adapter copies
 or unescapes the spans into the public struct. `make test-uri` compares the

@@ -2211,5 +2211,47 @@
     "scope": "The query as it appears in the text. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/uri-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:uri.h:xmlBuildURISafe": {
+    "implementation": "partial",
+    "scope": "Resolves a reference against a base as libxml2 2.15.4 does: NULL base copies the reference; an absolute reference is copied; a base without \"://\" is a file path, resolved by removing its last segment, appending the unescaped reference (the fragment kept as written) and normalizing; otherwise the RFC 3986 steps on the parsed structs, with libxml2's choices (an empty reference keeps the base without its fragment, the merged path is normalized and recombined by xmlSaveUri). 0, 1 or -1 as libxml2 answers. Paths are normalized by the SPARK XML3_URIs.Normalize_Path, which reproduces libxml2's xmlNormalizePath on its buffer, including how it tells an absolute path's extraneous \"..\" from a relative path's leading one. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlBuildURI": {
+    "implementation": "partial",
+    "scope": "xmlBuildURISafe returning the result or NULL. Paths are normalized by the SPARK XML3_URIs.Normalize_Path, which reproduces libxml2's xmlNormalizePath on its buffer, including how it tells an absolute path's extraneous \"..\" from a relative path's leading one. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlBuildRelativeURISafe": {
+    "implementation": "partial",
+    "scope": "Expresses a URI relative to a base as libxml2 does: both are parsed (a file path when there is no \"://\", normalized), and when scheme, server and port agree the common path prefix is replaced by \"../\" groups and escaped with xmlSaveUri's exceptions; an invalid URI is copied and a differing one serialized. 0, 1 or -1. Paths are normalized by the SPARK XML3_URIs.Normalize_Path, which reproduces libxml2's xmlNormalizePath on its buffer, including how it tells an absolute path's extraneous \"..\" from a relative path's leading one. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlBuildRelativeURI": {
+    "implementation": "partial",
+    "scope": "xmlBuildRelativeURISafe returning the result or NULL. Paths are normalized by the SPARK XML3_URIs.Normalize_Path, which reproduces libxml2's xmlNormalizePath on its buffer, including how it tells an absolute path's extraneous \"..\" from a relative path's leading one. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlCanonicPath": {
+    "implementation": "partial",
+    "scope": "A copy of the path, or for a text containing \"://\" the text escaped with xmlURIEscapeStr keeping the reserved characters and \"%\", as in libxml2 2.15; NULL for NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlPathToURI": {
+    "implementation": "partial",
+    "scope": "xmlCanonicPath, as in libxml2 2.15. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:uri.h:xmlURIEscape": {
+    "implementation": "partial",
+    "scope": "Parses the text with the unwise characters allowed and writes each component escaped with libxml2's per-component exceptions (xmlURIEscapeStr); NULL when the text is not a URI reference or nothing is written, as in libxml2. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/uri-build-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

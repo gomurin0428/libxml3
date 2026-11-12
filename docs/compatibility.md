@@ -152,7 +152,8 @@ text・CDATA・comment・PI を飛ばし、NULL・該当なし・不適切な no
 * `libxml/xmlstring.h`: `xmlStrchr`、`xmlStrstr`、`xmlStrcasestr`、`xmlStrsub`、`xmlStrcmp`、`xmlStrcasecmp`、`xmlStrncmp`、`xmlStrncasecmp`、`xmlStrEqual`、`xmlStrQEqual`、`xmlStrlen`、`xmlCheckUTF8`、`xmlUTF8Strlen`、`xmlUTF8Strsize`、`xmlUTF8Size`、`xmlUTF8Charcmp`、`xmlUTF8Strloc`、`xmlUTF8Strndup`、`xmlUTF8Strsub`、`xmlUTF8Strpos`、`xmlGetUTF8Char`、`xmlStrdup`、`xmlStrndup`、`xmlCharStrdup`、`xmlCharStrndup`、`xmlStrncatNew`、`xmlStrcat`、`xmlStrncat`
 * `libxml/xmlmemory.h`: `xmlFree`
 * `libxml/uri.h`: `xmlURIEscapeStr` / `xmlURIUnescapeString` / `xmlNormalizeURIPath`、URIの解析と書き出し
-  （`xmlCreateURI`、`xmlParseURI` 系、`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）。`xmlBuildURI` などは未対応
+  （`xmlCreateURI`、`xmlParseURI` 系、`xmlSaveUri`、`xmlPrintURI`、`xmlFreeURI`）、組み立てと変換
+  （`xmlBuildURI` 系、`xmlBuildRelativeURI` 系、`xmlCanonicPath`、`xmlPathToURI`、`xmlURIEscape`）
 * `libxml/parserInternals.h`: `xmlCopyCharMultiByte` と `xmlCopyChar` のみ。deprecated な低level writerであり、parser-internals subsystem全体は未対応
 * `libxml/xmlerror.h`: `xmlError` の互換レイアウト、last-error の取得・リセット・コピー
 * `libxml/xmlversion.h`: libxml3 のバージョン識別子
@@ -1247,7 +1248,13 @@ libxml2 の癖もそのまま再現します。IPv4 の判定は常に失敗す�
 `#f`）、`port` は解析で初期化されないので再利用した構造体はそれを保ちます。`xmlSaveUri` は成分ごとの libxml2 の
 エスケープ規則（SPARKの `XML3_URIs.Kept`、大文字の `%XX`）で書き出します。固定版2.15.4と同じ結果になることを
 `make test-uri` で比較しています。libxml2 と異なり、終端の NUL では必ず止まります（libxml2 はフラグ4だけのとき
-NUL を越えて読みます）。`xmlBuildURI` などの組み立て系は未対応です。
+NUL を越えて読みます）。
+`xmlBuildURI` / `xmlBuildURISafe`（相対参照の解決）、`xmlBuildRelativeURI` / `xmlBuildRelativeURISafe`（相対表現）、
+`xmlCanonicPath`、`xmlPathToURI`、`xmlURIEscape` も libxml2 2.15.4 と同じ手順で処理します。ベースに `://` が
+なければファイルパスとして扱い、パスの正規化は libxml2 の `xmlNormalizePath` をそのまま再現したSPARKの
+`XML3_URIs.Normalize_Path` で行います（絶対パスの余分な `..` と相対パス先頭の `..` の見分け方も同じです）。
+固定版と同じ結果になることを `make test-uri-build` で比較しています。なお公開関数の `xmlNormalizeURIPath` は
+従来どおり独自の一貫した正規化のままです。
 
 `xmlURIEscapeStr` は入力の先頭NULまでをbyte単位で処理します。ASCII英数字、
 `-._~!*'()@`、例外リストに含まれるbyteを保持し、他のbyteをuppercase `%HH` にします。

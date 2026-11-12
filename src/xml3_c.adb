@@ -36,6 +36,7 @@ with XML3_Text.Buffers;
 with XML3_Text.QNames;
 with XML3_Text_Results;
 with XML3_URIs;
+with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;
 
 package body XML3_C is
@@ -5063,5 +5064,650 @@ package body XML3_C is
          XML3_Native_Memory.Free (Text);
       end if;
    end Print_URI;
+
+
+   ------------------------------------------------------------------
+   --  URI resolution and conversion, following libxml2's uri.c on the
+   --  parsed structs; paths are normalized by the SPARK
+   --  XML3_URIs.Normalize_Path.
+   ------------------------------------------------------------------
+
+   --  A C string's bytes; Constraint_Error for one too long to measure.
+   function C_Text (Item : System.Address) return String is
+      Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+   begin
+      XML3_Text.Buffers.Measure (Item, Length, Found);
+      if not Found then
+         raise Constraint_Error;
+      end if;
+      declare
+         Value : String (1 .. Natural (Length)) with Import, Address => Item;
+      begin
+         return Value;
+      end;
+   end C_Text;
+
+   --  A new NUL-terminated copy of Value, or null when it cannot be made.
+   function New_C_String (Value : String) return System.Address is
+      Result : System.Address;
+   begin
+      XML3_Native_Memory.Allocate
+        (XML3_Native_Memory.Byte_Count (Value'Length + 1), Result);
+      if Result /= System.Null_Address then
+         XML3_Native_Memory.Write_String (Result, 0, Value);
+         XML3_Native_Memory.Write_Byte
+           (Result, Value'Length, Character'Val (0));
+      end if;
+      return Result;
+   end New_C_String;
+
+   function Has_Scheme_Separator (Value : String) return Boolean is
+     (Ada.Strings.Fixed.Index (Value, "://") /= 0);
+
+   function Normalized (Value : String; Is_File : Boolean) return String is
+      Buffer : String (1 .. Natural'Max (Value'Length, 1)) :=
+        (others => ' ');
+      Last : Natural;
+   begin
+      Buffer (1 .. Value'Length) := Value;
+      XML3_URIs.Normalize_Path (Buffer, Value'Length, Is_File, Last);
+      return Buffer (1 .. Last);
+   end Normalized;
+
+   --  A copy of a C string field (null stays null); Failed records a
+   --  copy that could not be made.
+   function Copy_Field
+     (Item : System.Address; Failed : in out Boolean) return System.Address
+   is
+      Result : System.Address;
+   begin
+      if Item = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Result := Str_Duplicate (Item);
+      if Result = System.Null_Address then
+         Failed := True;
+      end if;
+      return Result;
+   end Copy_Field;
+
+   function Set_Field
+     (Value : String; Failed : in out Boolean) return System.Address
+   is
+      Result : constant System.Address := New_C_String (Value);
+   begin
+      if Result = System.Null_Address then
+         Failed := True;
+      end if;
+      return Result;
+   end Set_Field;
+
+   --  xmlResolvePath: a reference against a base that is a file path.
+   function Resolve_Path (Escaped, Base, Output : System.Address) return int
+   is
+      Ref, Result : Ada.Strings.Unbounded.Unbounded_String;
+      Fragment_At : Natural;
+      use Ada.Strings.Unbounded;
+   begin
+      if Escaped = System.Null_Address or else C_Text (Escaped) = "" then
+         if Base = System.Null_Address or else C_Text (Base) = "" then
+            return 1;
+         end if;
+         declare
+            Copy : constant System.Address := Str_Duplicate (Base);
+         begin
+            Set_Address (Output, Copy);
+            return (if Copy = System.Null_Address then -1 else 0);
+         end;
+      end if;
+      declare
+         Text : constant String := C_Text (Escaped);
+         Before : System.Address;
+         Unescaped : System.Address;
+      begin
+         --  The part before the fragment is unescaped.
+         Fragment_At := Ada.Strings.Fixed.Index (Text, "#");
+         Before := New_C_String
+           (if Fragment_At = 0 then Text
+            else Text (Text'First .. Fragment_At - 1));
+         if Before = System.Null_Address then
+            return -1;
+         end if;
+         Unescaped := URI_Unescape_String (Before, -1, System.Null_Address);
+         XML3_Native_Memory.Free (Before);
+         if Unescaped = System.Null_Address then
+            return -1;
+         end if;
+         Ref := To_Unbounded_String (C_Text (Unescaped));
+         XML3_Native_Memory.Free (Unescaped);
+         Result := Ref;
+         if Base /= System.Null_Address and then C_Text (Base) /= ""
+           and then not (Length (Ref) > 0 and then Element (Ref, 1) = '/')
+         then
+            declare
+               Base_Text : constant String := C_Text (Base);
+               I : Natural := Base_Text'Length;
+            begin
+               --  Remove the last segment of the base.
+               while I > 0 and then Base_Text (I) /= '/' loop
+                  I := I - 1;
+               end loop;
+               if I > 0 then
+                  Result := To_Unbounded_String
+                    (Normalized (Base_Text (1 .. I) & To_String (Ref),
+                                 Is_File => True));
+               end if;
+            end;
+         end if;
+         if Fragment_At /= 0 then
+            Append (Result, Text (Fragment_At .. Text'Last));
+         end if;
+      end;
+      declare
+         Copy : constant System.Address := New_C_String (To_String (Result));
+      begin
+         Set_Address (Output, Copy);
+         return (if Copy = System.Null_Address then -1 else 0);
+      end;
+   end Resolve_Path;
+
+   function Build_URI_Safe (URI, Base, Output : System.Address) return int
+   is
+      Ref, Bas, Res : C_URI := Empty_URI;
+      Has_Ref : Boolean := False;
+      Value : System.Address := System.Null_Address;
+      Ret : int;
+      Failed : Boolean := False;
+      Null_Address : constant System.Address := System.Null_Address;
+
+      function Save (Item : in out C_URI) return System.Address is
+         Item_Address : constant System.Address := Item'Address;
+      begin
+         return Save_URI (Item_Address);
+      end Save;
+
+      procedure Finish is
+      begin
+         Clean_URI (Ref);
+         Clean_URI (Bas);
+         Clean_URI (Res);
+      end Finish;
+   begin
+      if Output = Null_Address then
+         return 1;
+      end if;
+      Set_Address (Output, Null_Address);
+      if URI = Null_Address then
+         return 1;
+      end if;
+      if Base = Null_Address then
+         Value := Str_Duplicate (URI);
+         Set_Address (Output, Value);
+         return (if Value = Null_Address then -1 else 0);
+      end if;
+      if C_Text (URI) /= "" then
+         Ret := Parse_Into (Ref, URI);
+         if Ret /= 0 then
+            Finish;
+            return Ret;
+         end if;
+         Has_Ref := True;
+      end if;
+      if Has_Ref and then Ref.Scheme /= Null_Address then
+         --  An absolute URI is returned as it is.
+         Finish;
+         Value := Str_Duplicate (URI);
+         Set_Address (Output, Value);
+         return (if Value = Null_Address then -1 else 0);
+      end if;
+      if not Has_Scheme_Separator (C_Text (Base)) then
+         --  A base without a scheme and authority is a file path.
+         Finish;
+         return Resolve_Path (URI, Base, Output);
+      end if;
+      Ret := Parse_Into (Bas, Base);
+      if Ret < 0 then
+         Finish;
+         return Ret;
+      elsif Ret /= 0 then
+         if Has_Ref then
+            Value := Save (Ref);
+            Ret := (if Value = Null_Address then -1 else 0);
+         end if;
+         Finish;
+         Set_Address (Output, Value);
+         return Ret;
+      end if;
+      if not Has_Ref then
+         --  The base without its fragment.
+         Free_If_Set (Bas.Fragment);
+         Value := Save (Bas);
+         Finish;
+         Set_Address (Output, Value);
+         return (if Value = Null_Address then -1 else 0);
+      end if;
+
+      if Ref.Scheme = Null_Address and then Ref.Path = Null_Address
+        and then Ref.Authority = Null_Address
+        and then Ref.Server = Null_Address
+        and then Ref.Port = XML3_URIs.Port_Empty
+      then
+         --  2) A reference to the current document.
+         Res.Scheme := Copy_Field (Bas.Scheme, Failed);
+         if Bas.Authority /= Null_Address then
+            Res.Authority := Copy_Field (Bas.Authority, Failed);
+         else
+            Res.Server := Copy_Field (Bas.Server, Failed);
+            Res.User := Copy_Field (Bas.User, Failed);
+            Res.Port := Bas.Port;
+         end if;
+         Res.Path := Copy_Field (Bas.Path, Failed);
+         if Ref.Query_Raw /= Null_Address then
+            Res.Query_Raw := Copy_Field (Ref.Query_Raw, Failed);
+         elsif Ref.Query /= Null_Address then
+            Res.Query := Copy_Field (Ref.Query, Failed);
+         elsif Bas.Query_Raw /= Null_Address then
+            Res.Query_Raw := Copy_Field (Bas.Query_Raw, Failed);
+         elsif Bas.Query /= Null_Address then
+            Res.Query := Copy_Field (Bas.Query, Failed);
+         end if;
+         Res.Fragment := Copy_Field (Ref.Fragment, Failed);
+      else
+         --  3) The scheme of the base.
+         Res.Scheme := Copy_Field (Bas.Scheme, Failed);
+         if Ref.Query_Raw /= Null_Address then
+            Res.Query_Raw := Copy_Field (Ref.Query_Raw, Failed);
+         elsif Ref.Query /= Null_Address then
+            Res.Query := Copy_Field (Ref.Query, Failed);
+         end if;
+         Res.Fragment := Copy_Field (Ref.Fragment, Failed);
+         if Ref.Authority /= Null_Address or else Ref.Server /= Null_Address
+           or else Ref.Port /= XML3_URIs.Port_Empty
+         then
+            --  4) A network-path reference.
+            if Ref.Authority /= Null_Address then
+               Res.Authority := Copy_Field (Ref.Authority, Failed);
+            else
+               Res.Server := Copy_Field (Ref.Server, Failed);
+               Res.User := Copy_Field (Ref.User, Failed);
+               Res.Port := Ref.Port;
+            end if;
+            Res.Path := Copy_Field (Ref.Path, Failed);
+         else
+            if Bas.Authority /= Null_Address then
+               Res.Authority := Copy_Field (Bas.Authority, Failed);
+            elsif Bas.Server /= Null_Address
+              or else Bas.Port /= XML3_URIs.Port_Empty
+            then
+               Res.Server := Copy_Field (Bas.Server, Failed);
+               Res.User := Copy_Field (Bas.User, Failed);
+               Res.Port := Bas.Port;
+            end if;
+            if Ref.Path /= Null_Address and then C_Text (Ref.Path) /= ""
+              and then C_Text (Ref.Path) (1) = '/'
+            then
+               --  5) An absolute-path reference.
+               Res.Path := Copy_Field (Ref.Path, Failed);
+            else
+               --  6) Merge with the base path and normalize.
+               declare
+                  use Ada.Strings.Unbounded;
+                  Merged : Unbounded_String;
+                  Base_Path : constant String :=
+                    (if Bas.Path = Null_Address then "" else C_Text (Bas.Path));
+                  Last_Slash : Natural := 0;
+               begin
+                  for I in Base_Path'Range loop
+                     if Base_Path (I) = '/' then
+                        Last_Slash := I;
+                     end if;
+                  end loop;
+                  Merged := To_Unbounded_String (Base_Path (1 .. Last_Slash));
+                  if Ref.Path /= Null_Address and then C_Text (Ref.Path) /= ""
+                  then
+                     if Last_Slash = 0
+                       and then (Bas.Server /= Null_Address
+                                 or else Bas.Port /= XML3_URIs.Port_Empty)
+                     then
+                        Append (Merged, '/');
+                     end if;
+                     Append (Merged, C_Text (Ref.Path));
+                  end if;
+                  Res.Path := Set_Field
+                    (Normalized (To_String (Merged), Is_File => False),
+                     Failed);
+               end;
+            end if;
+         end if;
+      end if;
+      --  7) Recombine.
+      if not Failed then
+         Value := Save (Res);
+      end if;
+      Finish;
+      Set_Address (Output, Value);
+      return (if Value = Null_Address then -1 else 0);
+   exception
+      when others =>
+         Finish;
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Build_URI_Safe;
+
+   function Build_URI (URI, Base : System.Address) return System.Address is
+      Result : aliased System.Address := System.Null_Address;
+      Ignored : int;
+   begin
+      Ignored := Build_URI_Safe (URI, Base, Result'Address);
+      return Result;
+   end Build_URI;
+
+   --  xmlParseUriOrPath: a file path (no "://") normalized as a path,
+   --  otherwise a URI reference with its path normalized.
+   function Parse_URI_Or_Path (Text : System.Address; Item : in out C_URI)
+      return int
+   is
+      Value : constant String := C_Text (Text);
+      Failed : Boolean := False;
+      Ret : int;
+   begin
+      if not Has_Scheme_Separator (Value) then
+         Item.Path := Set_Field (Normalized (Value, Is_File => True), Failed);
+         return (if Failed then -1 else 0);
+      end if;
+      Ret := Parse_Into (Item, Text);
+      if Ret /= 0 then
+         return Ret;
+      end if;
+      if Item.Path /= System.Null_Address then
+         declare
+            Path : constant String :=
+              Normalized (C_Text (Item.Path), Is_File => False);
+         begin
+            Free_If_Set (Item.Path);
+            Item.Path := Set_Field (Path, Failed);
+         end;
+      end if;
+      return (if Failed then -1 else 0);
+   end Parse_URI_Or_Path;
+
+   function Build_Relative_URI_Safe (URI, Base, Output : System.Address)
+      return int
+   is
+      Ref, Bas : C_URI := Empty_URI;
+      Value : System.Address := System.Null_Address;
+      Ret : int := 0;
+      Null_Address : constant System.Address := System.Null_Address;
+      --  The relative form, before the escaping of xmlSaveUri's
+      --  exceptions; Pending when it is still to be computed.
+      Relative : Ada.Strings.Unbounded.Unbounded_String;
+      Have_Relative, Escape_Relative : Boolean := False;
+      Exceptions : aliased constant char_array := To_C ("/;&=+$,");
+      use Ada.Strings.Unbounded;
+
+      function Equal_Fields (Left, Right : System.Address) return Boolean is
+        (if Left = Null_Address or else Right = Null_Address
+         then Left = Right
+         else C_Text (Left) = C_Text (Right));
+   begin
+      if Output = Null_Address then
+         return 1;
+      end if;
+      Set_Address (Output, Null_Address);
+      if URI = Null_Address or else C_Text (URI) = "" then
+         return 1;
+      end if;
+      Ret := Parse_URI_Or_Path (URI, Ref);
+      if Ret < 0 then
+         Clean_URI (Ref);
+         return Ret;
+      elsif Ret /= 0 then
+         --  An invalid URI is returned as it is.
+         Clean_URI (Ref);
+         Value := Str_Duplicate (URI);
+         Set_Address (Output, Value);
+         return (if Value = Null_Address then -1 else 0);
+      end if;
+      if Base /= Null_Address and then C_Text (Base) /= "" then
+         Ret := Parse_URI_Or_Path (Base, Bas);
+         if Ret < 0 then
+            Clean_URI (Ref);
+            Clean_URI (Bas);
+            return Ret;
+         end if;
+         if Ret = 0
+           and then Equal_Fields (Bas.Scheme, Ref.Scheme)
+           and then Equal_Fields (Bas.Server, Ref.Server)
+           and then Bas.Port = Ref.Port
+         then
+            if Equal_Fields (Bas.Path, Ref.Path) then
+               Relative := Null_Unbounded_String;
+               Have_Relative := True;
+            elsif Bas.Path = Null_Address then
+               Relative := To_Unbounded_String (C_Text (Ref.Path));
+               Have_Relative := True;
+               Escape_Relative := True;
+            else
+               declare
+                  B : constant String := C_Text (Bas.Path);
+                  R : constant String :=
+                    (if Ref.Path = Null_Address then "/"
+                     else C_Text (Ref.Path));
+                  Pos : Natural := 0;
+                  Ix : Natural;
+                  Slashes : Natural := 0;
+                  function B_At (I : Natural) return Character is
+                    (if I < B'Length then B (I + 1) else Character'Val (0));
+                  function R_At (I : Natural) return Character is
+                    (if I < R'Length then R (I + 1) else Character'Val (0));
+               begin
+                  if (B_At (0) = '/') = (R_At (0) = '/') then
+                     while B_At (Pos) = R_At (Pos)
+                       and then B_At (Pos) /= Character'Val (0)
+                     loop
+                        Pos := Pos + 1;
+                     end loop;
+                     if B_At (Pos) = R_At (Pos) then
+                        Relative := Null_Unbounded_String;
+                        Have_Relative := True;
+                     else
+                        Ix := Pos;
+                        while Ix > 0 and then R_At (Ix - 1) /= '/' loop
+                           Ix := Ix - 1;
+                        end loop;
+                        declare
+                           Unique : constant String := R (Ix + 1 .. R'Last);
+                        begin
+                           for I in Ix .. B'Length - 1 loop
+                              if B_At (I) = '/' then
+                                 Slashes := Slashes + 1;
+                              end if;
+                           end loop;
+                           if Slashes = 0 and then Unique = "" then
+                              Relative := To_Unbounded_String ("./");
+                              Have_Relative := True;
+                           elsif Slashes = 0 then
+                              Relative := To_Unbounded_String (Unique);
+                              Have_Relative := True;
+                              Escape_Relative := True;
+                           else
+                              for I in 1 .. Slashes loop
+                                 Append (Relative, "../");
+                              end loop;
+                              if Unique'Length > 0
+                                and then Unique (Unique'First) = '/'
+                              then
+                                 Append
+                                   (Relative,
+                                    Unique (Unique'First + 1 .. Unique'Last));
+                              else
+                                 Append (Relative, Unique);
+                              end if;
+                              Have_Relative := True;
+                              Escape_Relative := True;
+                           end if;
+                        end;
+                     end if;
+                  end if;
+               end;
+            end if;
+         end if;
+      end if;
+      if Have_Relative and then Escape_Relative then
+         declare
+            Plain : constant System.Address :=
+              New_C_String (To_String (Relative));
+         begin
+            if Plain /= Null_Address then
+               Value := URI_Escape_Str (Plain, Exceptions'Address);
+               XML3_Native_Memory.Free (Plain);
+            end if;
+            Ret := (if Value = Null_Address then -1 else 0);
+         end;
+      elsif Have_Relative then
+         Value := New_C_String (To_String (Relative));
+         Ret := (if Value = Null_Address then -1 else 0);
+      else
+         --  The reference itself.
+         declare
+            Item : C_URI := Ref;
+         begin
+            Value := Save_URI (Item'Address);
+            Ret := (if Value = Null_Address then -1 else 0);
+         end;
+      end if;
+      Clean_URI (Ref);
+      Clean_URI (Bas);
+      Set_Address (Output, Value);
+      return Ret;
+   exception
+      when others =>
+         Clean_URI (Ref);
+         Clean_URI (Bas);
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Build_Relative_URI_Safe;
+
+   function Build_Relative_URI (URI, Base : System.Address)
+      return System.Address
+   is
+      Result : aliased System.Address := System.Null_Address;
+      Ignored : int;
+   begin
+      Ignored := Build_Relative_URI_Safe (URI, Base, Result'Address);
+      return Result;
+   end Build_Relative_URI;
+
+   function Canonic_Path (Path : System.Address) return System.Address is
+      Kept : aliased constant char_array := To_C (":/?#[]@!$&()*+,;='%");
+   begin
+      if Path = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      if Has_Scheme_Separator (C_Text (Path)) then
+         return URI_Escape_Str (Path, Kept'Address);
+      end if;
+      return Str_Duplicate (Path);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Canonic_Path;
+
+   function Path_To_URI (Path : System.Address) return System.Address is
+     (Canonic_Path (Path));
+
+   function URI_Escape (Text : System.Address) return System.Address is
+      Item : C_URI := Empty_URI;
+      Result : Ada.Strings.Unbounded.Unbounded_String;
+      Any : Boolean := False;
+      Failed : Boolean := False;
+      use Ada.Strings.Unbounded;
+
+      procedure Put_Escaped (Field : System.Address; Kept : String) is
+         List : aliased constant char_array := To_C (Kept);
+         Escaped : System.Address;
+      begin
+         Escaped := URI_Escape_Str (Field, List'Address);
+         if Escaped = System.Null_Address then
+            Failed := True;
+            return;
+         end if;
+         Append (Result, C_Text (Escaped));
+         XML3_Native_Memory.Free (Escaped);
+      end Put_Escaped;
+
+      procedure Put (Value : String) is
+      begin
+         Append (Result, Value);
+         Any := True;
+      end Put;
+   begin
+      if Text = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      --  Unwise characters are allowed in the unescaped form.
+      Item.Cleanup := XML3_URIs.Allow_Unwise;
+      if Parse_Into (Item, Text) /= 0 then
+         Clean_URI (Item);
+         return System.Null_Address;
+      end if;
+      if Item.Scheme /= System.Null_Address then
+         Put_Escaped (Item.Scheme, "+-.");
+         Put (":");
+      end if;
+      if Item.Authority /= System.Null_Address then
+         Put ("//");
+         Put_Escaped (Item.Authority, "/?;:@");
+      end if;
+      if Item.User /= System.Null_Address then
+         Put ("//");
+         Put_Escaped (Item.User, ";:&=+$,");
+         Put ("@");
+      end if;
+      if Item.Server /= System.Null_Address then
+         if Item.User = System.Null_Address then
+            Put ("//");
+         end if;
+         Put_Escaped (Item.Server, "/?;:@");
+         Any := True;
+      end if;
+      if Item.Port > 0 then
+         declare
+            Image : constant String := int'Image (Item.Port);
+         begin
+            Put (":" & Image (Image'First + 1 .. Image'Last));
+         end;
+      end if;
+      if Item.Path /= System.Null_Address then
+         Put_Escaped (Item.Path, ":@&=+$,/?;");
+         Any := True;
+      end if;
+      if Item.Query_Raw /= System.Null_Address then
+         Put ("?" & C_Text (Item.Query_Raw));
+      elsif Item.Query /= System.Null_Address then
+         Put ("?");
+         Put_Escaped (Item.Query, ";/?:@&=+,$");
+      end if;
+      if Item.Opaque /= System.Null_Address then
+         Put_Escaped (Item.Opaque, "");
+         Any := True;
+      end if;
+      if Item.Fragment /= System.Null_Address then
+         Put ("#");
+         Put_Escaped (Item.Fragment, "#");
+      end if;
+      Clean_URI (Item);
+      if Failed or else not Any then
+         return System.Null_Address;
+      end if;
+      return New_C_String (To_String (Result));
+   exception
+      when others =>
+         Clean_URI (Item);
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end URI_Escape;
 
 end XML3_C;
