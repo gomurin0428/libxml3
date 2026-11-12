@@ -39,6 +39,14 @@ package XML3_C is
       Size   : Interfaces.C.int) return System.Address
      with Export, Convention => C, External_Name => "xmlParseMemory";
 
+   function Read_File
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlReadFile";
+
+   function Parse_File (Name : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlParseFile";
+
    function Read_Doc
      (Cur      : System.Address;
       URL      : System.Address;
@@ -71,6 +79,94 @@ package XML3_C is
      (Document, Memory, Size, Encoding : System.Address;
       Format : Interfaces.C.int)
      with Export, Convention => C, External_Name => "xmlDocDumpFormatMemoryEnc";
+
+   --  xmlBuffer and the serialization entry points that write to a
+   --  buffer, a stream or a file.
+   function Buffer_Create return System.Address
+     with Export, Convention => C, External_Name => "xmlBufferCreate";
+   function Buffer_Create_Size (Size : Interfaces.C.size_t)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlBufferCreateSize";
+   function Buffer_Create_Static
+     (Memory : System.Address; Size : Interfaces.C.size_t)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlBufferCreateStatic";
+   procedure Buffer_Free (Buffer : System.Address)
+     with Export, Convention => C, External_Name => "xmlBufferFree";
+   procedure Buffer_Empty (Buffer : System.Address)
+     with Export, Convention => C, External_Name => "xmlBufferEmpty";
+   function Buffer_Shrink
+     (Buffer : System.Address; Length : Interfaces.C.unsigned)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferShrink";
+   function Buffer_Grow
+     (Buffer : System.Address; Length : Interfaces.C.unsigned)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferGrow";
+   function Buffer_Resize
+     (Buffer : System.Address; Size : Interfaces.C.unsigned)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferResize";
+   function Buffer_Add
+     (Buffer, Text : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferAdd";
+   function Buffer_Add_Head
+     (Buffer, Text : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferAddHead";
+   function Buffer_Cat (Buffer, Text : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferCat";
+   function Buffer_C_Cat (Buffer, Text : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferCCat";
+   procedure Buffer_Write_Xml_Chars (Buffer, Text : System.Address)
+     with Export, Convention => C, External_Name => "xmlBufferWriteCHAR";
+   procedure Buffer_Write_C_Chars (Buffer, Text : System.Address)
+     with Export, Convention => C, External_Name => "xmlBufferWriteChar";
+   procedure Buffer_Write_Quoted_String (Buffer, Text : System.Address)
+     with Export, Convention => C,
+       External_Name => "xmlBufferWriteQuotedString";
+   function Buffer_Content (Buffer : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlBufferContent";
+   function Buffer_Length (Buffer : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferLength";
+   function Buffer_Detach (Buffer : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlBufferDetach";
+   procedure Buffer_Set_Allocation_Scheme
+     (Buffer : System.Address; Scheme : Interfaces.C.int)
+     with Export, Convention => C,
+       External_Name => "xmlBufferSetAllocationScheme";
+   function Buffer_Dump (Stream, Buffer : System.Address)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlBufferDump";
+
+   function Node_Dump
+     (Buffer, Doc, Node : System.Address;
+      Level, Format : Interfaces.C.int) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlNodeDump";
+   procedure Elem_Dump (Stream, Doc, Node : System.Address)
+     with Export, Convention => C, External_Name => "xmlElemDump";
+   function Doc_Dump (Stream, Doc : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlDocDump";
+   function Doc_Format_Dump
+     (Stream, Doc : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlDocFormatDump";
+   function Save_File (Name, Doc : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFile";
+   function Save_Format_File
+     (Name, Doc : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFormatFile";
+   function Save_File_Enc
+     (Name, Doc, Encoding : System.Address) return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFileEnc";
+   function Save_Format_File_Enc
+     (Name, Doc, Encoding : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+     with Export, Convention => C, External_Name => "xmlSaveFormatFileEnc";
 
    function New_Node
      (Ns, Name : System.Address) return System.Address
@@ -232,6 +328,24 @@ package XML3_C is
 
    function Copy_Ns (Source : System.Address) return System.Address
      with Export, Convention => C, External_Name => "xmlCopyNamespace";
+
+   function Copy_Node
+     (Node : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyNode";
+
+   function Doc_Copy_Node
+     (Node, Doc : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlDocCopyNode";
+
+   function Copy_Prop (Target, Cur : System.Address) return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyProp";
+
+   function Copy_Doc
+     (Doc : System.Address; Recursive : Interfaces.C.int)
+      return System.Address
+     with Export, Convention => C, External_Name => "xmlCopyDoc";
 
    procedure Free_Ns (Ns : System.Address)
      with Export, Convention => C, External_Name => "xmlFreeNs";

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <libxml3.h>
 
 #include <assert.h>
@@ -5,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 void xml3_oom_enable(long index);
 void xml3_oom_disable(void);
@@ -462,6 +464,178 @@ int main(int argc, char **argv) {
         copy = bounded ? xmlStrndup(source, sizeof(source)) : xmlStrdup(source);
         assert(copy && memcmp(copy, source, length) == 0 && copy[length] == 0);
         xmlFree(copy);
+    } else if (strcmp(operation, "node-copy") == 0 ||
+               strcmp(operation, "node-copy-doc") == 0 ||
+               strcmp(operation, "prop-copy") == 0 ||
+               strcmp(operation, "doc-copy") == 0) {
+        static const char text[] =
+            "<r xmlns:a='urn:a'><a:c a:k='v' b='w'>t<d xmlns='urn:d'>u</d>"
+            "<!--c--></a:c></r>";
+        xmlChar *before = NULL, *after = NULL;
+        int before_size = 0, after_size = 0;
+        xmlDocPtr target = xmlNewDoc(BAD_CAST "1.0");
+        xmlNodePtr root, source, other;
+        xmlNodePtr copy = NULL;
+
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        assert(doc && target);
+        root = xmlDocGetRootElement(doc);
+        source = root->children;
+        /* The property copy target binds the prefix to another name, so
+         * the copy needs a reconciled declaration. */
+        other = xmlNewDocNode(target, NULL, BAD_CAST "o", NULL);
+        assert(other && xmlNewNs(other, BAD_CAST "urn:other", BAD_CAST "a"));
+        xmlDocSetRootElement(target, other);
+        xmlDocDumpMemory(doc, &before, &before_size);
+        assert(before);
+        xml3_oom_enable(fail_index);
+        if (strcmp(operation, "node-copy") == 0)
+            copy = xmlCopyNode(source, 1);
+        else if (strcmp(operation, "node-copy-doc") == 0)
+            copy = xmlDocCopyNode(source, target, 1);
+        else if (strcmp(operation, "prop-copy") == 0)
+            copy = (xmlNodePtr)xmlCopyProp(other, source->properties);
+        else
+            copy = (xmlNodePtr)xmlCopyDoc(doc, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(!copy);
+            require_oom_error();
+        } else {
+            assert(copy);
+            if (strcmp(operation, "prop-copy") == 0) {
+                assert(copy->type == XML_ATTRIBUTE_NODE && copy->ns &&
+                       xmlStrEqual(copy->ns->href, BAD_CAST "urn:a"));
+                xmlFreeProp((xmlAttrPtr)copy);
+            } else if (strcmp(operation, "doc-copy") == 0) {
+                xmlDocDumpMemory((xmlDocPtr)copy, &after, &after_size);
+                assert(after && after_size == before_size &&
+                       memcmp(after, before, (size_t)before_size) == 0);
+                xmlFree(after);
+                after = NULL;
+                xmlFreeDoc((xmlDocPtr)copy);
+            } else {
+                assert(copy->type == XML_ELEMENT_NODE && copy->parent == NULL &&
+                       copy->ns && xmlStrEqual(copy->ns->href, BAD_CAST "urn:a"));
+                xmlFreeNode(copy);
+            }
+        }
+        /* A failed or successful copy leaves the source unchanged. */
+        xmlDocDumpMemory(doc, &after, &after_size);
+        assert(after && after_size == before_size &&
+               memcmp(after, before, (size_t)before_size) == 0);
+        xmlFree(after);
+        xmlFree(before);
+        xmlFreeDoc(target);
+        xmlFreeDoc(doc);
+        doc = NULL;
+    } else if (strcmp(operation, "buffer-ops") == 0) {
+        /* Every buffer operation that allocates leaves a usable buffer
+         * with its previous content when the allocation fails. */
+        char big[400];
+        xmlBufferPtr buf;
+        int add_result, head_result;
+        xmlChar *detached;
+
+        memset(big, 'z', sizeof(big) - 1);
+        big[sizeof(big) - 1] = 0;
+        xml3_oom_enable(fail_index);
+        buf = xmlBufferCreate();
+        if (buf == NULL) {
+            injected = xml3_oom_was_injected();
+            allocation_count = xml3_oom_count();
+            xml3_oom_disable();
+            assert(injected);
+        } else {
+            add_result = xmlBufferAdd(buf, BAD_CAST "abc", -1);
+            assert(add_result == 0);
+            add_result = xmlBufferAdd(buf, BAD_CAST big, -1);
+            assert(add_result == 0 || add_result == XML_ERR_NO_MEMORY);
+            assert(xmlBufferLength(buf) ==
+                   (add_result == 0 ? 3 + (int)strlen(big) : 3));
+            assert(memcmp(xmlBufferContent(buf), "abc", 3) == 0);
+            assert(xmlBufferShrink(buf, 1) == 1);
+            head_result = xmlBufferAddHead(buf, BAD_CAST big, -1);
+            assert(head_result == 0 || head_result == -1);
+            detached = xmlBufferDetach(buf);
+            injected = xml3_oom_was_injected();
+            allocation_count = xml3_oom_count();
+            xml3_oom_disable();
+            if (detached != NULL) {
+                assert(strstr((const char *)detached, "bc") != NULL);
+                xmlFree(detached);
+            }
+            assert(xmlBufferLength(buf) == 0 && xmlBufferContent(buf) == NULL);
+            assert(xmlBufferAdd(buf, BAD_CAST "again", -1) == 0);
+            assert(strcmp((const char *)xmlBufferContent(buf), "again") == 0);
+            xmlBufferFree(buf);
+        }
+    } else if (strcmp(operation, "node-dump") == 0 ||
+               strcmp(operation, "save-file") == 0) {
+        static const char text[] =
+            "<r xmlns:a='urn:a'><a:c k='v'>t<d/><!--c--></a:c></r>";
+        xmlBufferPtr buf = xmlBufferCreate();
+        char path[] = "/tmp/xml3-oom-save-XXXXXX";
+        int fd = -1;
+        int result;
+
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        assert(doc && buf);
+        assert(xmlBufferCCat(buf, "keep|") == 0);
+        if (strcmp(operation, "save-file") == 0) {
+            fd = mkstemp(path);
+            assert(fd >= 0);
+            close(fd);
+        }
+        xml3_oom_enable(fail_index);
+        if (strcmp(operation, "node-dump") == 0)
+            result = xmlNodeDump(buf, doc, xmlDocGetRootElement(doc), 1, 1);
+        else
+            result = xmlSaveFormatFile(path, doc, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (injected) {
+            assert(result == -1);
+            if (strcmp(operation, "node-dump") == 0)
+                assert(strcmp((const char *)xmlBufferContent(buf), "keep|") == 0);
+        } else {
+            assert(result > 0);
+        }
+        if (strcmp(operation, "save-file") == 0)
+            unlink(path);
+        xmlBufferFree(buf);
+        xmlFreeDoc(doc);
+        doc = NULL;
+    } else if (strcmp(operation, "read-file") == 0) {
+        /* A file: URI path, the file contents and the parse each
+         * allocate; every failure returns NULL with the out-of-memory
+         * error. */
+        char path[] = "/tmp/xml3-oom-read-XXXXXX";
+        char uri[64];
+        int fd = mkstemp(path);
+        static const char text[] = "<r a='1'><c>t</c></r>";
+
+        assert(fd >= 0);
+        assert(write(fd, text, sizeof(text) - 1) == (ssize_t)(sizeof(text) - 1));
+        close(fd);
+        snprintf(uri, sizeof(uri), "file://%s", path);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadFile(uri, NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        unlink(path);
+        if (injected) {
+            assert(!doc);
+            require_oom_error();
+        } else {
+            assert(doc && xmlDocGetRootElement(doc));
+            xmlFreeDoc(doc);
+        }
+        doc = NULL;
     } else if (strcmp(operation, "ns-copy") == 0) {
         dom_node = xmlNewNode(NULL, BAD_CAST "root");
         assert(dom_node);

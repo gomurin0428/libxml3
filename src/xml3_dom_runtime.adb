@@ -1,5 +1,6 @@
 with XML3_DOM_Constructors;
 with XML3_DOM_Store.Content;
+with XML3_DOM_Store.Copies;
 with XML3_DOM_Store.Properties;
 with XML3_DOM_Store.Serialization;
 
@@ -112,6 +113,36 @@ is
       begin
          XML3_DOM_Store.Replace_Node (Current, Old, Cur, Result, Status);
       end Replace_Node;
+
+      procedure Copy_Node
+        (Source, Doc : System.Address; Extended : Integer;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Copies.Copy_Node
+           (Current, Source, Doc, XML3_DOM_Store.Copies.Mode_For (Extended),
+            Result, Status);
+      end Copy_Node;
+
+      procedure Copy_Property
+        (Target, Source : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Copies.Copy_Property
+           (Current, Target, Source, Result, Status);
+      end Copy_Property;
+
+      procedure Copy_Document
+        (Source : System.Address; Recursive : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Copies.Copy_Document
+           (Current, Source, Recursive, Result, Status);
+      end Copy_Document;
 
       procedure Merge_Text
         (First, Second : System.Address; Result : out System.Address;
@@ -437,6 +468,16 @@ is
       begin
          XML3_DOM_Store.Queries.Get_Line_Number (Current, Facade, Result);
       end Get_Line_Number;
+
+      procedure Dump_Node
+        (Node : System.Address; Level : Integer; Formatted : Boolean;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+      is
+      begin
+         XML3_DOM_Store.Serialization.Dump_Node
+           (Current, Node, Level, Formatted, Result, Length, Status);
+      end Dump_Node;
 
       procedure Dump_Memory_Encoding
         (Document, Encoding : System.Address;

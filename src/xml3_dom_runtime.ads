@@ -94,6 +94,23 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      procedure Copy_Node
+        (Source, Doc : System.Address; Extended : Integer;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
+      procedure Copy_Property
+        (Target, Source : System.Address; Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
+      procedure Copy_Document
+        (Source : System.Address; Recursive : Boolean;
+         Result : out System.Address;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
+
       procedure Merge_Text
         (First, Second : System.Address; Result : out System.Address;
          Status : out XML3_DOM_Store.Operation_Status)
@@ -280,6 +297,13 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (Input => Managed,
                         In_Out => XML3_Native_Memory.Foreign_Memory);
+
+      procedure Dump_Node
+        (Node : System.Address; Level : Integer; Formatted : Boolean;
+         Result : out System.Address; Length : out Natural;
+         Status : out XML3_DOM_Store.Operation_Status)
+        with Global =>
+          (Input => Managed, In_Out => XML3_Native_Memory.Foreign_Memory);
 
       procedure Dump_Memory_Encoding
         (Document, Encoding : System.Address;

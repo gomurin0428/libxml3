@@ -62,6 +62,27 @@ package XML3_Entry_Guards with SPARK_Mode is
       --  xmlNodeGetAttrValue, xmlGetNsListSafe: the output slot
       Namespace_Copy,
       --  xmlCopyNamespace: the namespace
+      Node_Copy,
+      --  xmlCopyNode, xmlDocCopyNode, xmlCopyDoc: the node or document
+      Property_Copy,
+      --  xmlCopyProp: the attribute (its second argument); the target is
+      --  optional
+      Buffer_Use,
+      --  xmlBufferFree, xmlBufferEmpty, xmlBufferShrink, xmlBufferGrow,
+      --  xmlBufferResize, xmlBufferContent, xmlBufferLength,
+      --  xmlBufferDetach, xmlBufferWriteQuotedString: the buffer
+      Buffer_Append,
+      --  xmlBufferAdd, xmlBufferAddHead, xmlBufferCat, xmlBufferCCat,
+      --  xmlBufferWriteCHAR, xmlBufferWriteChar: the buffer, the text
+      Node_Dump,
+      --  xmlNodeDump: the buffer, the node
+      Stream_Dump,
+      --  xmlDocDump, xmlDocFormatDump, xmlElemDump: the stream, the
+      --  document or node
+      File_Save,
+      --  xmlSaveFile and its variants: the filename, the document
+      File_Read,
+      --  xmlReadFile, xmlParseFile: the filename
       Namespace_Assignment,
       --  xmlSetNs: node
       Namespace_Release,
@@ -137,6 +158,16 @@ package XML3_Entry_Guards with SPARK_Mode is
       Property_Lookup => Silent_Two,
       Lookup_Output => Silent_One,
       Namespace_Copy => Silent_One,
+      Node_Copy => Silent_One,
+      Property_Copy =>
+        (First_Required => False, Second_Required => True,
+         Distinct_Required => False, Reported => False),
+      Buffer_Use => Silent_One,
+      Buffer_Append => Silent_Two,
+      Node_Dump => Silent_Two,
+      Stream_Dump => Silent_Two,
+      File_Save => Silent_Two,
+      File_Read => Silent_One,
       Namespace_Assignment => Silent_One,
       Namespace_Release => Silent_One,
       Namespace_Query => Silent_One,

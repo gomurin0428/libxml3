@@ -1527,5 +1527,209 @@
       "tests/oom-test.c"
     ],
     "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyNode": {
+    "implementation": "partial",
+    "scope": "Copies managed element, text, CDATA, comment and processing-instruction nodes, attributes (as xmlCopyProp without a target, keeping the source document and dropping the namespace, as libxml2 does) and documents (as xmlCopyDoc) through the SPARK XML3_DOM_Store.Copies composition of construction, attachment, namespace lookup/creation and release. extended 0 copies the node, 2 adds element properties and namespace declarations, any other value copies the subtree; namespaces are resolved as xmlStaticCopyNode does (in-scope prefix, redeclaration at the copy root, or xmlNewReconciledNs-style prefixes). The copy has no document. Element line numbers are not copied, namespace declarations (xmlNs pointers) cannot be copied through this entry point, and IDs are not registered. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocCopyNode": {
+    "implementation": "partial",
+    "scope": "As xmlCopyNode, with the copy (and its properties and descendants) belonging to the given document; a NULL doc gives a document-less copy. The doc argument must be a managed document. Element line numbers are not copied and IDs are not registered. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyProp": {
+    "implementation": "partial",
+    "scope": "Copies a managed attribute with its text children for an optional element target, resolving the namespace as xmlCopyPropInternal does: the in-scope declaration with the same prefix and name, a reconciled declaration on the target when the prefix is bound to another name, a redeclaration at the top of the target tree when only the source scope declares it, or no namespace. Differs from libxml2 in that the copy is returned with a NULL parent (libxml2 points parent at target without linking it); attach it with xmlAddChild or free it with xmlFreeProp. A non-element target returns NULL. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlCopyDoc": {
+    "implementation": "partial",
+    "scope": "Copies a managed document's version and, when recursive is nonzero, its children (elements, comments, processing instructions) deeply into a new document. The public xmlDoc has no other copied fields; DTDs and entities are not supported. A failed copy releases the new document. Native pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/copy-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferCreate": {
+    "implementation": "partial",
+    "scope": "Creates a 256-byte NUL-terminated buffer. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferCreateSize": {
+    "implementation": "partial",
+    "scope": "Creates a buffer of size + 1 bytes, or without content for 0; sizes of INT_MAX or more return NULL. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferCreateStatic": {
+    "implementation": "partial",
+    "scope": "Creates a size + 1 byte buffer holding a copy of size bytes of mem (libxml2 2.15 copies too); NULL mem with a nonzero size returns NULL. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferFree": {
+    "implementation": "partial",
+    "scope": "Releases the content block and the struct; NULL is ignored. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferEmpty": {
+    "implementation": "partial",
+    "scope": "Sets the use to 0 and returns shrunk room to the buffer. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferShrink": {
+    "implementation": "partial",
+    "scope": "Drops bytes from the head by advancing the content offset; -1 when more than the used bytes or for NULL. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferGrow": {
+    "implementation": "partial",
+    "scope": "Ensures room for len more bytes with libxml2's size policy; returns 0 when there was room, the new free room otherwise, -1 on failure. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferResize": {
+    "implementation": "partial",
+    "scope": "Grows to at least size bytes; 1 on success or when already larger, 0 on failure or NULL. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferAdd": {
+    "implementation": "partial",
+    "scope": "Appends len bytes (strlen for a negative len); XML_ERR_ARGUMENT for a NULL buffer or text, XML_ERR_NO_MEMORY on failure. Bytes taken from the buffer itself are copied before the old block is released. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferAddHead": {
+    "implementation": "partial",
+    "scope": "Prepends len bytes using shrunk room when possible; XML_ERR_ARGUMENT for NULL arguments and -1 when growth fails. Text taken from the buffer itself is copied first, so the in-place shift and the growth cannot overwrite or release it before it is read (libxml2 reads it afterwards). Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferCat": {
+    "implementation": "partial",
+    "scope": "xmlBufferAdd of a NUL-terminated string. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferCCat": {
+    "implementation": "partial",
+    "scope": "xmlBufferAdd of a NUL-terminated char string. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferWriteCHAR": {
+    "implementation": "partial",
+    "scope": "xmlBufferCat without a result. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferWriteChar": {
+    "implementation": "partial",
+    "scope": "xmlBufferCCat without a result. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferWriteQuotedString": {
+    "implementation": "partial",
+    "scope": "Writes the string in double quotes, in single quotes when it contains a double quote, or in double quotes with &quot; when it contains both. A string taken from the buffer itself is copied first, so growth for the quotes cannot release it. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferContent": {
+    "implementation": "partial",
+    "scope": "Returns the content pointer (NULL for NULL or a detached buffer). Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferLength": {
+    "implementation": "partial",
+    "scope": "Returns the used bytes (0 for NULL). Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferDetach": {
+    "implementation": "partial",
+    "scope": "Hands the content to the caller (a copy for a shrunk buffer) and leaves the buffer empty without content. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferSetAllocationScheme": {
+    "implementation": "partial",
+    "scope": "No effect, as in libxml2 2.15.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlBufferDump": {
+    "implementation": "partial",
+    "scope": "Writes the used bytes to the stream (standard output for NULL) through the trusted native file helper and returns the count; 0 for a NULL or empty buffer. Sizes, growth (256-byte default, doubling or use+len+101), the shrunk-content offset (content/contentIO), NUL termination and result codes follow libxml2 2.15.4 in XML_BUFFER_ALLOC_IO through the SPARK XML3_Byte_Buffers unit; the adapter maps the public struct. A struct not in the shape this library creates is treated as unusable. Native pointer validity, allocation, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlNodeDump": {
+    "implementation": "partial",
+    "scope": "Serializes a managed node through the SPARK serializer in node mode: elements with their subtree, text, CDATA, comments, processing instructions, an attribute with its leading space, or a whole document with an UTF-8 declaration. level is clamped to 0 .. 100 and indents descendants when format is set; mixed content stays unformatted. The bytes are appended to the buffer; returns their count or -1. The serializer rejects trees it cannot write well-formed (fail-closed), where libxml2 would write them. Native pointers, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlElemDump": {
+    "implementation": "partial",
+    "scope": "xmlNodeDump at level 0 with formatting, written to the stream through the trusted native file helper; NULL stream or node is ignored. Native pointers, stream validity and ABI remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocDump": {
+    "implementation": "partial",
+    "scope": "xmlDocFormatDump without formatting.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlDocFormatDump": {
+    "implementation": "partial",
+    "scope": "Serializes a managed document as xmlDocDumpFormatMemory does and writes it to the stream; returns the bytes written, -1 for a NULL stream or document or a failed serialization, or the negated XML_IO_* code of a write or flush failure, as libxml2 does. Native pointers, stream validity and ABI remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFile": {
+    "implementation": "partial",
+    "scope": "xmlSaveFormatFileEnc without encoding or formatting.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFormatFile": {
+    "implementation": "partial",
+    "scope": "xmlSaveFormatFileEnc without an encoding.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFileEnc": {
+    "implementation": "partial",
+    "scope": "xmlSaveFormatFileEnc without formatting.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:tree.h:xmlSaveFormatFileEnc": {
+    "implementation": "partial",
+    "scope": "Serializes a managed document (UTF-8 encodings only, as xmlDocDumpFormatMemoryEnc) and writes it to a file created with O_CREAT|O_TRUNC, mode 0666, or to standard output for \"-\". The SPARK XML3_File_Paths planner follows libxml2: a name without a URI scheme is URI-unescaped, a file: URI is unescaped after its file://localhost, file:// or file: prefix, other schemes are used literally. Unlike libxml2, the name is unescaped even when it is not a valid URI reference, and the file is not created when the serialization fails. Returns the bytes written; -1 when the file cannot be opened and the negated XML_IO_* code when writing or closing fails, as libxml2 does, neither with a diagnostic. Compression is not supported. Native file I/O and ABI remain outside proof.",
+    "tests": ["tests/output-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlReadFile": {
+    "implementation": "partial",
+    "scope": "Reads a file, or standard input for \"-\", and parses it with the given encoding and options. NULL returns NULL without a diagnostic. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:parser.h:xmlParseFile": {
+    "implementation": "partial",
+    "scope": "xmlReadFile without an encoding or options. The file is read whole by a small trusted C helper (open, read, xmlIOErr errno mapping), which stops with a resource-limit diagnostic as soon as the input exceeds the size the parser accepts and parsed as by xmlReadMemory with the file name as URL, so parser diagnostics name the file. The SPARK XML3_File_Paths planner unescapes only file: URIs after their file://localhost, file:// or file: prefix, as xmlFdOpen does; other names are used literally. A failure to open publishes the XML_FROM_IO record of xmlCtxtErrIO (\"failed to load \\\"name\\\": reason\", str1 = name, a warning for XML_IO_ENOENT and XML_IO_UNKNOWN, otherwise fatal); a failure to read (for example a directory) is fatal at line 1, column 1 with the file name; the codes and texts come from the SPARK XML3_IO_Errors table. The public xmlDoc has no URL field, compressed input and network URLs are not supported, and only the parse options of xmlReadMemory are accepted. Native I/O, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/input-test.c", "tests/oom-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

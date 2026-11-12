@@ -1,6 +1,7 @@
 #ifndef LIBXML3_TREE_H
 #define LIBXML3_TREE_H
 
+#include <stdio.h>
 #include <libxml/xmlstring.h>
 #include <libxml/xmlmemory.h>
 
@@ -32,6 +33,30 @@ typedef enum {
 } xmlElementType;
 
 typedef xmlElementType xmlNsType;
+
+/* libxml2 2.15 only uses XML_BUFFER_ALLOC_IO; the other values remain for
+ * source compatibility. */
+typedef enum {
+    XML_BUFFER_ALLOC_DOUBLEIT,
+    XML_BUFFER_ALLOC_EXACT,
+    XML_BUFFER_ALLOC_IMMUTABLE,
+    XML_BUFFER_ALLOC_IO,
+    XML_BUFFER_ALLOC_HYBRID,
+    XML_BUFFER_ALLOC_BOUNDED
+} xmlBufferAllocationScheme;
+
+typedef struct _xmlBuffer xmlBuffer;
+typedef struct _xmlBuffer *xmlBufferPtr;
+
+/* The fields are deprecated in libxml2; use xmlBufferContent and
+ * xmlBufferLength. */
+struct _xmlBuffer {
+    xmlChar *content;
+    unsigned int use;
+    unsigned int size;
+    xmlBufferAllocationScheme alloc;
+    xmlChar *contentIO;
+};
 
 #define XML_XML_NAMESPACE ((const xmlChar *)"http://www.w3.org/XML/1998/namespace")
 
@@ -144,6 +169,41 @@ xmlNsPtr xmlNewNs(xmlNodePtr node, const xmlChar *href, const xmlChar *prefix);
 void xmlSetNs(xmlNodePtr node, xmlNsPtr ns);
 void xmlFreeNs(xmlNsPtr cur);
 xmlNsPtr xmlCopyNamespace(xmlNsPtr cur);
+xmlNodePtr xmlCopyNode(xmlNodePtr node, int extended);
+xmlNodePtr xmlDocCopyNode(xmlNodePtr node, xmlDocPtr doc, int extended);
+xmlAttrPtr xmlCopyProp(xmlNodePtr target, xmlAttrPtr cur);
+xmlDocPtr xmlCopyDoc(xmlDocPtr doc, int recursive);
+xmlBufferPtr xmlBufferCreate(void);
+xmlBufferPtr xmlBufferCreateSize(size_t size);
+xmlBufferPtr xmlBufferCreateStatic(void *mem, size_t size);
+void xmlBufferFree(xmlBufferPtr buf);
+void xmlBufferEmpty(xmlBufferPtr buf);
+int xmlBufferShrink(xmlBufferPtr buf, unsigned int len);
+int xmlBufferGrow(xmlBufferPtr buf, unsigned int len);
+int xmlBufferResize(xmlBufferPtr buf, unsigned int size);
+int xmlBufferAdd(xmlBufferPtr buf, const xmlChar *str, int len);
+int xmlBufferAddHead(xmlBufferPtr buf, const xmlChar *str, int len);
+int xmlBufferCat(xmlBufferPtr buf, const xmlChar *str);
+int xmlBufferCCat(xmlBufferPtr buf, const char *str);
+void xmlBufferWriteCHAR(xmlBufferPtr buf, const xmlChar *string);
+void xmlBufferWriteChar(xmlBufferPtr buf, const char *string);
+void xmlBufferWriteQuotedString(xmlBufferPtr buf, const xmlChar *string);
+const xmlChar *xmlBufferContent(const xmlBuffer *buf);
+int xmlBufferLength(const xmlBuffer *buf);
+xmlChar *xmlBufferDetach(xmlBufferPtr buf);
+void xmlBufferSetAllocationScheme(xmlBufferPtr buf,
+                                  xmlBufferAllocationScheme scheme);
+int xmlBufferDump(FILE *file, xmlBufferPtr buf);
+int xmlNodeDump(xmlBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur, int level,
+                int format);
+void xmlElemDump(FILE *f, xmlDocPtr doc, xmlNodePtr cur);
+int xmlDocDump(FILE *f, xmlDocPtr cur);
+int xmlDocFormatDump(FILE *f, xmlDocPtr cur, int format);
+int xmlSaveFile(const char *filename, xmlDocPtr cur);
+int xmlSaveFormatFile(const char *filename, xmlDocPtr cur, int format);
+int xmlSaveFileEnc(const char *filename, xmlDocPtr cur, const char *encoding);
+int xmlSaveFormatFileEnc(const char *filename, xmlDocPtr cur,
+                         const char *encoding, int format);
 xmlAttrPtr xmlNewProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewDocProp(xmlDocPtr doc, const xmlChar *name, const xmlChar *value);
 xmlAttrPtr xmlNewNsProp(xmlNodePtr node, xmlNsPtr ns,

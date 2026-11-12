@@ -13,7 +13,11 @@ with XML3_DOM_Store.Queries;
 with XML3_Diagnostic_Codes;
 with XML3_Encoding;
 with XML3_Encoding.Buffers;
+with XML3_Byte_Buffers;
 with XML3_Entry_Guards;
+with XML3_File_Paths;
+with XML3_IO_Errors;
+with XML3_Native_Memory;
 with XML3_Errors;
 with XML3_Namespaces;
 with XML3_Parser;
@@ -486,6 +490,155 @@ package body XML3_C is
          return System.Null_Address;
    end Read_Doc;
 
+   ------------------------------------------------------------------
+   --  File input.  The path and the diagnostics are decided in SPARK
+   --  (XML3_File_Paths, XML3_IO_Errors); the system calls are in the C
+   --  helper, the parse is the memory parse with the file name as URL.
+   ------------------------------------------------------------------
+
+   function File_Read_Path
+     (Path : System.Address; Standard_Input : Interfaces.C.int;
+      Limit : Interfaces.C.size_t;
+      Data : access System.Address; Length : access Interfaces.C.size_t;
+      Read_Stage : access Interfaces.C.int) return Interfaces.C.int
+     with Import, Convention => C, External_Name => "xml3FileReadPath";
+
+   --  Publishes the I/O failure of an input, as xmlCtxtErrIO does: a
+   --  failure to open names the file in the message and in str1; a
+   --  failure to read is reported at line 1, column 1 of the file.
+   procedure Report_Input_Failure
+     (Name : String; Name_Address : System.Address;
+      Code : Interfaces.C.int; While_Reading : Boolean)
+   is
+      Text : constant String :=
+        (if While_Reading then XML3_IO_Errors.Text (Code)
+         else XML3_IO_Errors.Open_Message (Name, Code))
+        & Character'Val (10);
+      Message : System.Address;
+   begin
+      --  The record copies the message; this NUL-terminated buffer is
+      --  released afterwards.
+      XML3_Native_Memory.Allocate (Text'Length + 1, Message);
+      if Message = System.Null_Address then
+         Report_Failure (Allocation_Failure);
+         return;
+      end if;
+      XML3_Native_Memory.Write_String (Message, 0, Text);
+      XML3_Native_Memory.Write_Byte (Message, Text'Length, Character'Val (0));
+      if While_Reading then
+         XML3_Errors.Set_Error
+           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Fatal_Level,
+            1, 0, 1, Message, Name_Address,
+            System.Null_Address, System.Null_Address, System.Null_Address);
+      else
+         XML3_Errors.Set_Error
+           (XML3_IO_Errors.IO_Domain, Code, XML3_IO_Errors.Level_For (Code),
+            0, 0, 0, Message, System.Null_Address,
+            Name_Address, System.Null_Address, System.Null_Address);
+      end if;
+      XML3_Native_Memory.Free (Message);
+   end Report_Input_Failure;
+
+   function Read_File_Input
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address
+   is
+      Name_Length, Path_Length : XML3_Text.Byte_Count;
+      Found : Boolean;
+      Plan : XML3_File_Paths.Path_Plan;
+      Path : System.Address := System.Null_Address;
+      Unescape_Status : XML3_Text.Buffers.Escape_Status;
+      Data : aliased System.Address := System.Null_Address;
+      Length : aliased Interfaces.C.size_t := 0;
+      Stage : aliased Interfaces.C.int := 0;
+      Code : Interfaces.C.int;
+      Standard_Input : Boolean;
+      Status : XML3_Parser.Statuses.Public_Status;
+      Result : System.Address;
+      use type XML3_Text.Buffers.Escape_Status;
+   begin
+      if Refused (Guards.File_Read, Name /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+      if not Found then
+         Report_Failure (Unsupported_Text);
+         return System.Null_Address;
+      end if;
+      --  xmlReadFile keeps "-" for standard input.
+      Standard_Input :=
+        XML3_File_Paths.Is_Standard (Name, Natural (Name_Length));
+      if not Standard_Input then
+         XML3_File_Paths.Plan_Input (Name, Natural (Name_Length), Plan);
+         if Plan.Unescape then
+            XML3_Text.Buffers.Unescape_URI
+              (XML3_Native_Memory.Offset
+                 (Name, XML3_Native_Memory.Byte_Count (Plan.Skip)),
+               Integer (Name_Length) - Plan.Skip, System.Null_Address,
+               Path, Unescape_Status);
+            if Unescape_Status /= XML3_Text.Buffers.Escaped then
+               Report_Failure (Allocation_Failure);
+               return System.Null_Address;
+            end if;
+            XML3_Text.Buffers.Measure (Path, Path_Length, Found);
+         end if;
+      end if;
+      Code := File_Read_Path
+        ((if Path /= System.Null_Address then Path else Name),
+         (if Standard_Input then 1 else 0),
+         Interfaces.C.size_t (XML3_Text.Max_Bytes),
+         Data'Access, Length'Access, Stage'Access);
+      if Path /= System.Null_Address then
+         XML3_Native_Memory.Free (Path);
+      end if;
+      if Code = -1 then
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      elsif Code = -2 then
+         --  Larger than the parser accepts: stopped before reading on.
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, Name);
+         return System.Null_Address;
+      elsif Code /= 0 then
+         declare
+            Text : String (1 .. Natural (Name_Length))
+              with Import, Address => Name;
+         begin
+            Report_Input_Failure (Text, Name, Code, Stage /= 0);
+         end;
+         return System.Null_Address;
+      end if;
+      if Length > Interfaces.C.size_t (Interfaces.C.int'Last) then
+         XML3_Native_Memory.Free (Data);
+         Report_Code (XML3_Diagnostic_Codes.Resource_Limit, Name);
+         return System.Null_Address;
+      end if;
+      Result := Parse_Buffer
+        (Data, Interfaces.C.int (Length), Name, Encoding, Options, Status);
+      XML3_Native_Memory.Free (Data);
+      return Result;
+   exception
+      when Storage_Error =>
+         if Data /= System.Null_Address then
+            XML3_Native_Memory.Free (Data);
+         end if;
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      when others =>
+         if Data /= System.Null_Address then
+            XML3_Native_Memory.Free (Data);
+         end if;
+         Report_Failure (Parser_Exception);
+         return System.Null_Address;
+   end Read_File_Input;
+
+   function Read_File
+     (Name, Encoding : System.Address; Options : Interfaces.C.int)
+      return System.Address is
+     (Read_File_Input (Name, Encoding, Options));
+
+   function Parse_File (Name : System.Address) return System.Address is
+     (Read_File_Input (Name, System.Null_Address, 0));
+
    function Parse_Doc (Cur : System.Address) return System.Address is
    begin
       return Read_Doc (Cur, System.Null_Address, System.Null_Address, 0);
@@ -659,6 +812,663 @@ package body XML3_C is
          Report_Failure (Unexpected_Exception);
          return;
    end Doc_Dump_Format_Memory_Enc;
+
+   ------------------------------------------------------------------
+   --  xmlBuffer.  The adapter only maps the public struct onto the SPARK
+   --  XML3_Byte_Buffers view and back; the sizes, allocations and copies
+   --  are decided there.
+   ------------------------------------------------------------------
+
+   package Buffers renames XML3_Byte_Buffers;
+
+   type C_Buffer is record
+      Content : System.Address;
+      Used : Interfaces.C.unsigned;
+      Size : Interfaces.C.unsigned;
+      Alloc : Interfaces.C.int;
+      Content_IO : System.Address;
+   end record with Convention => C;
+
+   --  XML_BUFFER_ALLOC_IO, the only scheme of libxml2 2.15.
+   Alloc_IO : constant Interfaces.C.int := 3;
+
+   function File_Write_Path
+     (Path : System.Address; Standard_Output : Interfaces.C.int;
+      Data : System.Address; Length : Interfaces.C.size_t)
+      return Interfaces.C.long
+     with Import, Convention => C, External_Name => "xml3FileWritePath";
+   function File_Write_Stream
+     (Stream, Data : System.Address; Length : Interfaces.C.size_t)
+      return Interfaces.C.long
+     with Import, Convention => C, External_Name => "xml3FileWriteStream";
+   function File_Standard_Output return System.Address
+     with Import, Convention => C, External_Name => "xml3FileStandardOutput";
+
+   --  The view of a buffer struct; Ok is False for a struct that is not
+   --  in the shape this library creates.
+   procedure Read_Buffer
+     (Address : System.Address; View : out Buffers.Buffer; Ok : out Boolean)
+   is
+      Item : C_Buffer with Import, Address => Address;
+      Offset : Storage_Offset;
+   begin
+      View := (others => <>);
+      Ok := False;
+      if Item.Used > Interfaces.C.unsigned (Integer'Last)
+        or else Item.Size > Interfaces.C.unsigned (Integer'Last)
+      then
+         return;
+      end if;
+      if Item.Content_IO = System.Null_Address then
+         if Item.Content /= System.Null_Address then
+            return;
+         end if;
+      else
+         if Item.Content = System.Null_Address
+           or else Item.Content < Item.Content_IO
+         then
+            return;
+         end if;
+         Offset := Item.Content - Item.Content_IO;
+         if Offset > Storage_Offset (Integer'Last) then
+            return;
+         end if;
+         View.Base := Item.Content_IO;
+         View.Offset := Natural (Offset);
+      end if;
+      View.Used := Natural (Item.Used);
+      View.Size := Natural (Item.Size);
+      Ok := Buffers.Well_Formed (View);
+   end Read_Buffer;
+
+   procedure Write_Buffer
+     (Address : System.Address; View : Buffers.Buffer)
+   is
+      Item : C_Buffer with Import, Address => Address;
+   begin
+      Item :=
+        (Content => Buffers.Content (View),
+         Used => Interfaces.C.unsigned (View.Used),
+         Size => Interfaces.C.unsigned (View.Size),
+         Alloc => Alloc_IO,
+         Content_IO => View.Base);
+   end Write_Buffer;
+
+   function New_Buffer (Default : Boolean; Requested : Natural)
+      return System.Address
+   is
+      Base : System.Address;
+      View : Buffers.Buffer;
+      Ok : Boolean;
+   begin
+      XML3_Native_Memory.Allocate (C_Buffer'Size / 8, Base);
+      if Base = System.Null_Address then
+         return System.Null_Address;
+      end if;
+      Buffers.Create (Default, Requested, View, Ok);
+      if not Ok then
+         XML3_Native_Memory.Free (Base);
+         return System.Null_Address;
+      end if;
+      Write_Buffer (Base, View);
+      return Base;
+   end New_Buffer;
+
+   function Buffer_Create return System.Address is
+   begin
+      return New_Buffer (True, 0);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Buffer_Create;
+
+   function Buffer_Create_Size (Size : Interfaces.C.size_t)
+      return System.Address
+   is
+   begin
+      return New_Buffer
+        (False,
+         (if Size >= Interfaces.C.size_t (Integer'Last) then Integer'Last
+          else Natural (Size)));
+   exception
+      when others =>
+         return System.Null_Address;
+   end Buffer_Create_Size;
+
+   function Buffer_Create_Static
+     (Memory : System.Address; Size : Interfaces.C.size_t)
+      return System.Address
+   is
+      Result : constant System.Address := Buffer_Create_Size (Size);
+   begin
+      if Result /= System.Null_Address
+        and then Buffer_Add
+          (Result, Memory,
+           (if Size > Interfaces.C.size_t (Interfaces.C.int'Last)
+            then Interfaces.C.int'Last else Interfaces.C.int (Size)))
+          /= Buffers.OK_Code
+      then
+         Buffer_Free (Result);
+         return System.Null_Address;
+      end if;
+      return Result;
+   exception
+      when others =>
+         return System.Null_Address;
+   end Buffer_Create_Static;
+
+   procedure Buffer_Free (Buffer : System.Address) is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if Ok then
+         Buffers.Release (View);
+      end if;
+      XML3_Native_Memory.Free (Buffer);
+   exception
+      when others =>
+         null;
+   end Buffer_Free;
+
+   procedure Buffer_Empty (Buffer : System.Address) is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if Ok then
+         Buffers.Empty (View);
+         Write_Buffer (Buffer, View);
+      end if;
+   exception
+      when others =>
+         null;
+   end Buffer_Empty;
+
+   function Buffer_Shrink
+     (Buffer : System.Address; Length : Interfaces.C.unsigned)
+      return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Result : Integer;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return -1;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return -1;
+      end if;
+      Buffers.Shrink
+        (View,
+         (if Length > Interfaces.C.unsigned (Integer'Last) then Integer'Last
+          else Natural (Length)),
+         Result);
+      Write_Buffer (Buffer, View);
+      return Interfaces.C.int (Result);
+   exception
+      when others =>
+         return -1;
+   end Buffer_Shrink;
+
+   function Buffer_Grow
+     (Buffer : System.Address; Length : Interfaces.C.unsigned)
+      return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Result : Integer;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return -1;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return -1;
+      end if;
+      Buffers.Grow
+        (View,
+         (if Length > Interfaces.C.unsigned (Integer'Last) then Integer'Last
+          else Natural (Length)),
+         Result);
+      Write_Buffer (Buffer, View);
+      return Interfaces.C.int (Result);
+   exception
+      when others =>
+         return -1;
+   end Buffer_Grow;
+
+   function Buffer_Resize
+     (Buffer : System.Address; Size : Interfaces.C.unsigned)
+      return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Result : Integer;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return 0;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return 0;
+      elsif Size < Interfaces.C.unsigned (View.Size) then
+         return 1;
+      end if;
+      Buffers.Grow
+        (View,
+         (if Size > Interfaces.C.unsigned (Integer'Last) then Integer'Last
+          else Natural (Size) - View.Used),
+         Result);
+      Write_Buffer (Buffer, View);
+      return (if Result < 0 then 0 else 1);
+   exception
+      when others =>
+         return 0;
+   end Buffer_Resize;
+
+   --  xmlBufferAdd and xmlBufferAddHead; a negative Length measures the
+   --  NUL-terminated text.
+   function Buffer_Insert
+     (Buffer, Text : System.Address; Length : Interfaces.C.int;
+      Head : Boolean) return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok, Found : Boolean;
+      Count : XML3_Text.Byte_Count;
+      Status : Buffers.Add_Status;
+   begin
+      if Refused
+           (Guards.Buffer_Append, Buffer /= System.Null_Address,
+            Text /= System.Null_Address)
+      then
+         return Buffers.Argument_Code;
+      end if;
+      if Length < 0 then
+         XML3_Text.Buffers.Measure (Text, Count, Found);
+         if not Found then
+            return Buffers.No_Memory_Code;
+         end if;
+      else
+         Count := XML3_Text.Byte_Count (Length);
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return Buffers.Argument_Code;
+      end if;
+      if Head then
+         Buffers.Add_Head (View, Text, Natural (Count), Status);
+      else
+         Buffers.Add (View, Text, Natural (Count), Status);
+      end if;
+      Write_Buffer (Buffer, View);
+      return Interfaces.C.int
+        (if Head then Buffers.Add_Head_Code (Status)
+         else Buffers.Add_Code (Status));
+   exception
+      when others =>
+         return Buffers.No_Memory_Code;
+   end Buffer_Insert;
+
+   function Buffer_Add
+     (Buffer, Text : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int is
+     (Buffer_Insert (Buffer, Text, Length, False));
+
+   function Buffer_Add_Head
+     (Buffer, Text : System.Address; Length : Interfaces.C.int)
+      return Interfaces.C.int is
+     (Buffer_Insert (Buffer, Text, Length, True));
+
+   function Buffer_Cat (Buffer, Text : System.Address)
+      return Interfaces.C.int is
+     (Buffer_Insert (Buffer, Text, -1, False));
+
+   function Buffer_C_Cat (Buffer, Text : System.Address)
+      return Interfaces.C.int is
+     (Buffer_Insert (Buffer, Text, -1, False));
+
+   procedure Buffer_Write_Xml_Chars (Buffer, Text : System.Address) is
+      Ignored : Interfaces.C.int;
+   begin
+      Ignored := Buffer_Insert (Buffer, Text, -1, False);
+   end Buffer_Write_Xml_Chars;
+
+   procedure Buffer_Write_C_Chars (Buffer, Text : System.Address) is
+      Ignored : Interfaces.C.int;
+   begin
+      Ignored := Buffer_Insert (Buffer, Text, -1, False);
+   end Buffer_Write_C_Chars;
+
+   procedure Buffer_Write_Quoted_String (Buffer, Text : System.Address) is
+      View : Buffers.Buffer;
+      Ok, Found : Boolean;
+      Count : XML3_Text.Byte_Count := 0;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return;
+      end if;
+      if Text /= System.Null_Address then
+         XML3_Text.Buffers.Measure (Text, Count, Found);
+         if not Found then
+            return;
+         end if;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if Ok then
+         Buffers.Add_Quoted (View, Text, Natural (Count));
+         Write_Buffer (Buffer, View);
+      end if;
+   exception
+      when others =>
+         null;
+   end Buffer_Write_Quoted_String;
+
+   function Buffer_Content (Buffer : System.Address) return System.Address
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      return (if Ok then Buffers.Content (View) else System.Null_Address);
+   exception
+      when others =>
+         return System.Null_Address;
+   end Buffer_Content;
+
+   function Buffer_Length (Buffer : System.Address) return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return 0;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      return (if Ok then Interfaces.C.int (View.Used) else 0);
+   exception
+      when others =>
+         return 0;
+   end Buffer_Length;
+
+   function Buffer_Detach (Buffer : System.Address) return System.Address is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Result : System.Address;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return System.Null_Address;
+      end if;
+      Buffers.Detach (View, Result);
+      Write_Buffer (Buffer, View);
+      return Result;
+   exception
+      when others =>
+         return System.Null_Address;
+   end Buffer_Detach;
+
+   procedure Buffer_Set_Allocation_Scheme
+     (Buffer : System.Address; Scheme : Interfaces.C.int)
+   is
+      pragma Unreferenced (Buffer, Scheme);
+   begin
+      null;
+   end Buffer_Set_Allocation_Scheme;
+
+   function Buffer_Dump (Stream, Buffer : System.Address)
+      return Interfaces.C.int
+   is
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Written : Interfaces.C.long;
+   begin
+      if Refused (Guards.Buffer_Use, Buffer /= System.Null_Address) then
+         return 0;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok or else View.Base = System.Null_Address then
+         return 0;
+      end if;
+      Written := File_Write_Stream
+        ((if Stream = System.Null_Address then File_Standard_Output
+          else Stream),
+         Buffers.Content (View), Interfaces.C.size_t (View.Used));
+      return (if Written < 0 then 0 else Interfaces.C.int (Written));
+   exception
+      when others =>
+         return 0;
+   end Buffer_Dump;
+
+   ------------------------------------------------------------------
+   --  Serialization to a buffer, a stream or a file.
+   ------------------------------------------------------------------
+
+   --  Serializes Node (as xmlNodeDump) or Doc (as xmlDocDumpFormatMemoryEnc
+   --  with Encoding) under the DOM lock; Result is a caller-owned
+   --  allocation of Length bytes, or null after the failure was reported.
+   procedure Serialize
+     (Node, Doc, Encoding : System.Address; Level : Integer;
+      Formatted : Boolean; Result : out System.Address;
+      Length : out Natural)
+   is
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      Result := System.Null_Address;
+      Length := 0;
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         if Node /= System.Null_Address then
+            XML3_DOM_Runtime.Dump_Node
+              (Node, Level, Formatted, Result, Length, Status);
+         else
+            XML3_DOM_Runtime.Dump_Memory_Encoding
+              (Doc, Encoding, Result, Length, Status, Formatted);
+         end if;
+      end;
+      if Status /= XML3_DOM_Constructors.Created then
+         Report_Operation_Status (Status);
+         Result := System.Null_Address;
+         Length := 0;
+      end if;
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Failure (Lock_Failure);
+         Result := System.Null_Address;
+         Length := 0;
+      when Storage_Error =>
+         Report_Failure (Allocation_Failure);
+         Result := System.Null_Address;
+         Length := 0;
+   end Serialize;
+
+   function Node_Dump
+     (Buffer, Doc, Node : System.Address;
+      Level, Format : Interfaces.C.int) return Interfaces.C.int
+   is
+      pragma Unreferenced (Doc);
+      Bytes : System.Address;
+      Length : Natural;
+      View : Buffers.Buffer;
+      Ok : Boolean;
+      Status : Buffers.Add_Status;
+   begin
+      if Refused
+           (Guards.Node_Dump, Buffer /= System.Null_Address,
+            Node /= System.Null_Address)
+      then
+         return -1;
+      end if;
+      Read_Buffer (Buffer, View, Ok);
+      if not Ok then
+         return -1;
+      end if;
+      Serialize
+        (Node, System.Null_Address, System.Null_Address, Integer (Level),
+         Format /= 0, Bytes, Length);
+      if Bytes = System.Null_Address then
+         return -1;
+      end if;
+      Buffers.Add (View, Bytes, Length, Status);
+      XML3_Native_Memory.Free (Bytes);
+      Write_Buffer (Buffer, View);
+      return (if Buffers.Add_Code (Status) = Buffers.OK_Code
+              then Interfaces.C.int (Length) else -1);
+   exception
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Node_Dump;
+
+   --  Writes the serialization to a stream (Name null) or the file Name.
+   function Write_Serialization
+     (Stream, Name, Node, Doc, Encoding : System.Address; Level : Integer;
+      Formatted : Boolean) return Interfaces.C.int
+   is
+      Bytes, Path : System.Address := System.Null_Address;
+      Length : Natural;
+      Written : Interfaces.C.long := -1;
+   begin
+      Serialize (Node, Doc, Encoding, Level, Formatted, Bytes, Length);
+      if Bytes = System.Null_Address then
+         return -1;
+      end if;
+      if Name = System.Null_Address then
+         Written := File_Write_Stream
+           (Stream, Bytes, Interfaces.C.size_t (Length));
+      else
+         declare
+            Name_Length : XML3_Text.Byte_Count;
+            Found : Boolean;
+            Plan : XML3_File_Paths.Path_Plan;
+            Status : XML3_Text.Buffers.Escape_Status;
+            Path_Length : XML3_Text.Byte_Count;
+            Standard : Boolean := False;
+            use type XML3_Text.Buffers.Escape_Status;
+         begin
+            XML3_Text.Buffers.Measure (Name, Name_Length, Found);
+            if Found then
+               XML3_File_Paths.Plan (Name, Natural (Name_Length), Plan);
+               if Plan.Unescape then
+                  XML3_Text.Buffers.Unescape_URI
+                    (XML3_Native_Memory.Offset
+                       (Name, XML3_Native_Memory.Byte_Count (Plan.Skip)),
+                     Integer (Name_Length) - Plan.Skip,
+                     System.Null_Address, Path, Status);
+                  if Status /= XML3_Text.Buffers.Escaped then
+                     Path := System.Null_Address;
+                  end if;
+               end if;
+               if not Plan.Unescape or else Path /= System.Null_Address then
+                  if Plan.May_Be_Standard and then Path /= System.Null_Address
+                  then
+                     XML3_Text.Buffers.Measure (Path, Path_Length, Found);
+                     Standard := Found
+                       and then XML3_File_Paths.Is_Standard
+                         (Path, Natural (Path_Length));
+                  end if;
+                  Written := File_Write_Path
+                    ((if Plan.Unescape then Path else Name),
+                     (if Standard then 1 else 0),
+                     Bytes, Interfaces.C.size_t (Length));
+               end if;
+               if Path /= System.Null_Address then
+                  XML3_Native_Memory.Free (Path);
+               end if;
+            end if;
+         end;
+      end if;
+      XML3_Native_Memory.Free (Bytes);
+      --  An open failure is -1, a write failure the negated XML_IO_* code,
+      --  as libxml2 returns them; neither publishes a diagnostic.
+      return Interfaces.C.int (Written);
+   exception
+      when others =>
+         if Bytes /= System.Null_Address then
+            XML3_Native_Memory.Free (Bytes);
+         end if;
+         Report_Failure (Unexpected_Exception);
+         return -1;
+   end Write_Serialization;
+
+   procedure Elem_Dump (Stream, Doc, Node : System.Address) is
+      pragma Unreferenced (Doc);
+      Ignored : Interfaces.C.int;
+   begin
+      if Refused
+           (Guards.Stream_Dump, Stream /= System.Null_Address,
+            Node /= System.Null_Address)
+      then
+         return;
+      end if;
+      --  xmlElemDump formats from level 0.
+      Ignored := Write_Serialization
+        (Stream, System.Null_Address, Node, System.Null_Address,
+         System.Null_Address, 0, True);
+   end Elem_Dump;
+
+   function Doc_Format_Dump
+     (Stream, Doc : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+   is
+   begin
+      if Refused
+           (Guards.Stream_Dump, Stream /= System.Null_Address,
+            Doc /= System.Null_Address)
+      then
+         return -1;
+      end if;
+      return Write_Serialization
+        (Stream, System.Null_Address, System.Null_Address, Doc,
+         System.Null_Address, 0, Format /= 0);
+   end Doc_Format_Dump;
+
+   function Doc_Dump (Stream, Doc : System.Address) return Interfaces.C.int
+   is (Doc_Format_Dump (Stream, Doc, 0));
+
+   function Save_Format_File_Enc
+     (Name, Doc, Encoding : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int
+   is
+   begin
+      if Refused
+           (Guards.File_Save, Name /= System.Null_Address,
+            Doc /= System.Null_Address)
+      then
+         return -1;
+      end if;
+      return Write_Serialization
+        (System.Null_Address, Name, System.Null_Address, Doc, Encoding, 0,
+         Format /= 0);
+   end Save_Format_File_Enc;
+
+   function Save_File (Name, Doc : System.Address) return Interfaces.C.int is
+     (Save_Format_File_Enc (Name, Doc, System.Null_Address, 0));
+
+   function Save_Format_File
+     (Name, Doc : System.Address; Format : Interfaces.C.int)
+      return Interfaces.C.int is
+     (Save_Format_File_Enc (Name, Doc, System.Null_Address, Format));
+
+   function Save_File_Enc
+     (Name, Doc, Encoding : System.Address) return Interfaces.C.int is
+     (Save_Format_File_Enc (Name, Doc, Encoding, 0));
 
    function New_Node
       (Ns, Name : System.Address) return System.Address
@@ -1609,6 +2419,91 @@ package body XML3_C is
          Report_Failure (Unexpected_Exception);
          return System.Null_Address;
    end Copy_Ns;
+
+   --  The four copy entry points share the lock, the status report and
+   --  the exception mapping; Operation selects the Runtime call.
+   type Copy_Operation is (Node_Copy, Property_Copy, Document_Copy);
+
+   function Copy_Any
+     (Operation : Copy_Operation; Node, Other : System.Address;
+      Value : Interfaces.C.int) return System.Address
+   is
+      Result : System.Address := System.Null_Address;
+      Status : XML3_DOM_Store.Operation_Status :=
+        XML3_DOM_Constructors.Internal_Error;
+   begin
+      declare
+         Guard : XML3_DOM_Lock.Guard;
+      begin
+         XML3_DOM_Lock.Acquire (Guard);
+         case Operation is
+            when Node_Copy =>
+               XML3_DOM_Runtime.Copy_Node
+                 (Node, Other, Integer (Value), Result, Status);
+            when Property_Copy =>
+               XML3_DOM_Runtime.Copy_Property (Other, Node, Result, Status);
+            when Document_Copy =>
+               XML3_DOM_Runtime.Copy_Document
+                 (Node, Value /= 0, Result, Status);
+         end case;
+      end;
+      Report_Operation_Status (Status, Results.Node_Copy);
+      return Result;
+   exception
+      when XML3_DOM_Lock.Lock_Error =>
+         Report_Failure (Lock_Failure);
+         return System.Null_Address;
+      when Storage_Error =>
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
+      when others =>
+         Report_Failure (Unexpected_Exception);
+         return System.Null_Address;
+   end Copy_Any;
+
+   function Copy_Node
+     (Node : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Node /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Node_Copy, Node, System.Null_Address, Extended);
+   end Copy_Node;
+
+   function Doc_Copy_Node
+     (Node, Doc : System.Address; Extended : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Node /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Node_Copy, Node, Doc, Extended);
+   end Doc_Copy_Node;
+
+   function Copy_Prop (Target, Cur : System.Address) return System.Address is
+   begin
+      if Refused
+           (Guards.Property_Copy, Target /= System.Null_Address,
+            Cur /= System.Null_Address)
+      then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Property_Copy, Cur, Target, 0);
+   end Copy_Prop;
+
+   function Copy_Doc
+     (Doc : System.Address; Recursive : Interfaces.C.int)
+      return System.Address
+   is
+   begin
+      if Refused (Guards.Node_Copy, Doc /= System.Null_Address) then
+         return System.Null_Address;
+      end if;
+      return Copy_Any (Document_Copy, Doc, System.Null_Address, Recursive);
+   end Copy_Doc;
 
    procedure Set_Ns (Node, Ns : System.Address) is
       Status : XML3_DOM_Store.Operation_Status :=

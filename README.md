@@ -86,7 +86,8 @@ cc -Iinclude example.c -Llib -Wl,-rpath,"$PWD/lib" -lxml3 -o example
 `xmlNewDoc`、`xmlNewNode`、`xmlNewText`、`xmlNewTextLen`、`xmlNewDocText`、`xmlNewDocTextLen`、`xmlNewDocProp`、`xmlDocSetRootElement`、
 `xmlAddChild`、`xmlAddSibling`、`xmlAddPrevSibling`、`xmlAddNextSibling`、`xmlNewChild`、`xmlNewTextChild`、`xmlNodeAddContent`、`xmlNodeAddContentLen`、`xmlNodeSetContent`、`xmlNodeSetContentLen`、`xmlUnlinkNode`、`xmlFreeNode`、`xmlNewNs`、`xmlSetNs`、
 `xmlFreeNs`、`xmlCopyNamespace`、`xmlNewNsProp`、`xmlSetNsProp`、`xmlUnsetNsProp`、`xmlNewProp`、
-`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp` をサポートします。
+`xmlSetProp`、`xmlUnsetProp`、`xmlRemoveProp`、`xmlFreeProp`、`xmlCopyNode`、`xmlDocCopyNode`、
+`xmlCopyProp`、`xmlCopyDoc` をサポートします。
 `xmlNodeAddContent` / `xmlNodeAddContentLen` / `xmlTextConcat` の本文はSPARKで計測し、
 C側の中間Stringなしで新しい所有領域へ直接コピーします。未登録nodeとscalar限定APIの
 不適切なkindは入力読み取り前に拒否し、既存本文を入力として使う場合もコピー完了まで旧領域を保持します。
@@ -146,6 +147,50 @@ HTML/entity expansion は未対応です。
 prefix解決、非修飾属性の更新、暗黙XML namespaceの作成・失敗時の巻き戻しを再利用します。
 `xmlUnsetProp` / `xmlUnsetNsProp` は共通SPARK経路で登録確認・名前の計測/コピー・
 削除を行い、非修飾/URI照合を区別します。C側の汎用文字列走査・変換ヘルパーは不要になりました。
+
+`xmlCopyNode`、`xmlDocCopyNode`、`xmlCopyProp`、`xmlCopyDoc` は、SPARKの
+`XML3_DOM_Store.Copies` が既存のノード作成・接続・namespace検索/作成・解放を組み合わせて
+コピーします。`extended` は0がノードだけ、2が要素の属性とnamespace宣言まで、それ以外が
+子孫を含む全体です。コピーしたノードのnamespaceは libxml2 の `xmlStaticCopyNode` と同じ順で、
+コピー側で見える同じprefixの宣言、元の木の宣言をコピーの最上位に宣言し直したもの、
+重複しないprefix（`a1` など）の新しい宣言の順に決めます。途中で失敗した場合は作成済みの
+コピーを解放します。固定版2.15.4と同じ出力になることを `make test-copy` で比較しています。
+libxml2との差は次のとおりです。
+- `xmlCopyProp` のコピーは親がNULLのまま返します。libxml2は親を `target` に向けますが
+  リストにはつなぎません。`xmlAddChild` で付けるか `xmlFreeProp` で解放してください。
+- 要素の行番号（`xmlGetLineNo`）はコピーしません。
+- 親のない兄弟リストを表せないため、`xmlCopyNodeList`、`xmlDocCopyNodeList`、
+  `xmlCopyPropList` は未対応です。namespace宣言（`xmlNs`）を `xmlCopyNode` でコピーすることも
+  できません。DTDとIDは対象外です。
+
+`xmlReadFile` と `xmlParseFile` はファイル（`-` なら標準入力）を読み、`xmlReadMemory` と同じ解析を
+ファイル名をURLとして行うので、解析エラーはファイル名を持ちます。ファイル名は libxml2 の `xmlFdOpen` と同じく、
+`file:` URI だけを接頭辞の後でアンエスケープし、それ以外はそのまま使います（SPARKの `XML3_File_Paths`）。
+開けない場合は libxml2 の `xmlCtxtErrIO` と同じ `XML_FROM_IO` のエラーを記録します（`failed to load "名前": 理由`、
+str1にファイル名、見つからない場合は警告、それ以外は致命的）。読めない場合（ディレクトリなど）は
+ファイル名付きで1行1列目の致命的エラーです。コードと文言はSPARKの `XML3_IO_Errors` の表で決め、
+読み込み自体は小さなCヘルパーで行います。固定版2.15.4と同じ結果になることを `make test-input` で比較しています。
+公開 `xmlDoc` に `URL` フィールドがないこと、圧縮入力とネットワークURL、`xmlReadMemory` が受け付けない解析オプションは
+対象外です。解析コンテキストのAPI（`xmlNewParserCtxt`、`xmlCtxtReadMemory` など）は未対応です。
+
+`xmlBuffer` 系（`xmlBufferCreate`、`xmlBufferCreateSize`、`xmlBufferCreateStatic`、`xmlBufferFree`、
+`xmlBufferEmpty`、`xmlBufferShrink`、`xmlBufferGrow`、`xmlBufferResize`、`xmlBufferAdd`、`xmlBufferAddHead`、
+`xmlBufferCat`、`xmlBufferCCat`、`xmlBufferWriteCHAR`、`xmlBufferWriteChar`、`xmlBufferWriteQuotedString`、
+`xmlBufferContent`、`xmlBufferLength`、`xmlBufferDetach`、`xmlBufferSetAllocationScheme`、`xmlBufferDump`）は、
+サイズの決め方（既定256バイト、倍増または使用量+要求量+101）、先頭を削った分のずれ（`content` と `contentIO`）、
+戻り値まで libxml2 2.15.4 の `XML_BUFFER_ALLOC_IO` と同じにしました。大きさ・確保・コピーの判断は
+SPARKの `XML3_Byte_Buffers` で行い、アダプタは公開構造体との読み書きだけを行います。
+`xmlNodeDump` はSPARKのシリアライザをノード単位で使い、要素とその子孫、テキスト、CDATA、コメント、PI、
+属性（先頭の空白付き）、文書（UTF-8宣言付き）を書き出します。`level` は0〜100に丸め、`format` のとき
+子孫を字下げします（テキストを含む要素の中は字下げしません）。`xmlElemDump`、`xmlDocDump`、
+`xmlDocFormatDump` はストリームへ、`xmlSaveFile`、`xmlSaveFormatFile`、`xmlSaveFileEnc`、
+`xmlSaveFormatFileEnc` はファイルへ書きます。ファイル名は libxml2 と同じく、スキームのない名前を
+URIとしてアンエスケープし、`file:` URI は接頭辞の後をアンエスケープし、`-` は標準出力にします
+（SPARKの `XML3_File_Paths`）。実際のファイル操作だけを小さなCヘルパー（`xml3_file_io.c`）で行います。
+固定版2.15.4と同じ出力になることを `make test-output` で比較しています。libxml2との差は次のとおりです。
+- エンコーディングはUTF-8だけです。圧縮出力は対象外です。
+- ファイル名は、正しいURI参照でなくてもアンエスケープします。シリアライズに失敗した場合はファイルを作りません。
+- シリアライザは整形式で書けない木（`--` を含むコメントなど）を拒否します（libxml2はそのまま書きます）。
 
 `xmlCopyNamespace` は libxml3 が管理する live namespace facade のみを source として受け付け、
 href/prefix の bytes と NULL/empty の区別を独立した detached namespace にコピーします。

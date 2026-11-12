@@ -162,8 +162,8 @@ it shares `XML3_Text.Buffers.Valid_Name` for strict UTF-8 XML-name validation.
 The buffer helpers check bounded lengths, allocation sizing,
 and call preconditions; native allocation and byte writes are trusted. The C
 adapters, conversions, pointer validity and native ABI implementation are not
-proved. The refreshed aggregate has 14,080 checks
-(1,653 flow and 12,427 prover), no unproved or justified conditions, 0
+proved. The refreshed aggregate has 14,732 checks
+(1,837 flow and 12,895 prover), no unproved or justified conditions, 0
 `pragma Assume` statements, and 181 analyzer warnings. GNATprove failed to
 generate representation information for the trusted `xml3_dom_allocation.ads`
 package spec and continued with partial representation data; this caveat is
@@ -1094,6 +1094,41 @@ publish. The adapter still computes which pointers are NULL, publishes the
 diagnostic and returns each entry point's refusal value. Tests compare
 every group and every presence combination with a test-local copy of the
 former inline conditions.
+
+`Store.Copies` copies nodes, properties and documents (`xmlCopyNode`,
+`xmlDocCopyNode`, `xmlCopyProp`, `xmlCopyDoc`) by composing the Store's
+existing construction, attachment, namespace and release operations, so
+every node and namespace it creates goes through the proved constructors
+and keeps the Store invariant. A failed copy releases what it created. The
+proof covers absence of runtime errors, termination, the invariant and the
+status/result contract, not the equality of the copy with its source,
+which `make test-copy` compares with the pinned libxml2; the OOM walks
+check that a failed copy leaves the source unchanged. Element line numbers
+are not copied, and `xmlCopyProp` returns its copy without a parent where
+libxml2 points the parent at the target without linking it.
+
+`Byte_Buffers` holds the `xmlBuffer` operations of libxml2 2.15.4 in its
+`XML_BUFFER_ALLOC_IO` scheme: the sizes it chooses, the offset left by a
+shrink, the NUL after the used bytes and the result codes. The proof covers
+absence of runtime errors and the shape of the buffer view (the used bytes
+stay below the size and the block size stays within `INT_MAX`); the adapter
+maps the public struct onto that view, and native allocation and byte moves
+are trusted. The serializer gains a node mode for `xmlNodeDump`,
+`xmlElemDump` and the stream and file writers: it renders a node's subtree,
+an attribute or a whole document, indenting descendants from a clamped
+level. `File_Paths` decides, as libxml2's default output callback does,
+whether a file name is URI-unescaped, which `file:` prefix is skipped and
+when `-` means standard output; the system calls are in a small trusted C
+helper. `make test-output` compares buffers, dumps and written files with
+the pinned libxml2.
+
+`xmlReadFile` and `xmlParseFile` read the file through a small trusted C
+helper and parse it as `xmlReadMemory` does, with the file name as URL.
+`File_Paths.Plan_Input` unescapes only `file:` URIs, as `xmlFdOpen` does,
+and `IO_Errors` holds the `XML_IO_*` codes, their texts and the level of
+the record published when the file cannot be opened or read. `make
+test-input` compares the documents and error records with the pinned
+libxml2.
 
 `Text_Results` selects the diagnostics and `int` results of the string
 entry points from the statuses of the SPARK string operations: a length

@@ -80,8 +80,9 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
       Result : out System.Address; Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
-       Post => (if Status /= XML3_DOM_Constructors.Created then
-         Result = System.Null_Address);
+       Post => Ready (S)
+         and then (if Status /= XML3_DOM_Constructors.Created then
+           Result = System.Null_Address);
 
    procedure Lookup_Namespace
      (S : in out Store; Facade : System.Address; Mode : Namespace_Query_Kind;
@@ -89,8 +90,9 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
       Result : out System.Address; Status : out Operation_Status)
      with Global => (In_Out => XML3_Native_Memory.Foreign_Memory),
        Pre => Ready (S),
-       Post => (if Status /= XML3_DOM_Constructors.Created then
-         Result = System.Null_Address);
+       Post => Ready (S)
+         and then (if Status /= XML3_DOM_Constructors.Created then
+           Result = System.Null_Address);
 
    procedure Search_Namespace
      (S : Store; Facade : System.Address; Mode : Namespace_Query_Kind;

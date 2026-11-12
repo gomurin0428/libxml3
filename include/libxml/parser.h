@@ -23,6 +23,8 @@ xmlDocPtr xmlParseMemory(const char *buffer, int size);
 xmlDocPtr xmlReadDoc(const xmlChar *cur, const char *URL,
                      const char *encoding, int options);
 xmlDocPtr xmlParseDoc(const xmlChar *cur);
+xmlDocPtr xmlReadFile(const char *filename, const char *encoding, int options);
+xmlDocPtr xmlParseFile(const char *filename);
 
 #ifdef __cplusplus
 }
