@@ -53,8 +53,9 @@ package body XML3_C is
    package Text_Results renames XML3_Text_Results;
    package Guards renames XML3_Entry_Guards;
 
+   --  xmlFree releases with the allocator set by xmlMemSetup.
    procedure C_Free (Item : System.Address)
-     with Import, Convention => C, External_Name => "free";
+     with Import, Convention => C, External_Name => "xml3MemRelease";
 
    procedure Set_Status (Target : System.Address; Value : int);
    procedure Set_Address

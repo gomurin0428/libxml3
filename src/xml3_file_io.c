@@ -121,6 +121,10 @@ XML3_INTERNAL void *xml3FileStandardOutput(void) {
 #include <stdlib.h>
 #include <string.h>
 
+void *xml3MemAllocate(size_t size);
+void *xml3MemReallocate(void *block, size_t size);
+void xml3MemRelease(void *block);
+
 /* xmlIOErr: the XML_IO_* code of libxml2 2.15.4 for an errno value. */
 static int io_code(int err) {
     switch (err) {
@@ -205,7 +209,7 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
         return io_code(err);
     }
     *read_stage = 1;
-    buffer = malloc(capacity);
+    buffer = xml3MemAllocate(capacity);
     if (buffer == NULL) {
         close(fd);
         return -1;
@@ -217,13 +221,13 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
             char *grown;
 
             if (capacity > ((size_t)-1) / 2) {
-                free(buffer);
+                xml3MemRelease(buffer);
                 close(fd);
                 return -1;
             }
-            grown = realloc(buffer, capacity * 2);
+            grown = xml3MemReallocate(buffer, capacity * 2);
             if (grown == NULL) {
-                free(buffer);
+                xml3MemRelease(buffer);
                 close(fd);
                 return -1;
             }
@@ -235,7 +239,7 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
             int err = errno;
             if (err == EINTR)
                 continue;
-            free(buffer);
+            xml3MemRelease(buffer);
             close(fd);
             return io_code(err);
         }
@@ -243,7 +247,7 @@ XML3_INTERNAL int xml3FileReadPath(const char *path, int standard_input,
             break;
         size += (size_t)count;
         if (size > limit) {
-            free(buffer);
+            xml3MemRelease(buffer);
             close(fd);
             return -2;
         }

@@ -2265,5 +2265,179 @@
     "scope": "As xmlStrPrintf with a va_list. Native pointer validity, ABI and complete public semantics remain outside proof.",
     "tests": ["tests/format-test.c", "tests/header-smoke.cpp"],
     "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemSetup": {
+    "implementation": "partial",
+    "scope": "Sets the free, malloc (also used for atomic allocations), realloc and strdup functions; -1 when any is NULL, as libxml2 2.15.4 does. Every block the library hands to a caller or releases for one (strings, serializations, read buffers, error strings) goes through these functions, so a caller's allocator also owns what xmlFree releases; the library's internal Ada bookkeeping keeps the runtime's allocator. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemGet": {
+    "implementation": "partial",
+    "scope": "Stores the current functions in the non-NULL arguments; 0. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlGcMemSetup": {
+    "implementation": "partial",
+    "scope": "As xmlMemSetup with a separate atomic malloc; -1 when any is NULL. Every block the library hands to a caller or releases for one (strings, serializations, read buffers, error strings) goes through these functions, so a caller's allocator also owns what xmlFree releases; the library's internal Ada bookkeeping keeps the runtime's allocator. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlGcMemGet": {
+    "implementation": "partial",
+    "scope": "Stores the current functions, the atomic malloc included, in the non-NULL arguments; 0. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemMalloc": {
+    "implementation": "partial",
+    "scope": "The debug allocator of libxml2 2.15.4: the C library's malloc with libxml2's size header (tag 0x5aa5), counted in xmlMemUsed and xmlMemBlocks. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemRealloc": {
+    "implementation": "partial",
+    "scope": "Debug realloc: NULL allocates; a block without the tag prints \"xmlMemRealloc: Tag error\" on standard error and answers NULL, as libxml2 does. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemFree": {
+    "implementation": "partial",
+    "scope": "Debug free: NULL is ignored; a block without the tag prints \"xmlMemFree: Tag error\"; the bytes are overwritten with 0xFF before release, as in libxml2. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemoryStrdup": {
+    "implementation": "partial",
+    "scope": "Debug strdup through xmlMemMalloc. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMallocLoc": {
+    "implementation": "partial",
+    "scope": "xmlMemMalloc; the location is ignored, as in libxml2 2.15. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMallocAtomicLoc": {
+    "implementation": "partial",
+    "scope": "xmlMemMalloc; the location is ignored. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlReallocLoc": {
+    "implementation": "partial",
+    "scope": "xmlMemRealloc; the location is ignored. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemStrdupLoc": {
+    "implementation": "partial",
+    "scope": "xmlMemoryStrdup; the location is ignored. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemSize": {
+    "implementation": "partial",
+    "scope": "The size recorded in a debug block's header, 0 for NULL or a block without the tag. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemUsed": {
+    "implementation": "partial",
+    "scope": "The bytes in use from the debug allocator. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemBlocks": {
+    "implementation": "partial",
+    "scope": "The blocks in use from the debug allocator. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemDisplay": {
+    "implementation": "partial",
+    "scope": "No effect: no allocation log is kept, as in libxml2 2.15. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemDisplayLast": {
+    "implementation": "partial",
+    "scope": "No effect, as in libxml2 2.15. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemShow": {
+    "implementation": "partial",
+    "scope": "No effect, as in libxml2 2.15. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlMemoryDump": {
+    "implementation": "partial",
+    "scope": "No effect, as in libxml2 2.15. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlInitMemory": {
+    "implementation": "partial",
+    "scope": "Deprecated; nothing to initialize, 0. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "function:xmlmemory.h:xmlCleanupMemory": {
+    "implementation": "partial",
+    "scope": "Deprecated; no effect. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "variable:xmlmemory.h:xmlMalloc": {
+    "implementation": "partial",
+    "scope": "Declared as a function calling the current malloc function instead of libxml2's variable holding it: it can be called but not assigned (use xmlMemSetup). A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "variable:xmlmemory.h:xmlMallocAtomic": {
+    "implementation": "partial",
+    "scope": "A function calling the current atomic malloc function (libxml2: a variable). A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "variable:xmlmemory.h:xmlRealloc": {
+    "implementation": "partial",
+    "scope": "A function calling the current realloc function (libxml2: a variable). A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "variable:xmlmemory.h:xmlMemStrdup": {
+    "implementation": "partial",
+    "scope": "A function calling the current strdup function (libxml2: a variable); the default copies with the current malloc, as libxml2's does. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlmemory.h:xmlFreeFunc": {
+    "implementation": "partial",
+    "scope": "Free function type of xmlMemSetup. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlmemory.h:xmlMallocFunc": {
+    "implementation": "partial",
+    "scope": "Malloc function type of xmlMemSetup. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlmemory.h:xmlReallocFunc": {
+    "implementation": "partial",
+    "scope": "Realloc function type of xmlMemSetup. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
+  },
+  "callback:xmlmemory.h:xmlStrdupFunc": {
+    "implementation": "partial",
+    "scope": "Strdup function type of xmlMemSetup. A small trusted C shim (src/xml3_memory.c) holds the functions and calls them; native allocation, pointer validity, ABI and complete public semantics remain outside proof.",
+    "tests": ["tests/memory-test.c", "tests/header-smoke.cpp"],
+    "proof": "not-proved"
   }
 }

@@ -248,6 +248,20 @@ int main() {
     int (*str_vprintf)(xmlChar *, int, const char *, va_list) = xmlStrVPrintf;
     (void)str_printf;
     (void)str_vprintf;
+    int (*mem_setup)(xmlFreeFunc, xmlMallocFunc, xmlReallocFunc,
+                     xmlStrdupFunc) = xmlMemSetup;
+    int (*mem_get)(xmlFreeFunc *, xmlMallocFunc *, xmlReallocFunc *,
+                   xmlStrdupFunc *) = xmlMemGet;
+    void *(*mem_malloc)(size_t) = xmlMalloc;
+    void *(*mem_realloc)(void *, size_t) = xmlRealloc;
+    char *(*mem_strdup)(const char *) = xmlMemStrdup;
+    int (*mem_used)() = xmlMemUsed;
+    (void)mem_setup;
+    (void)mem_get;
+    (void)mem_malloc;
+    (void)mem_realloc;
+    (void)mem_strdup;
+    (void)mem_used;
     {
         xmlURI uri = {};
         uri.port = 0;

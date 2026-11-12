@@ -1152,6 +1152,11 @@ The shared library exports exactly the public entry points listed in
 generates it from the interface specifications and `make check-inventory`
 checks that it is current. `xmlStrPrintf` and `xmlStrVPrintf` are a small
 trusted C shim over `vsnprintf` (variable arguments cannot cross into Ada).
+The allocator of `xmlmemory.h` is another small trusted C shim
+(`src/xml3_memory.c`): it holds the functions set by `xmlMemSetup` and
+`xmlGcMemSetup`, through which `XML3_Native_Memory`, `xmlFree` and the file
+reader allocate and release, and libxml2's debug allocator with its header
+and counters. `make test-memory` compares it with the pinned libxml2.
 
 `URIs.Parse` finds the components of a URI reference as libxml2's
 `xmlParse3986URIReference` does (an absolute URI, else a relative

@@ -21,8 +21,18 @@ SYMBOL_FILE = ROOT / "libxml3.sym"
 INTERFACE_SPECS = ["src/xml3_c.ads", "src/xml3_errors.ads"]
 # The library's elaboration and finalization (Library_Auto_Init).
 RUNTIME = ["xml3init", "xml3final"]
-# Entry points with variable arguments, written in src/xml3_format.c.
-C_ENTRY_POINTS = ["xmlStrPrintf", "xmlStrVPrintf"]
+# Entry points written in C: the formatting with variable arguments
+# (src/xml3_format.c) and the allocator (src/xml3_memory.c).
+C_ENTRY_POINTS = [
+    "xmlStrPrintf", "xmlStrVPrintf",
+    "xmlMalloc", "xmlMallocAtomic", "xmlRealloc", "xmlMemStrdup",
+    "xmlMemSetup", "xmlMemGet", "xmlGcMemSetup", "xmlGcMemGet",
+    "xmlMemMalloc", "xmlMemRealloc", "xmlMemFree", "xmlMemoryStrdup",
+    "xmlMallocLoc", "xmlMallocAtomicLoc", "xmlReallocLoc", "xmlMemStrdupLoc",
+    "xmlMemSize", "xmlMemUsed", "xmlMemBlocks", "xmlMemDisplayLast",
+    "xmlMemDisplay", "xmlMemShow", "xmlMemoryDump", "xmlInitMemory",
+    "xmlCleanupMemory",
+]
 EXPORT = re.compile(r'with\s+Export\b[^;]*?External_Name\s*=>\s*"([^"]+)"',
                     re.S)
 
