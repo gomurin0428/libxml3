@@ -470,7 +470,8 @@ environment's two-hour invocation limit. Later revisions add eleven units,
 `XML3_URIs` and `XML3_Declarations`, and
 change eight of those 39 units: `XML3_Parser.Statuses`, `XML3_Error_Records`
 (the per-thread error mark and the handler choice),
-`XML3_DOM_Runtime`, `XML3_DOM_Store.Queries` (postcondition),
+`XML3_DOM_Runtime`, `XML3_DOM_Store.Queries` (postcondition, and the
+registration-only document test `Test_Document`),
 `XML3_Serialization` and `XML3_DOM_Store.Serialization` (node mode and
 the `xmlsave.h` output style) and,
 as clients of the changed `Queries` specification, `XML3_DOM_Store.Content`
@@ -484,7 +485,7 @@ The longest units take
 6,316 prover checks, against 5,749 for the former single unit; the
 difference is the new lemmas and hint assertions.
 
-Result: **15,235 checks, 1,974 by flow analysis and 13,261 by provers; 0
+Result: **15,245 checks, 1,979 by flow analysis and 13,266 by provers; 0
 unproved, 0 justified, and 0 `pragma Assume`**. The aggregate includes namespace editing through
 Store/Runtime, retained namespace ownership, failure rollback, explicit UTF-8,
 default-encoding, and formatted memory serialization, `xmlNodeAddContent`, `xmlNodeAddContentLen`,
@@ -1152,7 +1153,7 @@ semantics. `XML3_Text.Buffers.Read_Length` has 4 checks and `Measure` has 2.
 `Compare_Bounded` has 1, `Compare_Scan` has 4, `Compare_Terminated` has 1,
 `Concatenate` has 12, `Duplicate` has 1, `Find_Byte` has 3,
 `Find_Substring` has 8, `Fits` has 0, and `Slice` and `Copy_Span` have 6 each.
-The 777 entity
+The 779 entity
 summaries report 0 flow errors, 191 warnings, and 0 `pragma Assume`
 statements; warnings are not counted as discharged verification conditions.
 The `Unescape_URI` warning notes that the initial value of `Span` has no
@@ -1188,14 +1189,14 @@ the adapter and the native boundary remain trusted. See [assurance.md](assurance
 
 | Category | Checks |
 | --- | ---: |
-| Data dependencies | 568 |
-| Initialization | 1,073 |
+| Data dependencies | 570 |
+| Initialization | 1,075 |
 | Non-aliasing | 1 |
-| Runtime checks | 6,320 |
+| Runtime checks | 6,322 |
 | Assertions | 1,845 |
-| Functional contracts | 5,002 |
-| Termination | 426 |
-| **Total** | **15,235** |
+| Functional contracts | 5,005 |
+| Termination | 427 |
+| **Total** | **15,245** |
 
 The analyzer's counts are verification conditions, not vulnerabilities, test
 cases, or supported APIs. `Parse`, `Decode`, namespace `Resolve`, and
@@ -1927,7 +1928,7 @@ for the proof result above; feature behavior and trust boundaries are
 described in the preceding sections.
 
 ```text
-2ca3ae1a062f125fcba195c45ebb199a30bf3e82cfc2301fe7c52d0a7adc8472  src/xml3_c.adb
+6325cd2e8d84d5729d3b6228c767988a08959054bdd272b3b74a299910a100ec  src/xml3_c.adb
 f222e93f0f50f8cd872ba7aee52b952535aa38bd6c3495abbecf60410f744eab  src/xml3_c.ads
 8a280b48c8dd1327f90f4d80b2c112a5d56a49b713cb6cd72164e31baf9a312b  include/libxml3.h
 66072f8c4567c0b34ec94f316694791a290f312f6dad53fad4f6a2be770683fd  include/libxml/chvalid.h
@@ -1964,16 +1965,16 @@ b16ad801efff504362bd0b8be9601be333ef99c2345cd37cf8985f6c627ef53b  src/xml3_dom_c
 3d5be8acf4a2e8936fab93435465be0a3610833a7e00cf06c292c3e2e13b9f35  src/xml3_dom_lock.adb
 3787e7d43e9a139612f97575b069cd407d06bc6f770e1fd88ae4628ecf0810bb  src/xml3_dom_lock.ads
 804f1a3371bc434ce35784d7605c6a8153f401b55da2fbb8a49145a71bc42e1b  src/xml3_dom_mutex.c
-fcdacb00835f90864c65ad759f12ef93e96d02ae057c85b327b4afa46fae3892  src/xml3_dom_runtime.adb
-50e0706fc185b7d8019b365573432cff5db0662322232bea4aeffefa1cbec1e9  src/xml3_dom_runtime.ads
+b85012d8b6378cda7c6d70940bcb67e2bf5efa4ae0bfddebf4196ca65c81c5d2  src/xml3_dom_runtime.adb
+bb5943eb8f163851961a6181b078b03762bc1b6126618ce6da2f4fc9e7825692  src/xml3_dom_runtime.ads
 48971614e213e183e073609c06983881fe1c6727bfec0476b5b198f87588e470  src/xml3_dom_store-content.adb
 9be716f2c2de451c7a5c025d487b7fe92f7bab6a5a6efce4b5e50d7b90949a22  src/xml3_dom_store-content.ads
 339c4be671e09933bce76f0a2bee178907eaf295e429b47fbf66868c93a698a7  src/xml3_dom_store-documents.adb
 6c52972b1a9bedcd5032918c0ae52efce069d7ab512555822beec7c833aae4c3  src/xml3_dom_store-documents.ads
 39b9ab4d1ec8b4f8f54ff0cfd13c890de61997e56544cfb740f0b099a585bbd8  src/xml3_dom_store-properties.adb
 335071995c50a800cf07f0f479c2712878b49edac9940cf3aca32322f306abbf  src/xml3_dom_store-properties.ads
-264cc8a1b8b7867cd61b0ffba47719c4b9bee3238b5777483377933ff7ab19b0  src/xml3_dom_store-queries.adb
-7857b82b6bfb4ab6562a21548bcb48f39c02303012c1e95ea7a5869847641e66  src/xml3_dom_store-queries.ads
+e17b87923d787b6803ae120e99820f4026d30a5db13fbe90ef4c4d27ebe61529  src/xml3_dom_store-queries.adb
+f537994bf5bb4979e5ba8d2f6906a608c10e8da61ab165f9f776550254241af0  src/xml3_dom_store-queries.ads
 61dac86f279fa767332d341e9b1519978973444068895e508e2d50bf7cf0a659  src/xml3_dom_store-serialization.adb
 d556e31d6a1efbb46b902e1bccec60e011e87be5d6a5e7cad3e53ae6f620c822  src/xml3_dom_store-serialization.ads
 3d63803caff59bd5791c849800084f16a55c0eefc0d4adab82a7b1f2380bc2a2  src/xml3_dom_store.adb
@@ -2036,7 +2037,7 @@ f3f7b1be5d2a905f51e49e6350bd824718ee7096cca4decd3cb91f9f0f72c5fd  Makefile
 0fac6d07736e217b2988b08c096aca1d31218a14bde5429eaf404937d9d5f77b  eng/prove_units.py
 8f5accaeda91e17a81b7be66c2469847a093375ea8a6de69d06b50d0bf53f8fc  tests/error-test.c
 4d7f7248c6e49caec5f3f1aaf183fcfed2187b4d630e9146e30fd43a2d92474e  tests/oom-test.c
-7cb950470bde57589a77f5f3e6dafdaf1b24e93047262eb85d74927d8cb06179  tests/serialization-test.c
+419aba84ad53ff42c7c74199674954fc8bb2ba0c4032438fa89dd771ccc20666  tests/serialization-test.c
 29cd3ab92b2dc021fb9b338ec36b1bf944d3ff06f71715b50fd051d93afe7ead  tests/oom-shim.c
 b04c201006fc5ec124c5cde853d89c69ccffe306c34ec69b150834df41b03cce  tests/text_buffers_test.gpr
 b4c2736f60339806353483ca0a0e4d585e4960c7f6988da16b2875caf0fc2ef7  tests/text_buffers_test.adb
@@ -2058,7 +2059,7 @@ b38191e8ef55e1b125d3af3dd971d667f1b6108c50ce2c801d1c6dfe02f41b1c  tests/uri-buil
 79baaa129e9dde87491db5230af515ba63e2bc4ac9a60b6de986d660d57b77ad  tests/memory-test.c
 b4de69661ee89b90dfa2c23ae75301941a7772a0d4e22010d263624a1d9a46dc  tests/output-buffer-test.c
 b1ebc9745a4f84086f57d89a047ccf6b8e15ad5aa0bb8d607d3e3fe8381f6a13  tests/push-test.c
-cc67d59f7e469f55fdd39475dad8bf33ebadcdb0f40b4c98d05d8f36ce13ea5c  tests/doc-encoding-test.c
+832725ac11745aad43434aba45bd6e7cc33725b56047307238e502a11ee9f2c6  tests/doc-encoding-test.c
 7975704364f8752e5bcd452953db036f6b12a34f743a46429c107648dc82887c  include/libxml/xmlsave.h
 5af3efa19e3cff01de3e5a707a604f872d6e64a96baa449cf1256cec70d1412d  include/libxml/xmlIO.h
 d8f9e296e83bce81a95d9e67bfdd393a6e3f8f3bf812ab9efe53af5f20eb66cf  src/xml3_format.c

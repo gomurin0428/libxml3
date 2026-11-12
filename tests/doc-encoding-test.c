@@ -107,6 +107,19 @@ static void serializations(xmlDocPtr doc) {
     put_line("copy dump", text, size);
     xmlFree(text);
     xmlFreeDoc(copy);
+    /* Node copies of a document copy its encoding too. */
+    copy = (xmlDocPtr)xmlCopyNode((xmlNodePtr)doc, 1);
+    printf("  node copy encoding: %s\n",
+           copy && copy->encoding ? (const char *)copy->encoding : "null");
+    xmlFreeDoc(copy);
+    copy = (xmlDocPtr)xmlDocCopyNode((xmlNodePtr)doc, NULL, 1);
+    printf("  doc node copy encoding: %s\n",
+           copy && copy->encoding ? (const char *)copy->encoding : "null");
+    xmlFreeDoc(copy);
+    copy = xmlCopyDoc(doc, 0);
+    printf("  shallow copy encoding: %s\n",
+           copy->encoding ? (const char *)copy->encoding : "null");
+    xmlFreeDoc(copy);
 }
 
 /* With serialize 0 only the recorded encoding is compared: libxml2 writes

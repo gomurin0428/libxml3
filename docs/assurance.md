@@ -1154,8 +1154,10 @@ an accepted document names, and `Declarations.Source` decides what the
 parse records in `doc->encoding` (the requested encoding's name, the
 declared one, or none), as libxml2's `xmlGetActualEncoding` does. The
 adapter keeps the recorded name in the document facade's `encoding`
-slot, which the DOM projection does not write, copies it with
-`xmlCopyDoc`, releases it with `xmlFreeDoc` and passes it to the
+slot, which the DOM projection does not write, reads it only for a
+pointer `Store.Queries.Test_Document` finds among the live documents
+without reading its memory, copies it with every copy of a document,
+releases it with `xmlFreeDoc` and passes it to the
 serializer when a document is written without an encoding; `make
 test-doc-encoding` compares the records and the output with the pinned
 libxml2.

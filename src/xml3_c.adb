@@ -88,7 +88,6 @@ package body XML3_C is
    procedure Set_Document_Encoding (Doc, Value : System.Address);
    function Serialization_Encoding (Doc : System.Address)
       return System.Address;
-   function Is_Document_Facade (Node : System.Address) return Boolean;
    function Document_Encoding (Doc : System.Address) return System.Address;
    function Copy_Text (Text : String) return System.Address;
 
@@ -3092,51 +3091,25 @@ package body XML3_C is
         Encoding : System.Address;
    end record with Convention => C;
 
-   --  XML_DOCUMENT_NODE.
-   Document_Node_Type : constant int := 9;
-
-   function Is_Document_Facade (Node : System.Address) return Boolean is
+   --  The encoding slot of Doc, which must be a live document (checked by
+   --  XML3_DOM_Runtime.Is_Document under the DOM lock, or a document the
+   --  caller has just made).
+   function Document_Encoding (Doc : System.Address) return System.Address
+   is
+      Facade : Document_Facade with Import, Address => Doc;
    begin
-      if Node = System.Null_Address then
-         return False;
-      end if;
-      declare
-         Facade : Document_Facade with Import, Address => Node;
-      begin
-         return Facade.Node_Type = Document_Node_Type;
-      end;
-   end Is_Document_Facade;
-
-   function Document_Encoding (Doc : System.Address) return System.Address is
-   begin
-      if not Is_Document_Facade (Doc) then
-         return System.Null_Address;
-      end if;
-      declare
-         Facade : Document_Facade with Import, Address => Doc;
-      begin
-         return Facade.Encoding;
-      end;
+      return Facade.Encoding;
    end Document_Encoding;
 
-   --  Replaces the encoding of Doc (a document) with Value, an allocation
-   --  the document takes over, releasing the previous one.
+   --  Replaces the encoding of Doc (a live document, as above) with Value,
+   --  an allocation the document takes over, releasing the previous one.
    procedure Set_Document_Encoding (Doc, Value : System.Address) is
+      Facade : Document_Facade with Import, Address => Doc;
    begin
-      if not Is_Document_Facade (Doc) then
-         if Value /= System.Null_Address then
-            XML3_Native_Memory.Free (Value);
-         end if;
-         return;
+      if Facade.Encoding /= System.Null_Address then
+         XML3_Native_Memory.Free (Facade.Encoding);
       end if;
-      declare
-         Facade : Document_Facade with Import, Address => Doc;
-      begin
-         if Facade.Encoding /= System.Null_Address then
-            XML3_Native_Memory.Free (Facade.Encoding);
-         end if;
-         Facade.Encoding := Value;
-      end;
+      Facade.Encoding := Value;
    end Set_Document_Encoding;
 
    --  An allocated NUL-terminated copy of Text; null when the allocation
@@ -3157,13 +3130,19 @@ package body XML3_C is
    --  The encoding a serialization of Doc without an encoding uses, as
    --  libxml2 takes doc->encoding: the document's own when the serializer
    --  can write it (a UTF-8 name), otherwise none (the default output).
+   --  Called under the DOM lock; Doc is any pointer, read only when it is
+   --  a live document.
    function Serialization_Encoding (Doc : System.Address)
       return System.Address
    is
-      Encoding : constant System.Address := Document_Encoding (Doc);
+      Encoding : System.Address;
       Name : XML3_Serialization.UTF8_Name;
       Valid : Boolean;
    begin
+      if not XML3_DOM_Runtime.Is_Document (Doc) then
+         return System.Null_Address;
+      end if;
+      Encoding := Document_Encoding (Doc);
       if Encoding = System.Null_Address then
          return System.Null_Address;
       end if;
@@ -3178,11 +3157,14 @@ package body XML3_C is
       if Refused (Guards.Document_Release, Doc /= System.Null_Address) then
          return;
       end if;
-      Set_Document_Encoding (Doc, System.Null_Address);
       declare
          Guard : XML3_DOM_Lock.Guard;
       begin
          XML3_DOM_Lock.Acquire (Guard);
+         --  The document's encoding goes with it.
+         if XML3_DOM_Runtime.Is_Document (Doc) then
+            Set_Document_Encoding (Doc, System.Null_Address);
+         end if;
          XML3_DOM_Runtime.Release
            (Doc, XML3_DOM_Store.Document_Only, False, Status);
       end;
@@ -3546,6 +3528,8 @@ package body XML3_C is
       Result : System.Address := System.Null_Address;
       Status : XML3_DOM_Store.Operation_Status :=
         XML3_DOM_Constructors.Internal_Error;
+      Encoding_Copy : System.Address := System.Null_Address;
+      Copy_Failed : Boolean := False;
    begin
       declare
          Guard : XML3_DOM_Lock.Guard;
@@ -3561,34 +3545,40 @@ package body XML3_C is
                XML3_DOM_Runtime.Copy_Document
                  (Node, Value /= 0, Result, Status);
          end case;
+         --  A copy of a document (xmlCopyDoc, or xmlCopyNode and
+         --  xmlDocCopyNode of a document) takes its encoding, as libxml2
+         --  copies doc->encoding; the source is then a live document too.
+         if Result /= System.Null_Address
+           and then XML3_DOM_Runtime.Is_Document (Result)
+           and then Document_Encoding (Node) /= System.Null_Address
+         then
+            declare
+               Length : XML3_Text.Byte_Count;
+               Found : Boolean;
+            begin
+               XML3_Text.Buffers.Measure
+                 (Document_Encoding (Node), Length, Found);
+               if Found then
+                  declare
+                     Text : String (1 .. Natural (Length))
+                       with Import, Address => Document_Encoding (Node);
+                  begin
+                     Encoding_Copy := Copy_Text (Text);
+                  end;
+               end if;
+               Copy_Failed := Encoding_Copy = System.Null_Address;
+               if not Copy_Failed then
+                  Set_Document_Encoding (Result, Encoding_Copy);
+               end if;
+            end;
+         end if;
       end;
       Report_Operation_Status (Status, Results.Node_Copy);
-      --  xmlCopyDoc copies doc->encoding; a failed copy leaves no copy.
-      if Operation = Document_Copy and then Result /= System.Null_Address
-        and then Document_Encoding (Node) /= System.Null_Address
-      then
-         declare
-            Length : XML3_Text.Byte_Count;
-            Found : Boolean;
-            Copy : System.Address := System.Null_Address;
-         begin
-            XML3_Text.Buffers.Measure
-              (Document_Encoding (Node), Length, Found);
-            if Found then
-               declare
-                  Text : String (1 .. Natural (Length))
-                    with Import, Address => Document_Encoding (Node);
-               begin
-                  Copy := Copy_Text (Text);
-               end;
-            end if;
-            if Copy = System.Null_Address then
-               Free_Doc (Result);
-               Report_Failure (Allocation_Failure);
-               return System.Null_Address;
-            end if;
-            Set_Document_Encoding (Result, Copy);
-         end;
+      --  A failed copy of the encoding leaves no copy.
+      if Copy_Failed then
+         Free_Doc (Result);
+         Report_Failure (Allocation_Failure);
+         return System.Null_Address;
       end if;
       return Result;
    exception
@@ -5721,9 +5711,7 @@ package body XML3_C is
             XML3_DOM_Runtime.Save
               (Node,
                (if Context.Has_Encoding then Context.Encoding'Address
-                elsif Is_Document_Facade (Node)
-                then Serialization_Encoding (Node)
-                else System.Null_Address),
+                else Serialization_Encoding (Node)),
                Document_Only, Context.Formatted, Context.Style,
                Bytes, Length, Status);
          end;

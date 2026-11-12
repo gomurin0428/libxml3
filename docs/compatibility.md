@@ -584,7 +584,7 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
 解析は文書のencodingを `doc->encoding` に記録します。libxml2 2.15.4 の `xmlGetActualEncoding` と同じく、
 読み込みにencodingを指定すればその名前（`UTF-8`、`UTF-16`、`UTF-16LE`、`UTF-16BE`）、指定がなければXML宣言の
 encodingを書かれたとおりに、どちらもなければNULLです（宣言の値はSPARKの `XML3_Declarations` で見つけます）。
-`xmlCopyDoc` はコピーし、`xmlFreeDoc` は解放します。encodingを指定しない出力（`xmlDocDumpMemory` 系、
+`xmlCopyDoc`（と文書に対する `xmlCopyNode` / `xmlDocCopyNode`）はコピーし、`xmlFreeDoc` は解放します。encodingを指定しない出力（`xmlDocDumpMemory` 系、
 `xmlDocDump`、`xmlSaveFile`、`xmlSaveFileTo`、encodingなしの保存コンテキストでの文書の `xmlSaveDoc` /
 `xmlSaveTree`）は、それがUTF-8の表記なら libxml2 と同じくそのencodingで出力します。縮小した `xmlDoc` では
 `encoding` は `version` の次にあり、libxml2 の構造体と同じ位置ではありません。固定版2.15.4と同じ結果になる

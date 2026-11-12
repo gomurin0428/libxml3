@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -788,6 +789,23 @@ static void test_default_serialization(void) {
     xmlChar *memory = NULL;
     int size = 0;
     const char *empty = "<?xml version=\"1.0\"?>\n";
+#ifndef XML3_REFERENCE_TEST
+    /* A pointer that is not a registered document is refused before its
+     * memory (or its encoding) is read (libxml2 reads it). */
+    {
+        xmlChar *bogus_memory = (xmlChar *)1;
+        int bogus_size = 99;
+
+        xmlResetLastError();
+        xmlDocDumpMemory((xmlDocPtr)(uintptr_t)8, &bogus_memory, &bogus_size);
+        assert(bogus_memory == NULL && bogus_size == 0 && xmlGetLastError());
+        xmlResetLastError();
+        xmlDocDumpFormatMemoryEnc((xmlDocPtr)(uintptr_t)8, &bogus_memory,
+                                  &bogus_size, NULL, 1);
+        assert(bogus_memory == NULL && bogus_size == 0);
+        xmlResetLastError();
+    }
+#endif
     assert(doc);
     xmlDocDumpMemory(doc, &memory, &size);
     assert(memory && size == (int)strlen(empty));
