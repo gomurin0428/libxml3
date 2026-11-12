@@ -423,6 +423,34 @@ package body XML3_Errors is
    Deferred_First, Deferred_Last : Deferred_Access := null
      with Thread_Local_Storage;
 
+   --  Calls a handler with the thread's record Last when no copy of it can
+   --  be made: a record of the thread's slot is detached from the slot for
+   --  the call (no allocation), so the handler's own reads or resets cannot
+   --  release it, and put back afterwards unless the handler published
+   --  another error meanwhile.  The emergency record has no owned
+   --  strings and is passed as it is.
+   procedure Call_Detached
+     (Handler : Structured_Handler; Data, Last : System.Address)
+   is
+      State : constant Error_State_Access := Current_State (False);
+   begin
+      if State = null or else Last /= State.Error'Address then
+         Call_Handler (Handler, Data, Last);
+         return;
+      end if;
+      declare
+         Detached : aliased Error_State := State.all;
+      begin
+         State.all := XML3_Error_Records.Empty_Slot;
+         Call_Handler (Handler, Data, Detached.Error'Address);
+         if State.Error.Code = 0 and then not Emergency_Active then
+            State.all := Detached;
+         else
+            XML3_Error_Records.Clear_Slot (Detached);
+         end if;
+      end;
+   end Call_Detached;
+
    --  Hands the error just published (Level) to the handler that hears
    --  it: at once, or once the DOM lock is released.
    procedure Dispatch (Level : Interfaces.C.int) is
@@ -471,7 +499,7 @@ package body XML3_Errors is
                   Call_Handler (Handler, Data, Copy'Address);
                   Clear_Record (Copy);
                else
-                  Call_Handler (Handler, Data, Last);
+                  Call_Detached (Handler, Data, Last);
                end if;
             end;
          end if;

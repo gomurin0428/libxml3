@@ -127,6 +127,24 @@ static void allocating_handler(void *data, const xmlError *error) {
     xmlFree(copy);
 }
 
+/* A thread handler whose own reads would replace the thread's record:
+ * the record it was handed must not change under it. */
+static int detached_changed;
+
+static void resetting_handler(void *data, const xmlError *error) {
+    int code = error->code, line = error->line;
+    xmlDocPtr nested;
+
+    (void)data;
+    xmlSetStructuredErrorFunc(NULL, NULL);
+    xmlResetLastError();
+    nested = xmlReadMemory("<n>\n</m>", 8, NULL, NULL, XML_PARSE_NOERROR);
+    xmlFreeDoc(nested);
+    if (error->code != code || error->line != line)
+        detached_changed = 1;
+    xmlSetStructuredErrorFunc(NULL, resetting_handler);
+}
+
 static const xmlError *require_oom_error(void) {
     const xmlError *error = xmlGetLastError();
     assert(error != NULL);
@@ -742,6 +760,18 @@ int main(int argc, char **argv) {
         xmlFreeParserCtxt(ctxt);
         xmlFreeParserCtxt(nested_ctxt);
         nested_ctxt = NULL;
+    } else if (strcmp(operation, "handler-detached") == 0) {
+        /* Whether or not the handler gets a copy of the record, its own
+         * reset and failing read do not change the record it holds. */
+        detached_changed = 0;
+        xmlSetStructuredErrorFunc(NULL, resetting_handler);
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory("<r><c/>", 7, "d.xml", NULL, 0);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        xmlSetStructuredErrorFunc(NULL, NULL);
+        assert(!doc && !detached_changed);
     } else if (strcmp(operation, "handler-warning") == 0) {
         /* A failed allocation inside the handler of a warning does not
          * change the result of the read that published it. */
