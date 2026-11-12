@@ -127,3 +127,7 @@ tests/push-test
 tests/push-test-reference
 tests/push-test.out
 tests/push-test-reference.out
+tests/doc-encoding-test
+tests/doc-encoding-test-reference
+tests/doc-encoding-test.out
+tests/doc-encoding-test-reference.out

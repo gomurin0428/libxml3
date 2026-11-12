@@ -175,6 +175,9 @@ int main() {
         xmlParseChunk;
     int (*ctxt_reset_push)(xmlParserCtxtPtr, const char *, int, const char *,
                            const char *) = xmlCtxtResetPush;
+    xmlDoc doc_fields = {};
+    const xmlChar *doc_encoding = doc_fields.encoding;
+    (void)doc_encoding;
     (void)create_push;
     (void)parse_chunk;
     (void)ctxt_reset_push;

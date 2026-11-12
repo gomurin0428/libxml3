@@ -377,6 +377,13 @@ is
            (Current, Element, Mode, Value, Space_Value, Status);
       end Set_XML_Property;
 
+      function Is_Document (Facade : System.Address) return Boolean is
+         Result : Boolean;
+      begin
+         XML3_DOM_Store.Queries.Test_Document (Current, Facade, Result);
+         return Result;
+      end Is_Document;
+
       procedure Test_Node
         (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind;
          Result : out Boolean; Status : out XML3_DOM_Store.Operation_Status)

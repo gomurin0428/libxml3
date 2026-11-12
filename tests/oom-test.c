@@ -1022,6 +1022,36 @@ int main(int argc, char **argv) {
         xmlCtxtReset(ctxt);
         assert(!xmlCtxtGetLastError(ctxt) && ctxt->wellFormed == 1);
         xmlFreeParserCtxt(ctxt);
+    } else if (strcmp(operation, "doc-encoding") == 0) {
+        /* The encoding a parse records and the copy xmlCopyDoc makes of
+         * it each allocate; a failed copy leaves no document (or no copy)
+         * with the out-of-memory error. */
+        static const char text[] =
+            "<?xml version='1.0' encoding='utf-8'?><r a='1'>t</r>";
+        xmlDocPtr copy = NULL;
+
+        xml3_oom_enable(fail_index);
+        doc = xmlReadMemory(text, (int)strlen(text), NULL, NULL, 0);
+        if (doc != NULL)
+            copy = xmlCopyDoc(doc, 1);
+        injected = xml3_oom_was_injected();
+        allocation_count = xml3_oom_count();
+        xml3_oom_disable();
+        if (doc == NULL) {
+            assert(injected);
+            require_oom_error();
+        } else {
+            assert(doc->encoding != NULL &&
+                   strcmp((const char *)doc->encoding, "utf-8") == 0);
+            if (copy == NULL) {
+                assert(injected);
+                require_oom_error();
+            } else {
+                assert(copy->encoding != NULL &&
+                       strcmp((const char *)copy->encoding, "utf-8") == 0);
+                xmlFreeDoc(copy);
+            }
+        }
     } else if (strcmp(operation, "push") == 0) {
         /* The push context, its URL, the pushed bytes and the parse at the
          * termination each allocate.  A failure leaves no context (with

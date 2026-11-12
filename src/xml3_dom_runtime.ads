@@ -242,6 +242,10 @@ is
          Status : out XML3_DOM_Store.Operation_Status)
         with Global => (In_Out => (Managed, XML3_Native_Memory.Foreign_Memory));
 
+      --  Whether Facade is a live document, without reading its memory.
+      function Is_Document (Facade : System.Address) return Boolean
+        with Global => (Input => Managed);
+
       procedure Test_Node
         (Facade : System.Address; Mode : XML3_DOM_Store.Queries.Node_Test_Kind;
          Result : out Boolean; Status : out XML3_DOM_Store.Operation_Status)

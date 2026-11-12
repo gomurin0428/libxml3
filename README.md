@@ -227,6 +227,15 @@ SPARKの `XML3_Parser.Contexts` で決め、スレッドが出したエラーの
   エラーにします）。
 - SAXハンドラー（`xmlSAXHandler`）は提供しないので、NULL以外を渡すとコンテキストを作りません。
 
+解析は文書のencodingを `doc->encoding` に記録します。libxml2 2.15.4 の `xmlGetActualEncoding` と同じく、
+読み込みにencodingを指定すればその名前（`UTF-8`、`UTF-16`、`UTF-16LE`、`UTF-16BE`）、指定がなければXML宣言の
+encodingを書かれたとおりに、どちらもなければNULLです（宣言の値はSPARKの `XML3_Declarations` で見つけます）。
+`xmlCopyDoc`（と文書に対する `xmlCopyNode` / `xmlDocCopyNode`）はコピーし、`xmlFreeDoc` は解放します。encodingを指定しない出力（`xmlDocDumpMemory` 系、
+`xmlDocDump`、`xmlSaveFile`、`xmlSaveFileTo`、encodingなしの保存コンテキストでの文書の `xmlSaveDoc` /
+`xmlSaveTree`）は、それがUTF-8の表記なら libxml2 と同じくそのencodingで出力します。縮小した `xmlDoc` では
+`encoding` は `version` の次にあり、libxml2 の構造体と同じ位置ではありません。固定版2.15.4と同じ結果になる
+ことを `make test-doc-encoding` で比較しています。
+
 構造化エラーハンドラーは `xmlSetStructuredErrorFunc`（スレッドごと）と `xmlCtxtSetErrorHandler`（解析コンテキストごと）
 に対応します。公開されたエラーは、libxml2 の `xmlCtxtVErr` と同じ規則で、コンテキストでの読み込み中はそのハンドラー
 （オプションに `XML_PARSE_NOERROR`、警告では `XML_PARSE_NOWARNING` がない場合）、それ以外はスレッドのハンドラーへ
@@ -721,7 +730,7 @@ non-NULL input では `doc == NULL` または登録済み文書のみを受け�
 文書の登録確認を入力読み取りより先に行い、不正な文書なら入力には触れません。
 `Escape_Special_Bytes` に直接渡すため、ここにもC文字列の中間コピーはありません。
 `<`・`>`・`&` は名前付き参照、CR は `&#13;`、非ASCIIは大文字 hex の文字参照にし、
-quote・TAB・LF は保持します。document encoding は保持しないため、明示 UTF-8 文書でも非ASCIIを参照化します。
+quote・TAB・LF は保持します。文書の encoding（`doc->encoding`）は参照しないため、encoding のある文書でも非ASCIIを参照化します（libxml2 はそのまま残します）。
 不正UTF-8/XMLは診断付きで拒否し、既存参照や一般実体の展開・HTML処理はしません。
 出力は独立した `xmlFree` 所有で DOM は変更せず、allocation failure は NULL を返します。
 native pointer/byte reads, allocation/copy/free, ABI と完全な C semantics は信頼境界に残ります。
@@ -763,11 +772,12 @@ native pointer/readability、allocation/byte write、ABI/status mappingはtruste
 は明示的なUTF-8出力とNULL encodingをサポートし、encoding名のASCII大小文字を区別せず、
 文書の登録確認後にSPARKで最大6byte（終端を含む）だけを読みます。
 不正文書ではencodingを読まず、不正な名前は最初の不一致で拒否し、中間C文字列コピーは作りません。
-明示指定では宣言に指定表記を保持します。`xmlDocDumpMemory` とNULL encodingでは
-encoding宣言を省き、text・属性・namespace URIの非ASCII文字を大文字16進の文字参照にします。
+明示指定では宣言に指定表記を保持します。`xmlDocDumpMemory` とNULL encodingでは、文書の
+encoding（解析が記録した `doc->encoding`）がUTF-8の表記ならその表記の宣言と生のUTF-8で出力します。
+それ以外（encodingなし、UTF-16、ハイフンのない `UTF8` など）ではencoding宣言を省き、text・属性・
+namespace URIの非ASCII文字を大文字16進の文字参照にします（libxml2 はUTF-16などの文書をそのencodingで出力します）。
 名前・comment・PI・CDATAのUTF-8は保持します。XML 1.0以外、未対応encoding、無効なXML名・文字・
-namespaceは拒否します。source encoding/standalone metadata は保持されず宣言には
-出力しません。このため元文書のencodingへの暗黙復帰はせず、NULLは常に上記の既定出力です。
+namespaceは拒否します。standalone metadata は保持されず宣言には出力しません。
 空のencoding名は拒否します。`xmlDocDumpFormatMemory` / `xmlDocDumpFormatMemoryEnc`
 はformat=0で通常出力、非0で2空白の字下げ・改行を追加します。固定版の既定設定に合わせ、
 字下げは60空白で頭打ちです。Text/CDATA（空白だけのTextも含む）を直接持つ要素の

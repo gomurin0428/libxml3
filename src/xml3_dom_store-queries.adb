@@ -209,6 +209,15 @@ package body XML3_DOM_Store.Queries with SPARK_Mode is
       Status := (if P = Null_Node then Created else Internal_Error);
    end Find_Matching_Property;
 
+   procedure Test_Document
+     (S : Store; Facade : System.Address; Result : out Boolean)
+   is
+      N : constant Node_Ref := Find_Registered_Node (S, Facade);
+   begin
+      Result := N /= Null_Node
+        and then Node (S.Current.all, N).Kind = Document_Node;
+   end Test_Document;
+
    procedure Test_Node
      (S : Store; Facade : System.Address; Mode : Node_Test_Kind;
       Result : out Boolean; Status : out Operation_Status)

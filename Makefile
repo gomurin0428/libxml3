@@ -9,7 +9,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save test-handler test-uri test-uri-build test-format test-memory test-output-buffer test-push compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save test-handler test-uri test-uri-build test-format test-memory test-output-buffer test-push test-doc-encoding compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -210,6 +210,23 @@ test-input: tests/input-test tests/input-test-reference
 	LD_LIBRARY_PATH=lib ./tests/input-test > tests/input-test.out 2> /dev/null
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/input-test-reference > tests/input-test-reference.out 2> /dev/null
 	diff -u tests/input-test-reference.out tests/input-test.out
+
+tests/doc-encoding-test: tests/doc-encoding-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/doc-encoding-test-reference: tests/doc-encoding-test.c compat/baseline.json \
+		build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -Wno-deprecated-declarations \
+		-I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+# The encoding a parse records in the document and the serializations
+# that use it.
+test-doc-encoding: tests/doc-encoding-test tests/doc-encoding-test-reference
+	LD_LIBRARY_PATH=lib ./tests/doc-encoding-test > tests/doc-encoding-test.out 2> /dev/null
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/doc-encoding-test-reference > tests/doc-encoding-test-reference.out 2> /dev/null
+	diff -u tests/doc-encoding-test-reference.out tests/doc-encoding-test.out
 
 tests/push-test: tests/push-test.c $(PUBLIC_HEADERS) Makefile | build
 	$(CC) $(CFLAGS) -Werror $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
@@ -594,7 +611,7 @@ test-oom: tests/oom-test
 	LD_LIBRARY_PATH=lib ./tests/oom-test document-entity 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test name-values 0
 	LD_LIBRARY_PATH=lib ./tests/oom-test uri-unescape-inplace 0
-	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success arena-growth parsed-pi option-rejection malformed utf16 utf16-empty warning copy copy-empty replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy node-copy node-copy-doc prop-copy doc-copy buffer-ops node-dump save-file output-buffer read-file read-fd read-io context-new context-read context-stopped context-warning push context-handler handler-warning handler-detached uri-parse uri-build save-context ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
+	@set -e; for operation in uri-unescape uri-unescape-empty uri-unescape-buffer uri-escape uri-escape-empty success arena-growth parsed-pi option-rejection malformed utf16 utf16-empty warning copy copy-empty replacement tls dom-new-doc dom-new-doc-version dom-new-doc-empty dom-new-node dom-new-text dom-new-text-len dom-new-doc-text dom-new-doc-text-len dom-new-doc-comment dom-new-doc-pi dom-new-doc-pi-empty dom-new-cdata dom-new-comment dom-new-pi dom-new-pi-empty dom-new-child dom-new-text-child dom-new-doc-node dom-new-doc-raw-node dom-new-doc-prop dom-merge dom-sibling dom-text-merge dom-text-concat dom-get-lang dom-get-space dom-set-lang-new dom-set-space-new dom-set-lang-update dom-content-replace dom-content-append-len dom-content-child dom-content-child-len dom-content-child-len-empty dom-content-set-scalar dom-content-set-len dom-content-set-tree dom-content-set-tree-len attr-new attr-new-empty attr-detached attr-detached-null attr-set-new attr-set attr-value ns-new ns-detached ns-copy node-copy node-copy-doc prop-copy doc-copy buffer-ops node-dump save-file output-buffer read-file read-fd read-io context-new context-read context-stopped context-warning push doc-encoding context-handler handler-warning handler-detached uri-parse uri-build save-context ns-prop-new ns-prop-set ns-qname-set ns-xml-qname ns-search-prefix ns-search-href ns-list qname-split qname-build qname-build-alias utf8-strsub utf8-strndup strsub strdup strndup char-strdup char-strndup char-strndup-empty strncat-new strncat-new-empty strcat strncat escape-special escape-special-empty escape-entities escape-entities-empty serialization serialization-default serialization-null-encoding serialization-formatted serialization-formatted-utf8 node-path node-set-name string-node-list string-node-list-len node-list-raw node-list-escaped node-list-raw-empty node-list-entities node-list-entities-attr; do \
 		index=0; \
 		seen=0; \
 		while [ $$index -lt 128 ]; do \
@@ -833,6 +850,8 @@ clean:
 		tests/output-buffer-test.out tests/output-buffer-test-reference.out \
 		tests/push-test tests/push-test-reference tests/push-test.out \
 		tests/push-test-reference.out \
+		tests/doc-encoding-test tests/doc-encoding-test-reference \
+		tests/doc-encoding-test.out tests/doc-encoding-test-reference.out \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out

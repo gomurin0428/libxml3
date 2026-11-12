@@ -39,6 +39,13 @@ package XML3_DOM_Store.Queries with SPARK_Mode is
        Pre => Ready (S),
        Post => (if Status /= XML3_DOM_Constructors.Created then not Result);
 
+   --  Whether Facade is a live document of the store, decided from the
+   --  registered facades without reading Facade's memory.
+   procedure Test_Document
+     (S : Store; Facade : System.Address; Result : out Boolean)
+     with Global => null,
+       Pre => Ready (S);
+
    procedure Select_Element
      (S : Store; Facade : System.Address; Mode : Element_Query_Kind;
       Result : out System.Address; Count : out Natural;
