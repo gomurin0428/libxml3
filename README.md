@@ -291,6 +291,15 @@ needle は全体を走査せず、`Max_Bytes` 未満の payload と境界の NUL
 上限ではありません。返却 pointer は入力が有効な間だけ使い、`xmlFree` せず、allocation・
 書き込み・transcodeも行いません。native pointer、読み取り可能範囲、byte内容、address
 計算、完全なAPI意味論は信頼境界です。
+アロケータは `xmlMemSetup` / `xmlGcMemSetup` で差し替えられます。ライブラリが呼び出し側へ渡す領域や呼び出し側のために
+解放する領域（文字列、シリアライズ結果、読み込みバッファ、エラー文字列）はすべて設定された関数を通るので、
+`xmlFree` で解放する領域も呼び出し側のアロケータのものです（ライブラリ内部のAdaの管理領域はランタイムのアロケータのまま）。
+libxml2 では `xmlFree`、`xmlMalloc`、`xmlMallocAtomic`、`xmlRealloc`、`xmlMemStrdup` は関数を保持する変数ですが、
+libxml3 では現在の関数を呼ぶ関数なので、呼び出しはできても代入はできません（`xmlMemSetup` を使ってください）。
+デバッグ用アロケータ（`xmlMemMalloc`、`xmlMemRealloc`、`xmlMemFree`、`xmlMemoryStrdup`、`xmlMemSize`、`xmlMemUsed`、
+`xmlMemBlocks` など）は libxml2 2.15.4 と同じヘッダ（タグ 0x5aa5 とサイズ）と使用量の計数を持ちます。
+固定版と同じ結果になることを `make test-memory` で比較しています。
+
 `xmlStrPrintf` / `xmlStrVPrintf` は libxml2 2.15.4 と同じく、NULLのバッファや書式、0以下の長さで-1を返し、
 それ以外は `vsnprintf` の結果（切り詰め前の長さ）を返してバッファ最後のバイトをNULにします。可変長引数は
 Adaへ渡せないため、小さな信頼済みCシム（`src/xml3_format.c`）で実装しています。`make test-format` で固定版と比較しています。

@@ -115,3 +115,7 @@ tests/format-test
 tests/format-test-reference
 tests/format-test.out
 tests/format-test-reference.out
+tests/memory-test
+tests/memory-test-reference
+tests/memory-test.out
+tests/memory-test-reference.out

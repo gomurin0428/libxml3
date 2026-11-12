@@ -111,10 +111,11 @@ package body XML3_Native_Memory with SPARK_Mode => Off is
      (Kind : XML3_Text.Predefined_Entity_Kind) return System.Address is
      (Predefined_Entities (Kind)'Address);
 
+   --  The allocator set by xmlMemSetup (src/xml3_memory.c).
    function C_Malloc (Bytes : size_t) return System.Address
-     with Import, Convention => C, External_Name => "malloc";
+     with Import, Convention => C, External_Name => "xml3MemAllocate";
    procedure C_Free (Base : System.Address)
-     with Import, Convention => C, External_Name => "free";
+     with Import, Convention => C, External_Name => "xml3MemRelease";
    function C_Memmove (Target, Source : System.Address; Count : size_t) return System.Address
      with Import, Convention => C, External_Name => "memmove";
    function C_Memcmp (Left, Right : System.Address; Count : size_t) return int
