@@ -1,5 +1,4 @@
 with Interfaces.C;
-with XML3_Errors;
 
 package body XML3_DOM_Lock is
    use type Interfaces.C.int;
@@ -11,6 +10,13 @@ package body XML3_DOM_Lock is
 
    Held_Here : Boolean := False
      with Thread_Local_Storage;
+
+   After_Release : Release_Hook := null;
+
+   procedure Set_Release_Hook (Hook : Release_Hook) is
+   begin
+      After_Release := Hook;
+   end Set_Release_Hook;
 
    procedure Acquire (Item : in out Guard) is
    begin
@@ -32,7 +38,9 @@ package body XML3_DOM_Lock is
          if Unlock /= 0 then
             raise Lock_Error;
          end if;
-         XML3_Errors.Dispatch_Deferred;
+         if After_Release /= null then
+            After_Release.all;
+         end if;
       end if;
    end Finalize;
 

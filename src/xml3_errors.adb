@@ -602,4 +602,6 @@ package body XML3_Errors is
          null;
    end Destroy_State;
 
+begin
+   XML3_DOM_Lock.Set_Release_Hook (Dispatch_Deferred'Access);
 end XML3_Errors;
