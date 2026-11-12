@@ -244,6 +244,10 @@ int main() {
     (void)canonic_path;
     (void)path_to_uri;
     (void)uri_escape_full;
+    int (*str_printf)(xmlChar *, int, const char *, ...) = xmlStrPrintf;
+    int (*str_vprintf)(xmlChar *, int, const char *, va_list) = xmlStrVPrintf;
+    (void)str_printf;
+    (void)str_vprintf;
     {
         xmlURI uri = {};
         uri.port = 0;

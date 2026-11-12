@@ -9,7 +9,7 @@ PUBLIC_HEADERS := $(wildcard include/libxml/*.h) include/libxml3.h
 REFERENCE := $(CURDIR)/build/reference
 REFERENCE_VERSION := $(shell /usr/bin/python3 -c 'import json; print(json.load(open("compat/baseline.json"))["version_number"])')
 
-.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save test-handler test-uri test-uri-build compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
+.PHONY: build test-api test-namespace test-namespace-edit test-unicode test-encoding test-resources test-errors test-oom test-fuzz test-dom test-dom-core test-dom-bridge test-runtime test-dom-projection test-string-exception test-attributes test-serialization test-content-edit test-copy test-output test-input test-context test-save test-handler test-uri test-uri-build test-format compare compare-system check prove prove-units prove-units-resume install clean test-sanitize reference inventory check-inventory
 
 build:
 	$(ADA_BIN)/gprbuild -p -P libxml3.gpr -XLIBXML3_PROFILE=production
@@ -323,6 +323,22 @@ test-uri-build: tests/uri-build-test tests/uri-build-test-reference
 	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/uri-build-test-reference > tests/uri-build-test-reference.out
 	diff -u tests/uri-build-test-reference.out tests/uri-build-test.out
 
+tests/format-test: tests/format-test.c $(PUBLIC_HEADERS) Makefile | build
+	$(CC) $(CFLAGS) -Werror -Wno-format-truncation $< -Llib -Wl,-rpath,'$$ORIGIN/../lib' -lxml3 -o $@
+
+tests/format-test-reference: tests/format-test.c compat/baseline.json \
+		build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -Werror -Wno-format-truncation \
+		-I$(REFERENCE)/include/libxml2 \
+		-DXML3_REFERENCE_TEST $< -L$(REFERENCE)/lib \
+		-Wl,-rpath,'$$ORIGIN/../build/reference/lib' -lxml2 -o $@
+
+# The format test prints xmlStrPrintf's results; both outputs must match.
+test-format: tests/format-test tests/format-test-reference
+	LD_LIBRARY_PATH=lib ./tests/format-test > tests/format-test.out
+	LD_LIBRARY_PATH=$(REFERENCE)/lib ./tests/format-test-reference > tests/format-test-reference.out
+	diff -u tests/format-test-reference.out tests/format-test.out
+
 # The copy test prints what each copy looks like; both outputs must match.
 test-copy: tests/copy-test tests/copy-test-reference
 	LD_LIBRARY_PATH=lib ./tests/copy-test > tests/copy-test.out
@@ -594,6 +610,7 @@ inventory:
 check-inventory:
 	/usr/bin/python3 -m unittest discover -s tests -p 'test_api_inventory.py'
 	/usr/bin/python3 eng/api_inventory.py --check
+	/usr/bin/python3 eng/library_symbols.py --check
 
 tests/differential-reference: tests/differential.c compat/baseline.json build/reference/include/libxml2/libxml/xmlversion.h build/reference/lib/libxml2.so
 	$(CC) -std=c11 -Wall -Wextra -Werror -I$(REFERENCE)/include/libxml2 \
@@ -640,6 +657,7 @@ check: build tests/header-smoke.o test-dom-core test-dom-bridge test-runtime tes
 	xmlCreateURI xmlFreeURI xmlParseURISafe xmlParseURI xmlParseURIRaw \
 	xmlParseURIReference xmlSaveUri xmlPrintURI xmlBuildURISafe xmlBuildURI \
 	xmlBuildRelativeURISafe xmlBuildRelativeURI xmlCanonicPath xmlPathToURI xmlURIEscape \
+	xmlStrPrintf xmlStrVPrintf \
 	xmlNewNodeEatName xmlNewDocNodeEatName xmlNewNsPropEatName xmlGetBufferAllocationScheme \
 	xmlSetBufferAllocationScheme xmlNodeBufGetContent xmlAttrSerializeTxtContent xmlFreeNsList \
 	xmlGetProp xmlHasProp xmlSearchNs xmlSearchNsByHref xmlHasNsProp \
@@ -750,6 +768,8 @@ clean:
 		tests/uri-test-sanitize tests/uri-test.out tests/uri-test-reference.out \
 		tests/uri-build-test tests/uri-build-test-reference tests/uri-build-test-sanitize \
 		tests/uri-build-test.out tests/uri-build-test-reference.out \
+		tests/format-test tests/format-test-reference tests/format-test.out \
+		tests/format-test-reference.out \
 		tests/runtime-test tests/runtime-test-sanitize tests/string-exception-test \
 		tests/dom-projection-test tests/dom-lock-test \
 		dom-lock-test runtime-test tests/*.out
